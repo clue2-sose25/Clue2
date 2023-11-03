@@ -1,0 +1,16 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+psc = { git = "https://pipthing:hmmyFR_ifzwunWVbRhae@git.tu-berlin.de/ise/teadal/prometeus-energy-agent.git", ref="2f27028e49347c215cfed96f1ff378c95099469b"}
+docker = "*"
+kubernetes = "*"
+locust = "*"
+seaborn = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.11"
