@@ -98,6 +98,16 @@ def build_images(exp:Experiment):
 
     print(f"deploying {exp.target_branch}")
 
+    # ensure mvn build ...
+    #docker run -v foo:/mnt --rm -it --workdir /mnt  maven mvn clean install -DskipTests
+    mvn = docker_client.containers.run(image="maven", 
+                                 auto_remove=True,
+                                 volumes={path.join(tea_store): {'bind': '/mnt', 'mode': 'rw'}},
+                                 working_dir="/mnt",
+                                 command="mvn clean install -DskipTests")
+    if "BUILD SUCCESS" not in mvn.decode("utf-8"):
+        raise RuntimeError("failed to build teastore. Run mvn clean install -DskipTests manually and see why it fails")
+    
     # patch build_docker.sh to use buildx 
     with open(path.join(tea_store,"tools","build_docker.sh"),"r") as f:
         script = f.read()
