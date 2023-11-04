@@ -15,8 +15,8 @@ import time
 tea_store="teastore" #where the repo with the teastore is located
 docker_user = "tawalaya" # the docker user to use for pushing/pulling images
 remote_platform_arch = "linux/amd64" # the target platform to build images for (kubernetes node architecture)
-local_platform_arch = "linux/arm64" # the local architecture to use for local latency measurements
-local_public_ip = "130.149.158.241" # TODO: XXX this we need find out automatically
+local_platform_arch = "linux/amd64" # the local architecture to use for local latency measurements
+local_public_ip = "130.149.158.80" # TODO: XXX this we need find out automatically
 
 # setup clients
 config.load_kube_config()
@@ -223,8 +223,8 @@ def _run_local_workload(exp:Experiment,observations:str="data"):
             image=f"{docker_user}/loadgenerator",
             auto_remove=True,
             environment={
-                "LOADGENERATOR_MAX_DAILY_USERS":1000, #The maximum daily users.
-                "LOADGENERATOR_STAGE_DURATION":60, #The duration of a stage in seconds.
+                "LOADGENERATOR_MAX_DAILY_USERS":2000, #The maximum daily users.
+                "LOADGENERATOR_STAGE_DURATION":120, #The duration of a stage in seconds.
                 "LOADGENERATOR_USE_CURRENTTIME":"n", #using current time to drive worload (e.g. day/night cycle)
                 "LOADGENERATOR_ENDPOINT_NAME":"Vanilla",#the workload profile
                 "LOCUST_HOST":f"http://{local_public_ip}:8000/tools.descartes.teastore.webui" #endoint of the deployed service
