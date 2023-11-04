@@ -1,0 +1,8 @@
+Method,Name,Error,Occurrences
+POST,/cartAction | add to cart,HTTPError('404 Client Error: Not Found for url: /cartAction | add to cart'),480
+POST,/cartAction | pay,HTTPError('404 Client Error: Not Found for url: /cartAction | pay'),86
+GET,/tools.descartes.teastore.webui/cart,HTTPError('404 Client Error: Not Found for url: /tools.descartes.teastore.webui/cart'),480
+GET,/tools.descartes.teastore.webui/order,HTTPError('404 Client Error: Not Found for url: /tools.descartes.teastore.webui/order'),86
+GET,/category,HTTPError('404 Client Error: Not Found for url: /category'),10343
+GET,/product,HTTPError('404 Client Error: Not Found for url: /product'),3154
+GET,/tools.descartes.teastore.webui,HTTPError('404 Client Error: Not Found for url: /tools.descartes.teastore.webui'),415
