@@ -12,11 +12,11 @@ import time
 
 
 #gloabls to drive the experiment 
-tea_store="G5" #where the repo with the teastore is located
+tea_store="teastore" #where the repo with the teastore is located
 docker_user = "tawalaya" # the docker user to use for pushing/pulling images
 remote_platform_arch = "linux/amd64" # the target platform to build images for (kubernetes node architecture)
 local_platform_arch = "linux/arm64" # the local architecture to use for local latency measurements
-
+local_public_ip = "130.149.158.241" # TODO: XXX this we need find out automatically
 
 # setup clients
 config.load_kube_config()
@@ -154,7 +154,6 @@ def deploy_branch(exp:Experiment,observations:str="data/default"):
 
     wait_until_ready(["teastore-auth","teastore-db","teastore-image","teastore-persistence","teastore-recommender","teastore-registry","teastore-webui"], 180, namespace=exp.namespace)
 
-
 def wait_until_ready(services, timeout, namespace="default"):
    
     v1 = client.AppsV1Api()
@@ -175,8 +174,6 @@ def wait_until_ready(services, timeout, namespace="default"):
         time.sleep(1)
         print("waiting for deployment to be ready")
     raise RuntimeError("Timeout reached. The following services are not ready: " + str(list(set(services) - set(ready_services))))
-
-        
 
 def _run_experiment(exp:Experiment,observations:str="data/default"):
         """
@@ -230,7 +227,7 @@ def _run_local_workload(exp:Experiment,observations:str="data"):
                 "LOADGENERATOR_STAGE_DURATION":60, #The duration of a stage in seconds.
                 "LOADGENERATOR_USE_CURRENTTIME":"n", #using current time to drive worload (e.g. day/night cycle)
                 "LOADGENERATOR_ENDPOINT_NAME":"Vanilla",#the workload profile
-                "LOCUST_HOST":"http://130.149.158.203:8000/tools.descartes.teastore.webui" #endoint of the deployed service
+                "LOCUST_HOST":f"http://{local_public_ip}:8000/tools.descartes.teastore.webui" #endoint of the deployed service
             },
             stdout=True,
             stderr=True,
@@ -258,9 +255,9 @@ def run_experiment(exp:Experiment, run:int):
     except RuntimeError as e:
         print(e)
     finally:
-        cleanup()
+        cleanup(exp)
 
-def cleanup():
+def cleanup(exp:Experiment):
     subprocess.run(["helm", "uninstall", "teastore", "-n",exp.namespace])
     subprocess.run(["git","checkout","examples/helm/values.yaml"], cwd=path.join(tea_store))
     subprocess.run(["git","checkout","tools/build_docker.sh"], cwd=path.join(tea_store))
@@ -269,9 +266,9 @@ if __name__ == "__main__":
     exps = [
         Experiment(name="baseline",target_branch="vanilla",patches=[],
         namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041"),
-        Experiment(name="baseline",target_branch="jvm-impoove",patches=[],
+        Experiment(name="jvm",target_branch="jvm-impoove",patches=[],
         namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041"),
-        Experiment(name="baseline",target_branch="feature/norecommendations",patches=[],
+        Experiment(name="norec",target_branch="feature/norecommendations",patches=[],
         namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041"),
     ]
     for exp in exps:
