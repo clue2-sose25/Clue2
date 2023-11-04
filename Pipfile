@@ -9,6 +9,7 @@ docker = "*"
 kubernetes = "*"
 locust = "*"
 seaborn = "*"
+yaml-patch = "*"
 
 [dev-packages]
 
