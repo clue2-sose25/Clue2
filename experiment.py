@@ -9,16 +9,17 @@ import docker
 from kubernetes import client, config
 from kubernetes.stream import portforward
 import time
-
+import signal
 
 #gloabls to drive the experiment 
 tea_store="teastore" #where the repo with the teastore is located
+workload_runtime = 120
 docker_user = "tawalaya" # the docker user to use for pushing/pulling images
 remote_platform_arch = "linux/amd64" # the target platform to build images for (kubernetes node architecture)
 local_platform_arch = "linux/amd64" # the local architecture to use for local latency measurements
 local_public_ip = "130.149.158.80" # TODO: XXX this we need find out automatically
 local_port = 8888
-
+MAX_EXPERIMENT_RUNTIME = 8*workload_runtime + 120 # 8 stages + 2 minutes to deploy and cleanup
 # setup clients
 config.load_kube_config()
 docker_client = docker.from_env()
@@ -187,21 +188,22 @@ def wait_until_ready(services, timeout, namespace="default"):
     raise RuntimeError("Timeout reached. The following services are not ready: " + str(list(set(services) - set(ready_services))))
 
 def _run_experiment(exp:Experiment,observations:str="data/default"):
-        """
-
-        """
-
         from psc import ResourceTracker, NodeUsage
         from datetime import datetime
         datafile = path.join(observations,f"measurements_{datetime.now().strftime('%d_%m_%Y_%H_%M')}.csv")
         observations_channel = FlushingQeueu(datafile,buffer_size=32,fields=NodeUsage._fields)
-
-
         tracker = ResourceTracker(exp.prometheus, observations_channel, exp.namespace, 10)
         
         # 5. start workload
         # start resouce tracker
         tracker.start()
+        def cancle():
+            tracker.stop()
+            observations_channel.flush()
+            signal.raise_signal(signal.SIGUSR1) # raise signal to stop workload
+
+        signal.signal(signal.SIGALRM,cancle) 
+        signal.alarm(MAX_EXPERIMENT_RUNTIME)
         # TODO: XXX deploy workload on differnt node or localy and wait for workload to be compleated (or timeout)
         if exp.colocated_workload:
             #TODO: deploy to a differnt node on kubernetes
@@ -211,6 +213,7 @@ def _run_experiment(exp:Experiment,observations:str="data/default"):
         # stop resource tracker
         tracker.stop()
         observations_channel.flush()
+        signal.alarm(0) # cancel alarm
 
 def _run_local_workload(exp:Experiment,observations:str="data"):
 
@@ -229,13 +232,20 @@ def _run_local_workload(exp:Experiment,observations:str="data"):
             with open(f,"w") as f:
                 pass
     #TODO: XXX get local ip to use for locust host
+    def cancle():
+        forward.kill()
+        try:
+            docker_client.containers.get("loadgenerator").kill()
+        except: 
+            pass
+    signal.signal(signal.SIGUSR1,cancle) 
     try:
         workload = docker_client.containers.run(
             image=f"{docker_user}/loadgenerator",
             auto_remove=True,
             environment={
                 "LOADGENERATOR_MAX_DAILY_USERS":2000, #The maximum daily users.
-                "LOADGENERATOR_STAGE_DURATION":120, #The duration of a stage in seconds.
+                "LOADGENERATOR_STAGE_DURATION":workload_runtime, #The duration of a stage in seconds.
                 "LOADGENERATOR_USE_CURRENTTIME":"n", #using current time to drive worload (e.g. day/night cycle)
                 "LOADGENERATOR_ENDPOINT_NAME":"Vanilla",#the workload profile
                 "LOCUST_HOST":f"http://{local_public_ip}:{local_port}/tools.descartes.teastore.webui" #endoint of the deployed service
@@ -243,6 +253,7 @@ def _run_local_workload(exp:Experiment,observations:str="data"):
             stdout=True,
             stderr=True,
             volumes=mounts,
+            name="loadgenerator"
         )
         with open(path.join(observations,"docker.log"),"w") as f:
             f.write(workload)
