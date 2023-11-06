@@ -17,6 +17,7 @@ docker_user = "tawalaya" # the docker user to use for pushing/pulling images
 remote_platform_arch = "linux/amd64" # the target platform to build images for (kubernetes node architecture)
 local_platform_arch = "linux/amd64" # the local architecture to use for local latency measurements
 local_public_ip = "130.149.158.80" # TODO: XXX this we need find out automatically
+local_port = 8888
 
 # setup clients
 config.load_kube_config()
@@ -203,7 +204,7 @@ def _run_experiment(exp:Experiment,observations:str="data/default"):
 
 def _run_local_workload(exp:Experiment,observations:str="data"):
 
-    forward = subprocess.Popen(["kubectl","-n",exp.namespace,"port-forward","--address","0.0.0.0","services/teastore-webui","8000:80"],stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+    forward = subprocess.Popen(["kubectl","-n",exp.namespace,"port-forward","--address","0.0.0.0","services/teastore-webui",f"{local_port}:80"],stdin=subprocess.PIPE, stderr=subprocess.PIPE)
 
 
     # create locost stats files
@@ -227,7 +228,7 @@ def _run_local_workload(exp:Experiment,observations:str="data"):
                 "LOADGENERATOR_STAGE_DURATION":120, #The duration of a stage in seconds.
                 "LOADGENERATOR_USE_CURRENTTIME":"n", #using current time to drive worload (e.g. day/night cycle)
                 "LOADGENERATOR_ENDPOINT_NAME":"Vanilla",#the workload profile
-                "LOCUST_HOST":f"http://{local_public_ip}:8000/tools.descartes.teastore.webui" #endoint of the deployed service
+                "LOCUST_HOST":f"http://{local_public_ip}:{local_port}/tools.descartes.teastore.webui" #endoint of the deployed service
             },
             stdout=True,
             stderr=True,
