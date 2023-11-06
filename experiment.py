@@ -201,6 +201,7 @@ def _run_experiment(exp:Experiment,observations:str="data/default"):
             tracker.stop()
             observations_channel.flush()
             signal.raise_signal(signal.SIGUSR1) # raise signal to stop workload
+            print("workload timeout reached.")
 
         signal.signal(signal.SIGALRM,cancle) 
         signal.alarm(MAX_EXPERIMENT_RUNTIME)
@@ -238,6 +239,7 @@ def _run_local_workload(exp:Experiment,observations:str="data"):
             docker_client.containers.get("loadgenerator").kill()
         except: 
             pass
+        print("local workload timeout reached.")
     signal.signal(signal.SIGUSR1,cancle) 
     try:
         workload = docker_client.containers.run(
