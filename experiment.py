@@ -44,7 +44,7 @@ class Experiment:
 
 
     def __str__(self) -> str:
-        return f"{self.name}_{self.target_branch}"
+        return f"{self.name}_{self.target_branch}".replace("/","_")
 
 from csv import DictWriter
 class FlushingQeueu(Queue):
@@ -166,7 +166,7 @@ def deploy_branch(exp:Experiment,observations:str="data/default"):
     if not "STATUS: deployed" in helm_deploy:
         raise RuntimeError("failed to deploy helm chart. Run helm install manually and see why it fails")
 
-    wait_until_ready(["teastore-auth","teastore-db","teastore-image","teastore-persistence","teastore-recommender","teastore-registry","teastore-webui"], 180, namespace=exp.namespace)
+    wait_until_ready(["teastore-auth","teastore-registry","teastore-webui"], 180, namespace=exp.namespace)
 
 def wait_until_ready(services, timeout, namespace="default"):
    
@@ -268,15 +268,20 @@ def _run_local_workload(exp:Experiment,observations:str="data"):
 def run_experiment(exp:Experiment, run:int):
     # 0. create experiment folder
     observations = path.join("data",exp.__str__(),f"{run}")
-    os.makedirs(observations,exist_ok=True)
+    
 
     try:
+        try:
+            os.makedirs(observations,exist_ok=False)
+        except OSError:
+            raise RuntimeError("data for this experiment already exsist, skipping")
+        
         # 3. rewrite helm values with <docker_user> && env details as nessary (namespace ...)
         
         deploy_branch(exp,observations)
 
         # 4. run collection agent (fetch prometeus )
-        time.sleep(30) # wait for 30s before stressing the workload
+        time.sleep(120) # wait for 120s before stressing the workload
         _run_experiment(exp,observations)
     except RuntimeError as e:
         print(e)
@@ -290,12 +295,14 @@ def cleanup(exp:Experiment):
 
 if __name__ == "__main__":
     exps = [
-        Experiment(name="baseline",target_branch="vanilla",patches=[],
-        namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041"),
-        Experiment(name="jvm",target_branch="jvm-impoove",patches=[],
-        namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041"),
-        Experiment(name="norec",target_branch="feature/norecommendations",patches=[],
-        namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041"),
+        #Experiment(name="baseline",target_branch="vanilla",patches=[], namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041"),
+        # Experiment(name="jvm",target_branch="jvm-impoove",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041"),
+        #Experiment(name="norec",target_branch="feature/norecommendations",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041"),
+        #Experiment(name="lessrec",target_branch="feature/lessrecs",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041"),
+        Experiment(name="obs",target_branch="feature/object-storage",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041"),
+        #Experiment(name="dbopt",target_branch="feature/db-optimization",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041"),
+        #Experiment(name="car",target_branch="Carbon-Aware-Retraining",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041"),
+        #Experiment(name="sig",target_branch="ssg+api-gateway",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041"),
     ]
     for exp in exps:
         build_workload(exp)
