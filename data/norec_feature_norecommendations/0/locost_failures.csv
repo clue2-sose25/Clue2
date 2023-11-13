@@ -1,0 +1,7 @@
+Method,Name,Error,Occurrences
+GET,/tools.descartes.teastore.webui,RemoteDisconnected('Remote end closed connection without response'),1
+GET,/tools.descartes.teastore.webui,"ConnectionResetError(104, 'Connection reset by peer')",4
+GET,/category,"ConnectionResetError(104, 'Connection reset by peer')",371
+GET,/product,"ConnectionResetError(104, 'Connection reset by peer')",61
+GET,/category,HTTPError('500 Server Error:  for url: /category'),3
+POST,/cartAction | add to cart,"ConnectionResetError(104, 'Connection reset by peer')",1
