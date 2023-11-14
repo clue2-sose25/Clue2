@@ -166,6 +166,57 @@ def build_images(exp:Experiment):
         
     print(f"build {docker_user}/* images")
 
+
+
+def setup_autoscaleing(exp:Experiment):
+    if exp.autoscaling == ScalingExperimentSetting.MEMORYBOUND or exp.autoscaling == ScalingExperimentSetting.BOTH:
+        raise NotImplementedError("memory bound autoscaling not implemented in cluster yet")
+    
+    # create a list of statefulsets to scale
+    # for each statefulset: set memory and cpu limites/requests per service
+    # then create hpa for each statefulset with the given target based on the experiment setting
+    apps = client.AppsV1Api()
+    hpas = client.AutoscalingV1Api()
+    sets:client.V1StatefulSetList = apps.list_namespaced_stateful_set(exp.namespace)
+    for set in sets.items:
+        
+        if not set.spec.template.spec.containers[0].resources:
+            limit = {"cpu": "600m","memory": "1Gi"}
+            if set.metadata.name in RESOUCE_LIMITS:
+                limit = RESOUCE_LIMITS[set.metadata.name]
+            set.spec.template.spec.containers[0].resources = client.V1ResourceRequirements(
+                limits=limit
+            )
+            apps.patch_namespaced_stateful_set(set.metadata.name,exp.namespace,set)
+        hpas.create_namespaced_horizontal_pod_autoscaler(
+            body=client.V1HorizontalPodAutoscaler(
+                metadata=client.V1ObjectMeta(
+                    name=set.metadata.name,
+                    namespace=exp.namespace
+                ),
+                spec=client.V1HorizontalPodAutoscalerSpec(
+                    scale_target_ref=client.V1CrossVersionObjectReference(
+                        api_version="apps/v1",
+                        kind="StatefulSet",
+                        name=set.metadata.name
+                    ),
+                    min_replicas=1,
+                    max_replicas=3,
+                    target_cpu_utilization_percentage=80
+                )
+            ),
+            namespace=exp.namespace
+        )
+
+def cleanup_autoscaleing(exp:Experiment):
+    hpas = client.AutoscalingV1Api()
+    _hpas = hpas.list_namespaced_horizontal_pod_autoscaler(exp.namespace)
+    for set in _hpas.items:
+        hpas.delete_namespaced_horizontal_pod_autoscaler(
+            name=set.metadata.name,
+            namespace=exp.namespace
+        )
+
 def deploy_branch(exp:Experiment,observations:str="data/default"):
     """
         deploy the helm chart with the given values.yaml,
@@ -363,53 +414,3 @@ if __name__ == "__main__":
         build_images(exp)
         for i in range(3):
             run_experiment(exp,i)
-
-
-def setup_autoscaleing(exp:Experiment):
-    if exp.autoscaling == ScalingExperimentSetting.MEMORYBOUND or exp.autoscaling == ScalingExperimentSetting.BOTH:
-        raise NotImplementedError("memory bound autoscaling not implemented in cluster yet")
-    
-    # create a list of statefulsets to scale
-    # for each statefulset: set memory and cpu limites/requests per service
-    # then create hpa for each statefulset with the given target based on the experiment setting
-    apps = client.AppsV1Api()
-    hpas = client.AutoscalingV1Api()
-    sets:client.V1StatefulSetList = apps.list_namespaced_stateful_set(exp.namespace)
-    for set in sets.items:
-        
-        if not set.spec.template.spec.containers[0].resources:
-            limit = {"cpu": "600m","memory": "1Gi"}
-            if set.metadata.name in RESOUCE_LIMITS:
-                limit = RESOUCE_LIMITS[set.metadata.name]
-            set.spec.template.spec.containers[0].resources = client.V1ResourceRequirements(
-                limits=limit
-            )
-            apps.patch_namespaced_stateful_set(set.metadata.name,exp.namespace,set)
-        hpas.create_namespaced_horizontal_pod_autoscaler(
-            body=client.V1HorizontalPodAutoscaler(
-                metadata=client.V1ObjectMeta(
-                    name=set.metadata.name,
-                    namespace=exp.namespace
-                ),
-                spec=client.V1HorizontalPodAutoscalerSpec(
-                    scale_target_ref=client.V1CrossVersionObjectReference(
-                        api_version="apps/v1",
-                        kind="StatefulSet",
-                        name=set.metadata.name
-                    ),
-                    min_replicas=1,
-                    max_replicas=3,
-                    target_cpu_utilization_percentage=80
-                )
-            ),
-            namespace=exp.namespace
-        )
-
-def cleanup_autoscaleing(exp:Experiment):
-    hpas = client.AutoscalingV1Api()
-    _hpas = hpas.list_namespaced_horizontal_pod_autoscaler(exp.namespace)
-    for set in _hpas.items:
-        hpas.delete_namespaced_horizontal_pod_autoscaler(
-            name=set.metadata.name,
-            namespace=exp.namespace
-        )
