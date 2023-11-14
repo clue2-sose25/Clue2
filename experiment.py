@@ -1,4 +1,5 @@
 #! /usr/bin/env python3
+from enum import Enum
 from queue import Queue,Empty
 import os
 from os import path
@@ -24,6 +25,23 @@ MAX_EXPERIMENT_RUNTIME = 8*workload_runtime + 120 # 8 stages + 2 minutes to depl
 config.load_kube_config()
 docker_client = docker.from_env()
 
+class ScalingExperimentSetting(Enum):
+    MEMORYBOUND = 1
+    CPUBOUND = 2 
+    BOTH = 3
+
+    def __str__(self) -> str:
+        if self == ScalingExperimentSetting.MEMORYBOUND:
+            return "mem"
+        elif self == ScalingExperimentSetting.CPUBOUND:
+            return "cpu"
+        elif self == ScalingExperimentSetting.BOTH:
+            return "full"
+        else:
+            return "none"
+
+
+
 class Experiment:
     def __init__(self, 
                  name:str, 
@@ -31,7 +49,8 @@ class Experiment:
                  patches:list,
                  namespace:str,
                  colocated_workload:bool=False,
-                 prometheus_url:str="http://localhost:9090"):
+                 prometheus_url:str="http://localhost:9090",
+                 autoscaleing:ScalingExperimentSetting=None):
         # metadata
         self.name = name
         self.target_branch = target_branch
@@ -41,10 +60,14 @@ class Experiment:
         # observability data
         self.prometheus = prometheus_url
         self.colocated_workload = colocated_workload
+        self.autoscaling = autoscaleing
 
 
     def __str__(self) -> str:
-        return f"{self.name}_{self.target_branch}".replace("/","_")
+        if self.autoscaling:
+            return f"{self.name}_{self.target_branch}_{self.autoscaling}".replace("/","_")
+        else:
+            return f"{self.name}_{self.target_branch}".replace("/","_")
 
 from csv import DictWriter
 class FlushingQeueu(Queue):
@@ -150,6 +173,15 @@ def deploy_branch(exp:Experiment,observations:str="data/default"):
         values = values.replace(r"nodeSelector: {}", r'nodeSelector: {"scaphandre": "true"}')
         values = values.replace("pullPolicy: IfNotPresent", "pullPolicy: Always")
         values = values.replace(r'tag: ""', r'tag: "latest"')
+        if exp.autoscaling:
+            values = values.replace(r"enabled: false","enabled: true")
+            if exp.autoscaling == ScalingExperimentSetting.MEMORYBOUND:
+                values = values.replace(r"targetCPUUtilizationPercentage: 80",r"# targetCPUUtilizationPercentage: 80")
+                values = values.replace(r"# targetMemoryUtilizationPercentage: 80",r"targetMemoryUtilizationPercentage: 80")
+            elif exp.autoscaling == ScalingExperimentSetting.BOTH:
+                values = values.replace(r"# targetMemoryUtilizationPercentage: 80",r"targetMemoryUtilizationPercentage: 80")
+
+
 
     from yaml_patch import patch_yaml
     patch_yaml(values, exp.patches)
@@ -167,6 +199,10 @@ def deploy_branch(exp:Experiment,observations:str="data/default"):
         raise RuntimeError("failed to deploy helm chart. Run helm install manually and see why it fails")
 
     wait_until_ready(["teastore-auth","teastore-registry","teastore-webui"], 180, namespace=exp.namespace)
+
+    if exp.autoscaling:
+        setup_autoscaleing(exp)
+    
 
 def wait_until_ready(services, timeout, namespace="default"):
    
@@ -267,7 +303,10 @@ def _run_local_workload(exp:Experiment,observations:str="data"):
     
 def run_experiment(exp:Experiment, run:int):
     # 0. create experiment folder
-    observations = path.join("data",exp.__str__(),f"{run}")
+    out = "data"
+    if exp.autoscaling:
+        out+="_scale"
+    observations = path.join(out,exp.__str__(),f"{run}")
     
 
     try:
@@ -288,21 +327,23 @@ def run_experiment(exp:Experiment, run:int):
     finally:
         cleanup(exp)
 
+
 def cleanup(exp:Experiment):
     subprocess.run(["helm", "uninstall", "teastore", "-n",exp.namespace])
     subprocess.run(["git","checkout","examples/helm/values.yaml"], cwd=path.join(tea_store))
     subprocess.run(["git","checkout","tools/build_docker.sh"], cwd=path.join(tea_store))
 
 if __name__ == "__main__":
+    scale = None
     exps = [
-        #Experiment(name="baseline",target_branch="vanilla",patches=[], namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041"),
-        # Experiment(name="jvm",target_branch="jvm-impoove",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041"),
-        #Experiment(name="norec",target_branch="feature/norecommendations",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041"),
-        #Experiment(name="lessrec",target_branch="feature/lessrecs",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041"),
-        Experiment(name="obs",target_branch="feature/object-storage",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041"),
-        #Experiment(name="dbopt",target_branch="feature/db-optimization",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041"),
-        #Experiment(name="car",target_branch="Carbon-Aware-Retraining",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041"),
-        #Experiment(name="sig",target_branch="ssg+api-gateway",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041"),
+        #Experiment(name="baseline",target_branch="vanilla",patches=[], namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
+        #Experiment(name="jvm",target_branch="jvm-impoove",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
+        #Experiment(name="norec",target_branch="feature/norecommendations",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
+        #Experiment(name="lessrec",target_branch="feature/lessrecs",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
+        #Experiment(name="obs",target_branch="feature/object-storage",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
+        #Experiment(name="dbopt",target_branch="feature/db-optimization",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
+        #Experiment(name="car",target_branch="Carbon-Aware-Retraining",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
+        #Experiment(name="sig",target_branch="ssg+api-gateway",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
     ]
     for exp in exps:
         build_workload(exp)
@@ -311,4 +352,8 @@ if __name__ == "__main__":
             run_experiment(exp,i)
 
 
-    
+def setup_autoscaleing(exp:Experiment):
+    pass
+
+def cleanup_autoscaleing(exp:Experiment):
+    pass
