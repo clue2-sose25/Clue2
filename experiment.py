@@ -21,6 +21,17 @@ local_platform_arch = "linux/amd64" # the local architecture to use for local la
 local_public_ip = "130.149.158.80" # TODO: XXX this we need find out automatically
 local_port = 8888
 MAX_EXPERIMENT_RUNTIME = 8*workload_runtime + 120 # 8 stages + 2 minutes to deploy and cleanup
+
+RESOUCE_LIMITS = {
+    "teastore-auth":{"cpu": "300m","memory": "700Mi"},
+    "teastore-db":{"cpu": "100m","memory": "200Mi"},
+    "teastore-registry":{"cpu": "100m","memory": "400Mi"},
+    "teastore-webui":{"cpu": "500m","memory": "800Mi"},
+    "teastore-recommender":{"cpu": "500m","memory": "1Gi"},
+    "teastore-image":{"cpu": "500m","memory": "1Gi"},
+}
+
+
 # setup clients
 config.load_kube_config()
 docker_client = docker.from_env()
@@ -46,9 +57,9 @@ class Experiment:
     def __init__(self, 
                  name:str, 
                  target_branch:str, 
-                 patches:list,
                  namespace:str,
                  colocated_workload:bool=False,
+                 patches:list=[],
                  prometheus_url:str="http://localhost:9090",
                  autoscaleing:ScalingExperimentSetting=None):
         # metadata
@@ -329,19 +340,21 @@ def run_experiment(exp:Experiment, run:int):
 
 
 def cleanup(exp:Experiment):
+    if exp.autoscaling:
+        cleanup_autoscaleing(exp)
     subprocess.run(["helm", "uninstall", "teastore", "-n",exp.namespace])
     subprocess.run(["git","checkout","examples/helm/values.yaml"], cwd=path.join(tea_store))
     subprocess.run(["git","checkout","tools/build_docker.sh"], cwd=path.join(tea_store))
 
 if __name__ == "__main__":
-    scale = None
+    scale = ScalingExperimentSetting.CPUBOUND
     exps = [
-        #Experiment(name="baseline",target_branch="vanilla",patches=[], namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
-        #Experiment(name="jvm",target_branch="jvm-impoove",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
+        Experiment(name="baseline",target_branch="vanilla",patches=[], namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
+        Experiment(name="jvm",target_branch="jvm-impoove",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
         #Experiment(name="norec",target_branch="feature/norecommendations",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
         #Experiment(name="lessrec",target_branch="feature/lessrecs",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
         #Experiment(name="obs",target_branch="feature/object-storage",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
-        #Experiment(name="dbopt",target_branch="feature/db-optimization",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
+        Experiment(name="dbopt",target_branch="feature/db-optimization",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
         #Experiment(name="car",target_branch="Carbon-Aware-Retraining",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
         #Experiment(name="sig",target_branch="ssg+api-gateway",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
     ]
@@ -353,7 +366,50 @@ if __name__ == "__main__":
 
 
 def setup_autoscaleing(exp:Experiment):
-    pass
+    if exp.autoscaling == ScalingExperimentSetting.MEMORYBOUND or exp.autoscaling == ScalingExperimentSetting.BOTH:
+        raise NotImplementedError("memory bound autoscaling not implemented in cluster yet")
+    
+    # create a list of statefulsets to scale
+    # for each statefulset: set memory and cpu limites/requests per service
+    # then create hpa for each statefulset with the given target based on the experiment setting
+    apps = client.AppsV1Api()
+    hpas = client.AutoscalingV1Api()
+    sets:client.V1StatefulSetList = apps.list_namespaced_stateful_set(exp.namespace)
+    for set in sets.items:
+        
+        if not set.spec.template.spec.containers[0].resources:
+            limit = {"cpu": "600m","memory": "1Gi"}
+            if set.metadata.name in RESOUCE_LIMITS:
+                limit = RESOUCE_LIMITS[set.metadata.name]
+            set.spec.template.spec.containers[0].resources = client.V1ResourceRequirements(
+                limits=limit
+            )
+            apps.patch_namespaced_stateful_set(set.metadata.name,exp.namespace,set)
+        hpas.create_namespaced_horizontal_pod_autoscaler(
+            body=client.V1HorizontalPodAutoscaler(
+                metadata=client.V1ObjectMeta(
+                    name=set.metadata.name,
+                    namespace=exp.namespace
+                ),
+                spec=client.V1HorizontalPodAutoscalerSpec(
+                    scale_target_ref=client.V1CrossVersionObjectReference(
+                        api_version="apps/v1",
+                        kind="StatefulSet",
+                        name=set.metadata.name
+                    ),
+                    min_replicas=1,
+                    max_replicas=3,
+                    target_cpu_utilization_percentage=80
+                )
+            ),
+            namespace=exp.namespace
+        )
 
 def cleanup_autoscaleing(exp:Experiment):
-    pass
+    hpas = client.AutoscalingV1Api()
+    _hpas = hpas.list_namespaced_horizontal_pod_autoscaler(exp.namespace)
+    for set in _hpas.items:
+        hpas.delete_namespaced_horizontal_pod_autoscaler(
+            name=set.metadata.name,
+            namespace=exp.namespace
+        )
