@@ -3,7 +3,7 @@ from enum import Enum
 from queue import Queue,Empty
 import os
 from os import path
-import sys
+import math
 import subprocess
 import docker
 
@@ -21,14 +21,14 @@ local_platform_arch = "linux/amd64" # the local architecture to use for local la
 local_public_ip = "130.149.158.80" # TODO: XXX this we need find out automatically
 local_port = 8888
 MAX_EXPERIMENT_RUNTIME = 8*workload_runtime + 120 # 8 stages + 2 minutes to deploy and cleanup
+MAX_USER = 6000
 
 RESOUCE_LIMITS = {
-    "teastore-auth":{"cpu": "300m","memory": "700Mi"},
-    "teastore-db":{"cpu": "100m","memory": "200Mi"},
-    "teastore-registry":{"cpu": "100m","memory": "400Mi"},
-    "teastore-webui":{"cpu": "500m","memory": "800Mi"},
-    "teastore-recommender":{"cpu": "500m","memory": "1Gi"},
-    "teastore-image":{"cpu": "500m","memory": "1Gi"},
+    "teastore-auth":{"cpu": 450,"memory": 700},
+    "teastore-db":{"cpu": 300,"memory": 400},
+    "teastore-webui":{"cpu": 500,"memory": 800},
+    "teastore-recommender":{"cpu": 500,"memory": 1024},
+    "teastore-image":{"cpu": 500,"memory": 1024},
 }
 
 
@@ -171,7 +171,7 @@ def build_images(exp:Experiment):
 def setup_autoscaleing(exp:Experiment):
     if exp.autoscaling == ScalingExperimentSetting.MEMORYBOUND or exp.autoscaling == ScalingExperimentSetting.BOTH:
         raise NotImplementedError("memory bound autoscaling not implemented in cluster yet")
-    
+    print(f"setting up hpa scaleing")
     # create a list of statefulsets to scale
     # for each statefulset: set memory and cpu limites/requests per service
     # then create hpa for each statefulset with the given target based on the experiment setting
@@ -179,16 +179,22 @@ def setup_autoscaleing(exp:Experiment):
     hpas = client.AutoscalingV1Api()
     sets:client.V1StatefulSetList = apps.list_namespaced_stateful_set(exp.namespace)
     for set in sets.items:
-        
-        if not set.spec.template.spec.containers[0].resources:
-            limit = {"cpu": "600m","memory": "1Gi"}
-            if set.metadata.name in RESOUCE_LIMITS:
-                limit = RESOUCE_LIMITS[set.metadata.name]
-            set.spec.template.spec.containers[0].resources = client.V1ResourceRequirements(
-                limits=limit
-            )
-            apps.patch_namespaced_stateful_set(set.metadata.name,exp.namespace,set)
-        hpas.create_namespaced_horizontal_pod_autoscaler(
+        if set.metadata.name in RESOUCE_LIMITS:
+            limit = RESOUCE_LIMITS[set.metadata.name]
+        else: 
+            continue
+        set.spec.template.spec.containers[0].resources = client.V1ResourceRequirements(
+            requests={
+                "cpu":f'{limit["cpu"]}m',
+                "memory":f'{limit["memory"]}Mi'
+            },
+            limits={
+                "cpu":f'{int(math.floor(limit["cpu"]*1.2))}m',
+                "memory":f'{int(math.floor(limit["memory"]*1.2))}Mi',
+            }
+        )
+        resp = apps.patch_namespaced_stateful_set(set.metadata.name,exp.namespace,set)
+        resp = hpas.create_namespaced_horizontal_pod_autoscaler(
             body=client.V1HorizontalPodAutoscaler(
                 metadata=client.V1ObjectMeta(
                     name=set.metadata.name,
@@ -346,7 +352,7 @@ def _run_local_workload(exp:Experiment,observations:str="data"):
             image=f"{docker_user}/loadgenerator",
             auto_remove=True,
             environment={
-                "LOADGENERATOR_MAX_DAILY_USERS":2000, #The maximum daily users.
+                "LOADGENERATOR_MAX_DAILY_USERS":MAX_USER, #The maximum daily users.
                 "LOADGENERATOR_STAGE_DURATION":workload_runtime, #The duration of a stage in seconds.
                 "LOADGENERATOR_USE_CURRENTTIME":"n", #using current time to drive worload (e.g. day/night cycle)
                 "LOADGENERATOR_ENDPOINT_NAME":"Vanilla",#the workload profile
@@ -410,7 +416,7 @@ if __name__ == "__main__":
         #Experiment(name="sig",target_branch="ssg+api-gateway",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
     ]
     for exp in exps:
-        build_workload(exp)
-        build_images(exp)
-        for i in range(3):
+        #build_workload(exp)
+        #build_images(exp)
+        for i in range(1):
             run_experiment(exp,i)
