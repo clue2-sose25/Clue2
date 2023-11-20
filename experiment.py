@@ -5,36 +5,47 @@ import os
 from os import path
 import math
 import subprocess
+import tarfile
+from tempfile import TemporaryFile
 import docker
 
-from kubernetes import client, config
-from kubernetes.stream import portforward
+from kubernetes import client, config, watch
+from kubernetes.stream import stream
+from kubernetes.client.rest import ApiException
 import time
 import signal
 
-#gloabls to drive the experiment 
-tea_store="teastore" #where the repo with the teastore is located
-workload_runtime = 120
-docker_user = "tawalaya" # the docker user to use for pushing/pulling images
-remote_platform_arch = "linux/amd64" # the target platform to build images for (kubernetes node architecture)
-local_platform_arch = "linux/amd64" # the local architecture to use for local latency measurements
-local_public_ip = "130.149.158.80" # TODO: XXX this we need find out automatically
-local_port = 8888
-MAX_EXPERIMENT_RUNTIME = 8*workload_runtime + 120 # 8 stages + 2 minutes to deploy and cleanup
-MAX_USER = 6000
+from requests import get
 
-RESOUCE_LIMITS = {
-    "teastore-auth":{"cpu": 450,"memory": 700},
-    "teastore-db":{"cpu": 300,"memory": 400},
-    "teastore-webui":{"cpu": 500,"memory": 800},
-    "teastore-recommender":{"cpu": 500,"memory": 1024},
-    "teastore-image":{"cpu": 500,"memory": 1024},
-}
-
+ip = get('https://api.ipify.org').content.decode('utf8')
 
 # setup clients
 config.load_kube_config()
 docker_client = docker.from_env()
+
+#gloabls to drive the experiment 
+env = {
+    #files / io
+    "tea_store_path":"teastore",  #where the repo with the teastore is located
+    "local_public_ip":ip if ip else "130.149.158.80", #
+    "local_port":8888,
+    #infra
+    "docker_user":"tawalaya", # the docker user to use for pushing/pulling images
+    "remote_platform_arch":"linux/amd64", # the target platform to build images for (kubernetes node architecture)
+    "local_platform_arch":"linux/amd64", # the local architecture to use for local latency measurements
+    "resouce_limits":  # the resource limits to use for the experiment (see below)
+    {
+        "teastore-auth":        {"cpu": 250,"memory": 700},
+        "teastore-db":          {"cpu": 200,"memory": 400},
+        "teastore-webui":       {"cpu": 300,"memory": 800},
+        "teastore-recommender": {"cpu": 300,"memory": 1024},
+        "teastore-image":       {"cpu": 300,"memory": 1024},
+    }, 
+    #workload
+    "workload_runtime":120, # runtime per load stage in seconds
+    "workload_max_users":6000, # the maximum number of daily users to simulate
+}
+
 
 class ScalingExperimentSetting(Enum):
     MEMORYBOUND = 1
@@ -109,18 +120,17 @@ def build_workload(exp:Experiment,wokload_branch:str= "priv/lierseleow/loadgener
     """
       build the workload image as a docker image, either to be deployed localy or collocated with the service
     """
-    git = subprocess.check_call(["git", "switch",wokload_branch],cwd=path.join(tea_store))
+    git = subprocess.check_call(["git", "switch",wokload_branch],cwd=path.join(env["tea_store_path"]))
     if git != 0:
         raise RuntimeError(f"failed to switch git to {wokload_branch}")
 
-    platform = local_platform_arch if exp.colocated_workload else remote_platform_arch
+    platform = env["local_platform_arch"]if exp.colocated_workload else env["remote_platform_arch"]
     
-    build = subprocess.check_call(["docker", "buildx", "build", "--platform", platform, "-t", f"{docker_user}/loadgenerator", "."],cwd=path.join(tea_store,"loadgenerator"))
+    build = subprocess.check_call(["docker", "buildx", "build", "--platform", platform, "-t", f"{env['docker_user']}/loadgenerator", "."],cwd=path.join(env["tea_store_path"],"loadgenerator"))
     if build != 0:
          raise RuntimeError(f"failed to build {wokload_branch}")
 
-    docker_client.images.push(f"{docker_user}/loadgenerator")
-    # subprocess.check_call(["docker", "push", f"{docker_user}/loadgenerator"])
+    docker_client.images.push(f"{env['docker_user']}/loadgenerator")
 
 def build_images(exp:Experiment):
     """
@@ -128,7 +138,7 @@ def build_images(exp:Experiment):
 
         perfrom some patching of the build scripts to use buildx (for multi-arch builds)
     """
-    git = subprocess.check_call(["git", "switch", exp.target_branch], cwd=path.join(tea_store))
+    git = subprocess.check_call(["git", "switch", exp.target_branch], cwd=path.join(env["tea_store_path"]))
     if git != 0:
         raise RuntimeError(f"failed to swich git to {exp.target_branch}")
 
@@ -138,7 +148,7 @@ def build_images(exp:Experiment):
     #docker run -v foo:/mnt --rm -it --workdir /mnt  maven mvn clean install -DskipTests
     mvn = docker_client.containers.run(image="maven", 
                                  auto_remove=True,
-                                 volumes={path.abspath(path.join(tea_store)): {'bind': '/mnt', 'mode': 'rw'}},
+                                 volumes={path.abspath(path.join(env["tea_store_path"])): {'bind': '/mnt', 'mode': 'rw'}},
                                  working_dir="/mnt",
                                  command="mvn clean install -DskipTests")
     if "BUILD SUCCESS" not in mvn.decode("utf-8"):
@@ -147,24 +157,24 @@ def build_images(exp:Experiment):
         print("rebuild java deps")
     
     # patch build_docker.sh to use buildx 
-    with open(path.join(tea_store,"tools","build_docker.sh"),"r") as f:
+    with open(path.join(env["tea_store_path"],"tools","build_docker.sh"),"r") as f:
         script = f.read()
     
     if "buildx" in script:
         print("buildx already used")
     else:
-        script = script.replace("docker build",f"docker buildx build --platform {remote_platform_arch}")
-        with open(path.join(tea_store,"tools","build_docker.sh"),"w") as f:
+        script = script.replace("docker build",f"docker buildx build --platform {env['remote_platform_arch']}")
+        with open(path.join(env["tea_store_path"],"tools","build_docker.sh"),"w") as f:
             f.write(script)
 
 
-    # 2. cd tools && ./build_docker.sh -r <docker_user>/ -p && cd ..
-    build = subprocess.check_call(["sh","build_docker.sh", "-r", f"{docker_user}/", "-p"],cwd=path.join(tea_store,"tools"))
+    # 2. cd tools && ./build_docker.sh -r <env["docker_user"]/ -p && cd ..
+    build = subprocess.check_call(["sh","build_docker.sh", "-r", f"{env['docker_user']}/", "-p"],cwd=path.join(env['tea_store_path'],"tools"))
 
     if build != 0:
         raise RuntimeError("failed to build docker images. Run build_docker.sh manually and see why it fails")
         
-    print(f"build {docker_user}/* images")
+    print(f"build {env['docker_user']}/* images")
 
 
 
@@ -179,8 +189,8 @@ def setup_autoscaleing(exp:Experiment):
     hpas = client.AutoscalingV1Api()
     sets:client.V1StatefulSetList = apps.list_namespaced_stateful_set(exp.namespace)
     for set in sets.items:
-        if set.metadata.name in RESOUCE_LIMITS:
-            limit = RESOUCE_LIMITS[set.metadata.name]
+        if set.metadata.name in env["resouce_limits"]:
+            limit = env["resouce_limits"][set.metadata.name]
         else: 
             continue
         set.spec.template.spec.containers[0].resources = client.V1ResourceRequirements(
@@ -189,30 +199,36 @@ def setup_autoscaleing(exp:Experiment):
                 "memory":f'{limit["memory"]}Mi'
             },
             limits={
-                "cpu":f'{int(math.floor(limit["cpu"]*1.2))}m',
-                "memory":f'{int(math.floor(limit["memory"]*1.2))}Mi',
+                "cpu":f'{int(math.floor(limit["cpu"]*1.5))}m',
+                "memory":f'{int(math.floor(limit["memory"]*1.5))}Mi',
             }
         )
         resp = apps.patch_namespaced_stateful_set(set.metadata.name,exp.namespace,set)
-        resp = hpas.create_namespaced_horizontal_pod_autoscaler(
-            body=client.V1HorizontalPodAutoscaler(
-                metadata=client.V1ObjectMeta(
-                    name=set.metadata.name,
-                    namespace=exp.namespace
-                ),
-                spec=client.V1HorizontalPodAutoscalerSpec(
-                    scale_target_ref=client.V1CrossVersionObjectReference(
-                        api_version="apps/v1",
-                        kind="StatefulSet",
-                        name=set.metadata.name
+        try:
+            resp = hpas.create_namespaced_horizontal_pod_autoscaler(
+                body=client.V1HorizontalPodAutoscaler(
+                    metadata=client.V1ObjectMeta(
+                        name=set.metadata.name,
+                        namespace=exp.namespace
                     ),
-                    min_replicas=1,
-                    max_replicas=3,
-                    target_cpu_utilization_percentage=80
-                )
-            ),
-            namespace=exp.namespace
-        )
+                    spec=client.V1HorizontalPodAutoscalerSpec(
+                        scale_target_ref=client.V1CrossVersionObjectReference(
+                            api_version="apps/v1",
+                            kind="StatefulSet",
+                            name=set.metadata.name
+                        ),
+                        min_replicas=1,
+                        max_replicas=3,
+                        target_cpu_utilization_percentage=80
+                    )
+                ),
+                namespace=exp.namespace
+            )
+        except ApiException as e:
+            if e.status == 409:
+                print(f"HPA for {set.metadata.name} already exsist")
+            else:
+                raise e 
 
 def cleanup_autoscaleing(exp:Experiment):
     hpas = client.AutoscalingV1Api()
@@ -234,15 +250,16 @@ def deploy_branch(exp:Experiment,observations:str="data/default"):
         
         wait for the deployment to be ready, or timeout after 3 minutes
     """
-    with open(path.join(tea_store,"examples","helm","values.yaml"),"r") as f:
+    with open(path.join(env["tea_store_path"],"examples","helm","values.yaml"),"r") as f:
         values = f.read()
-        values = values.replace("descartesresearch", docker_user)
+        values = values.replace("descartesresearch", env["docker_user"])
         #ensure we only run on nodes that we can observe
         values = values.replace(r"nodeSelector: {}", r'nodeSelector: {"scaphandre": "true"}')
         values = values.replace("pullPolicy: IfNotPresent", "pullPolicy: Always")
         values = values.replace(r'tag: ""', r'tag: "latest"')
         if exp.autoscaling:
             values = values.replace(r"enabled: false","enabled: true")
+            #values = values.replace(r"clientside_loadbalancer: false",r"clientside_loadbalancer: true")
             if exp.autoscaling == ScalingExperimentSetting.MEMORYBOUND:
                 values = values.replace(r"targetCPUUtilizationPercentage: 80",r"# targetCPUUtilizationPercentage: 80")
                 values = values.replace(r"# targetMemoryUtilizationPercentage: 80",r"targetMemoryUtilizationPercentage: 80")
@@ -254,14 +271,14 @@ def deploy_branch(exp:Experiment,observations:str="data/default"):
     from yaml_patch import patch_yaml
     patch_yaml(values, exp.patches)
 
-    with open(path.join(tea_store,"examples","helm","values.yaml"), "w") as f:
+    with open(path.join(env["tea_store_path"],"examples","helm","values.yaml"), "w") as f:
         f.write(values)
 
     #write copy of used values to observations
     with open(path.join(observations,"values.yaml"), "w") as f:
         f.write(values)
 
-    helm_deploy = subprocess.check_output(["helm", "install", "teastore", "-n",exp.namespace,"."], cwd=path.join(tea_store,"examples","helm"))
+    helm_deploy = subprocess.check_output(["helm", "install", "teastore", "-n",exp.namespace,"."], cwd=path.join(env["tea_store_path"],"examples","helm"))
     helm_deploy = helm_deploy.decode("utf-8")
     if not "STATUS: deployed" in helm_deploy:
         raise RuntimeError("failed to deploy helm chart. Run helm install manually and see why it fails")
@@ -310,9 +327,10 @@ def _run_experiment(exp:Experiment,observations:str="data/default"):
             print("workload timeout reached.")
 
         signal.signal(signal.SIGALRM,cancle) 
-        signal.alarm(MAX_EXPERIMENT_RUNTIME)
+        signal.alarm(8*env["workload_runtime"] + 120 ) # 8 stages + 2 minutes to deploy and cleanup
         # TODO: XXX deploy workload on differnt node or localy and wait for workload to be compleated (or timeout)
         if exp.colocated_workload:
+            _run_remote_workload(exp,observations)
             #TODO: deploy to a differnt node on kubernetes
             pass
         else:
@@ -322,9 +340,112 @@ def _run_experiment(exp:Experiment,observations:str="data/default"):
         observations_channel.flush()
         signal.alarm(0) # cancel alarm
 
+def _run_remote_workload(exp:Experiment,observations:str="data"):
+    core = client.CoreV1Api()
+    def cancle():
+        core.delete_collection_namespaced_pod(namespace=exp.namespace, label_selector="app=loadgenerator",timeout_seconds=0,grace_period_seconds=0)
+    signal.signal(signal.SIGUSR1,cancle) 
+    
+    core.create_namespaced_pod(
+        namespace=exp.namespace,
+        body=client.V1Pod(
+            metadata=client.V1ObjectMeta(
+                name="loadgenerator",
+                namespace=exp.namespace,
+                labels={
+                    "app":"loadgenerator"
+                }
+            ),
+            spec=client.V1PodSpec(
+                containers=[
+                        client.V1Container(
+                            name="loadgenerator",
+                            image=f"{env['docker_user']}/loadgenerator",
+                            env=[
+                                client.V1EnvVar(
+                                    name="LOADGENERATOR_MAX_DAILY_USERS",
+                                    value=str(env['workload_max_users'])
+                                ),
+                                client.V1EnvVar(
+                                    name="LOADGENERATOR_STAGE_DURATION",
+                                    value=str(env["workload_runtime"])
+                                ),
+                                client.V1EnvVar(
+                                    name="LOADGENERATOR_USE_CURRENTTIME",
+                                    value="n"
+                                ),
+                                client.V1EnvVar(
+                                    name="LOADGENERATOR_ENDPOINT_NAME",
+                                    value="Vanilla"
+                                ),
+                                client.V1EnvVar(
+                                    name="LOCUST_HOST",
+                                    value=f"http://teastore-webui/tools.descartes.teastore.webui"
+                                )
+                            ],
+                            command=[
+                                "locust", "-f", "./consumerbehavior.py,./loadshapes.py", "--csv", "teastore", "--csv-full-history","--headless","--only-summary","&&","tar","cf","-","teastore_stats.csv","teastore_failures.csv","teastore_stats_history.csv" 
+                            ]
+                        )
+                    ],
+                    # run this on a differnt node
+                    affinity=client.V1Affinity(
+                        node_affinity=client.V1NodeAffinity(
+                            required_during_scheduling_ignored_during_execution=client.V1NodeSelector(
+                                node_selector_terms=[
+                                    client.V1NodeSelectorTerm(
+                                        match_expressions=[
+                                            client.V1NodeSelectorRequirement(
+                                                key="scaphandre",
+                                                operator="DoesNotExist"
+                                            )
+                                        ])])),
+                ),
+            
+            )
+    ))
+    
+    w = watch.Watch()
+    for event in w.stream(core.list_namespaced_pod, exp.namespace, label_selector="app=loadgenerator",timeout=env["workload_runtime"]*8 + 60):
+        pod = event['object']
+        if pod.status.phase == 'Succeeded' or pod.status.phase == 'Completed':
+            _download_results("loadgenerator",exp.namespace,["teastore_stats.csv","teastore_failures.csv","teastore_stats_history.csv","teastore_report.html"],observations)
+            w.stop()
+        elif pod.status.phase == 'Failed':
+            w.stop()
+
+    core.delete_namespaced_pod(name="loadgenerator",namespace=exp.namespace)
+
+def _download_results(pod_name:str, namespace:str, pod_file_path:list[str], destination_path:str):
+    # core = client.CoreV1Api()
+    # exec_command = [
+    #     '/bin/sh',
+    #     '-c',
+    #     'tar cf - {}'.format(" ".join(pod_file_path))
+    # ]
+    # try:
+    #     resp = stream(core.connect_get_namespaced_pod_exec, pod_name, namespace,
+    #                 command=exec_command,
+    #                 stderr=True, stdin=True,
+    #                 stdout=True, tty=False,
+    #                 _preload_content=False
+    #     )
+
+    #     with TemporaryFile() as tar_buffer:
+    #         resp.run_forever(timeout=60, stdout=tar_buffer)
+
+    #         tar_buffer.seek(0)
+    #         with tarfile.open(fileobj=tar_buffer, mode='r:') as tar:
+    #             tar.extractall(path=destination_path)
+    # except Exception as e:
+    #     print("Exception while downloading results",e)
+    pass
+
+
+
 def _run_local_workload(exp:Experiment,observations:str="data"):
 
-    forward = subprocess.Popen(["kubectl","-n",exp.namespace,"port-forward","--address","0.0.0.0","services/teastore-webui",f"{local_port}:80"],stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+    forward = subprocess.Popen(["kubectl","-n",exp.namespace,"port-forward","--address","0.0.0.0","services/teastore-webui",f"{env['local_port']}:80"],stdin=subprocess.PIPE, stderr=subprocess.PIPE)
 
 
     # create locost stats files
@@ -349,14 +470,14 @@ def _run_local_workload(exp:Experiment,observations:str="data"):
     signal.signal(signal.SIGUSR1,cancle) 
     try:
         workload = docker_client.containers.run(
-            image=f"{docker_user}/loadgenerator",
+            image=f"{env['docker_user']}/loadgenerator",
             auto_remove=True,
             environment={
-                "LOADGENERATOR_MAX_DAILY_USERS":MAX_USER, #The maximum daily users.
-                "LOADGENERATOR_STAGE_DURATION":workload_runtime, #The duration of a stage in seconds.
+                "LOADGENERATOR_MAX_DAILY_USERS":env['workload_max_users'], #The maximum daily users.
+                "LOADGENERATOR_STAGE_DURATION":env["workload_runtime"], #The duration of a stage in seconds.
                 "LOADGENERATOR_USE_CURRENTTIME":"n", #using current time to drive worload (e.g. day/night cycle)
                 "LOADGENERATOR_ENDPOINT_NAME":"Vanilla",#the workload profile
-                "LOCUST_HOST":f"http://{local_public_ip}:{local_port}/tools.descartes.teastore.webui" #endoint of the deployed service
+                "LOCUST_HOST":f"http://{env['local_public_ip']}:{env['local_port']}/tools.descartes.teastore.webui" #endoint of the deployed service
             },
             stdout=True,
             stderr=True,
@@ -383,7 +504,7 @@ def run_experiment(exp:Experiment, run:int):
         except OSError:
             raise RuntimeError("data for this experiment already exsist, skipping")
         
-        # 3. rewrite helm values with <docker_user> && env details as nessary (namespace ...)
+        # 3. rewrite helm values with <env["docker_user"]> && env details as nessary (namespace ...)
         
         deploy_branch(exp,observations)
 
@@ -400,8 +521,8 @@ def cleanup(exp:Experiment):
     if exp.autoscaling:
         cleanup_autoscaleing(exp)
     subprocess.run(["helm", "uninstall", "teastore", "-n",exp.namespace])
-    subprocess.run(["git","checkout","examples/helm/values.yaml"], cwd=path.join(tea_store))
-    subprocess.run(["git","checkout","tools/build_docker.sh"], cwd=path.join(tea_store))
+    subprocess.run(["git","checkout","examples/helm/values.yaml"], cwd=path.join(env["tea_store_path"]))
+    subprocess.run(["git","checkout","tools/build_docker.sh"], cwd=path.join(env["tea_store_path"]))
 
 if __name__ == "__main__":
     scale = ScalingExperimentSetting.CPUBOUND
@@ -417,6 +538,6 @@ if __name__ == "__main__":
     ]
     for exp in exps:
         #build_workload(exp)
-        #build_images(exp)
+        build_images(exp)
         for i in range(1):
             run_experiment(exp,i)
