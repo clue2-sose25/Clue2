@@ -14,7 +14,7 @@ from kubernetes.stream import stream
 from kubernetes.client.rest import ApiException
 import time
 import signal
-
+import base64
 from requests import get
 
 ip = get('https://api.ipify.org').content.decode('utf8')
@@ -364,11 +364,11 @@ def _run_remote_workload(exp:Experiment,observations:str="data"):
                             env=[
                                 client.V1EnvVar(
                                     name="LOADGENERATOR_MAX_DAILY_USERS",
-                                    value=str(env['workload_max_users'])
+                                    value=str(10)#str(env['workload_max_users'])
                                 ),
                                 client.V1EnvVar(
                                     name="LOADGENERATOR_STAGE_DURATION",
-                                    value=str(env["workload_runtime"])
+                                    value=str(5)#str(env["workload_runtime"])
                                 ),
                                 client.V1EnvVar(
                                     name="LOADGENERATOR_USE_CURRENTTIME",
@@ -384,12 +384,14 @@ def _run_remote_workload(exp:Experiment,observations:str="data"):
                                 )
                             ],
                             command=[
-                                "locust", "-f", "./consumerbehavior.py,./loadshapes.py", "--csv", "teastore", "--csv-full-history","--headless","--only-summary","&&","tar","cf","-","teastore_stats.csv","teastore_failures.csv","teastore_stats_history.csv" 
-                            ]
+                                "sh", "-c",
+                                "locust -f ./consumerbehavior.py,./loadshapes.py --csv teastore --csv-full-history --headless --only-summary 1>/dev/null 2>/dev/null && tar zcf - teastore_stats.csv teastore_failures.csv teastore_stats_history.csv | base64 -w 0", 
+                            ],
+                            working_dir="/loadgenerator",
                         )
                     ],
                     # run this on a differnt node
-                    affinity=client.V1Affinity(
+                affinity=client.V1Affinity(
                         node_affinity=client.V1NodeAffinity(
                             required_during_scheduling_ignored_during_execution=client.V1NodeSelector(
                                 node_selector_terms=[
@@ -399,9 +401,8 @@ def _run_remote_workload(exp:Experiment,observations:str="data"):
                                                 key="scaphandre",
                                                 operator="DoesNotExist"
                                             )
-                                        ])])),
-                ),
-            
+                                        ])])),),
+                restart_policy="Never",
             )
     ))
     
@@ -416,30 +417,23 @@ def _run_remote_workload(exp:Experiment,observations:str="data"):
 
     core.delete_namespaced_pod(name="loadgenerator",namespace=exp.namespace)
 
-def _download_results(pod_name:str, namespace:str, pod_file_path:list[str], destination_path:str):
-    # core = client.CoreV1Api()
-    # exec_command = [
-    #     '/bin/sh',
-    #     '-c',
-    #     'tar cf - {}'.format(" ".join(pod_file_path))
-    # ]
-    # try:
-    #     resp = stream(core.connect_get_namespaced_pod_exec, pod_name, namespace,
-    #                 command=exec_command,
-    #                 stderr=True, stdin=True,
-    #                 stdout=True, tty=False,
-    #                 _preload_content=False
-    #     )
-
-    #     with TemporaryFile() as tar_buffer:
-    #         resp.run_forever(timeout=60, stdout=tar_buffer)
-
-    #         tar_buffer.seek(0)
-    #         with tarfile.open(fileobj=tar_buffer, mode='r:') as tar:
-    #             tar.extractall(path=destination_path)
-    # except Exception as e:
-    #     print("Exception while downloading results",e)
-    pass
+def _download_results(pod_name:str, namespace:str, destination_path:str):
+    try:
+        core = client.CoreV1Api()
+        resp = core.read_namespaced_pod_log(name=pod_name,namespace=namespace)
+        log_contents = resp
+        if not log_contents or len(log_contents) == 0:
+            print(f"{pod_name} in namespace {namespace} has no logs, workload failed?")
+        with TemporaryFile() as tar_buffer:
+            tar_buffer.write(base64.b64decode(log_contents))
+            tar_buffer.seek(0)
+            
+            with tarfile.open(fileobj=tar_buffer, mode='r:gz',) as tar:
+                tar.extractall(path=destination_path)
+    except ApiException as e:
+        print(f"failed to get log from pod {pod_name} in namespace {namespace}",e)
+    except tarfile.TarError as e:
+        print(f"failed to extract log",e,log_contents)
 
 
 
