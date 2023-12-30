@@ -244,7 +244,7 @@ def deploy_branch(exp:Experiment,observations:str="data/default"):
     with open(path.join(env["tea_store_path"],"examples","helm","values.yaml"),"r") as f:
         values = f.read()
         values = values.replace("descartesresearch", env["docker_user"])
-        #ensure we only run on nodes that we can observe
+        # ensure we only run on nodes that we can observe
         values = values.replace(r"nodeSelector: {}", r'nodeSelector: {"scaphandre": "true"}')
         values = values.replace("pullPolicy: IfNotPresent", "pullPolicy: Always")
         values = values.replace(r'tag: ""', r'tag: "latest"')
@@ -318,11 +318,10 @@ def _run_experiment(exp:Experiment,observations:str="data/default"):
 
         signal.signal(signal.SIGALRM,cancle) 
         signal.alarm(8*env["workload_runtime"] + 120 ) # 8 stages + 2 minutes to deploy and cleanup
-        # TODO: XXX deploy workload on differnt node or localy and wait for workload to be compleated (or timeout)
+        
+        # deploy workload on differnt node or localy and wait for workload to be compleated (or timeout)
         if exp.colocated_workload:
             _run_remote_workload(exp,observations)
-            #TODO: deploy to a differnt node on kubernetes
-            pass
         else:
            _run_local_workload(exp,observations)
         # stop resource tracker
@@ -397,13 +396,16 @@ def _run_remote_workload(exp:Experiment,observations:str="data"):
     ))
     
     w = watch.Watch()
-    for event in w.stream(core.list_namespaced_pod, exp.namespace, label_selector="app=loadgenerator",timeout=env["workload_runtime"]*8 + 60):
+    for event in w.stream(core.list_namespaced_pod, exp.namespace, label_selector="app=loadgenerator",timeout_seconds=env["workload_runtime"]*8 + 60):
         pod = event['object']
         if pod.status.phase == 'Succeeded' or pod.status.phase == 'Completed':
-            _download_results("loadgenerator",exp.namespace,["teastore_stats.csv","teastore_failures.csv","teastore_stats_history.csv","teastore_report.html"],observations)
+            _download_results("loadgenerator",exp.namespace,observations)
+            print("container finished, downloading results")
             w.stop()
         elif pod.status.phase == 'Failed':
+            print("worklaod could not be started...")
             w.stop()
+    #TODO: deal with still running workloads    
 
     core.delete_namespaced_pod(name="loadgenerator",namespace=exp.namespace)
 
@@ -501,19 +503,31 @@ def run_experiment(exp:Experiment, run:int):
 def cleanup(exp:Experiment):
     if exp.autoscaling:
         cleanup_autoscaleing(exp)
+    
+    if exp.colocated_workload:
+        core = client.CoreV1Api()
+        try:
+            core.delete_namespaced_pod(name="loadgenerator",namespace=exp.namespace)
+        except:
+            pass
+    
     subprocess.run(["helm", "uninstall", "teastore", "-n",exp.namespace])
     subprocess.run(["git","checkout","examples/helm/values.yaml"], cwd=path.join(env["tea_store_path"]))
     subprocess.run(["git","checkout","tools/build_docker.sh"], cwd=path.join(env["tea_store_path"]))
 
 if __name__ == "__main__":
     scale = ScalingExperimentSetting.CPUBOUND
+
+    env["workload_runtime"]=10
+    env["workload_max_users"]=15
+    
     exps = [
-        Experiment(name="baseline",target_branch="vanilla",patches=[], namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
-        Experiment(name="jvm",target_branch="jvm-impoove",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
+        Experiment(name="baseline",target_branch="vanilla",patches=[], namespace="bench",colocated_workload=True,prometheus_url="http://130.149.158.143:30041",autoscaleing=None),
+        #Experiment(name="jvm",target_branch="jvm-impoove",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
         #Experiment(name="norec",target_branch="feature/norecommendations",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
         #Experiment(name="lessrec",target_branch="feature/lessrecs",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
         #Experiment(name="obs",target_branch="feature/object-storage",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
-        Experiment(name="dbopt",target_branch="feature/db-optimization",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
+        #Experiment(name="dbopt",target_branch="feature/db-optimization",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
         #Experiment(name="car",target_branch="Carbon-Aware-Retraining",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
         #Experiment(name="sig",target_branch="ssg+api-gateway",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
     ]
