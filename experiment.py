@@ -46,7 +46,6 @@ env = {
     "workload_max_users":6000, # the maximum number of daily users to simulate
 }
 
-
 class ScalingExperimentSetting(Enum):
     MEMORYBOUND = 1
     CPUBOUND = 2 
@@ -61,8 +60,6 @@ class ScalingExperimentSetting(Enum):
             return "full"
         else:
             return "none"
-
-
 
 class Experiment:
     def __init__(self, 
@@ -120,13 +117,9 @@ def build_workload(exp:Experiment,wokload_branch:str= "priv/lierseleow/loadgener
     """
       build the workload image as a docker image, either to be deployed localy or collocated with the service
     """
-    git = subprocess.check_call(["git", "switch",wokload_branch],cwd=path.join(env["tea_store_path"]))
-    if git != 0:
-        raise RuntimeError(f"failed to switch git to {wokload_branch}")
-
     platform = env["local_platform_arch"]if exp.colocated_workload else env["remote_platform_arch"]
     
-    build = subprocess.check_call(["docker", "buildx", "build", "--platform", platform, "-t", f"{env['docker_user']}/loadgenerator", "."],cwd=path.join(env["tea_store_path"],"loadgenerator"))
+    build = subprocess.check_call(["docker", "buildx", "build", "--platform", platform, "-t", f"{env['docker_user']}/loadgenerator", "."],cwd=path.join("loadgenerator"))
     if build != 0:
          raise RuntimeError(f"failed to build {wokload_branch}")
 
@@ -175,8 +168,6 @@ def build_images(exp:Experiment):
         raise RuntimeError("failed to build docker images. Run build_docker.sh manually and see why it fails")
         
     print(f"build {env['docker_user']}/* images")
-
-
 
 def setup_autoscaleing(exp:Experiment):
     if exp.autoscaling == ScalingExperimentSetting.MEMORYBOUND or exp.autoscaling == ScalingExperimentSetting.BOTH:
@@ -288,7 +279,6 @@ def deploy_branch(exp:Experiment,observations:str="data/default"):
     if exp.autoscaling:
         setup_autoscaleing(exp)
     
-
 def wait_until_ready(services, timeout, namespace="default"):
    
     v1 = client.AppsV1Api()
@@ -435,8 +425,6 @@ def _download_results(pod_name:str, namespace:str, destination_path:str):
     except tarfile.TarError as e:
         print(f"failed to extract log",e,log_contents)
 
-
-
 def _run_local_workload(exp:Experiment,observations:str="data"):
 
     forward = subprocess.Popen(["kubectl","-n",exp.namespace,"port-forward","--address","0.0.0.0","services/teastore-webui",f"{env['local_port']}:80"],stdin=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -509,7 +497,6 @@ def run_experiment(exp:Experiment, run:int):
         print(e)
     finally:
         cleanup(exp)
-
 
 def cleanup(exp:Experiment):
     if exp.autoscaling:
