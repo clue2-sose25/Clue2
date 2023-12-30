@@ -1,0 +1,5 @@
+Method,Name,Error,Occurrences
+GET,/tools.descartes.teastore.webui,"ConnectionResetError(104, 'Connection reset by peer')",1
+GET,/category,"ConnectionResetError(104, 'Connection reset by peer')",400
+GET,/product,"ConnectionResetError(104, 'Connection reset by peer')",58
+GET,/category,HTTPError('500 Server Error:  for url: /category'),3

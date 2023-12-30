@@ -4,7 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-psc = { git = "https://pipthing:hmmyFR_ifzwunWVbRhae@git.tu-berlin.de/ise/teadal/prometeus-energy-agent.git", ref="2f27028e49347c215cfed96f1ff378c95099469b"}
+psc = { git = "https://pipthing:hmmyFR_ifzwunWVbRhae@git.tu-berlin.de/ise/teadal/prometeus-energy-agent.git", ref="91dda6078ad33f3a0ff2b3f25b1ddc52c2ad9ad3"}
 docker = "*"
 kubernetes = "*"
 locust = "*"
@@ -12,6 +12,7 @@ seaborn = "*"
 yaml-patch = "*"
 
 [dev-packages]
+ipykernel = "*"
 
 [requires]
 python_version = "3.11"
