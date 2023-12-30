@@ -1,5 +1,0 @@
-Method,Name,Error,Occurrences
-GET,/category,"ConnectionResetError(104, 'Connection reset by peer')",395
-GET,/product,"ConnectionResetError(104, 'Connection reset by peer')",43
-GET,/category,HTTPError('500 Server Error:  for url: /category'),1
-POST,/cartAction | add to cart,"ConnectionResetError(104, 'Connection reset by peer')",4

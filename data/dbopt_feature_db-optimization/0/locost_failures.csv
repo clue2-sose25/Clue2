@@ -1,3 +1,0 @@
-Method,Name,Error,Occurrences
-GET,/tools.descartes.teastore.webui,RemoteDisconnected('Remote end closed connection without response'),6
-GET,/category,HTTPError('500 Server Error:  for url: /category'),3

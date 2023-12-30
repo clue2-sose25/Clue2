@@ -1,6 +1,0 @@
-Method,Name,Error,Occurrences
-GET,/tools.descartes.teastore.webui,RemoteDisconnected('Remote end closed connection without response'),1
-GET,/tools.descartes.teastore.webui,"ConnectionResetError(104, 'Connection reset by peer')",3
-GET,/category,"ConnectionResetError(104, 'Connection reset by peer')",375
-GET,/product,"ConnectionResetError(104, 'Connection reset by peer')",53
-GET,/category,HTTPError('500 Server Error:  for url: /category'),2
