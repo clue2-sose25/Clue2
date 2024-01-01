@@ -17,6 +17,9 @@ import signal
 import base64
 from requests import get
 
+DIRTY = False
+SKIPBUILD = False
+
 ip = get('https://api.ipify.org').content.decode('utf8')
 
 # setup clients
@@ -35,15 +38,15 @@ env = {
     "local_platform_arch":"linux/amd64", # the local architecture to use for local latency measurements
     "resouce_limits":  # the resource limits to use for the experiment (see below)
     {
-        "teastore-auth":        {"cpu": 250,"memory": 700},
-        "teastore-db":          {"cpu": 200,"memory": 400},
+        "teastore-auth":        {"cpu": 450,"memory": 700},
         "teastore-webui":       {"cpu": 300,"memory": 800},
-        "teastore-recommender": {"cpu": 300,"memory": 1024},
+        "teastore-recommender": {"cpu": 450,"memory": 1024},
         "teastore-image":       {"cpu": 300,"memory": 1024},
     }, 
     #workload
     "workload_runtime":120, # runtime per load stage in seconds
     "workload_max_users":6000, # the maximum number of daily users to simulate
+    "workloads":"./consumerbehavior.py,./loadshapes.py"
 }
 
 class ScalingExperimentSetting(Enum):
@@ -69,7 +72,8 @@ class Experiment:
                  colocated_workload:bool=False,
                  patches:list=[],
                  prometheus_url:str="http://localhost:9090",
-                 autoscaleing:ScalingExperimentSetting=None):
+                 autoscaleing:ScalingExperimentSetting=None,
+                 env_patches:dict = {}):
         # metadata
         self.name = name
         self.target_branch = target_branch
@@ -80,6 +84,7 @@ class Experiment:
         self.prometheus = prometheus_url
         self.colocated_workload = colocated_workload
         self.autoscaling = autoscaleing
+        self.env_patches = env_patches
 
 
     def __str__(self) -> str:
@@ -96,9 +101,10 @@ class Experiment:
             "namespace":self.namespace,
             "patches":self.patches,
             "workload": "colocated" if self.colocated_workload else "local",
-            "scaling": str(self.autoscaling)
+            "scaling": str(self.autoscaling),
+            "env_patches":self.env_patches,
         }
-        description+=env
+        description = description | env
         return json.dumps(description)
 
 
@@ -208,8 +214,8 @@ def setup_autoscaleing(exp:Experiment):
                 "memory":f'{int(math.floor(limit["memory"]*1.5))}Mi',
             }
         )
-        resp = apps.patch_namespaced_stateful_set(set.metadata.name,exp.namespace,set)
         try:
+            resp = apps.patch_namespaced_stateful_set(set.metadata.name,exp.namespace,set)
             resp = hpas.create_namespaced_horizontal_pod_autoscaler(
                 body=client.V1HorizontalPodAutoscaler(
                     metadata=client.V1ObjectMeta(
@@ -321,7 +327,7 @@ def _run_experiment(exp:Experiment,observations:str="data/default"):
         observations_channel = FlushingQeueu(datafile,buffer_size=32,fields=NodeUsage._fields)
         tracker = ResourceTracker(exp.prometheus, observations_channel, exp.namespace, 10)
         
-        with open(path.join(observations,"experiment.json")) as f:
+        with open(path.join(observations,"experiment.json"),"w") as f:
             f.write(exp.createJson(env))
         
         # 5. start workload
@@ -372,11 +378,11 @@ def _run_remote_workload(exp:Experiment,observations:str="data"):
                             env=[
                                 client.V1EnvVar(
                                     name="LOADGENERATOR_MAX_DAILY_USERS",
-                                    value=str(10)#str(env['workload_max_users'])
+                                    value=str(env['workload_max_users'])
                                 ),
                                 client.V1EnvVar(
                                     name="LOADGENERATOR_STAGE_DURATION",
-                                    value=str(5)#str(env["workload_runtime"])
+                                    value=str(env["workload_runtime"])
                                 ),
                                 client.V1EnvVar(
                                     name="LOADGENERATOR_USE_CURRENTTIME",
@@ -388,12 +394,16 @@ def _run_remote_workload(exp:Experiment,observations:str="data"):
                                 ),
                                 client.V1EnvVar(
                                     name="LOCUST_HOST",
-                                    value=f"http://teastore-webui/tools.descartes.teastore.webui"
+                                    value=f"http://teastore-webui/tools.descartes.teastore.webui/"
+                                ),
+                                client.V1EnvVar(
+                                    name="LOCUSTFILE",
+                                    value=env["workloads"]
                                 )
                             ],
                             command=[
                                 "sh", "-c",
-                                "locust -f ./consumerbehavior.py,./loadshapes.py --csv teastore --csv-full-history --headless --only-summary 1>/dev/null 2>/dev/null && tar zcf - teastore_stats.csv teastore_failures.csv teastore_stats_history.csv | base64 -w 0", 
+                                "locust --csv teastore --csv-full-history --headless --only-summary 1>/dev/null 2>erros.log || tar zcf - teastore_stats.csv teastore_failures.csv teastore_stats_history.csv erros.log | base64 -w 0", 
                             ],
                             working_dir="/loadgenerator",
                         )
@@ -422,7 +432,7 @@ def _run_remote_workload(exp:Experiment,observations:str="data"):
             print("container finished, downloading results")
             w.stop()
         elif pod.status.phase == 'Failed':
-            print("worklaod could not be started...")
+            print("worklaod could not be started...",pod)
             w.stop()
     #TODO: deal with still running workloads    
 
@@ -480,7 +490,8 @@ def _run_local_workload(exp:Experiment,observations:str="data"):
                 "LOADGENERATOR_STAGE_DURATION":env["workload_runtime"], #The duration of a stage in seconds.
                 "LOADGENERATOR_USE_CURRENTTIME":"n", #using current time to drive worload (e.g. day/night cycle)
                 "LOADGENERATOR_ENDPOINT_NAME":"Vanilla",#the workload profile
-                "LOCUST_HOST":f"http://{env['local_public_ip']}:{env['local_port']}/tools.descartes.teastore.webui" #endoint of the deployed service
+                "LOCUST_HOST":f"http://{env['local_public_ip']}:{env['local_port']}/tools.descartes.teastore.webui", #endoint of the deployed service,
+                "LOCUSTFILE":env["workloads"]
             },
             stdout=True,
             stderr=True,
@@ -503,7 +514,7 @@ def run_experiment(exp:Experiment, run:int):
 
     try:
         try:
-            os.makedirs(observations,exist_ok=False)
+            os.makedirs(observations,exist_ok=DIRTY)
         except OSError:
             raise RuntimeError("data for this experiment already exsist, skipping")
         
@@ -537,21 +548,28 @@ def cleanup(exp:Experiment):
 if __name__ == "__main__":
     scale = ScalingExperimentSetting.CPUBOUND
 
-    env["workload_runtime"]=10
-    env["workload_max_users"]=15
     
     exps = [
-        Experiment(name="baseline",target_branch="vanilla",patches=[], namespace="bench",colocated_workload=True,prometheus_url="http://130.149.158.143:30041",autoscaleing=None),
-        #Experiment(name="jvm",target_branch="jvm-impoove",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
-        #Experiment(name="norec",target_branch="feature/norecommendations",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
-        #Experiment(name="lessrec",target_branch="feature/lessrecs",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
-        #Experiment(name="obs",target_branch="feature/object-storage",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
-        #Experiment(name="dbopt",target_branch="feature/db-optimization",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
-        #Experiment(name="car",target_branch="Carbon-Aware-Retraining",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
-        #Experiment(name="sig",target_branch="ssg+api-gateway",patches=[],namespace="bench",colocated_workload=False,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
+        Experiment(name="baseline",target_branch="vanilla",patches=[], namespace="bench",colocated_workload=True,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
+        # Experiment(name="jvm",target_branch="jvm-impoove",patches=[],namespace="bench",colocated_workload=True,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
+        # Experiment(name="norec",target_branch="feature/norecommendations",patches=[],namespace="bench",colocated_workload=True,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
+        # Experiment(name="lessrec",target_branch="feature/lessrecs",patches=[],namespace="bench",colocated_workload=True,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
+        # Experiment(name="obs",target_branch="feature/object-storage",patches=[],namespace="bench",colocated_workload=True,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
+        # Experiment(name="dbopt",target_branch="feature/db-optimization",patches=[],namespace="bench",colocated_workload=True,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
+        # Experiment(name="car",target_branch="Carbon-Aware-Retraining",patches=[],namespace="bench",colocated_workload=True,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
+        # Experiment(name="sig",target_branch="ssg+api-gateway",patches=[],namespace="bench",colocated_workload=True,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
     ]
-    for exp in exps:
-        #build_workload(exp)
-        build_images(exp)
-        for i in range(1):
-            run_experiment(exp,i)
+    master_env = env.copy()
+    for scale in [ScalingExperimentSetting.CPUBOUND, None]:
+        
+        for exp in exps:
+            env = master_env.copy()
+            for k,v in exp.env_patches.items():
+                env[k] = v 
+            
+            exp.autoscaling = scale
+            if not SKIPBUILD:
+                build_workload(exp)
+                build_images(exp)
+            for i in range(1):
+                run_experiment(exp,i)
