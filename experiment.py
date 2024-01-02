@@ -551,6 +551,9 @@ if __name__ == "__main__":
     
     exps = [
         Experiment(name="baseline",target_branch="vanilla",patches=[], namespace="bench",colocated_workload=True,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
+        Experiment(name="baseline",target_branch="vanilla",patches=[], namespace="bench",colocated_workload=True,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale,
+        env_patches={"workloads":"./locustfile.py"}),
+        
         # Experiment(name="jvm",target_branch="jvm-impoove",patches=[],namespace="bench",colocated_workload=True,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
         # Experiment(name="norec",target_branch="feature/norecommendations",patches=[],namespace="bench",colocated_workload=True,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
         # Experiment(name="lessrec",target_branch="feature/lessrecs",patches=[],namespace="bench",colocated_workload=True,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
