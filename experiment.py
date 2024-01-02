@@ -37,17 +37,20 @@ env = {
     "remote_platform_arch":"linux/amd64", # the target platform to build images for (kubernetes node architecture)
     "local_platform_arch":"linux/amd64", # the local architecture to use for local latency measurements
     "resouce_limits":  # the resource limits to use for the experiment (see below)
-    {
+        {
         "teastore-auth":        {"cpu": 450,"memory": 700},
         "teastore-webui":       {"cpu": 300,"memory": 800},
         "teastore-recommender": {"cpu": 450,"memory": 1024},
         "teastore-image":       {"cpu": 300,"memory": 1024},
-    }, 
-    #workload
-    "workload_runtime":120, # runtime per load stage in seconds
-    "workload_max_users":6000, # the maximum number of daily users to simulate
-    "workloads":"./consumerbehavior.py,./loadshapes.py"
-}
+        }, 
+    "workload": 
+        {
+        #workload
+        "LOADGENERATOR_STAGE_DURATION": 120, # runtime per load stage in seconds
+        "LOADGENERATOR_MAX_DAILY_USERS": 6000, # the maximum number of daily users to simulate
+        "LOCUSTFILE": "./consumerbehavior.py,./loadshapes.py",   
+        }
+    }
 
 class ScalingExperimentSetting(Enum):
     MEMORYBOUND = 1
@@ -100,7 +103,7 @@ class Experiment:
             "target_branch":self.target_branch,
             "namespace":self.namespace,
             "patches":self.patches,
-            "workload": "colocated" if self.colocated_workload else "local",
+            "executor": "colocated" if self.colocated_workload else "local",
             "scaling": str(self.autoscaling),
             "env_patches":self.env_patches,
         }
@@ -342,7 +345,7 @@ def _run_experiment(exp:Experiment,observations:str="data/default"):
         signal.signal(signal.SIGALRM,cancle) 
         
         #MAIN timeout to kill the experiment after 2 min after the workload should be compleated
-        signal.alarm(8*env["workload_runtime"] + 120 ) # 8 stages + 2 minutes to deploy and cleanup
+        signal.alarm(8*env["workload"]["LOADGENERATOR_STAGE_DURATION"] + 120 ) # 8 stages + 2 minutes to deploy and cleanup
         
         # deploy workload on differnt node or localy and wait for workload to be compleated (or timeout)
         if exp.colocated_workload:
@@ -360,6 +363,41 @@ def _run_remote_workload(exp:Experiment,observations:str="data"):
         core.delete_collection_namespaced_pod(namespace=exp.namespace, label_selector="app=loadgenerator",timeout_seconds=0,grace_period_seconds=0)
     signal.signal(signal.SIGUSR1,cancle) 
     
+    container_env = [
+        client.V1EnvVar(
+            name="LOADGENERATOR_MAX_DAILY_USERS",
+            value=str(env["workload"]["LOADGENERATOR_MAX_DAILY_USERS"])
+        ),
+        client.V1EnvVar(
+            name="LOADGENERATOR_STAGE_DURATION",
+            value=str(env["workload"]["LOADGENERATOR_STAGE_DURATION"])
+        ),
+        client.V1EnvVar(
+            name="LOADGENERATOR_USE_CURRENTTIME",
+            value="n"
+        ),
+        client.V1EnvVar(
+            name="LOADGENERATOR_ENDPOINT_NAME",
+            value="Vanilla"
+        ),
+        client.V1EnvVar(
+            name="LOCUST_HOST",
+            value=f"http://teastore-webui/tools.descartes.teastore.webui/"
+        ),
+        client.V1EnvVar(
+            name="LOCUST_LOCUSTFILE",
+            value=env["workload"]["LOCUSTFILE"]
+        ),
+    ]
+
+    # this may overwrite the env vars above, be careful
+    if "workload" in exp.env_patches:
+        for k,v in exp.env_patches["workload"].items():
+            container_env.append(client.V1EnvVar(
+                name=f"LOCUST_{k}",
+                value=v
+            ))
+
     core.create_namespaced_pod(
         namespace=exp.namespace,
         body=client.V1Pod(
@@ -375,32 +413,7 @@ def _run_remote_workload(exp:Experiment,observations:str="data"):
                         client.V1Container(
                             name="loadgenerator",
                             image=f"{env['docker_user']}/loadgenerator",
-                            env=[
-                                client.V1EnvVar(
-                                    name="LOADGENERATOR_MAX_DAILY_USERS",
-                                    value=str(env['workload_max_users'])
-                                ),
-                                client.V1EnvVar(
-                                    name="LOADGENERATOR_STAGE_DURATION",
-                                    value=str(env["workload_runtime"])
-                                ),
-                                client.V1EnvVar(
-                                    name="LOADGENERATOR_USE_CURRENTTIME",
-                                    value="n"
-                                ),
-                                client.V1EnvVar(
-                                    name="LOADGENERATOR_ENDPOINT_NAME",
-                                    value="Vanilla"
-                                ),
-                                client.V1EnvVar(
-                                    name="LOCUST_HOST",
-                                    value=f"http://teastore-webui/tools.descartes.teastore.webui/"
-                                ),
-                                client.V1EnvVar(
-                                    name="LOCUSTFILE",
-                                    value=env["workloads"]
-                                )
-                            ],
+                            env=container_env,
                             command=[
                                 "sh", "-c",
                                 "locust --csv teastore --csv-full-history --headless --only-summary 1>/dev/null 2>erros.log || tar zcf - teastore_stats.csv teastore_failures.csv teastore_stats_history.csv erros.log | base64 -w 0", 
@@ -425,7 +438,7 @@ def _run_remote_workload(exp:Experiment,observations:str="data"):
     ))
     
     w = watch.Watch()
-    for event in w.stream(core.list_namespaced_pod, exp.namespace, label_selector="app=loadgenerator",timeout_seconds=env["workload_runtime"]*8 + 60):
+    for event in w.stream(core.list_namespaced_pod, exp.namespace, label_selector="app=loadgenerator",timeout_seconds=env["workload"]["LOADGENERATOR_STAGE_DURATION"]*8 + 60):
         pod = event['object']
         if pod.status.phase == 'Succeeded' or pod.status.phase == 'Completed':
             _download_results("loadgenerator",exp.namespace,observations)
@@ -481,18 +494,24 @@ def _run_local_workload(exp:Experiment,observations:str="data"):
             pass
         print("local workload timeout reached.")
     signal.signal(signal.SIGUSR1,cancle) 
+
+    workload_env = {
+        "LOADGENERATOR_MAX_DAILY_USERS":env["workload"]["LOADGENERATOR_MAX_DAILY_USERS"], #The maximum daily users.
+        "LOADGENERATOR_STAGE_DURATION":env["workload"]["LOADGENERATOR_STAGE_DURATION"], #The duration of a stage in seconds.
+        "LOADGENERATOR_USE_CURRENTTIME":"n", #using current time to drive worload (e.g. day/night cycle)
+        "LOADGENERATOR_ENDPOINT_NAME":"Vanilla",#the workload profile
+        "LOCUST_HOST":f"http://{env['local_public_ip']}:{env['local_port']}/tools.descartes.teastore.webui", #endoint of the deployed service,
+        "LOCUST_LOCUSTFILE":env["workload"]["LOCUSTFILE"]
+    }
+    if "workload" in exp.env_patches:
+        for k,v in exp.env_patches["workload"].items():
+            workload_env[f"LOCUST_{k}] = v
+
     try:
         workload = docker_client.containers.run(
             image=f"{env['docker_user']}/loadgenerator",
             auto_remove=True,
-            environment={
-                "LOADGENERATOR_MAX_DAILY_USERS":env['workload_max_users'], #The maximum daily users.
-                "LOADGENERATOR_STAGE_DURATION":env["workload_runtime"], #The duration of a stage in seconds.
-                "LOADGENERATOR_USE_CURRENTTIME":"n", #using current time to drive worload (e.g. day/night cycle)
-                "LOADGENERATOR_ENDPOINT_NAME":"Vanilla",#the workload profile
-                "LOCUST_HOST":f"http://{env['local_public_ip']}:{env['local_port']}/tools.descartes.teastore.webui", #endoint of the deployed service,
-                "LOCUSTFILE":env["workloads"]
-            },
+            environment=workload_env,
             stdout=True,
             stderr=True,
             volumes=mounts,
@@ -552,7 +571,14 @@ if __name__ == "__main__":
     exps = [
         Experiment(name="baseline",target_branch="vanilla",patches=[], namespace="bench",colocated_workload=True,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
         Experiment(name="baseline",target_branch="vanilla",patches=[], namespace="bench",colocated_workload=True,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale,
-        env_patches={"workloads":"./locustfile.py"}),
+        env_patches={
+            "workload":{
+                "LOCUSTFILE":"./locustfile.py",
+                "RUN_TIME":f'{env["workload"]["LOADGENERATOR_STAGE_DURATION"]*8}s',
+                "SPAWN_RATE":f'{env["workload"]["LOADGENERATOR_MAX_DAILY_USERS"]/24/60}',
+                "NUM_USERS":"25"
+            }}
+        ),
         
         # Experiment(name="jvm",target_branch="jvm-impoove",patches=[],namespace="bench",colocated_workload=True,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
         # Experiment(name="norec",target_branch="feature/norecommendations",patches=[],namespace="bench",colocated_workload=True,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),

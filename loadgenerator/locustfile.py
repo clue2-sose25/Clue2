@@ -4,7 +4,7 @@ from random import randint, choice
 from locust import HttpUser, task
 
 # logging
-logging.getLogger().setLevel(logging.DEBUG)
+logging.getLogger().setLevel(logging.ERROR)
 
 
 class UserBehavior(HttpUser):
