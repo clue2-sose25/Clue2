@@ -382,7 +382,7 @@ def _run_remote_workload(exp:Experiment,observations:str="data"):
         ),
         client.V1EnvVar(
             name="LOCUST_HOST",
-            value=f"http://teastore-webui/tools.descartes.teastore.webui/"
+            value=f"http://teastore-webui/tools.descartes.teastore.webui"
         ),
         client.V1EnvVar(
             name="LOCUST_LOCUSTFILE",
@@ -446,6 +446,7 @@ def _run_remote_workload(exp:Experiment,observations:str="data"):
             w.stop()
         elif pod.status.phase == 'Failed':
             print("worklaod could not be started...",pod)
+            _download_results("loadgenerator",exp.namespace,observations)
             w.stop()
     #TODO: deal with still running workloads    
 
@@ -505,7 +506,7 @@ def _run_local_workload(exp:Experiment,observations:str="data"):
     }
     if "workload" in exp.env_patches:
         for k,v in exp.env_patches["workload"].items():
-            workload_env[f"LOCUST_{k}] = v
+            workload_env[f"LOCUST_{k}"] = v
 
     try:
         workload = docker_client.containers.run(
@@ -523,11 +524,8 @@ def _run_local_workload(exp:Experiment,observations:str="data"):
         print("failed to run workload properly",e)
     forward.kill()
     
-def run_experiment(exp:Experiment, run:int):
+def run_experiment(exp:Experiment, run:int, out:str = "data"):
     # 0. create experiment folder
-    out = "data"
-    if exp.autoscaling:
-        out+="_scale"
     observations = path.join(out,exp.__str__(),f"{run}")
     
 
@@ -542,7 +540,8 @@ def run_experiment(exp:Experiment, run:int):
         deploy_branch(exp,observations)
 
         # 4. run collection agent (fetch prometeus )
-        time.sleep(120) # wait for 120s before stressing the workload
+        if not DIRTY:
+            time.sleep(120) # wait for 120s before stressing the workload
         _run_experiment(exp,observations)
     except RuntimeError as e:
         print(e)
@@ -566,39 +565,53 @@ def cleanup(exp:Experiment):
 
 if __name__ == "__main__":
     scale = ScalingExperimentSetting.CPUBOUND
-
     
-    exps = [
-        Experiment(name="baseline",target_branch="vanilla",patches=[], namespace="bench",colocated_workload=True,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
-        Experiment(name="baseline",target_branch="vanilla",patches=[], namespace="bench",colocated_workload=True,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale,
-        env_patches={
+    lin_workload = {
             "workload":{
                 "LOCUSTFILE":"./locustfile.py",
                 "RUN_TIME":f'{env["workload"]["LOADGENERATOR_STAGE_DURATION"]*8}s',
-                "SPAWN_RATE":f'{env["workload"]["LOADGENERATOR_MAX_DAILY_USERS"]/24/60}',
-                "NUM_USERS":"25"
+                "SPAWN_RATE":3,
+                "USERS":env["workload"]["LOADGENERATOR_MAX_DAILY_USERS"]
             }}
-        ),
-        
-        # Experiment(name="jvm",target_branch="jvm-impoove",patches=[],namespace="bench",colocated_workload=True,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
-        # Experiment(name="norec",target_branch="feature/norecommendations",patches=[],namespace="bench",colocated_workload=True,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
-        # Experiment(name="lessrec",target_branch="feature/lessrecs",patches=[],namespace="bench",colocated_workload=True,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
-        # Experiment(name="obs",target_branch="feature/object-storage",patches=[],namespace="bench",colocated_workload=True,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
-        # Experiment(name="dbopt",target_branch="feature/db-optimization",patches=[],namespace="bench",colocated_workload=True,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
-        # Experiment(name="car",target_branch="Carbon-Aware-Retraining",patches=[],namespace="bench",colocated_workload=True,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
-        # Experiment(name="sig",target_branch="ssg+api-gateway",patches=[],namespace="bench",colocated_workload=True,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
+    import copy
+    exps = [
+        Experiment(name="baseline",target_branch="vanilla",patches=[], namespace="bench",colocated_workload=True,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
+        Experiment(name="jvm",target_branch="jvm-impoove",patches=[],namespace="bench",colocated_workload=True,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
+        Experiment(name="norec",target_branch="feature/norecommendations",patches=[],namespace="bench",colocated_workload=True,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
+        Experiment(name="lessrec",target_branch="feature/lessrecs",patches=[],namespace="bench",colocated_workload=True,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
+        Experiment(name="obs",target_branch="feature/object-storage",patches=[],namespace="bench",colocated_workload=True,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
+        Experiment(name="dbopt",target_branch="feature/db-optimization",patches=[],namespace="bench",colocated_workload=True,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
+        Experiment(name="car",target_branch="Carbon-Aware-Retraining",patches=[],namespace="bench",colocated_workload=True,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
+        Experiment(name="sig",target_branch="ssg+api-gateway",patches=[],namespace="bench",colocated_workload=True,prometheus_url="http://130.149.158.143:30041",autoscaleing=scale),
     ]
-    master_env = env.copy()
-    for scale in [ScalingExperimentSetting.CPUBOUND, None]:
+    nexps = []
+    for exp in exps:
+        # test differnt workload generator (ramp up stress)
+        nexp = copy.deepcopy(exp)    
+        nexp.env_patches = lin_workload
+        nexps.append(nexp)
+    exps += nexps
         
-        for exp in exps:
-            env = master_env.copy()
-            for k,v in exp.env_patches.items():
+
+    
+    master_env = copy.deepcopy(env)
+    for exp in exps:
+        env = copy.deepcopy(master_env)
+        for k,v in exp.env_patches.items():
+            if k in env and isinstance(env[k],dict):
+                for kk,vv in v.items():
+                    env[k][kk] = vv
+            else:
                 env[k] = v 
-            
-            exp.autoscaling = scale
-            if not SKIPBUILD:
-                build_workload(exp)
-                build_images(exp)
-            for i in range(1):
-                run_experiment(exp,i)
+        
+        exp.autoscaling = scale
+        if not SKIPBUILD:
+            build_workload(exp)
+            build_images(exp)
+        for i in range(2):
+            out = "data"
+            if exp.autoscaling:
+                out+="_scale"
+            if len(exp.env_patches) > 0:
+                out+="_rampup"
+            run_experiment(exp,i,out)
