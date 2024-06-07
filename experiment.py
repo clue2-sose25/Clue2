@@ -480,7 +480,7 @@ def _run_remote_workload(exp: Experiment, observations: str = "data"):
         client.V1EnvVar(name="LOADGENERATOR_ENDPOINT_NAME", value="Vanilla"),
         client.V1EnvVar(
             name="LOCUST_HOST",
-            value=f"http://teastore-webui/tools.descartes.teastore.webui",
+            value=f"http://teastore-webui/tools.descartes.teastore.webui"
         ),
         client.V1EnvVar(name="LOCUST_LOCUSTFILE", value=env["workload"]["LOCUSTFILE"]),
     ]
