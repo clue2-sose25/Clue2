@@ -31,6 +31,7 @@ class ExperimentEnvironment:
         }
 
         self.num_stages = 8
+        self.wait_before_workloads = 120
         self.wait_after_workloads = 120
 
 

@@ -17,7 +17,7 @@ exps = [
         namespace=namespace,
         colocated_workload=True,
         prometheus_url=prometheus_url,
-        autoscaleing=scale,
+        autoscaling=scale,
     ),
     # Experiment(
     #     name="jvm",
@@ -26,7 +26,7 @@ exps = [
     #     namespace=namespace,
     #     colocated_workload=True,
     #     prometheus_url=prometheus_url,
-    #     autoscaleing=scale,
+    #     autoscaling=scale,
     # ),
     # Experiment(
     #     name="norec",
@@ -35,7 +35,7 @@ exps = [
     #     namespace=namespace,
     #     colocated_workload=True,
     #     prometheus_url=prometheus_url,
-    #     autoscaleing=scale,
+    #     autoscaling=scale,
     # ),
     # Experiment(
     #     name="lessrec",
@@ -44,7 +44,7 @@ exps = [
     #     namespace=namespace,
     #     colocated_workload=True,
     #     prometheus_url=prometheus_url,
-    #     autoscaleing=scale,
+    #     autoscaling=scale,
     # ),
     # Experiment(
     #     name="obs",
@@ -53,7 +53,7 @@ exps = [
     #     namespace=namespace,
     #     colocated_workload=True,
     #     prometheus_url=prometheus_url,
-    #     autoscaleing=scale,
+    #     autoscaling=scale,
     # ),
     # Experiment(
     #     name="dbopt",
@@ -62,7 +62,7 @@ exps = [
     #     namespace=namespace,
     #     colocated_workload=True,
     #     prometheus_url=prometheus_url,
-    #     autoscaleing=scale,
+    #     autoscaling=scale,
     # ),
     # Experiment(
     #     name="car",
@@ -71,7 +71,7 @@ exps = [
     #     namespace=namespace,
     #     colocated_workload=True,
     #     prometheus_url=prometheus_url,
-    #     autoscaleing=scale,
+    #     autoscaling=scale,
     # ),
     # Experiment(
     #     name="sig",
@@ -80,6 +80,6 @@ exps = [
     #     namespace=namespace,
     #     colocated_workload=True,
     #     prometheus_url=prometheus_url,
-    #     autoscaleing=scale,
+    #     autoscaling=scale,
     # ),
 ]

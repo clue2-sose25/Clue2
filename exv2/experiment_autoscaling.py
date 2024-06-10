@@ -1,15 +1,16 @@
 import math
 from os import path
 import subprocess
-from experiment import Experiment
+import experiment
 from scaling_experiment_setting import ScalingExperimentSetting
 from experiment_environment import ExperimentEnvironment
+from experiment import Experiment
 import kubernetes
-
 
 class ExperimentAutoscaling:
 
-    def __init__(self, experiment: Experiment):
+
+    def __init__(self, experiment: experiment.Experiment):
         self.experiment = experiment
 
     def setup_autoscaleing(self):

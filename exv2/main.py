@@ -3,11 +3,7 @@ from enum import Enum
 from queue import Queue, Empty
 import os
 from os import path
-import math
-import subprocess
-import tarfile
 from tempfile import TemporaryFile
-import docker
 import copy
 
 
@@ -16,12 +12,12 @@ from kubernetes.stream import stream
 from kubernetes.client.rest import ApiException
 
 import time
-import signal
-import base64
-from requests import get
+
+from tabulate import tabulate
+
 
 from experiment import Experiment
-from scaling_experiment_setting import ScalingExperimentSetting
+from experiment_runner import ExperimentRunner
 from workload_runner import WorkloadRunner
 from experiment_environment import ExperimentEnvironment
 from experiment_deployer import ExperimentDeployer
@@ -30,6 +26,7 @@ import experiment_list
 
 DIRTY = True
 SKIPBUILD = True
+DRY=False
 
 
 # setup clients
@@ -40,17 +37,21 @@ def main():
     if DIRTY:
         print("☢️ will overwrite existing experiment data!!!!")
 
+    env = ExperimentEnvironment()
+
     lin_workload = {
         "workload": {
             "LOCUSTFILE": "./locustfile.py",
-            "RUN_TIME": f'{env["workload"]["LOADGENERATOR_STAGE_DURATION"]*8}s',
+            "RUN_TIME": f'{env.workload_settings["LOADGENERATOR_STAGE_DURATION"]*8}s',
             "SPAWN_RATE": 3,
-            "USERS": env["workload"]["LOADGENERATOR_MAX_DAILY_USERS"],
+            "USERS": env.workload_settings["LOADGENERATOR_MAX_DAILY_USERS"],
         }
     }
 
     # prometheus_url = "http://130.149.158.143:30041"
     nexps = []
+
+    exps = experiment_list.exps
 
     for exp in experiment_list.exps:
         # test differnt workload generator (ramp up stress)
@@ -60,7 +61,15 @@ def main():
 
     exps += nexps
 
-    master_env = copy.deepcopy(env)
+    print(tabulate([n.to_row() for n in nexps], tablefmt="github", headers=Experiment.headers()))
+    if DRY:
+        print("dry run -- exiting")
+        return
+
+
+
+    # master_env = copy.deepcopy(env)
+    # todo
     for exp in exps:
         env = copy.deepcopy(master_env)
         for k, v in exp.env_patches.items():
@@ -108,7 +117,7 @@ def run_experiment(exp: Experiment, iteration: int, out: str = "data"):
             wait = ExperimentEnvironment().wait_before_workloads
             print(f"😴 waiting {wait}s before starting workload")
             time.sleep(wait)  # wait for 120s before stressing the workload
-        exp.run(observations_out_path)
+        ExperimentRunner(exp).run(observations_out_path)
     except RuntimeError as e:
         print(e)
     finally:

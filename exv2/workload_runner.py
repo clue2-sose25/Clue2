@@ -8,8 +8,9 @@ from experiment import Experiment
 
 class WorkloadRunner:
 
+    import experiment
 
-    def __init__(self, experiment: Experiment):
+    def __init__(self, experiment: experiment.Experiment):
         self.exp = experiment
 
     def build_workload(
@@ -144,12 +145,12 @@ class WorkloadRunner:
         ):
             pod = event["object"]
             if pod.status.phase == "Succeeded" or pod.status.phase == "Completed":
-                _download_results("loadgenerator", exp.namespace, observations)
+                self._download_results("loadgenerator", exp.namespace, observations)
                 print("container finished, downloading results")
                 w.stop()
             elif pod.status.phase == "Failed":
                 print("worklaod could not be started...", pod)
-                _download_results("loadgenerator", exp.namespace, observations)
+                self._download_results("loadgenerator", exp.namespace, observations)
                 w.stop()
         # TODO: deal with still running workloads
 

@@ -1,3 +1,6 @@
+from enum import Enum
+
+
 class ScalingExperimentSetting(Enum):
     MEMORYBOUND = 1
     CPUBOUND = 2
