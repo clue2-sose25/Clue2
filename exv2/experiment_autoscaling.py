@@ -13,6 +13,11 @@ class ExperimentAutoscaling:
         self.experiment = experiment
 
     def setup_autoscaleing(self):
+        """
+        create a list of statefulsets to scale;
+        for each statefulset: set memory and cpu limites/requests per service
+        then create hpa for each statefulset with the given target based on the experiment setting
+        """
 
         exp = self.experiment
 
@@ -27,9 +32,7 @@ class ExperimentAutoscaling:
         client = self.docker_client
 
         print(f"🚀 setting up hpa scaling")
-        # create a list of statefulsets to scale
-        # for each statefulset: set memory and cpu limites/requests per service
-        # then create hpa for each statefulset with the given target based on the experiment setting
+
         apps = kubernetes.client.AppsV1Api()
         hpas = kubernetes.client.AutoscalingV1Api()
         sets: kubernetes.client.V1StatefulSetList = apps.list_namespaced_stateful_set(
@@ -80,28 +83,6 @@ class ExperimentAutoscaling:
                 else:
                     raise e
 
-    def cleanup(self: Experiment):
-        if self.autoscaling:
-            self.cleanup_autoscaling
-
-        if self.colocated_workload:
-            core = kubernetes.client.CoreV1Api()
-            try:
-                core.delete_namespaced_pod(
-                    name="loadgenerator", namespace=self.namespace
-                )
-            except:
-                pass
-
-        subprocess.run(["helm", "uninstall", "teastore", "-n", self.namespace])
-        subprocess.run(
-            ["git", "checkout", "examples/helm/values.yaml"],
-            cwd=path.join(ExperimentEnvironment().teastore_path),
-        )
-        subprocess.run(
-            ["git", "checkout", "tools/build_docker.sh"],
-            cwd=path.join(ExperimentEnvironment().teastore_path),
-        )
 
     def cleanup_autoscaling(self: Experiment):
         hpas = kubernetes.client.AutoscalingV1Api()

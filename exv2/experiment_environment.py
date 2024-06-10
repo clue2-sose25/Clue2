@@ -29,4 +29,11 @@ class ExperimentEnvironment:
             "LOADGENERATOR_MAX_DAILY_USERS": 6000,  # the maximum number of daily users to simulate
             "LOCUSTFILE": "./consumerbehavior.py,./loadshapes.py",
         }
+
+        self.num_stages = 8
+        self.wait_after_workloads = 120
+
+
+        def total_duration():
+            return self.num_stages * self.workload_settings["LOADGENERATOR_STAGE_DURATION"] + self.wait_after_workloads
         
