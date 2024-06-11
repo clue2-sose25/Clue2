@@ -7,19 +7,17 @@ from experiment_environment import ExperimentEnvironment
 
 class Experiment:
 
-
     def __init__(
-        
-        self,
-        name: str,
-        target_branch: str,
-        namespace: str,
-        colocated_workload: bool = False,
-        prometheus_url: str = "http://localhost:9090",
-        autoscaling: ScalingExperimentSetting = None,
-        # env = ExperimentEnvironment
-    ):
 
+            self,
+            name: str,
+            target_branch: str,
+            namespace: str,
+            colocated_workload: bool = False,
+            prometheus_url: str = "http://localhost:9090",
+            autoscaling: ScalingExperimentSetting = None,
+            # env = ExperimentEnvironment
+    ):
 
         # metadata
         self.name = name
@@ -40,27 +38,26 @@ class Experiment:
             )
         else:
             return f"{self.name}_{self.target_branch}".replace("/", "_")
-        
-    def to_row(self): return [self.name, self.target_branch, self.namespace, self.autoscaling, self.env.tags]
-    def headers(): return ["Name", "Branch", "Namespace", "Autoscaling", "Env Tags"]
+
+    def to_row(self):
+        return [self.name, self.target_branch, self.namespace, self.autoscaling, self.env.tags]
+
+    @staticmethod
+    def headers():
+        return ["Name", "Branch", "Namespace", "Autoscaling", "Env Tags"]
 
     def create_json(self, env: dict = {}):
 
-
-        env = ExperimentEnvironment().__dict__()
+        env = ExperimentEnvironment().__dict__
 
         description = {
             "name": self.name,
             "target_branch": self.target_branch,
             "namespace": self.namespace,
-            "patches": self.patches,
+            # "patches": self.patches,
             "executor": "colocated" if self.colocated_workload else "local",
             "scaling": str(self.autoscaling),
-            "env_patches": self.env_patches,
+            # "env_patches": self.env_patches,
         }
         description = description | env
         return json.dumps(description)
- 
-  
-
-            

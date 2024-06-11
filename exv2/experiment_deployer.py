@@ -18,22 +18,21 @@ class ExperimentDeployer:
     def __init__(self, experiment: Experiment):
         self.experiment = experiment
         self.docker_client = docker.from_env()
-        self.env = ExperimentEnvironment()
 
     def build_images(self):
         """
         build all the images for the experiment and push them to the docker registry.
 
-        perfrom some patching of the build scripts to use buildx (for multi-arch builds)
+        perform some patching of the build scripts to use buildx (for multi-arch builds)
         """
 
         exp = self.experiment
 
         git = subprocess.check_call(
-            ["git", "switch", exp.target_branch], cwd=path.join(self.env.teastore_path)
+            ["git", "switch", exp.target_branch], cwd=path.join(exp.env.teastore_path)
         )
         if git != 0:
-            raise RuntimeError(f"failed to swich git to {exp.target_branch}")
+            raise RuntimeError(f"failed to switch git to {exp.target_branch}")
 
         print(f"deploying {exp.target_branch}")
 
@@ -43,7 +42,7 @@ class ExperimentDeployer:
             image="maven",
             auto_remove=True,
             volumes={
-                path.abspath(path.join(self.env.teastore_path)): {
+                path.abspath(path.join(exp.env.teastore_path)): {
                     "bind": "/mnt",
                     "mode": "rw",
                 }
@@ -61,7 +60,7 @@ class ExperimentDeployer:
 
         # patch build_docker.sh to use buildx
         with open(
-            path.join(self.env.teastore_path, "tools", "build_docker.sh"), "r"
+            path.join(exp.env.teastore_path, "tools", "build_docker.sh"), "r"
         ) as f:
             script = f.read()
 
@@ -70,17 +69,17 @@ class ExperimentDeployer:
         else:
             script = script.replace(
                 "docker build",
-                f"docker buildx build --platform {self.env.remote_platform_arch}",
+                f"docker buildx build --platform {exp.env.remote_platform_arch}",
             )
             with open(
-                path.join(self.env.teastore_path, "tools", "build_docker.sh"), "w"
+                path.join(exp.env.teastore_path, "tools", "build_docker.sh"), "w"
             ) as f:
                 f.write(script)
 
         # 2. cd tools && ./build_docker.sh -r <env["docker_user"]/ -p && cd ..
         build = subprocess.check_call(
-            ["sh", "build_docker.sh", "-r", f"{self.env.docker_user}/", "-p"],
-            cwd=path.join(self.env.teastore_path, "tools"),
+            ["sh", "build_docker.sh", "-r", f"{exp.env.docker_user}/", "-p"],
+            cwd=path.join(exp.env.teastore_path, "tools"),
         )
 
         if build != 0:
@@ -88,7 +87,7 @@ class ExperimentDeployer:
                 "failed to build docker images. Run build_docker.sh manually and see why it fails"
             )
 
-        print(f"build {self.env.docker_user}/* images")
+        print(f"build {exp.env.docker_user}/* images")
 
     def deploy_branch(self, observations: str = "data/default"):
         """
@@ -105,10 +104,10 @@ class ExperimentDeployer:
         exp = self.experiment
 
         with open(
-            path.join(self.env.teastore_path, "examples", "helm", "values.yaml"), "r"
+            path.join(exp.env.teastore_path, "examples", "helm", "values.yaml"), "r"
         ) as f:
             values = f.read()
-            values = values.replace("descartesresearch", self.env.docker_user)
+            values = values.replace("descartesresearch", exp.env.docker_user)
             # ensure we only run on nodes that we can observe
             values = values.replace(
                 r"nodeSelector: {}", r'nodeSelector: {"scaphandre": "true"}'
@@ -139,7 +138,7 @@ class ExperimentDeployer:
         # patch_yaml(values, exp.patches)
 
         with open(
-            path.join(self.env.teastore_path, "examples", "helm", "values.yaml"), "w"
+            path.join(exp.env.teastore_path, "examples", "helm", "values.yaml"), "w"
         ) as f:
             f.write(values)
 
@@ -149,7 +148,7 @@ class ExperimentDeployer:
 
         helm_deploy = subprocess.check_output(
             ["helm", "install", "teastore", "-n", exp.namespace, "."],
-            cwd=path.join(self.env.teastore_path, "examples", "helm"),
+            cwd=path.join(exp.env.teastore_path, "examples", "helm"),
         )
         helm_deploy = helm_deploy.decode("utf-8")
         if not "STATUS: deployed" in helm_deploy:
@@ -164,14 +163,16 @@ class ExperimentDeployer:
         )
 
         if exp.autoscaling:
-            ExperimentAutoscaling.setup_autoscaling()
+            ExperimentAutoscaling(exp).setup_autoscaling()
 
-    def wait_until_services_ready(services, timeout, namespace="default"):
+    def wait_until_services_ready(self, services, timeout, namespace="default"):
 
         v1 = kubernetes.client.AppsV1Api()
         ready_services = set()
         start_time = time.time()
         services = set(services)
+        print("waiting for deployment to be ready", end="")
+
         while (
             len(ready_services) < len(services) and time.time() - start_time < timeout
         ):
@@ -180,7 +181,8 @@ class ExperimentDeployer:
             ):  # only check services that are not ready yet
                 try:
                     service_status = v1.read_namespaced_stateful_set_status(
-                        service, namespace
+                        service, 
+                        namespace
                     )
                     if (
                         service_status.status.ready_replicas
@@ -191,9 +193,10 @@ class ExperimentDeployer:
                     print(e)
                     pass
             if services == ready_services:
+                print("!")
                 return True
             time.sleep(1)
-            print("waiting for deployment to be ready")
+            print(".", end="", flush=True)
         raise RuntimeError(
             "Timeout reached. The following services are not ready: "
             + str(list(set(services) - set(ready_services)))

@@ -1,7 +1,7 @@
 from experiment import Experiment
 from scaling_experiment_setting import ScalingExperimentSetting
 
-NUM_ITERATIONS = 2
+NUM_ITERATIONS = 1
 
 
 prometheus_url = "http://130.149.158.130:32426"

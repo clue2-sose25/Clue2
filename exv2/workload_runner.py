@@ -1,37 +1,39 @@
-
 import base64
-from os import path
 import os
 import signal
 import subprocess
 import tarfile
+from os import path
 from tempfile import TemporaryFile
-from kubernetes import client, config, watch
-from kubernetes.stream import stream
-from kubernetes.client.rest import ApiException
-from experiment import Experiment
+
 import docker
+from kubernetes import client, watch
+from kubernetes.client.rest import ApiException
+
+from experiment import Experiment
+
 
 class WorkloadRunner:
 
     def __init__(self, experiment: Experiment):
         self.exp = experiment
+        wls = self.exp.env.workload_settings
 
         self.workload_env = {
-            "LOADGENERATOR_MAX_DAILY_USERS": env["workload"][
-                "LOADGENERATOR_MAX_DAILY_USERS"
-            ],  # The maximum daily users.
-            "LOADGENERATOR_STAGE_DURATION": env["workload"][
-                "LOADGENERATOR_STAGE_DURATION"
-            ],  # The duration of a stage in seconds.
-            "LOADGENERATOR_USE_CURRENTTIME": "n",  # using current time to drive worload (e.g. day/night cycle)
-            "LOADGENERATOR_ENDPOINT_NAME": "Vanilla",  # the workload profile
-            "LOCUST_HOST": f"http://{exp.env.local_public_ip}:{exp.env.local_port}/tools.descartes.teastore.webui",  # endoint of the deployed service,
-            # "LOCUST_LOCUSTFILE": env["workload"]["LOCUSTFILE"],
-        } | self.exp.env
+                                "LOADGENERATOR_MAX_DAILY_USERS": wls["LOADGENERATOR_MAX_DAILY_USERS"],
+                                # The maximum daily users.
+                                "LOADGENERATOR_STAGE_DURATION": wls["LOADGENERATOR_STAGE_DURATION"],
+                                # The duration of a stage in seconds.
+                                "LOADGENERATOR_USE_CURRENTTIME": "n",
+                                # using current time to drive worload (e.g. day/night cycle)
+                                "LOADGENERATOR_ENDPOINT_NAME": "Vanilla",  # the workload profile
+                                "LOCUST_HOST": f"http://{self.exp.env.local_public_ip}:{self.exp.env.local_port}/tools.descartes.teastore.webui",
+                                # endpoint of the deployed service,
+                                # "LOCUST_LOCUSTFILE": wls["LOCUSTFILE"],
+                            } | self.exp.env.workload_settings
 
     def build_workload(
-        self, wokload_branch: str = "priv/lierseleow/loadgenerator"
+            self, workload_branch: str = "priv/lierseleow/loadgenerator"
     ):
         """
         build the workload image as a docker image, either to be deployed locally or colocated with the service
@@ -61,16 +63,15 @@ class WorkloadRunner:
             cwd=path.join("loadgenerator"),
         )
         if build != 0:
-            raise RuntimeError(f"failed to build {wokload_branch}")
+            raise RuntimeError(f"failed to build {workload_branch}")
 
         docker_client.images.push(f"{exp.env.docker_user}/loadgenerator")
 
     def run_workload(self):
         if self.exp.colocated_workload:
-            self._run_remote_workload
+            self._run_remote_workload()
         else:
-            self._run_remote_workload
-
+            self._run_local_workload()
 
     def _run_remote_workload(self, observations: str = "data"):
         core = client.CoreV1Api()
@@ -86,15 +87,13 @@ class WorkloadRunner:
 
         signal.signal(signal.SIGUSR1, cancel)
 
-
         def k8s_env_pair(k, v):
             return client.V1EnvVar(
                 name=k,
                 value=str(v)
             )
-        
-        container_env = [k8s_env_pair(k,v) for k,v in exp.env.workload_settings.items()]
 
+        container_env = [k8s_env_pair(k, v) for k, v in exp.env.workload_settings.items()]
 
         # container_env = [
         #     client.V1EnvVar(
@@ -124,7 +123,7 @@ class WorkloadRunner:
         #         container_env.append(client.V1EnvVar(name=f"LOCUST_{k}", value=str(v)))
 
         print("DEBUG: env for new namespaced pod:")
-        print(container_env)        
+        print(container_env)
 
         core.create_namespaced_pod(
             namespace=exp.namespace,
@@ -171,26 +170,29 @@ class WorkloadRunner:
 
         w = watch.Watch()
         for event in w.stream(
-            core.list_namespaced_pod,
-            exp.namespace,
-            label_selector="app=loadgenerator",
-            timeout_seconds=self.workload_env["LOADGENERATOR_STAGE_DURATION"] * 8 + 60,
+                core.list_namespaced_pod,
+                exp.namespace,
+                label_selector="app=loadgenerator",
+                timeout_seconds=self.workload_env["LOADGENERATOR_STAGE_DURATION"] * 8 + 60,
         ):
             pod = event["object"]
             if pod.status.phase == "Succeeded" or pod.status.phase == "Completed":
-                self._download_results("loadgenerator", exp.namespace, observations)
+                self._download_results("loadgenerator", observations)
                 print("container finished, downloading results")
                 w.stop()
             elif pod.status.phase == "Failed":
-                print("worklaod could not be started...", pod)
-                self._download_results("loadgenerator", exp.namespace, observations)
+                print("workload could not be started...", pod)
+                self._download_results("loadgenerator", observations)
                 w.stop()
         # TODO: deal with still running workloads
 
         core.delete_namespaced_pod(name="loadgenerator", namespace=exp.namespace)
 
+    # noinspection PyUnboundLocalVariable
+    def _download_results(self, pod_name: str, destination_path: str):
 
-    def _download_results(pod_name: str, namespace: str, destination_path: str):
+        namespace = self.exp.namespace
+
         try:
             core = client.CoreV1Api()
             resp = core.read_namespaced_pod_log(name=pod_name, namespace=namespace)
@@ -202,15 +204,14 @@ class WorkloadRunner:
                 tar_buffer.seek(0)
 
                 with tarfile.open(
-                    fileobj=tar_buffer,
-                    mode="r:gz",
+                        fileobj=tar_buffer,
+                        mode="r:gz",
                 ) as tar:
                     tar.extractall(path=destination_path)
         except ApiException as e:
             print(f"failed to get log from pod {pod_name} in namespace {namespace}", e)
         except tarfile.TarError as e:
             print(f"failed to extract log", e, log_contents)
-
 
     def _run_local_workload(self, observations: str = "data"):
 
@@ -231,25 +232,27 @@ class WorkloadRunner:
             stderr=subprocess.PIPE,
         )
 
-        # create locost stats files
+        # create locust stats files
         mounts = {
-            path.abspath(path.join(observations, "locost_stats.csv")): {
+            path.abspath(path.join(observations, "locust_stats.csv")): {
                 "bind": "/loadgenerator/teastore_stats.csv",
                 "mode": "rw",
             },
-            path.abspath(path.join(observations, "locost_failures.csv")): {
+            path.abspath(path.join(observations, "locust_failures.csv")): {
                 "bind": "/loadgenerator/teastore_failures.csv",
                 "mode": "rw",
             },
-            path.abspath(path.join(observations, "locost_stats_history.csv")): {
+            path.abspath(path.join(observations, "locust_stats_history.csv")): {
                 "bind": "/loadgenerator/teastore_stats_history.csv",
                 "mode": "rw",
             },
-            path.abspath(path.join(observations, "locost_report.html")): {
+            path.abspath(path.join(observations, "locust_report.html")): {
                 "bind": "/loadgenerator/teastore_report.html",
                 "mode": "rw",
             },
         }
+
+        # todo: what does this do
         for f in mounts.keys():
             if not os.path.isfile(f):
                 with open(f, "w") as f:
@@ -268,7 +271,7 @@ class WorkloadRunner:
 
         # todo: this could probably be all moved into experiment env?
         # or even a new workload env?
-        
+
         # new patching strategy!
         # patches are directly applied into the experiments env and signified by exp.tags now
         # 

@@ -1,33 +1,22 @@
 #! /usr/bin/env python3
-from enum import Enum
-from queue import Queue, Empty
-import os
-from os import path
-from tempfile import TemporaryFile
 import copy
-
-
-from kubernetes import client, config, watch
-from kubernetes.stream import stream
-from kubernetes.client.rest import ApiException
-
+import os
 import time
+from os import path
 
+from kubernetes import config
 from tabulate import tabulate
 
-
+import experiment_list
 from experiment import Experiment
+from experiment_deployer import ExperimentDeployer
+from experiment_environment import ExperimentEnvironment
 from experiment_runner import ExperimentRunner
 from workload_runner import WorkloadRunner
-from experiment_environment import ExperimentEnvironment
-from experiment_deployer import ExperimentDeployer
-
-import experiment_list
 
 DIRTY = True
 SKIPBUILD = True
-DRY=False
-
+DRY = False
 
 # setup clients
 config.load_kube_config()
@@ -37,31 +26,15 @@ def main():
     if DIRTY:
         print("☢️ will overwrite existing experiment data!!!!")
 
-    env = ExperimentEnvironment()
-
-
-
-    # prometheus_url = "http://130.149.158.143:30041"
-    nexps = []
-
     exps = experiment_list.exps
 
-    # for exp in experiment_list.exps:
-    #     # test differnt workload generator (ramp up stress)
-    #     nexp = copy.deepcopy(exp)
-    #     nexp.env_patches = lin_workload
-    #     nexps.append(nexp)
-
-    # exps += nexps
-
     # foreach experiment, make a copy that uses rampup
-    def rampup_copy(exp: Experiment): 
+    def rampup_copy(exp: Experiment):
         new_ex = copy.deepcopy(exp)
         new_ex.env.set_rampup()
         return new_ex
-    
-    exps += [rampup_copy(exp) for exp in exps]
 
+    exps += [rampup_copy(exp) for exp in exps]
 
     print(tabulate([n.to_row() for n in exps], tablefmt="rounded_outline", headers=Experiment.headers()))
 
@@ -69,21 +42,11 @@ def main():
         print("dry run -- exiting")
         return
 
-    master_env = ExperimentEnvironment()
-
     # master_env = copy.deepcopy(env)
     # todo
     for exp in exps:
-        # env = copy.deepcopy(master_env)
-        # for k, v in exp.env_patches.items():
-        #     if k in env and isinstance(env[k], dict):
-        #         for kk, vv in v.items():
-        #             env[k][kk] = vv
-        #     else:
-        #         env[k] = v
 
-        print(f"ℹ️ new experiment:")
-        print(exp)
+        print(f"ℹ️ new experiment: {exp}")
 
         exp.autoscaling = experiment_list.scale
 
@@ -96,35 +59,37 @@ def main():
 
         for i in range(experiment_list.NUM_ITERATIONS):
             out = "data"
-            
+
             if exp.autoscaling:
                 out += "_scale"
-        
+
             if exp.env.tags:
                 out += "_".join(exp.env.tags)
 
-            print(f"▶️ running ({i+1}/{experiment_list.NUM_ITERATIONS})...")
-            run_experiment(exp, i, out)
+            observations_out_path = path.join(out, exp.__str__(), f"{i}")
+            print(f"▶️ running ({i + 1}/{experiment_list.NUM_ITERATIONS}) to {observations_out_path}...")
+            run_experiment(exp, observations_out_path)
 
 
-def run_experiment(exp: Experiment, iteration: int, out: str = "data"):
+def run_experiment(exp: Experiment, observations_out_path):
     # 0. create experiment folder
-    observations_out_path = path.join(out, exp.__str__(), f"{iteration}")
 
     try:
         try:
             os.makedirs(observations_out_path, exist_ok=DIRTY)
         except OSError:
-            raise RuntimeError("data for this experiment already exsist, skipping")
+            raise RuntimeError("data for this experiment already exist, skipping")
 
-        # 3. rewrite helm values with <env["docker_user"]> && env details as nessary (namespace ...)
+        # 3. rewrite helm values with <env["docker_user"]> && env details as necessary (namespace ...)
+        print("🏗️ deploying branch")
         ExperimentDeployer(exp).deploy_branch(observations_out_path)
 
-        # 4. run collection agent (fetch prometeus )
+        # 4. run collection agent (fetch prometheus )
         if not DIRTY:
             wait = ExperimentEnvironment().wait_before_workloads
             print(f"😴 waiting {wait}s before starting workload")
             time.sleep(wait)  # wait for 120s before stressing the workload
+
         ExperimentRunner(exp).run(observations_out_path)
     except RuntimeError as e:
         print(e)
