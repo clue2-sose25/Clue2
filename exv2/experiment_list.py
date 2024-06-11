@@ -13,7 +13,7 @@ exps = [
     Experiment(
         name="baseline",
         target_branch="vanilla",
-        patches=[],
+        # patches=[],
         namespace=namespace,
         colocated_workload=True,
         prometheus_url=prometheus_url,

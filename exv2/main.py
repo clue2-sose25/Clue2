@@ -39,47 +39,50 @@ def main():
 
     env = ExperimentEnvironment()
 
-    lin_workload = {
-        "workload": {
-            "LOCUSTFILE": "./locustfile.py",
-            "RUN_TIME": f'{env.workload_settings["LOADGENERATOR_STAGE_DURATION"]*8}s',
-            "SPAWN_RATE": 3,
-            "USERS": env.workload_settings["LOADGENERATOR_MAX_DAILY_USERS"],
-        }
-    }
+
 
     # prometheus_url = "http://130.149.158.143:30041"
     nexps = []
 
     exps = experiment_list.exps
 
-    for exp in experiment_list.exps:
-        # test differnt workload generator (ramp up stress)
-        nexp = copy.deepcopy(exp)
-        nexp.env_patches = lin_workload
-        nexps.append(nexp)
+    # for exp in experiment_list.exps:
+    #     # test differnt workload generator (ramp up stress)
+    #     nexp = copy.deepcopy(exp)
+    #     nexp.env_patches = lin_workload
+    #     nexps.append(nexp)
 
-    exps += nexps
+    # exps += nexps
 
-    print(tabulate([n.to_row() for n in nexps], tablefmt="github", headers=Experiment.headers()))
+    # foreach experiment, make a copy that uses rampup
+    def rampup_copy(exp: Experiment): 
+        new_ex = copy.deepcopy(exp)
+        new_ex.env.set_rampup()
+        return new_ex
+    
+    exps += [rampup_copy(exp) for exp in exps]
+
+
+    print(tabulate([n.to_row() for n in exps], tablefmt="rounded_outline", headers=Experiment.headers()))
+
     if DRY:
         print("dry run -- exiting")
         return
 
-
+    master_env = ExperimentEnvironment()
 
     # master_env = copy.deepcopy(env)
     # todo
     for exp in exps:
-        env = copy.deepcopy(master_env)
-        for k, v in exp.env_patches.items():
-            if k in env and isinstance(env[k], dict):
-                for kk, vv in v.items():
-                    env[k][kk] = vv
-            else:
-                env[k] = v
+        # env = copy.deepcopy(master_env)
+        # for k, v in exp.env_patches.items():
+        #     if k in env and isinstance(env[k], dict):
+        #         for kk, vv in v.items():
+        #             env[k][kk] = vv
+        #     else:
+        #         env[k] = v
 
-        print("ℹ️ new experiment:")
+        print(f"ℹ️ new experiment:")
         print(exp)
 
         exp.autoscaling = experiment_list.scale
@@ -88,14 +91,19 @@ def main():
             print("👷 building...")
             WorkloadRunner(exp).build_workload()
             ExperimentDeployer(exp).build_images()
+        else:
+            print("👷 skipping build...")
 
         for i in range(experiment_list.NUM_ITERATIONS):
             out = "data"
+            
             if exp.autoscaling:
                 out += "_scale"
-            if len(exp.env_patches) > 0:
-                out += "_rampup"
-            print(f"🏃‍♀️ running ({i+1}/{experiment_list.NUM_ITERATIONS})...")
+        
+            if exp.env.tags:
+                out += "_".join(exp.env.tags)
+
+            print(f"▶️ running ({i+1}/{experiment_list.NUM_ITERATIONS})...")
             run_experiment(exp, i, out)
 
 
@@ -121,7 +129,7 @@ def run_experiment(exp: Experiment, iteration: int, out: str = "data"):
     except RuntimeError as e:
         print(e)
     finally:
-        exp.cleanup()
+        ExperimentRunner(exp).cleanup()
 
 
 if __name__ == "__main__":

@@ -12,18 +12,22 @@ class ExperimentEnvironment:
 
         self.local_port = 8888
         # infra
-        self.docker_user = "tawalaya"  # the docker user to use for pushing/pulling images
+        self.docker_user = (
+            "tawalaya"  # the docker user to use for pushing/pulling images
+        )
         self.remote_platform_arch = "linux/amd64"  # the target platform to build images for (kubernetes node architecture)
         self.local_platform_arch = "linux/amd64"  # the local architecture to use for local latency measurements
-        
-        self.resource_limits = {  # the resource limits to use for the experiment (see below)
-            "teastore-auth": {"cpu": 450, "memory": 700},
-            "teastore-webui": {"cpu": 300, "memory": 800},
-            "teastore-recommender": {"cpu": 450, "memory": 1024},
-            "teastore-image": {"cpu": 300, "memory": 1024},
-        }
 
-        self.workload_settings =  {
+        self.resource_limits = (
+            {  # the resource limits to use for the experiment (see below)
+                "teastore-auth": {"cpu": 450, "memory": 700},
+                "teastore-webui": {"cpu": 300, "memory": 800},
+                "teastore-recommender": {"cpu": 450, "memory": 1024},
+                "teastore-image": {"cpu": 300, "memory": 1024},
+            }
+        )
+
+        self.workload_settings = {
             # workload
             "LOADGENERATOR_STAGE_DURATION": 120,  # runtime per load stage in seconds
             "LOADGENERATOR_MAX_DAILY_USERS": 6000,  # the maximum number of daily users to simulate
@@ -34,7 +38,23 @@ class ExperimentEnvironment:
         self.wait_before_workloads = 120
         self.wait_after_workloads = 120
 
+        self.tags = []
 
-        def total_duration():
-            return self.num_stages * self.workload_settings["LOADGENERATOR_STAGE_DURATION"] + self.wait_after_workloads
-        
+    def total_duration(self):
+        return (
+            self.num_stages * self.workload_settings["LOADGENERATOR_STAGE_DURATION"]
+            + self.wait_after_workloads
+        )
+
+    def set_rampup(self):
+        lin_workload = {
+            "workload": {
+                "LOCUSTFILE": "./locustfile.py",
+                "RUN_TIME": f'{self.workload_settings["LOADGENERATOR_STAGE_DURATION"]*8}s',
+                "SPAWN_RATE": 3,
+                "USERS": self.workload_settings["LOADGENERATOR_MAX_DAILY_USERS"],
+            }
+        }
+
+        self.workload_settings = self.workload_settings | lin_workload
+        self.tags.append("rampup")

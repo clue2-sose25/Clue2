@@ -1,19 +1,8 @@
 from os import path
-import signal
 import json
-import subprocess
-import kubernetes
 
-
-from psc import ResourceTracker, NodeUsage
-from datetime import datetime
-
-
-
-from flushing_queue import FlushingQueue
 from scaling_experiment_setting import ScalingExperimentSetting
 from experiment_environment import ExperimentEnvironment
-
 
 
 class Experiment:
@@ -26,10 +15,9 @@ class Experiment:
         target_branch: str,
         namespace: str,
         colocated_workload: bool = False,
-        patches: list = [],
         prometheus_url: str = "http://localhost:9090",
         autoscaling: ScalingExperimentSetting = None,
-        env_patches: dict = {},
+        # env = ExperimentEnvironment
     ):
 
 
@@ -37,13 +25,13 @@ class Experiment:
         self.name = name
         self.target_branch = target_branch
         self.namespace = namespace
-        self.patches = patches
+        # self.patches = patches
 
         # observability data
         self.prometheus = prometheus_url
         self.colocated_workload = colocated_workload
         self.autoscaling = autoscaling
-        self.env_patches = env_patches
+        self.env = ExperimentEnvironment()
 
     def __str__(self) -> str:
         if self.autoscaling:
@@ -53,8 +41,8 @@ class Experiment:
         else:
             return f"{self.name}_{self.target_branch}".replace("/", "_")
         
-    def to_row(self): return [self.name, self.target_branch, self.namespace, self.patches]
-    def headers(): return ["Name", "Branch", "Namespace", "Patches"]
+    def to_row(self): return [self.name, self.target_branch, self.namespace, self.autoscaling, self.env.tags]
+    def headers(): return ["Name", "Branch", "Namespace", "Autoscaling", "Env Tags"]
 
     def create_json(self, env: dict = {}):
 

@@ -1,17 +1,34 @@
 
+import base64
+from os import path
+import os
 import signal
 import subprocess
+import tarfile
+from tempfile import TemporaryFile
 from kubernetes import client, config, watch
 from kubernetes.stream import stream
 from kubernetes.client.rest import ApiException
 from experiment import Experiment
+import docker
 
 class WorkloadRunner:
 
-    import experiment
-
-    def __init__(self, experiment: experiment.Experiment):
+    def __init__(self, experiment: Experiment):
         self.exp = experiment
+
+        self.workload_env = {
+            "LOADGENERATOR_MAX_DAILY_USERS": env["workload"][
+                "LOADGENERATOR_MAX_DAILY_USERS"
+            ],  # The maximum daily users.
+            "LOADGENERATOR_STAGE_DURATION": env["workload"][
+                "LOADGENERATOR_STAGE_DURATION"
+            ],  # The duration of a stage in seconds.
+            "LOADGENERATOR_USE_CURRENTTIME": "n",  # using current time to drive worload (e.g. day/night cycle)
+            "LOADGENERATOR_ENDPOINT_NAME": "Vanilla",  # the workload profile
+            "LOCUST_HOST": f"http://{exp.env.local_public_ip}:{exp.env.local_port}/tools.descartes.teastore.webui",  # endoint of the deployed service,
+            # "LOCUST_LOCUSTFILE": env["workload"]["LOCUSTFILE"],
+        } | self.exp.env
 
     def build_workload(
         self, wokload_branch: str = "priv/lierseleow/loadgenerator"
@@ -19,12 +36,15 @@ class WorkloadRunner:
         """
         build the workload image as a docker image, either to be deployed locally or colocated with the service
         """
+
+        docker_client = docker.from_env()
+
         exp = self.exp
 
         platform = (
-            env["local_platform_arch"]
+            exp.env.local_platform_arch
             if exp.colocated_workload
-            else env["remote_platform_arch"]
+            else exp.env.remote_platform_arch
         )
 
         build = subprocess.check_call(
@@ -35,7 +55,7 @@ class WorkloadRunner:
                 "--platform",
                 platform,
                 "-t",
-                f"{env['docker_user']}/loadgenerator",
+                f"{exp.env.docker_user}/loadgenerator",
                 ".",
             ],
             cwd=path.join("loadgenerator"),
@@ -43,7 +63,7 @@ class WorkloadRunner:
         if build != 0:
             raise RuntimeError(f"failed to build {wokload_branch}")
 
-        docker_client.images.push(f"{env['docker_user']}/loadgenerator")
+        docker_client.images.push(f"{exp.env.docker_user}/loadgenerator")
 
     def run_workload(self):
         if self.exp.colocated_workload:
@@ -66,33 +86,46 @@ class WorkloadRunner:
 
         signal.signal(signal.SIGUSR1, cancel)
 
-        container_env = [
-            client.V1EnvVar(
-                name="LOADGENERATOR_MAX_DAILY_USERS",
-                value=str(env["workload"]["LOADGENERATOR_MAX_DAILY_USERS"]),
-            ),
-            client.V1EnvVar(
-                name="LOADGENERATOR_STAGE_DURATION",
-                value=str(env["workload"]["LOADGENERATOR_STAGE_DURATION"]),
-            ),
-            client.V1EnvVar(name="LOADGENERATOR_USE_CURRENTTIME", value="n"),
-            client.V1EnvVar(name="LOADGENERATOR_ENDPOINT_NAME", value="Vanilla"),
-            client.V1EnvVar(
-                name="LOCUST_HOST",
-                value=f"http://teastore-webui/tools.descartes.teastore.webui"
-            ),
-            client.V1EnvVar(name="LOCUST_LOCUSTFILE", value=env["workload"]["LOCUSTFILE"]),
-        ]
 
+        def k8s_env_pair(k, v):
+            return client.V1EnvVar(
+                name=k,
+                value=str(v)
+            )
+        
+        container_env = [k8s_env_pair(k,v) for k,v in exp.env.workload_settings.items()]
+
+
+        # container_env = [
+        #     client.V1EnvVar(
+        #         name="LOADGENERATOR_MAX_DAILY_USERS",
+        #         value=str(exp.env.workload_settings["LOADGENERATOR_MAX_DAILY_USERS"]),
+        #     ),
+        #     client.V1EnvVar(
+        #         name="LOADGENERATOR_STAGE_DURATION",
+        #         value=str(exp.env.workload_settings["LOADGENERATOR_STAGE_DURATION"]),
+        #     ),
+        #     client.V1EnvVar(name="LOADGENERATOR_USE_CURRENTTIME", value="n"),
+        #     client.V1EnvVar(name="LOADGENERATOR_ENDPOINT_NAME", value="Vanilla"),
+        #     client.V1EnvVar(
+        #         name="LOCUST_HOST",
+        #         value=f"http://teastore-webui/tools.descartes.teastore.webui"
+        #     ),
+        #     client.V1EnvVar(name="LOCUST_LOCUSTFILE", value=env["workload"]["LOCUSTFILE"]),
+        # ]
+
+        # again, new patching scheme: we'll just apply the entire (already patched) workload
+        # settings from the experiment here
+        # 
+        # old:
         # this may overwrite the env vars above, be careful
-        if "workload" in exp.env_patches:
-            for k, v in exp.env_patches["workload"].items():
-                container_env.append(client.V1EnvVar(name=f"LOCUST_{k}", value=str(v)))
+        # if "workload" in exp.env_patches:
+        #     for k, v in exp.env_patches["workload"].items():
+        #         container_env.append(client.V1EnvVar(name=f"LOCUST_{k}", value=str(v)))
 
         print("DEBUG: env for new namespaced pod:")
         print(container_env)        
 
-        # this failed
         core.create_namespaced_pod(
             namespace=exp.namespace,
             body=client.V1Pod(
@@ -105,7 +138,7 @@ class WorkloadRunner:
                     containers=[
                         client.V1Container(
                             name="loadgenerator",
-                            image=f"{env['docker_user']}/loadgenerator",
+                            image=f"{exp.env.docker_user}/loadgenerator",
                             env=container_env,
                             command=[
                                 "sh",
@@ -141,7 +174,7 @@ class WorkloadRunner:
             core.list_namespaced_pod,
             exp.namespace,
             label_selector="app=loadgenerator",
-            timeout_seconds=env["workload"]["LOADGENERATOR_STAGE_DURATION"] * 8 + 60,
+            timeout_seconds=self.workload_env["LOADGENERATOR_STAGE_DURATION"] * 8 + 60,
         ):
             pod = event["object"]
             if pod.status.phase == "Succeeded" or pod.status.phase == "Completed":
@@ -179,18 +212,20 @@ class WorkloadRunner:
             print(f"failed to extract log", e, log_contents)
 
 
-    def _run_local_workload(exp: Experiment, observations: str = "data"):
+    def _run_local_workload(self, observations: str = "data"):
+
+        docker_client = docker.from_env()
 
         forward = subprocess.Popen(
             [
                 "kubectl",
                 "-n",
-                exp.namespace,
+                self.exp.namespace,
                 "port-forward",
                 "--address",
                 "0.0.0.0",
                 "services/teastore-webui",
-                f"{env['local_port']}:80",
+                f"{self.exp.env.local_port}:80",
             ],
             stdin=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -231,28 +266,22 @@ class WorkloadRunner:
 
         signal.signal(signal.SIGUSR1, cancel)
 
-        workload_env = {
-            "LOADGENERATOR_MAX_DAILY_USERS": env["workload"][
-                "LOADGENERATOR_MAX_DAILY_USERS"
-            ],  # The maximum daily users.
-            "LOADGENERATOR_STAGE_DURATION": env["workload"][
-                "LOADGENERATOR_STAGE_DURATION"
-            ],  # The duration of a stage in seconds.
-            "LOADGENERATOR_USE_CURRENTTIME": "n",  # using current time to drive worload (e.g. day/night cycle)
-            "LOADGENERATOR_ENDPOINT_NAME": "Vanilla",  # the workload profile
-            "LOCUST_HOST": f"http://{env['local_public_ip']}:{env['local_port']}/tools.descartes.teastore.webui",  # endoint of the deployed service,
-            "LOCUST_LOCUSTFILE": env["workload"]["LOCUSTFILE"],
-        }
-        if "workload" in exp.env_patches:
-            for k, v in exp.env_patches["workload"].items():
-                workload_env[f"LOCUST_{k}"] = v
+        # todo: this could probably be all moved into experiment env?
+        # or even a new workload env?
+        
+        # new patching strategy!
+        # patches are directly applied into the experiments env and signified by exp.tags now
+        # 
+        # if "workload" in exp.env_patches:
+        #     for k, v in exp.env_patches["workload"].items():
+        #         workload_env[f"LOCUST_{k}"] = v
 
         try:
             print("🏋️‍♀️ running loadgenerator")
             workload = docker_client.containers.run(
-                image=f"{env['docker_user']}/loadgenerator",
+                image=f"{self.exp.env.docker_user}/loadgenerator",
                 auto_remove=True,
-                environment=workload_env,
+                environment=self.workload_env,
                 stdout=True,
                 stderr=True,
                 volumes=mounts,

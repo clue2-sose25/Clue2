@@ -134,7 +134,9 @@ class ExperimentDeployer:
                     )
 
 
-        patch_yaml(values, exp.patches)
+        # patches were not in use so disabled for now
+        # when reintroducing, should probably get a more meaningful name
+        # patch_yaml(values, exp.patches)
 
         with open(
             path.join(self.env.teastore_path, "examples", "helm", "values.yaml"), "w"
@@ -162,7 +164,7 @@ class ExperimentDeployer:
         )
 
         if exp.autoscaling:
-            ExperimentAutoscaling.setup_autoscaleing()
+            ExperimentAutoscaling.setup_autoscaling()
 
     def wait_until_services_ready(services, timeout, namespace="default"):
 
