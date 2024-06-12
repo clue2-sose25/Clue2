@@ -1,4 +1,7 @@
 from datetime import datetime
+
+from psc.tracker import PodUsage
+
 from experiment import Experiment
 from flushing_queue import FlushingQueue
 
@@ -19,18 +22,35 @@ class ExperimentRunner:
         self.experiment = experiment
 
     def run(self, observations_out_path: str = "data/default"):
-
         exp = self.experiment
         # todo: autoscaling is set up upon branch deployment but cleaned up here
 
-        datafile = path.join(
-            observations_out_path, f"measurements_{datetime.now().strftime('%d_%m_%Y_%H_%M')}.csv"
+        node_file = path.join(
+            observations_out_path, f"measurements_node_{datetime.now().strftime('%d_%m_%Y_%H_%M')}.csv"
         )
+
         # noinspection PyProtectedMember
-        observations_channel = FlushingQueue(
-            datafile, buffer_size=32, fields=NodeUsage._fields
+        node_channel = FlushingQueue(
+            node_file, buffer_size=32, fields=NodeUsage._fields
         )
-        tracker = ResourceTracker(exp.prometheus, observations_channel, exp.namespace, 10)
+
+        pod_file = path.join(
+            observations_out_path, f"measurements_pod_{datetime.now().strftime('%d_%m_%Y_%H_%M')}.csv"
+        )
+
+        # noinspection PyProtectedMember
+        pod_channel = FlushingQueue(
+            pod_file, buffer_size=32, fields=PodUsage._fields
+        )
+
+        # tracker = ResourceTracker(exp.prometheus, observations_channel, tracker_namespaces, 10)
+        tracker = ResourceTracker(
+            prometheus_url=exp.prometheus,
+            node_channel=node_channel,
+            pod_channel=pod_channel,
+            namespaces=[exp.namespace],
+            interval=10,
+        )
 
         with open(path.join(observations_out_path, "experiment.json"), "w") as f:
             f.write(exp.create_json())
@@ -42,7 +62,8 @@ class ExperimentRunner:
         # noinspection PyUnusedLocal
         def cancel(sig, frame):
             tracker.stop()
-            observations_channel.flush()
+            pod_channel.flush()
+            node_channel.flush()
             signal.raise_signal(signal.SIGUSR1)  # raise signal to stop workload
             print("workload timeout reached.")
 
@@ -61,10 +82,14 @@ class ExperimentRunner:
 
         # stop resource tracker
         tracker.stop()
-        observations_channel.flush()
+        node_channel.flush()
+        pod_channel.flush()
         signal.alarm(0)  # cancel alarm
 
     def cleanup(self):
+        """
+        Remove sets for autoscaling, remove workload pods,
+        """
         print("🧹 cleanup...")
 
         if self.experiment.autoscaling:

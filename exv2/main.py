@@ -4,6 +4,7 @@ import os
 import time
 from os import path
 
+import progressbar
 from kubernetes import config
 from tabulate import tabulate
 
@@ -44,8 +45,10 @@ def main():
 
     # master_env = copy.deepcopy(env)
     # todo
+    progressbar.streams.wrap_stderr()
+    # todo: print not working with pg2
+    # for exp in progressbar.progressbar(exps, redirect_stdout=True, redirect_stderr=True):
     for exp in exps:
-
         print(f"ℹ️ new experiment: {exp}")
 
         exp.autoscaling = experiment_list.scale
@@ -64,7 +67,7 @@ def main():
                 out += "_scale"
 
             if exp.env.tags:
-                out += "_".join(exp.env.tags)
+                out += "_" + "_".join(exp.env.tags)
 
             observations_out_path = path.join(out, exp.__str__(), f"{i}")
             print(f"▶️ running ({i + 1}/{experiment_list.NUM_ITERATIONS}) to {observations_out_path}...")

@@ -122,8 +122,8 @@ class WorkloadRunner:
         #     for k, v in exp.env_patches["workload"].items():
         #         container_env.append(client.V1EnvVar(name=f"LOCUST_{k}", value=str(v)))
 
-        print("DEBUG: env for new namespaced pod:")
-        print(container_env)
+        # print("DEBUG: env for new namespaced pod:")
+        # print(container_env)
 
         core.create_namespaced_pod(
             namespace=exp.namespace,

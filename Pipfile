@@ -10,6 +10,7 @@ locust = "*"
 seaborn = "*"
 yaml-patch = "*"
 "psc " = {ref = "git.tu-berlin.de/cloud-sustainability/prometeus-energy-agent.git", git = "git+https://pipthing:to4B7fmd6Hs993ZqKHSk"}
+progressbar2 = "*"
 
 [dev-packages]
 ipykernel = "*"
