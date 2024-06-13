@@ -31,6 +31,7 @@ class WorkloadRunner:
                                 # endpoint of the deployed service,
                                 # "LOCUST_LOCUSTFILE": wls["LOCUSTFILE"],
                             } | self.exp.env.workload_settings
+        
 
     def build_workload(
             self, workload_branch: str = "priv/lierseleow/loadgenerator"
@@ -94,7 +95,12 @@ class WorkloadRunner:
             )
 
         container_env = [k8s_env_pair(k, v) for k, v in exp.env.workload_settings.items()]
-
+        #ensure that the host reflects the colocated case
+        container_env.append(
+            client.V1EnvVar(
+                name="LOCUST_HOST",
+                value=f"http://teastore-webui/tools.descartes.teastore.webui")
+        )
         # container_env = [
         #     client.V1EnvVar(
         #         name="LOADGENERATOR_MAX_DAILY_USERS",
