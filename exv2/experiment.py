@@ -16,6 +16,7 @@ class Experiment:
             colocated_workload: bool = False,
             prometheus_url: str = "http://localhost:9090",
             autoscaling: ScalingExperimentSetting = None,
+            max_autoscale: int = 3,
             # env = ExperimentEnvironment
     ):
 
@@ -30,6 +31,7 @@ class Experiment:
         self.colocated_workload = colocated_workload
         self.autoscaling = autoscaling
         self.env = ExperimentEnvironment()
+        self.max_autoscale = max_autoscale
 
     def __str__(self) -> str:
         if self.autoscaling:
