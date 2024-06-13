@@ -26,7 +26,7 @@ class ExperimentAutoscaling:
             self._setup_cpu_autoscaleing()
         else:
             raise NotImplementedError(
-                "memory bound autoscaling not implemented in cluster yet"
+                "multi-mode autoscaling not implemented in cluster yet"
             )
 
     def _setup_autoscaling(self, hpa_creator):
