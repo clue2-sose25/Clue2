@@ -68,13 +68,14 @@ class WorkloadRunner:
 
         docker_client.images.push(f"{exp.env.docker_user}/loadgenerator")
 
-    def run_workload(self):
+    def run_workload(self, outpath):
         if self.exp.colocated_workload:
-            self._run_remote_workload()
+            self._run_remote_workload(outpath)
         else:
-            self._run_local_workload()
+            self._run_local_workload(outpath)
 
-    def _run_remote_workload(self, observations: str = "data"):
+    def _run_remote_workload(self, outpath):
+        observations = os.path.join(outpath, "") # ensure trailing slash for later merging
         core = client.CoreV1Api()
         exp = self.exp
 
@@ -219,8 +220,9 @@ class WorkloadRunner:
         except tarfile.TarError as e:
             print(f"failed to extract log", e, log_contents)
 
-    def _run_local_workload(self, observations: str = "data"):
+    def _run_local_workload(self, outpath):
 
+        observations = outpath
         docker_client = docker.from_env()
 
         forward = subprocess.Popen(

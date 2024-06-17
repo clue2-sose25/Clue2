@@ -29,8 +29,12 @@ class Experiment:
         # observability data
         self.prometheus = prometheus_url
         self.colocated_workload = colocated_workload
-        self.autoscaling = autoscaling
+
         self.env = ExperimentEnvironment()
+        self.autoscaling = autoscaling
+        if autoscaling is not None:
+            self.env.tags.append("scale")
+
         self.max_autoscale = max_autoscale
 
     def __str__(self) -> str:

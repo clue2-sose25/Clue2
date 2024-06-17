@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 import copy
+from datetime import datetime
 import os
 import time
 from os import path
@@ -26,6 +27,9 @@ config.load_kube_config()
 def main():
     if DIRTY:
         print("☢️ will overwrite existing experiment data!!!!")
+
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
 
     exps = experiment_list.exps
 
@@ -61,21 +65,21 @@ def main():
             print("👷 skipping build...")
 
         for i in range(experiment_list.NUM_ITERATIONS):
-            out = "data"
 
-            if exp.autoscaling:
-                out += "_scale"
+            root = "data"
+            name = exp.__str__()
+            tags = "_".join(["exp"] + exp.env.tags)
 
-            if exp.env.tags:
-                out += "_" + "_".join(exp.env.tags)
+            out_path = path.join(root, timestamp, tags, name, str(i))
 
-            observations_out_path = path.join(out, exp.__str__(), f"{i}")
-            print(f"▶️ running ({i + 1}/{experiment_list.NUM_ITERATIONS}) to {observations_out_path}...")
-            run_experiment(exp, observations_out_path)
+            print(f"▶️ running ({i + 1}/{experiment_list.NUM_ITERATIONS}) to {out_path}...")
+            run_experiment(exp, out_path)
 
 
 def run_experiment(exp: Experiment, observations_out_path):
     # 0. create experiment folder
+
+    # new format: data/timestamp/scale/branch/i/files
 
     try:
         try:

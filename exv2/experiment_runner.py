@@ -78,7 +78,7 @@ class ExperimentRunner:
         # deploy workload on different node or locally and wait for workload to be completed (or timeout)
         wlr = WorkloadRunner(experiment=exp)
         # will run remotely or locally based on experiment
-        wlr.run_workload()
+        wlr.run_workload(observations_out_path)
 
         # stop resource tracker
         tracker.stop()
