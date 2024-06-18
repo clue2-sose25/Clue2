@@ -180,7 +180,7 @@ class WorkloadRunner:
                 core.list_namespaced_pod,
                 exp.namespace,
                 label_selector="app=loadgenerator",
-                timeout_seconds=self.workload_env["LOADGENERATOR_STAGE_DURATION"] * 8 + 60,
+                timeout_seconds=self.workload_env["LOADGENERATOR_STAGE_DURATION"] * self.exp.env.num_stages + self.exp.env.wait_after_workloads//2,
         ):
             pod = event["object"]
             if pod.status.phase == "Succeeded" or pod.status.phase == "Completed":

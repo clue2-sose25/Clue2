@@ -16,8 +16,8 @@ from experiment_environment import ExperimentEnvironment
 from experiment_runner import ExperimentRunner
 from workload_runner import WorkloadRunner
 
-DIRTY = True
-SKIPBUILD = True
+DIRTY = False
+SKIPBUILD = False
 DRY = False
 
 # setup clients
@@ -39,7 +39,7 @@ def main():
         new_ex.env.set_rampup()
         return new_ex
 
-    exps += [rampup_copy(exp) for exp in exps]
+    # exps += [rampup_copy(exp) for exp in exps]
 
     print(tabulate([n.to_row() for n in exps], tablefmt="rounded_outline", headers=Experiment.headers()))
 
