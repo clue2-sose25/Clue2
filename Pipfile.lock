@@ -1131,7 +1131,7 @@
         },
         "psc": {
             "git": "git+https://pipthing:to4B7fmd6Hs993ZqKHSk@git.tu-berlin.de/cloud-sustainability/prometeus-energy-agent.git",
-            "ref": "ec066a8ab956150b1783b8c209977170352442ec"
+            "ref": "c6a05a07c987e4f07fdbc077eaee708b08ee8203"
         },
         "psutil": {
             "hashes": [
