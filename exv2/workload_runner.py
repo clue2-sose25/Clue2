@@ -80,6 +80,8 @@ class WorkloadRunner:
         exp = self.exp
 
         def cancel(sig, frame):
+            # attempt to download results before deleting the pod
+            self._download_results("loadgenerator", observations)
             core.delete_collection_namespaced_pod(
                 namespace=exp.namespace,
                 label_selector="app=loadgenerator",
@@ -87,8 +89,50 @@ class WorkloadRunner:
                 grace_period_seconds=0,
             )
 
+        # will only be called if the experiment runner cancels the experiment, e.g. due to timeout
         signal.signal(signal.SIGUSR1, cancel)
 
+        self._deploy_remote_workload(exp, core)
+        
+        self._wait_for_workload(core, exp)
+
+        core.delete_namespaced_pod(name="loadgenerator", namespace=exp.namespace)
+
+    def _wait_for_workload(self, core: client.CoreV1Api, exp: Experiment, observations: str):
+        """
+            this continuesly watches the pod until it is finished in 60s intervals
+            should the pod disappear before it finishes, we stop waiting.
+        """
+        finished = False
+        while not finished:
+            w = watch.Watch()
+            for event in w.stream(
+                    core.list_namespaced_pod,
+                    exp.namespace,
+                    label_selector="app=loadgenerator",
+                    timeout_seconds=60,
+            ):
+                pod = event["object"]
+                if pod.status.phase == "Succeeded" or pod.status.phase == "Completed":
+                    self._download_results("loadgenerator", observations)
+                    print("container finished, downloading results")
+                    w.stop()
+                    finished = True
+                elif pod.status.phase == "Failed":
+                    print("workload could not be started...", pod)
+                    self._download_results("loadgenerator", observations)
+                    w.stop()
+                    finished = True
+
+            if not finished:
+                # workload did not finish during the watch repeat
+                pod_list = core.list_namespaced_pod(exp.namespace, label_selector="app=loadgenerator")
+                if len(pod_list.items) == 0:
+                    print("workload pod was not found, did it fail to start?, can't download results")
+                    finished = True
+
+
+    def _deploy_remote_workload(self, exp: Experiment, core: client.CoreV1Api):
         def k8s_env_pair(k, v):
             return client.V1EnvVar(
                 name=k,
@@ -102,35 +146,7 @@ class WorkloadRunner:
                 name="LOCUST_HOST",
                 value=f"http://teastore-webui/tools.descartes.teastore.webui")
         )
-        # container_env = [
-        #     client.V1EnvVar(
-        #         name="LOADGENERATOR_MAX_DAILY_USERS",
-        #         value=str(exp.env.workload_settings["LOADGENERATOR_MAX_DAILY_USERS"]),
-        #     ),
-        #     client.V1EnvVar(
-        #         name="LOADGENERATOR_STAGE_DURATION",
-        #         value=str(exp.env.workload_settings["LOADGENERATOR_STAGE_DURATION"]),
-        #     ),
-        #     client.V1EnvVar(name="LOADGENERATOR_USE_CURRENTTIME", value="n"),
-        #     client.V1EnvVar(name="LOADGENERATOR_ENDPOINT_NAME", value="Vanilla"),
-        #     client.V1EnvVar(
-        #         name="LOCUST_HOST",
-        #         value=f"http://teastore-webui/tools.descartes.teastore.webui"
-        #     ),
-        #     client.V1EnvVar(name="LOCUST_LOCUSTFILE", value=env["workload"]["LOCUSTFILE"]),
-        # ]
 
-        # again, new patching scheme: we'll just apply the entire (already patched) workload
-        # settings from the experiment here
-        # 
-        # old:
-        # this may overwrite the env vars above, be careful
-        # if "workload" in exp.env_patches:
-        #     for k, v in exp.env_patches["workload"].items():
-        #         container_env.append(client.V1EnvVar(name=f"LOCUST_{k}", value=str(v)))
-
-        # print("DEBUG: env for new namespaced pod:")
-        # print(container_env)
 
         core.create_namespaced_pod(
             namespace=exp.namespace,
@@ -174,26 +190,6 @@ class WorkloadRunner:
                 ),
             ),
         )
-
-        w = watch.Watch()
-        for event in w.stream(
-                core.list_namespaced_pod,
-                exp.namespace,
-                label_selector="app=loadgenerator",
-                timeout_seconds=self.workload_env["LOADGENERATOR_STAGE_DURATION"] * self.exp.env.num_stages + self.exp.env.wait_after_workloads//2,
-        ):
-            pod = event["object"]
-            if pod.status.phase == "Succeeded" or pod.status.phase == "Completed":
-                self._download_results("loadgenerator", observations)
-                print("container finished, downloading results")
-                w.stop()
-            elif pod.status.phase == "Failed":
-                print("workload could not be started...", pod)
-                self._download_results("loadgenerator", observations)
-                w.stop()
-        # TODO: deal with still running workloads
-
-        core.delete_namespaced_pod(name="loadgenerator", namespace=exp.namespace)
 
     # noinspection PyUnboundLocalVariable
     def _download_results(self, pod_name: str, destination_path: str):
