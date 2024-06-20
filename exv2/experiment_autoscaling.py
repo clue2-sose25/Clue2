@@ -89,19 +89,20 @@ class ExperimentAutoscaling:
                                 policies=[
                                     #quick scaleup (with stabilization)
                                     kubernetes.client.V2HPAScalingPolicy(
-                                        value=20,
+                                        value=1,
                                         period_seconds=60,
+                                        type="Pods",
                                     ),
                                 ],
-                                stabilization_window_seconds=60
+                                stabilization_window_seconds=120
                             ),
                             scale_up=kubernetes.client.V2HPAScalingRules(
-                                stabilization_window_seconds=60,
+                                stabilization_window_seconds=30,
                                  policies=[
-                                    #slower scaledown
                                     kubernetes.client.V2HPAScalingPolicy(
-                                        value=1,
-                                        period_seconds=120,
+                                        value=3,
+                                        period_seconds=15,
+                                        type="Pods",
                                     ),
                                 ],
                             ),
@@ -114,7 +115,8 @@ class ExperimentAutoscaling:
                                         average_utilization=80,
                                         type="Utilization",
                                     )
-                                )
+                                ),
+                                type="Resource"
                             )
                         ],
                     )

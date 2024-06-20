@@ -20,23 +20,23 @@ class ExperimentEnvironment:
 
         self.resource_limits = (
             {  # the resource limits to use for the experiment (see below)
-                "teastore-auth": {"cpu": 450, "memory": 700},
+                "teastore-auth": {"cpu": 450, "memory": 1024},
                 "teastore-webui": {"cpu": 1000, "memory": 1500},
                 "teastore-recommender": {"cpu": 2000, "memory": 1024},
-                "teastore-image": {"cpu": 1000, "memory": 1024},
+                "teastore-image": {"cpu": 1000, "memory": 1500},
             }
         )
 
         self.workload_settings = {
             # workload
-            "LOADGENERATOR_STAGE_DURATION": 30,  # runtime per load stage in seconds
+            "LOADGENERATOR_STAGE_DURATION": 60,  # runtime per load stage in seconds
             "LOADGENERATOR_MAX_DAILY_USERS": 1000,  # the maximum number of daily users to simulate
             "LOCUSTFILE": "./consumerbehavior.py,./loadshapes.py",  # 8 different stages
         }
 
         self.num_stages = 8  # do not change unless the locustfile changed
-        self.wait_before_workloads = 15
-        self.wait_after_workloads = 60
+        self.wait_before_workloads = 25
+        self.wait_after_workloads = 75
 
         self.tags = []
 

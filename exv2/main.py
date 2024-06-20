@@ -15,6 +15,7 @@ from experiment_deployer import ExperimentDeployer
 from experiment_environment import ExperimentEnvironment
 from experiment_runner import ExperimentRunner
 from workload_runner import WorkloadRunner
+from scaling_experiment_setting import ScalingExperimentSetting
 
 DIRTY = False
 SKIPBUILD = False
@@ -33,6 +34,13 @@ def main():
 
     exps = experiment_list.exps
 
+    # foreach experiment, make a copy that uses memory_bound_scaling
+    def mem_scale_copy(exp: Experiment):
+        new_ex = copy.deepcopy(exp)
+        new_ex.autoscaling = ScalingExperimentSetting.MEMORYBOUND
+        new_ex.env.tags = [str(ScalingExperimentSetting.MEMORYBOUND)]
+        return new_ex
+
     # foreach experiment, make a copy that uses rampup
     def rampup_copy(exp: Experiment):
         new_ex = copy.deepcopy(exp)
@@ -40,7 +48,15 @@ def main():
         return new_ex
 
     # exps += [rampup_copy(exp) for exp in exps]
+    exps = [mem_scale_copy(exp) for exp in exps]
 
+    #sort by branch to speed up rebuilds ...
+    def exp_sort_key(exp:Experiment):
+        return "_".join([exp.target_branch,exp.name])
+
+    exps.sort(key=exp_sort_key)
+
+   
     print(tabulate([n.to_row() for n in exps], tablefmt="rounded_outline", headers=Experiment.headers()))
 
     if DRY:
@@ -52,15 +68,18 @@ def main():
     progressbar.streams.wrap_stderr()
     # todo: print not working with pg2
     # for exp in progressbar.progressbar(exps, redirect_stdout=True, redirect_stderr=True):
+    last_build_branch = None
     for exp in exps:
         print(f"ℹ️ new experiment: {exp}")
-
-        exp.autoscaling = experiment_list.scale
-
         if not SKIPBUILD:
             print("👷 building...")
+            # if we know that branches don't change we could skip building some of them
             WorkloadRunner(exp).build_workload()
-            ExperimentDeployer(exp).build_images()
+            if exp.target_branch != last_build_branch:
+                ExperimentDeployer(exp).build_images()
+            else:
+                print(".. skipping build step, we've build the images for the last run already...")
+            last_build_branch = exp.target_branch
         else:
             print("👷 skipping build...")
 
