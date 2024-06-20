@@ -41,10 +41,7 @@ class ExperimentEnvironment:
         self.tags = []
 
     def total_duration(self):
-        return (
-                self.num_stages * self.workload_settings["LOADGENERATOR_STAGE_DURATION"]
-                + self.wait_after_workloads
-        )
+        return 60 * 60 # at most we wait 60 minutes
 
     def set_rampup(self):
         lin_workload = {

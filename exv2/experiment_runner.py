@@ -65,13 +65,12 @@ class ExperimentRunner:
             pod_channel.flush()
             node_channel.flush()
             signal.raise_signal(signal.SIGUSR1)  # raise signal to stop workload
-            print("workload timeout reached.")
+            print(f"[WARNING] workload timeout ({exp.env.total_duration()+2*60})s reached.")
 
         signal.signal(signal.SIGALRM, cancel)
 
-        # MAIN timeout to kill the experiment after 2 min after the workload should be completed
-        # 8 stages + 2 minutes to deploy and cleanup
-        timeout = ExperimentEnvironment().total_duration()
+        # MAIN timeout to kill the experiment after 2 min after the experiment should be over (to avoid hanging)
+        timeout = exp.env.total_duration() + 2*60
         print(f"starting workload with timeout {timeout}")
         signal.alarm(timeout)
 
@@ -103,8 +102,7 @@ class ExperimentRunner:
                     name="loadgenerator", namespace=self.experiment.namespace
                 )
             except Exception as e:
-                print("error cleaning up, ignoring")
-                print(e)
+                print("error cleaning up -- probably already deleted")
                 pass
 
         subprocess.run(["helm", "uninstall", "teastore", "-n", self.experiment.namespace])
