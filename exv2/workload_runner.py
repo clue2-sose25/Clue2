@@ -20,9 +20,6 @@ class WorkloadRunner:
         wls = self.exp.env.workload_settings
 
         self.workload_env = {
-                                "LOADGENERATOR_MAX_DAILY_USERS": wls["LOADGENERATOR_MAX_DAILY_USERS"],
-                                # The maximum daily users.
-                                "LOADGENERATOR_STAGE_DURATION": wls["LOADGENERATOR_STAGE_DURATION"],
                                 # The duration of a stage in seconds.
                                 "LOADGENERATOR_USE_CURRENTTIME": "n",
                                 # using current time to drive worload (e.g. day/night cycle)

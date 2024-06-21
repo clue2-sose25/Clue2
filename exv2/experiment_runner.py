@@ -23,6 +23,9 @@ class ExperimentRunner:
 
     def run(self, observations_out_path: str = "data/default"):
         exp = self.experiment
+
+        if len(exp.env.workload_settings) == 0:
+            raise ValueError(f"cant run {exp.name} with empty workload settings")
         # todo: autoscaling is set up upon branch deployment but cleaned up here
 
         node_file = path.join(

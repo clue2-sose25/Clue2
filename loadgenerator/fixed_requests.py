@@ -1,19 +1,14 @@
 import logging
 from random import randint, choice
+import gevent
 
-from locust import HttpUser, task
+from locust import HttpUser, task, between, events
 # logging
 logging.getLogger().setLevel(logging.INFO)
+import os
 
-backoff=90
-
-class Pausing_Users(HttpUser):
-    last_wait_time = 0
-
-    def wait_time(self):
-        self.last_wait_time += backoff
-        logging.info(f"Waiting for {self.last_wait_time}s")
-        return self.last_wait_time
+class Fixed_Request_Users(HttpUser):
+    wait_time = between(1, 5)
 
     @task
     def load(self) -> None:
@@ -140,3 +135,16 @@ class Pausing_Users(HttpUser):
         else:
             logging.error(f"Could not log out - status: {logout_request.status_code}")
 
+@events.test_start.add_listener
+def on_test_start(**kwargs):
+    max_requests = int(os.getenv("MAXIMUM_REQUESTS", 1000))  # Maximum number of requests
+
+    def check_requests():
+        while True:
+            total_requests = sum([stat.num_requests for stat in Fixed_Request_Users.environment.stats.entries.values()])
+            if total_requests >= max_requests:
+                events.locust_stop_hatching.fire()
+                break
+            gevent.sleep(1)
+
+    gevent.spawn(check_requests)
