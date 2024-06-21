@@ -12,6 +12,7 @@ from kubernetes.client.rest import ApiException
 
 from experiment import Experiment
 
+import logging
 
 class WorkloadRunner:
 
@@ -111,21 +112,25 @@ class WorkloadRunner:
             ):
                 pod = event["object"]
                 if pod.status.phase == "Succeeded" or pod.status.phase == "Completed":
-                    self._download_results("loadgenerator", observations)
                     print("container finished, downloading results")
-                    w.stop()
-                    finished = True
+                    try:
+                        self._download_results("loadgenerator", observations)
+                    finally:
+                        w.stop()
+                        finished = True
                 elif pod.status.phase == "Failed":
-                    print("workload could not be started...", pod)
-                    self._download_results("loadgenerator", observations)
-                    w.stop()
-                    finished = True
+                    logging.error(f"workload could not be started... {pod}")
+                    try:
+                        self._download_results("loadgenerator", observations)
+                    finally:
+                        w.stop()
+                        finished = True
 
             if not finished:
                 # workload did not finish during the watch repeat
                 pod_list = core.list_namespaced_pod(exp.namespace, label_selector="app=loadgenerator")
                 if len(pod_list.items) == 0:
-                    print("workload pod was not found, did it fail to start?, can't download results")
+                    logging.error("workload pod was not found, did it fail to start?, can't download results")
                     finished = True
 
 
@@ -209,9 +214,12 @@ class WorkloadRunner:
                 ) as tar:
                     tar.extractall(path=destination_path)
         except ApiException as e:
-            print(f"failed to get log from pod {pod_name} in namespace {namespace}", e)
+            logging.error(f"failed to get log from pod {pod_name} in namespace {namespace}", e)
         except tarfile.TarError as e:
-            print(f"failed to extract log", e, log_contents)
+            logging.error(f"failed to extract log", e, log_contents)
+        except Exception as e:
+            logging.error("failed to extraxt log",e,log_contents)
+            
 
     def _run_local_workload(self, outpath):
 
@@ -294,5 +302,5 @@ class WorkloadRunner:
             with open(path.join(observations, "docker.log"), "w") as f:
                 f.write(workload)
         except Exception as e:
-            print("failed to run workload properly", e)
+            logging.error("failed to run workload properly", e)
         forward.kill()

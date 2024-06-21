@@ -4,7 +4,7 @@ import kubernetes
 
 from experiment import Experiment
 from scaling_experiment_setting import ScalingExperimentSetting
-
+import logging
 
 class ExperimentAutoscaling:
 
@@ -63,7 +63,7 @@ class ExperimentAutoscaling:
                 hpa_creator(stateful_set.metadata.name, exp.namespace)
             except kubernetes.client.rest.ApiException as e:
                 if e.status == 409:
-                    print(f"HPA for {stateful_set.metadata.name} already exists")
+                    logging.error(f"HPA for {stateful_set.metadata.name} already exists")
                 else:
                     raise e
 

@@ -12,6 +12,7 @@ from experiment_environment import ExperimentEnvironment
 from scaling_experiment_setting import ScalingExperimentSetting
 from experiment_autoscaling import ExperimentAutoscaling
 
+import logging
 
 class ExperimentDeployer:
 
@@ -190,7 +191,7 @@ class ExperimentDeployer:
                     ):
                         ready_services.add(service)
                 except Exception as e:
-                    print(e)
+                    logging.error(e)
                     pass
             if services == ready_services:
                 print("!")

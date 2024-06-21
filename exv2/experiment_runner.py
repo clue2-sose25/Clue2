@@ -14,7 +14,7 @@ import signal
 
 import subprocess
 import kubernetes
-
+import logging
 
 class ExperimentRunner:
 
@@ -68,7 +68,7 @@ class ExperimentRunner:
             pod_channel.flush()
             node_channel.flush()
             signal.raise_signal(signal.SIGUSR1)  # raise signal to stop workload
-            print(f"[WARNING] workload timeout ({exp.env.total_duration()+2*60})s reached.")
+            logging.warning(f"workload timeout ({exp.env.total_duration()+2*60})s reached.")
 
         signal.signal(signal.SIGALRM, cancel)
         signal.signal(signal.SIGINT, cancel) #also cancle on control-C
@@ -106,7 +106,7 @@ class ExperimentRunner:
                     name="loadgenerator", namespace=self.experiment.namespace
                 )
             except Exception as e:
-                print("error cleaning up -- probably already deleted")
+                logging.error("error cleaning up -- probably already deleted")
                 pass
 
         subprocess.run(["helm", "uninstall", "teastore", "-n", self.experiment.namespace])
