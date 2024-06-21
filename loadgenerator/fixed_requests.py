@@ -7,9 +7,12 @@ from locust import HttpUser, task, between, events
 logging.getLogger().setLevel(logging.INFO)
 import os
 
+max_requests = int(os.getenv("MAXIMUM_REQUESTS", 1000))
+request_count = 0
+
 class Fixed_Request_Users(HttpUser):
     wait_time = between(1, 5)
-
+    
     @task
     def load(self) -> None:
         """
@@ -27,6 +30,12 @@ class Fixed_Request_Users(HttpUser):
         self.visit_profile()
         self.logout()
         logging.info("Completed user.")
+        global request_count
+        if request_count < max_requests:
+            request_count+= 1
+        else:
+            logging.info("Reached task limit, quitting")
+            self.environment.runner.quit()
 
     def visit_home(self) -> None:
         """
@@ -134,17 +143,3 @@ class Fixed_Request_Users(HttpUser):
             logging.info("Successful logout.")
         else:
             logging.error(f"Could not log out - status: {logout_request.status_code}")
-
-@events.test_start.add_listener
-def on_test_start(**kwargs):
-    max_requests = int(os.getenv("MAXIMUM_REQUESTS", 1000))  # Maximum number of requests
-
-    def check_requests():
-        while True:
-            total_requests = sum([stat.num_requests for stat in Fixed_Request_Users.environment.stats.entries.values()])
-            if total_requests >= max_requests:
-                events.locust_stop_hatching.fire()
-                break
-            gevent.sleep(1)
-
-    gevent.spawn(check_requests)

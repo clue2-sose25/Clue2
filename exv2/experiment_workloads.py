@@ -1,7 +1,7 @@
 from experiment_environment import ExperimentEnvironment
 
 
-LOADGENERATOR_DURATION = 160
+LOADGENERATOR_DURATION = 360
 LOADGENERATOR_MAX_DAILY_USERS = 1000
 
 
@@ -56,9 +56,9 @@ class FixedRampingWorkload():
         exp.workload_settings = {
             "LOCUST_LOCUSTFILE": "./fixed_requests.py",
             "LOCUST_RUN_TIME": f'{LOADGENERATOR_DURATION}s',
-            "LOCUST_SPAWN_RATE": 3,
-            "LOCUST_USERS": LOADGENERATOR_MAX_DAILY_USERS,
-            "MAX_REQUESTS": 1000,
+            "LOCUST_SPAWN_RATE": 1,
+            "LOCUST_USERS": 100,
+            "MAXIMUM_REQUESTS": 200,
         }
         exp.tags.append("fixed")
         exp.timeout_duration = LOADGENERATOR_DURATION+60

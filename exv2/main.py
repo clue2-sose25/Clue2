@@ -4,7 +4,7 @@ from datetime import datetime
 import os
 import time
 from os import path
-
+import sys
 import progressbar
 from kubernetes import config
 from tabulate import tabulate
@@ -12,10 +12,11 @@ from tabulate import tabulate
 import experiment_list
 from experiment import Experiment
 from experiment_deployer import ExperimentDeployer
-from experiment_environment import ExperimentEnvironment
+from experiment_environment import ExperimentEnvironment, WorkloadAutoConfig
 from experiment_runner import ExperimentRunner
 from workload_runner import WorkloadRunner
 from scaling_experiment_setting import ScalingExperimentSetting
+from experiment_workloads import ShapredWorkload, RampingWorkload, PausingWorkload, FixedRampingWorkload
 
 DIRTY = False
 SKIPBUILD = False
@@ -34,30 +35,24 @@ def main():
 
     exps = experiment_list.exps
 
-    # foreach experiment, make a copy that uses memory_bound_scaling
-    def mem_scale_copy(exp: Experiment):
-        new_ex = copy.deepcopy(exp)
-        new_ex.autoscaling = ScalingExperimentSetting.MEMORYBOUND
-        new_ex.env.tags.index(ScalingExperimentSetting.CPUBOUND)
-        try:
-            new_ex.env.tags.remove(str(ScalingExperimentSetting.CPUBOUND))
-        except ValueError:
-            pass
-        try:
-            new_ex.env.tags.remove(str(ScalingExperimentSetting.BOTH))
-        except ValueError:
-            pass
-        new_ex.env.tags += [str(ScalingExperimentSetting.MEMORYBOUND)]
-        return new_ex
 
     # foreach experiment, make a copy that uses rampup
-    def rampup_copy(exp: Experiment):
+    def set_workload(exp: Experiment, conf: WorkloadAutoConfig):
         new_ex = copy.deepcopy(exp)
-        new_ex.env.set_rampup()
+        new_ex.env.set_workload(conf)
         return new_ex
 
-    exps = [rampup_copy(exp) for exp in exps]
-    exps += [mem_scale_copy(exp) for exp in exps]
+    workloads = [
+        ShapredWorkload(),
+        RampingWorkload(), 
+        PausingWorkload(),  
+        FixedRampingWorkload()
+    ]
+
+    exps = []
+    for w in workloads:
+        for exp in experiment_list.exps:
+            exps.append(set_workload(exp,w))
 
     #sort by branch to speed up rebuilds ...
     def exp_sort_key(exp:Experiment):
@@ -65,7 +60,7 @@ def main():
 
     exps.sort(key=exp_sort_key)
 
-   
+    
     print(tabulate([n.to_row() for n in exps], tablefmt="rounded_outline", headers=Experiment.headers()))
 
     if DRY:
