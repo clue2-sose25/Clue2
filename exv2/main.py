@@ -38,7 +38,16 @@ def main():
     def mem_scale_copy(exp: Experiment):
         new_ex = copy.deepcopy(exp)
         new_ex.autoscaling = ScalingExperimentSetting.MEMORYBOUND
-        new_ex.env.tags = [str(ScalingExperimentSetting.MEMORYBOUND)]
+        new_ex.env.tags.index(ScalingExperimentSetting.CPUBOUND)
+        try:
+            new_ex.env.tags.remove(str(ScalingExperimentSetting.CPUBOUND))
+        except ValueError:
+            pass
+        try:
+            new_ex.env.tags.remove(str(ScalingExperimentSetting.BOTH))
+        except ValueError:
+            pass
+        new_ex.env.tags += [str(ScalingExperimentSetting.MEMORYBOUND)]
         return new_ex
 
     # foreach experiment, make a copy that uses rampup
@@ -47,8 +56,8 @@ def main():
         new_ex.env.set_rampup()
         return new_ex
 
-    # exps += [rampup_copy(exp) for exp in exps]
-    exps = [mem_scale_copy(exp) for exp in exps]
+    exps = [rampup_copy(exp) for exp in exps]
+    exps += [mem_scale_copy(exp) for exp in exps]
 
     #sort by branch to speed up rebuilds ...
     def exp_sort_key(exp:Experiment):

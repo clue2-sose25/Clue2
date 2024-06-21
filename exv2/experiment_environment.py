@@ -29,9 +29,9 @@ class ExperimentEnvironment:
 
         self.workload_settings = {
             # workload
-            "LOADGENERATOR_STAGE_DURATION": 60,  # runtime per load stage in seconds
+            "LOADGENERATOR_STAGE_DURATION": 20,  # runtime per load stage in seconds
             "LOADGENERATOR_MAX_DAILY_USERS": 1000,  # the maximum number of daily users to simulate
-            "LOCUSTFILE": "./consumerbehavior.py,./loadshapes.py",  # 8 different stages
+            "LOCUST_LOCUSTFILE": "./consumerbehavior.py,./loadshapes.py",  # 8 different stages
         }
 
         self.num_stages = 8  # do not change unless the locustfile changed
@@ -41,15 +41,15 @@ class ExperimentEnvironment:
         self.tags = []
 
     def total_duration(self):
-        return 60 * 60 # at most we wait 60 minutes
+        return 60 * 60 # at most we wait 60 minutes #TODO make this more sensable but not based on the worklaod settings
 
-    def set_rampup(self):
+    def set_rampup(self, runtime:int=120):
         lin_workload = {
             "workload": {
-                "LOCUSTFILE": "./locustfile.py",
-                "RUN_TIME": f'{self.workload_settings["LOADGENERATOR_STAGE_DURATION"] * self.num_stages}s',
-                "SPAWN_RATE": 3,
-                "USERS": self.workload_settings["LOADGENERATOR_MAX_DAILY_USERS"],
+                "LOCUST_LOCUSTFILE": "./locustfile.py",
+                "LOCUST_RUN_TIME": f'{runtime}s',
+                "LOCUST_SPAWN_RATE": 3,
+                "LOCUST_USERS": self.workload_settings["LOADGENERATOR_MAX_DAILY_USERS"],
             }
         }
 

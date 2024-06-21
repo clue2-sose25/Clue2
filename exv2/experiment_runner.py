@@ -68,6 +68,7 @@ class ExperimentRunner:
             print(f"[WARNING] workload timeout ({exp.env.total_duration()+2*60})s reached.")
 
         signal.signal(signal.SIGALRM, cancel)
+        signal.signal(signal.SIGINT, cancel) #also cancle on control-C
 
         # MAIN timeout to kill the experiment after 2 min after the experiment should be over (to avoid hanging)
         timeout = exp.env.total_duration() + 2*60

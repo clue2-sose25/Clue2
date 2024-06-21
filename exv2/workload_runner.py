@@ -94,7 +94,7 @@ class WorkloadRunner:
 
         self._deploy_remote_workload(exp, core)
         
-        self._wait_for_workload(core, exp)
+        self._wait_for_workload(core, exp, observations)
 
         core.delete_namespaced_pod(name="loadgenerator", namespace=exp.namespace)
 
