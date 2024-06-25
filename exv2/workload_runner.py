@@ -146,7 +146,8 @@ class WorkloadRunner:
         container_env.append(
             client.V1EnvVar(
                 name="LOCUST_HOST",
-                value=f"http://teastore-webui/tools.descartes.teastore.webui")
+                value=exp.target_host
+            )
         )
 
 

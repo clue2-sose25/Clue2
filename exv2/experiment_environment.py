@@ -29,6 +29,7 @@ class ExperimentEnvironment:
                 "teastore-webui": {"cpu": 1000, "memory": 1500},
                 "teastore-recommender": {"cpu": 2000, "memory": 1024},
                 "teastore-image": {"cpu": 1000, "memory": 1500},
+                "teastore-all": {"cpu":1500, "memory":2048},
             }
         )
 
@@ -38,7 +39,7 @@ class ExperimentEnvironment:
         self.wait_after_workloads = 120
 
         self.tags = []
-
+    
     def total_duration(self):
         return self.timeout_duration + 30 #TODO make this more sensable but not based on the worklaod settings
 

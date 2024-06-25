@@ -1,3 +1,4 @@
+from typing import List
 from os import path
 import json
 
@@ -17,6 +18,8 @@ class Experiment:
             prometheus_url: str = "http://localhost:9090",
             autoscaling: ScalingExperimentSetting = None,
             max_autoscale: int = 3,
+            critical_services:List[str]=["teastore-auth", "teastore-registry", "teastore-webui"],
+            target_host:str="http://teastore-webui/tools.descartes.teastore.webui",
             # env = ExperimentEnvironment
     ):
 
@@ -24,7 +27,9 @@ class Experiment:
         self.name = name
         self.target_branch = target_branch
         self.namespace = namespace
+        self.critical_services=critical_services
         # self.patches = patches
+        self.target_host = target_host
 
         # observability data
         self.prometheus = prometheus_url

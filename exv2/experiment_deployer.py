@@ -156,9 +156,9 @@ class ExperimentDeployer:
             raise RuntimeError(
                 "failed to deploy helm chart. Run helm install manually and see why it fails"
             )
-
+        
         self.wait_until_services_ready(
-            ["teastore-auth", "teastore-registry", "teastore-webui"],
+            exp.critical_services,
             180,
             namespace=exp.namespace,
         )
