@@ -9,6 +9,7 @@ from scipy.stats import zscore
 class ExperimentResults:
 
     DATA_ROOT_FOLDER = "data"
+    RUN_VARS = ["exp_start", "exp_branch", "exp_workload", "run_iteration"]
 
     def __init__(self, exp_dir=None):
 
@@ -126,7 +127,7 @@ class ExperimentResults:
         # requests.groupby(["exp_branch","exp_workload"])[["real_requests","request_per_s"]].sum()
 
         runs = (
-            self.stats.groupby(["exp_start", "exp_branch", "exp_workload", "run_iteration"])[
+            self.stats.groupby(ExperimentResults.RUN_VARS)[
                 ["Request Count", "Failure Count"]
             ]
             .sum()
@@ -142,7 +143,7 @@ class ExperimentResults:
         # return reliability
 
         exp_runtime = (
-            self.pods.groupby(["exp_start", "exp_branch", "exp_workload", "run_iteration"])[
+            self.pods.groupby(ExperimentResults.RUN_VARS)[
                 "run_time"
             ]
             .max()
@@ -152,7 +153,7 @@ class ExperimentResults:
         runs_merged = pd.merge(
             runs,
             exp_runtime,
-            on=["exp_start", "exp_branch", "exp_workload", "run_iteration"],
+            on=ExperimentResults.RUN_VARS,
             how="inner",
         )
         runs_merged["total_rps"] = (
@@ -165,9 +166,31 @@ class ExperimentResults:
 
         return runs_merged
     
+    def runs_energy(self):
+        wattages = ["wattage_kepler", "wattage_scaph"]
+
+        raw = self.pods.copy()
+        raw['wattage_scaph'] *= 100
+
+        wsum = raw.groupby(self.RUN_VARS).agg({
+            "wattage_scaph": "sum",
+            "wattage_kepler": "sum",
+            "run_time": "max"
+        })
+
+        wavg = raw.groupby(self.RUN_VARS).agg({
+            "wattage_scaph": "mean",
+            "wattage_kepler": "mean",
+            "run_time": "max"
+        })
+        wsum["wattage_scaph_avg"] = wavg["wattage_scaph"] * wavg["run_time"].dt.total_seconds()
+        wsum["wattage_kepler_avg"] = wavg["wattage_kepler"] *  wavg["run_time"].dt.total_seconds()
+
+        return wsum
+    
     def rps_per_branch(self) -> pd.DataFrame:
         stats = self.run_stats()
-        run_meta_columns = ["exp_start", "exp_branch", "exp_workload", "run_iteration"]
+        run_meta_columns = ExperimentResults.RUN_VARS
         m = stats.melt(id_vars=run_meta_columns, value_vars=["success_rps", "total_rps"])
         return m
 
