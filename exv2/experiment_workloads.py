@@ -43,7 +43,8 @@ class PausingWorkload():
             "LOCUST_LOCUSTFILE": "./pausing_users.py",
             "LOCUST_RUN_TIME": f'{LOADGENERATOR_DURATION}s',
             "LOCUST_SPAWN_RATE": 1,
-            "LOCUST_USERS": 20,
+            "LOCUST_USERS": 10,
+            "PAUSE_BACKOFF": 90,
         }
         exp.timeout_duration = LOADGENERATOR_DURATION+60
         exp.tags.append("pausing")

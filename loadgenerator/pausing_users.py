@@ -1,11 +1,12 @@
 import logging
 from random import randint, choice
-
 from locust import HttpUser, task
+import os 
 # logging
 logging.getLogger().setLevel(logging.INFO)
 
-backoff=90
+
+backoff=int(os.getenv('PAUSE_BACKOFF', 90))
 
 class Pausing_Users(HttpUser):
     last_wait_time = 0
