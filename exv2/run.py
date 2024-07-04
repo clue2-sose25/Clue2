@@ -1,4 +1,6 @@
 #! /usr/bin/env python3
+import click
+from click import echo
 import copy
 from datetime import datetime
 import os
@@ -23,11 +25,37 @@ from experiment_workloads import ShapredWorkload, RampingWorkload, PausingWorklo
 # setup clients
 config.load_kube_config()
 
+@click.group()
+def cli():
+    pass
+
+# @click.command("list")
+# def echo_experiments():
+#     """List available Experiments"""
+#     echo("\n".join([e.name for e in experiment_list.exps]))
+
+def available_experiments():
+    return [e.name for e in experiment_list.exps]
 
 
-def main():
-    exp = experiment_list.exps[0]
-    print("Experiment:", exp)
+@click.command("run")
+@click.argument("exp-name", type=click.Choice(available_experiments())) # default="baseline")
+@click.option("--skip-build/--force-build", default=False)
+def run(exp_name: str, skip_build):
+    """Build and run a given experiment's setup"""
+
+    matching_exps = [e for e in experiment_list.exps if e.name == exp_name]
+
+    if not len(matching_exps):
+        # echo(f"unknown experiment f{exp_name}, choose one of:")
+        # echo_experiments()
+        # return -1
+        raise ValueError("invalid experiment name")
+    else:
+        exp = matching_exps[0]
+
+    echo(f"Experiment: {exp}")
+
 
     observations_out_path = "data_run/1"
 
@@ -37,30 +65,33 @@ def main():
         except OSError:
             raise RuntimeError("data for this experiment already exist, skipping")
 
+        if not skip_build:
+            echo("building images")
+            ExperimentDeployer(exp).build_images()
+        else:
+            echo(click.style("skipping build", fg="green"))
 
-        print("building images")
-        ExperimentDeployer(exp).build_images()
-
-        print("🏗️ deploying branch")
+        echo("🏗️ deploying branch")
         ExperimentDeployer(exp).deploy_branch(observations_out_path)
 
-        print("will run until keypress...")
-        print("to expose port run:")
-        print("kubectl port-forward service/teastore-webui 8080:80")
-        print("")
+        echo("will run until keypress...")
+        echo("to expose port run:")
+        echo(click.style("kubectl port-forward service/teastore-webui 8080:80", color="cyan"))
+        echo("")
         # v1 = kubernetes.client.AppsV1Api()
         # v1.list_name()
         input()
-        print("shutting down")
+        echo("shutting down")
 
         # ExperimentRunner(exp).run(observations_out_path)
     except RuntimeError as e:
-        print(e)
+        echo(e)
     finally:
         ExperimentRunner(exp).cleanup()
 
 
-
+# cli.add_command(run)
+# cli.add_command(echo_experiments)
 
 if __name__ == "__main__":
-    main()
+    run()
