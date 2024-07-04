@@ -1,15 +1,17 @@
 import logging
 from random import randint, choice
-import gevent
 
-from locust import HttpUser, task, between, events
+import gevent.greenlet
+import gevent.signal
+from locust import HttpUser, task, between
 # logging
 logging.getLogger().setLevel(logging.INFO)
+import signal
 import os
 
 max_requests = int(os.getenv("MAXIMUM_REQUESTS", 1000))
 request_count = 0
-
+stopped = False
 class Fixed_Request_Users(HttpUser):
     wait_time = between(1, 5)
     
@@ -19,6 +21,11 @@ class Fixed_Request_Users(HttpUser):
         Simulates user behaviour.
         :return: None
         """
+        global stopped
+        if stopped:
+            self.environment.runner.stop()
+            return
+        
         logging.info("Starting user.")
         self.visit_home()
         self.login()
@@ -32,10 +39,15 @@ class Fixed_Request_Users(HttpUser):
         logging.info("Completed user.")
         global request_count
         if request_count < max_requests:
-            request_count+= 1
+            request_count += 1
         else:
-            logging.info("Reached task limit, quitting")
-            self.environment.runner.quit()
+            logging.info(f"Reached task limit {request_count}, quitting")
+            gevent.sleep(2)
+            self.environment.process_exit_code = 0
+            stopped = True
+            signal.raise_signal(signal.SIGTERM)
+            
+            
 
     def visit_home(self) -> None:
         """
