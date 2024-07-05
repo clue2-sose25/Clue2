@@ -1,14 +1,39 @@
 import logging
 from random import randint, choice
-import gevent
 
+import gevent.greenlet
+import gevent.signal
+import threading
 from locust import HttpUser, task, between, events
 # logging
 logging.getLogger().setLevel(logging.INFO)
+import signal
 import os
 
 max_requests = int(os.getenv("MAXIMUM_REQUESTS", 1000))
 request_count = 0
+stopped = False
+quitting = False
+
+lock = threading.Lock()
+
+# Function to check maximum and quit
+def check_maximum_and_quit():
+    global request_count
+    global stopped
+    with lock:
+        if request_count >= max_requests:
+            stopped = True
+            signal.raise_signal(signal.SIGTERM)
+
+# Event listener for request success
+@events.request.add_listener
+def my_request_handler(request_type, name, response_time, response_length, response,
+                       context, exception, start_time, url, **kwargs):
+    global request_count
+    with lock:
+        request_count += 1
+    check_maximum_and_quit()
 
 class Fixed_Request_Users(HttpUser):
     wait_time = between(1, 5)
@@ -19,7 +44,16 @@ class Fixed_Request_Users(HttpUser):
         Simulates user behaviour.
         :return: None
         """
-        logging.info("Starting user.")
+        global stopped
+        global request_count
+
+        if stopped:
+            self.environment.process_exit_code = 0
+            self.environment.runner.stop()
+            logging.info(f"Reached task limit {request_count}, quitting")
+            return
+        
+        logging.info(f"Starting user {request_count}")
         self.visit_home()
         self.login()
         self.browse()
@@ -30,12 +64,9 @@ class Fixed_Request_Users(HttpUser):
         self.visit_profile()
         self.logout()
         logging.info("Completed user.")
-        global request_count
-        if request_count < max_requests:
-            request_count+= 1
-        else:
-            logging.info("Reached task limit, quitting")
-            self.environment.runner.quit()
+
+            
+            
 
     def visit_home(self) -> None:
         """
