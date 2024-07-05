@@ -3,3 +3,4 @@ teastore/
 __pycache__/
 data*
 .idea
+mock_data/
