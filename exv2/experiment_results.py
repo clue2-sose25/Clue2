@@ -11,7 +11,7 @@ class ExperimentResults:
     DATA_ROOT_FOLDER = "data"
     RUN_VARS = ["exp_start", "exp_branch", "exp_workload", "run_iteration"]
 
-    def __init__(self, exp_dir=None):
+    def __init__(self, exp_dir=None, load_stats_history=True):
 
         # per default, use last experiment performed
         if not exp_dir:
@@ -21,9 +21,15 @@ class ExperimentResults:
         self.exp_dir = exp_dir
         self.measurement_dirs = glob(self.exp_dir + "/*/*/*")
 
+        #TODO: to speed this up we could try and add some sort of caching mechanism, based on measurment_dir+version_name write out the four files as csv after processing so we can load them instead of processing them every time.
+
         self.nodes = self.load_nodes()
-        self.pods = self.load_pods()
+        self.pods = self.load_pods()  # todo: remove loadgenerator
         self.stats = self.load_stats()
+        if load_stats_history:
+            self.stats_history = self.load_stat_history()
+        else:
+            self.stats_history = pd.DataFrame([],columns=['timestamp', 'user_count', 'type', 'url', 'rq_s', 'frq_s','rq', 'frq', 'mean_rsp_time', 'mean_resp_size', 'exp_workload','exp_branch', 'exp_start', 'run_start', 'run_iteration', 'run','run_time','urun'])
 
     def load_pods(self):
         return self.get_df_for_prefix("measurements_pod_")
@@ -37,6 +43,31 @@ class ExperimentResults:
     def load_stats(self):
         stats = self.get_df_for_prefix("teastore_stats.csv", treat=False)
         return stats[stats["Name"] != "Aggregated"]
+
+    def load_stat_history(self):
+        history = self.get_df_for_prefix("teastore_stats_history.csv", treat=False)
+        history = history[history["Name"] != "Aggregated"][["Timestamp","User Count","Type","Name","Requests/s","Failures/s","Total Request Count","Total Failure Count","Total Average Response Time","Total Average Content Size","exp_workload", "exp_branch", "exp_start", "run_start", "run_iteration", "run","urun"]]
+        history = history.rename(columns={
+            "Timestamp":"timestamp",
+            "User Count":"user_count",
+            "Type":"type",
+            "Name":"url",
+            "Requests/s":"rq_s",
+            "Failures/s":"frq_s",
+            "Total Request Count":"rq",
+            "Total Failure Count":"frq",
+            "Total Average Response Time":"mean_rsp_time",
+            "Total Average Content Size":"mean_resp_size"
+        })
+        history["timestamp"] = history["timestamp"].astype(int)
+        
+        # fixing history
+        # Step 1: Calculate the minimum timestamp for each 'urun'
+        min_timestamps = history.groupby("urun")["timestamp"].transform("min")
+
+        # Step 2: Subtract the minimum timestamp from each timestamp
+        history["run_time"] = history["timestamp"] - min_timestamps
+        return history 
 
     def _set_experiment_time(
         self, df, col="collection_time", target="run_time", where="run"
@@ -95,7 +126,7 @@ class ExperimentResults:
         pod_df["run_iteration"] = pr_run
 
         pod_df["run"] = "_".join([pr_branch, pr_scale, pr_run])
-
+        pod_df["urun"] = "_".join([pr_time,pr_branch, pr_scale, pr_run])
         if treat:
             num_outliers = self._drop_outliers(pod_df)
             self._set_experiment_time(pod_df)
@@ -115,7 +146,6 @@ class ExperimentResults:
         return self.stats.melt(
             id_vars="exp_branch", value_vars=["Request Count", "Failure Count"]
         )
-    
 
     def run_stats(self):
 
@@ -136,16 +166,12 @@ class ExperimentResults:
 
         runs["Success Count"] = runs["Request Count"] - runs["Failure Count"]
 
-        runs["reliability"] = (
-            1 - runs["Failure Count"] / runs["Request Count"]
-        )
+        runs["reliability"] = 1 - runs["Failure Count"] / runs["Request Count"]
 
         # return reliability
 
         exp_runtime = (
-            self.pods.groupby(ExperimentResults.RUN_VARS)[
-                "run_time"
-            ]
+            self.pods.groupby(ExperimentResults.RUN_VARS)["run_time"]
             .max()
             .reset_index()
         )
@@ -165,36 +191,43 @@ class ExperimentResults:
         )
 
         return runs_merged
-    
-    def runs_energy(self):
-        wattages = ["wattage_kepler", "wattage_scaph"]
 
-        raw = self.pods.copy()
-        raw['wattage_scaph'] *= 100
+    def _calc_energy(self, input, wattages):
+        # wattages = ["wattage_kepler", "wattage_scaph"]
 
-        wsum = raw.groupby(self.RUN_VARS).agg({
-            "wattage_scaph": "sum",
-            "wattage_kepler": "sum",
-            "run_time": "max"
-        })
+        raw = input.copy()
+        raw["wattage_scaph"] *= 100
 
-        wavg = raw.groupby(self.RUN_VARS).agg({
-            "wattage_scaph": "mean",
-            "wattage_kepler": "mean",
-            "run_time": "max"
-        })
-        wsum["wattage_scaph_avg"] = wavg["wattage_scaph"] * wavg["run_time"].dt.total_seconds()
-        wsum["wattage_kepler_avg"] = wavg["wattage_kepler"] *  wavg["run_time"].dt.total_seconds()
+        wsum = raw.groupby(self.RUN_VARS).agg(
+            {"run_time": "max"} | {w: "sum" for w in wattages}
+        )
+
+        wavg = raw.groupby(self.RUN_VARS).agg(
+            {"run_time": "max"} | {w: "mean" for w in wattages}
+        )
+
+        for w in wattages:
+            wsum[f"{w}_avg"] = wavg[w] * wavg["run_time"].dt.total_seconds()
+
+        # todo: node wattages (also estimate + tap)o
 
         return wsum
-    
+
+    def pods_energy(self):
+        wattages = ["wattage_kepler", "wattage_scaph"]
+        return self._calc_energy(self.pods, wattages)
+
+    def nodes_energy(self):
+        wattages = ["wattage_kepler", "wattage_scaph", "wattage"]
+        return self._calc_energy(self.nodes, wattages)
+
     def rps_per_branch(self) -> pd.DataFrame:
         stats = self.run_stats()
         run_meta_columns = ExperimentResults.RUN_VARS
-        m = stats.melt(id_vars=run_meta_columns, value_vars=["success_rps", "total_rps"])
+        m = stats.melt(
+            id_vars=run_meta_columns, value_vars=["success_rps", "total_rps"]
+        )
         return m
-
-
 
 
 class NodeEnergyModel:
