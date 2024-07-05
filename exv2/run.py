@@ -41,6 +41,8 @@ def available_experiments():
 @click.command("run")
 @click.argument("exp-name", type=click.Choice(available_experiments())) # default="baseline")
 @click.option("--skip-build/--force-build", default=False)
+# @click.option("--service_name", default="teastore-webui")
+# @click.option("--port", default="8080")
 def run(exp_name: str, skip_build):
     """Build and run a given experiment's setup"""
 
@@ -58,6 +60,7 @@ def run(exp_name: str, skip_build):
 
 
     observations_out_path = "data_run/1"
+    port_forward = None
 
     try:
         try:
@@ -74,13 +77,29 @@ def run(exp_name: str, skip_build):
         echo("🏗️ deploying branch")
         ExperimentDeployer(exp).deploy_branch(observations_out_path)
 
-        echo("will run until keypress...")
         echo("to expose port run:")
-        echo(click.style("kubectl port-forward service/teastore-webui 8080:80", color="cyan"))
+        echo(click.style("kubectl port-forward service/teastore-webui 8080:80", fg="cyan"))
         echo("")
         # v1 = kubernetes.client.AppsV1Api()
         # v1.list_name()
-        input()
+
+
+        # this does not work with kubernetes lib...
+        #
+        # echo(f"setting up port forward on {service_name} to {port}")
+        # svc = kr8s.objects.Service.get(service_name)
+        # echo(svc)
+        # port_forward = svc.portforward(remote_port=port, local_port=80)
+        # port_forward.start()  # Start the port forward in a background thread
+        # ...
+        #         # if port_forward:
+        #     port_forward.stop() 
+
+
+        # Your other code goes here
+
+        click.pause()
+        
         echo("shutting down")
 
         # ExperimentRunner(exp).run(observations_out_path)
