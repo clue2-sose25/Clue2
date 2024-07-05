@@ -21,6 +21,9 @@ class ExperimentResults:
         self.exp_dir = exp_dir
         self.measurement_dirs = glob(self.exp_dir + "/*/*/*")
 
+        self.total_outliers = 0
+        self.total_datapoints = 0
+
         #TODO: to speed this up we could try and add some sort of caching mechanism, based on measurment_dir+version_name write out the four files as csv after processing so we can load them instead of processing them every time.
 
         self.nodes = self.load_nodes()
@@ -31,8 +34,15 @@ class ExperimentResults:
         else:
             self.stats_history = pd.DataFrame([],columns=['timestamp', 'user_count', 'type', 'url', 'rq_s', 'frq_s','rq', 'frq', 'mean_rsp_time', 'mean_resp_size', 'exp_workload','exp_branch', 'exp_start', 'run_start', 'run_iteration', 'run','run_time','urun'])
 
-    def load_pods(self):
-        return self.get_df_for_prefix("measurements_pod_")
+        logging.warn(f"loaded {self.total_datapoints} datapoints with {self.total_outliers} problems")
+
+    def load_pods(self, filter=True):
+        pods =  self.get_df_for_prefix("measurements_pod_")
+        if filter:
+            pods = pods[~pods.name.isin(['loadgenerator'])]
+            pods = pods[~pods.instance.isin(['unknown'])]
+            pods['name_prefix'] = pods['name'].apply(lambda n: n.split("-")[:-1])
+        return pods 
 
     def load_nodes(self):
         nodes = self.get_df_for_prefix("measurements_node_")
@@ -107,10 +117,13 @@ class ExperimentResults:
             data_errors += len(outliers)
             df = df.drop(outliers)
 
-        if data_errors:
-            logging.warning(
-                f"dropped {data_errors} outliers ({100*data_errors/data_points:.0f}%)"
-            )
+        # if data_errors:
+        #     logging.warning(
+        #         f"dropped {data_errors} outliers ({100*data_errors/data_points:.0f}%)"
+        #     )
+
+        self.total_datapoints += data_points
+        self.total_outliers += data_errors
 
         # print(f"dropped {data_errors} outliers")
         return data_errors
@@ -128,7 +141,7 @@ class ExperimentResults:
         pod_df["run"] = "_".join([pr_branch, pr_scale, pr_run])
         pod_df["urun"] = "_".join([pr_time,pr_branch, pr_scale, pr_run])
         if treat:
-            num_outliers = self._drop_outliers(pod_df)
+            self.total_outliers += self._drop_outliers(pod_df)
             self._set_experiment_time(pod_df)
 
         return pod_df
