@@ -129,7 +129,7 @@ class ExperimentDeployer:
                     )
                 elif exp.autoscaling == ScalingExperimentSetting.BOTH:
                     values = values.replace(
-                        r"# targetMemoryUtilizationPercentage: 80",
+                        r"targetMemoryUtilizationPercentage: 80",
                         r"targetMemoryUtilizationPercentage: 80",
                     )
 
