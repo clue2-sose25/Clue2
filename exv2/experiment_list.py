@@ -20,6 +20,15 @@ exps = [
         autoscaling=scale,
     ),
     Experiment(
+        name="serverless",
+        target_branch="feature/serverless",
+        # patches=[],
+        namespace=namespace,
+        colocated_workload=True,
+        prometheus_url=prometheus_url,
+        autoscaling=scale,
+    ),
+    Experiment(
         name="monolith",
         target_branch="feature/monolith",
         namespace=namespace,
