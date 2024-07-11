@@ -51,7 +51,7 @@ class ExperimentRunner:
             prometheus_url=exp.prometheus,
             node_channel=node_channel,
             pod_channel=pod_channel,
-            namespaces=[exp.namespace],
+            namespaces=[exp.namespace] + exp.infrastrcutre_namespaces,
             interval=10,
         )
 

@@ -27,6 +27,8 @@ exps = [
         colocated_workload=True,
         prometheus_url=prometheus_url,
         autoscaling=scale,
+        critical_services=["teastore-registry", "teastore-webui"],
+        infrastrcutre_namespaces=["knative-serving"]
     ),
     Experiment(
         name="monolith",
