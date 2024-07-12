@@ -10,6 +10,8 @@ class ExperimentResults:
 
     DATA_ROOT_FOLDER = "data"
     RUN_VARS = ["exp_start", "exp_branch", "exp_workload", "run_iteration"]
+    SCAPH_FACTOR = 100
+    ENERGY_WORKLOADS = ["exp_scale_fixed", "exp_scale_shaped"]
 
     def __init__(self, exp_dir=None, load_stats_history=True):
 
@@ -205,11 +207,21 @@ class ExperimentResults:
 
         return runs_merged
 
-    def _calc_energy(self, input, wattages):
-        # wattages = ["wattage_kepler", "wattage_scaph"]
+    def _calc_energy(self, input, wattages, energy_workloads=True):
+        """
+        Aggregate Wattages in different ways. Only use Workloads that make sense for that.
+
+        kepler in: irate(kepler_node_core_joules_total[1m]
+        """
 
         raw = input.copy()
-        raw["wattage_scaph"] *= 100
+        
+        # not all workloads makes sense for energy consumption
+        if energy_workloads:
+            raw = raw[raw['exp_workload'].isin(self.ENERGY_WORKLOADS)]
+
+
+        raw["wattage_scaph"] *= self.SCAPH_FACTOR
 
         wsum = raw.groupby(self.RUN_VARS).agg(
             {"run_time": "max"} | {w: "sum" for w in wattages}
@@ -226,12 +238,12 @@ class ExperimentResults:
 
         return wsum
 
-    def pods_energy(self):
-        wattages = ["wattage_kepler", "wattage_scaph"]
-        return self._calc_energy(self.pods, wattages)
+    def pods_energy(self, energy_workloads=True):
+        wattages = ["wattage_kepler", "wattage_scaph", "cpu_usage", "memory_usage"]
+        return self._calc_energy(self.pods, wattages, energy_workloads)
 
     def nodes_energy(self):
-        wattages = ["wattage_kepler", "wattage_scaph", "wattage"]
+        wattages = ["wattage_kepler", "wattage_scaph", "wattage", "cpu_usage", "memory_usage"]
         return self._calc_energy(self.nodes, wattages)
 
     def rps_per_branch(self) -> pd.DataFrame:
