@@ -72,10 +72,17 @@ class ExperimentDeployer:
                 "docker build",
                 f"docker buildx build --platform {exp.env.remote_platform_arch}",
             )
+            if exp.env.kind_cluster_name:
+                script = script.replace(
+                    "docker push",
+                    f"kind load docker-image --name {exp.env.kind_cluster_name}",
+                )
             with open(
                 path.join(exp.env.teastore_path, "tools", "build_docker.sh"), "w"
             ) as f:
                 f.write(script)
+            
+       
 
         # 2. cd tools && ./build_docker.sh -r <env["docker_user"]/ -p && cd ..
         build = subprocess.check_call(
@@ -129,7 +136,7 @@ class ExperimentDeployer:
                     )
                 elif exp.autoscaling == ScalingExperimentSetting.BOTH:
                     values = values.replace(
-                        r"# targetMemoryUtilizationPercentage: 80",
+                        r"targetMemoryUtilizationPercentage: 80",
                         r"targetMemoryUtilizationPercentage: 80",
                     )
 

@@ -41,9 +41,11 @@ def available_experiments():
 @click.command("run")
 @click.argument("exp-name", type=click.Choice(available_experiments())) # default="baseline")
 @click.option("--skip-build/--force-build", default=False)
+@click.option("--kind", default=None)
+@click.option("--platfrom", default="linux/amd64")
 # @click.option("--service_name", default="teastore-webui")
 # @click.option("--port", default="8080")
-def run(exp_name: str, skip_build):
+def run(exp_name: str, skip_build, kind, platfrom):
     """Build and run a given experiment's setup"""
 
     matching_exps = [e for e in experiment_list.exps if e.name == exp_name]
@@ -67,13 +69,17 @@ def run(exp_name: str, skip_build):
             os.makedirs(observations_out_path, exist_ok=True)
         except OSError:
             raise RuntimeError("data for this experiment already exist, skipping")
+        
+        if kind:
+            exp.env.kind_cluster_name = kind
+
+        exp.env.remote_platform_arch = platfrom
 
         if not skip_build:
             echo("building images")
             ExperimentDeployer(exp).build_images()
         else:
             echo(click.style("skipping build", fg="green"))
-
         echo("🏗️ deploying branch")
         ExperimentDeployer(exp).deploy_branch(observations_out_path)
 

@@ -39,6 +39,8 @@ class ExperimentEnvironment:
         self.wait_after_workloads = 120
 
         self.tags = []
+
+        self.kind_cluster_name = None
     
     def total_duration(self):
         return self.timeout_duration + 30 #TODO make this more sensable but not based on the worklaod settings
