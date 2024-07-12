@@ -15,6 +15,7 @@ import signal
 import subprocess
 import kubernetes
 import logging
+import time
 
 class ExperimentRunner:
 
@@ -61,33 +62,31 @@ class ExperimentRunner:
         # 5. start workload
         # start resource tracker
         tracker.start()
-
+        # MAIN timeout to kill the experiment after 2 min after the experiment should be over (to avoid hanging)
+        timeout = exp.env.total_duration() + 2*60 
         # noinspection PyUnusedLocal
         def cancel(sig, frame):
             tracker.stop()
             pod_channel.flush()
             node_channel.flush()
             signal.raise_signal(signal.SIGUSR1)  # raise signal to stop workload
-            logging.warning(f"workload timeout ({exp.env.total_duration()+2*60})s reached.")
+            logging.warning(f"workload timeout ({timeout})s reached.")
 
         signal.signal(signal.SIGALRM, cancel)
         signal.signal(signal.SIGINT, cancel) #also cancle on control-C
-
-        # MAIN timeout to kill the experiment after 2 min after the experiment should be over (to avoid hanging)
-        timeout = exp.env.total_duration() + 2*60
-        print(f"starting workload with timeout {timeout}")
+        
+        logging.info(f"starting workload with timeout {timeout}")
         signal.alarm(timeout)
-
         # deploy workload on different node or locally and wait for workload to be completed (or timeout)
         wlr = WorkloadRunner(experiment=exp)
         # will run remotely or locally based on experiment
         wlr.run_workload(observations_out_path)
-
         # stop resource tracker
         tracker.stop()
         node_channel.flush()
         pod_channel.flush()
         signal.alarm(0)  # cancel alarm
+
 
     def cleanup(self):
         """

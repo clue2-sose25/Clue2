@@ -121,6 +121,11 @@ def run_experiment(exp: Experiment, observations_out_path):
             time.sleep(wait)  # wait for 120s before stressing the workload
 
         ExperimentRunner(exp).run(observations_out_path)
+
+        if not DIRTY:
+            print(f"waiting {exp.env.wait_before_workloads}s after cleaning the workload")
+            time.sleep(exp.env.wait_after_workloads)
+            
     except RuntimeError as e:
         print(e)
     finally:

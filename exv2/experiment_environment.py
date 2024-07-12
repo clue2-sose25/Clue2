@@ -35,7 +35,7 @@ class ExperimentEnvironment:
 
         self.workload_settings = {}
         self.timeout_duration = 60*60 # at most we wait 60 minutes
-        self.wait_before_workloads = 60
+        self.wait_before_workloads = 180 # we wait 3 min to let the deplotment settle
         self.wait_after_workloads = 120
 
         self.tags = []
