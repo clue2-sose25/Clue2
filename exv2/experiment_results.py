@@ -29,7 +29,8 @@ class ExperimentResults:
         #TODO: to speed this up we could try and add some sort of caching mechanism, based on measurment_dir+version_name write out the four files as csv after processing so we can load them instead of processing them every time.
 
         self.nodes = self.load_nodes()
-        self.pods = self.load_pods()  # todo: remove loadgenerator
+        self.pods = self.load_pods() 
+        self.pod_scaling = self.load_pod_scaling()
         self.stats = self.load_stats()
         if load_stats_history:
             self.stats_history = self.load_stat_history()
@@ -45,6 +46,15 @@ class ExperimentResults:
             pods = pods[~pods.instance.isin(['unknown'])]
             pods['name_prefix'] = pods['name'].apply(lambda n: n.split("-")[:-1])
         return pods 
+    
+    def load_pod_scaling(self):
+        p = self.pods
+        p['pod_name'] = p['name'].apply(lambda x: x[:-2])
+        pod_scaling = p \
+            .groupby(['exp_branch', 'exp_workload', 'pod_name', 'run_iteration', 'run_time']) \
+            .agg({"wattage_scaph": "mean", "wattage_kepler": "mean", "cpu_usage": "sum", 'name': 'nunique'})
+
+        return pod_scaling
 
     def load_nodes(self):
         nodes = self.get_df_for_prefix("measurements_node_")
