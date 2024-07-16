@@ -34,6 +34,7 @@ class ExperimentResults:
         self.stats = self.load_stats()
         if load_stats_history:
             self.stats_history = self.load_stat_history()
+            self.stats_history_aggregated = self.load_stat_history(aggregated=True)
         else:
             self.stats_history = pd.DataFrame([],columns=['timestamp', 'user_count', 'type', 'url', 'rq_s', 'frq_s','rq', 'frq', 'mean_rsp_time', 'mean_resp_size', 'exp_workload','exp_branch', 'exp_start', 'run_start', 'run_iteration', 'run','run_time','urun'])
 
@@ -66,10 +67,9 @@ class ExperimentResults:
         stats = self.get_df_for_prefix("teastore_stats.csv", treat=False)
         return stats[stats["Name"] != "Aggregated"]
 
-    def load_stat_history(self):
-        history = self.get_df_for_prefix("teastore_stats_history.csv", treat=False)
-        history = history[history["Name"] != "Aggregated"][["Timestamp","User Count","Type","Name","Requests/s","Failures/s","Total Request Count","Total Failure Count","Total Average Response Time","Total Average Content Size","exp_workload", "exp_branch", "exp_start", "run_start", "run_iteration", "run","urun"]]
-        history = history.rename(columns={
+    def load_stat_history(self, aggregated=False):
+
+        history_cols = {
             "Timestamp":"timestamp",
             "User Count":"user_count",
             "Type":"type",
@@ -80,7 +80,13 @@ class ExperimentResults:
             "Total Failure Count":"frq",
             "Total Average Response Time":"mean_rsp_time",
             "Total Average Content Size":"mean_resp_size"
-        })
+        }
+
+        hraw = self.get_df_for_prefix("teastore_stats_history.csv", treat=False)
+        hraw['is_agg'] = hraw["Name"] == "Aggregated"
+        history = hraw[hraw['is_agg'] == aggregated][[*history_cols.keys(), *self.RUN_VARS, "run_start", "run", "urun"]]
+        history = history.rename(columns=history_cols)
+
         history["timestamp"] = history["timestamp"].astype(int)
         
         # fixing history
