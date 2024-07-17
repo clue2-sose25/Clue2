@@ -75,6 +75,8 @@ class ExperimentRunner:
         signal.signal(signal.SIGALRM, cancel)
         signal.signal(signal.SIGINT, cancel) #also cancle on control-C
         
+        time.sleep(30)  # wait for 120s before stressing the workload
+
         logging.info(f"starting workload with timeout {timeout}")
         signal.alarm(timeout)
         # deploy workload on different node or locally and wait for workload to be completed (or timeout)
