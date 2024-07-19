@@ -14,6 +14,7 @@ progressbar2 = "*"
 scipy = "*"
 tabulate = "*"
 "psc " = {ref = "git.tu-berlin.de/cloud-sustainability/prometeus-energy-agent.git", git = "git+https://pipthing:to4B7fmd6Hs993ZqKHSk"}
+glasbey = "*"
 
 [dev-packages]
 ipykernel = "*"

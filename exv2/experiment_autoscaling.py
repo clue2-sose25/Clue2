@@ -43,7 +43,7 @@ class ExperimentAutoscaling:
             if stateful_set.metadata.name in exp.env.resource_limits:
                 limit = exp.env.resource_limits[stateful_set.metadata.name]
             else:
-                continue
+                limit = exp.env.default_resource_limits
             stateful_set.spec.template.spec.containers[0].resources = (
                 kubernetes.client.V1ResourceRequirements(
                     requests={
@@ -60,7 +60,8 @@ class ExperimentAutoscaling:
                 _ = apps.patch_namespaced_stateful_set(
                     stateful_set.metadata.name, exp.namespace, stateful_set
                 )
-                hpa_creator(stateful_set.metadata.name, exp.namespace)
+                if stateful_set.metadata.name in exp.env.resource_limits:
+                    hpa_creator(stateful_set.metadata.name, exp.namespace)
             except kubernetes.client.rest.ApiException as e:
                 if e.status == 409:
                     logging.error(f"HPA for {stateful_set.metadata.name} already exists")

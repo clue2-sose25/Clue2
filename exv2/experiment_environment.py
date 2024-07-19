@@ -33,6 +33,8 @@ class ExperimentEnvironment:
             }
         )
 
+        self.default_resource_limits = {"cpu": 1000, "memory": 1024}
+
         self.workload_settings = {}
         self.timeout_duration = 60*60 # at most we wait 60 minutes
         self.wait_before_workloads = 180 # we wait 3 min to let the deplotment settle
