@@ -65,7 +65,7 @@ class Fixed_Request_Users(HttpUser):
         self.logout()
         logging.info("Completed user.")
 
-            
+        check_maximum_and_quit()
             
 
     def visit_home(self) -> None:
