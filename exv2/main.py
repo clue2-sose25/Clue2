@@ -26,13 +26,7 @@ DRY = False
 config.load_kube_config()
 
 
-def main():
-    if DIRTY:
-        print("☢️ will overwrite existing experiment data!!!!")
-
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-
-
+def full_run():
     exps = experiment_list.exps
 
 
@@ -54,12 +48,56 @@ def main():
         for exp in experiment_list.exps:
             exps.append(set_workload(exp,w))
 
+    return exps
+
+def custom_reruns():
+    exps = []
+    prometheus_url = "http://130.149.158.130:32426"
+    namespace = "tea-bench"
+    scale = ScalingExperimentSetting.BOTH
+    
+    e = Experiment(
+        name="baseline",
+        target_branch="vanilla",
+        # patches=[],
+        namespace=namespace,
+        colocated_workload=True,
+        prometheus_url=prometheus_url,
+        autoscaling=scale,
+    )
+    e.env.set_workload(PausingWorkload())
+    exps.append(e)
+    
+    e = Experiment(
+        name="baseline",
+        target_branch="vanilla",
+        # patches=[],
+        namespace=namespace,
+        colocated_workload=True,
+        prometheus_url=prometheus_url,
+        autoscaling=scale,
+    )
+    e.env.set_workload(ShapredWorkload())
+    exps.append(e)
+
+    return exps
+
+def main():
+    if DIRTY:
+        print("☢️ will overwrite existing experiment data!!!!")
+
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+
+    #exps = full_run()
+    exps = custom_reruns()
+    
+
     #sort by branch to speed up rebuilds ...
     def exp_sort_key(exp:Experiment):
         return "_".join([exp.target_branch,exp.name])
 
     exps.sort(key=exp_sort_key)
-
     
     print(tabulate([n.to_row() for n in exps], tablefmt="rounded_outline", headers=Experiment.headers()))
 
@@ -74,7 +112,7 @@ def main():
     # for exp in progressbar.progressbar(exps, redirect_stdout=True, redirect_stderr=True):
     last_build_branch = None
     for exp in exps:
-        print(f"ℹ️ new experiment: {exp}")
+        print(f"ℹ️  new experiment: {exp}")
         if not SKIPBUILD:
             print("👷 building...")
             # if we know that branches don't change we could skip building some of them
@@ -97,6 +135,9 @@ def main():
 
             print(f"▶️ running ({i + 1}/{experiment_list.NUM_ITERATIONS}) to {out_path}...")
             run_experiment(exp, out_path)
+        
+        print(f"sleeping for 120s to let the system settle after one feature")
+        time.sleep(120)
 
 
 def run_experiment(exp: Experiment, observations_out_path):
@@ -129,6 +170,8 @@ def run_experiment(exp: Experiment, observations_out_path):
         if not DIRTY:
             print(f"waiting {exp.env.wait_after_workloads}s after cleaning the workload")
             time.sleep(exp.env.wait_after_workloads)
+    # additional sleep after a run just to be on the safe side
+    time.sleep(60)
 
 
 if __name__ == "__main__":

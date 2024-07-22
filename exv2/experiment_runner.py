@@ -63,7 +63,7 @@ class ExperimentRunner:
         # start resource tracker
         tracker.start()
         # MAIN timeout to kill the experiment after 2 min after the experiment should be over (to avoid hanging)
-        timeout = exp.env.total_duration() + 2*60 
+        timeout = exp.env.total_duration() + 2*60 + 30
         # noinspection PyUnusedLocal
         def cancel(sig, frame):
             tracker.stop()

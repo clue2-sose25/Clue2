@@ -1,7 +1,7 @@
 from experiment_environment import ExperimentEnvironment
 
 
-LOADGENERATOR_DURATION = 360
+LOADGENERATOR_DURATION = 600
 LOADGENERATOR_MAX_DAILY_USERS = 1000
 
 
@@ -44,7 +44,7 @@ class PausingWorkload():
             "LOCUST_RUN_TIME": f'{LOADGENERATOR_DURATION}s',
             "LOCUST_SPAWN_RATE": 1,
             "LOCUST_USERS": 10,
-            "PAUSE_BACKOFF": 90,
+            "PAUSE_BACKOFF": 120,
         }
         exp.timeout_duration = LOADGENERATOR_DURATION+60
         exp.tags.append("pausing")
