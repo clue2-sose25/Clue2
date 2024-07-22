@@ -32,6 +32,8 @@ class ExperimentResults:
         self.pods = self.load_pods() 
         self.pod_scaling = self.load_pod_scaling()
         self.stats = self.load_stats()
+        self.stats_aggregated = self.load_stats_aggregated()
+
         if load_stats_history:
             self.stats_history = self.load_stat_history()
             self.stats_history_aggregated = self.load_stat_history(aggregated=True)
@@ -66,6 +68,10 @@ class ExperimentResults:
     def load_stats(self):
         stats = self.get_df_for_prefix("teastore_stats.csv", treat=False)
         return stats[stats["Name"] != "Aggregated"]
+    
+    def load_stats_aggregated(self):
+        stats = self.get_df_for_prefix("teastore_stats.csv", treat=False)
+        return stats[stats["Name"] == "Aggregated"]
 
     def load_stat_history(self, aggregated=False):
 
@@ -79,7 +85,12 @@ class ExperimentResults:
             "Total Request Count":"rq",
             "Total Failure Count":"frq",
             "Total Average Response Time":"mean_rsp_time",
-            "Total Average Content Size":"mean_resp_size"
+            "Total Average Content Size":"mean_resp_size",
+            "50%":"p50",
+            "90%":"p90",
+            "95%":"p95",
+            "99%":"p99",
+            "99.9%":"p999",
         }
 
         hraw = self.get_df_for_prefix("teastore_stats_history.csv", treat=False)
