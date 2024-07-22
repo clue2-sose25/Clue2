@@ -1,0 +1,13 @@
+\begin{tabular}{lllllll}
+\toprule
+ & \multicolumn{2}{r}{Latency} & Failure Rate [%]  & \multicolumn{3}{r}{Costs} \\
+Feature & p50 [s] & p95 [s] & (idle-stress) & Total Cost [$\$$] & Consumed Cost [$\$$] & Cost per Request [$m\textcent$] \\
+\midrule
+Microservice Baseline & 0.07 - 6.31 & 0.27 - 16.37 & 0.02 - 0.15 & 0.05 - 0.84 & 0.02 - 0.41 & 0.26 - 24.01 \\
+Runtime Improvement & 0.03 - 1.36 & 0.09 - 12.42 & 0.02 - 0.00 & 0.04 - 0.82 & 0.02 - 0.40 & 0.10 - 23.11 \\
+Monolith Variant & 0.02 - 23.23 & 0.06 - 42.78 & 0.01 - 0.64 & 0.01 - 0.26 & 0.01 - 0.11 & 0.75 - 10.10 \\
+Service Reduction & 0.07 - 2.61 & 0.34 - 8.36 & 0.01 - 0.02 & 0.06 - 0.86 & 0.02 - 0.41 & 0.10 - 24.98 \\
+Infrastructure Service Replacement & 0.05 - 17.36 & 0.16 - 27.93 & 0.01 - 0.74 & 0.06 - 0.74 & 0.02 - 0.28 & 2.53 - 24.15 \\
+Serverless Variant & 0.18 - 4.68 & 0.49 - 15.38 & 0.07 - 0.09 & 0.46 - 4.60 & 0.07 - 0.94 & 0.53 - 63.49 \\
+\bottomrule
+\end{tabular}
