@@ -13,7 +13,11 @@ class ExperimentResults:
     SCAPH_FACTOR = 100
     ENERGY_WORKLOADS = ["exp_scale_fixed", "exp_scale_shaped"]
 
-    def __init__(self, exp_dir=None, load_stats_history=True):
+
+    def __init__(self, exp_dir=None, load_stats_history=True, remove_outliers=True):
+        
+        self.remove_outliers = remove_outliers
+
 
         # per default, use last experiment performed
         if not exp_dir:
@@ -171,7 +175,8 @@ class ExperimentResults:
         pod_df["run"] = "_".join([pr_branch, pr_scale, pr_run])
         pod_df["urun"] = "_".join([pr_time,pr_branch, pr_scale, pr_run])
         if treat:
-            self.total_outliers += self._drop_outliers(pod_df)
+            if self.remove_outliers:
+                self.total_outliers += self._drop_outliers(pod_df)
             self._set_experiment_time(pod_df)
 
         return pod_df
