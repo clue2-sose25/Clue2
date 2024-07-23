@@ -234,7 +234,7 @@ class ExperimentResults:
 
         return runs_merged
 
-    def _calc_energy(self, input, wattages, energy_workloads=True):
+    def _calc_energy(self, input, wattages, energy_workloads=True, app_namespace_only=True):
         """
         Aggregate Wattages in different ways. Only use Workloads that make sense for that.
 
@@ -246,6 +246,9 @@ class ExperimentResults:
         # not all workloads makes sense for energy consumption
         if energy_workloads:
             raw = raw[raw['exp_workload'].isin(self.ENERGY_WORKLOADS)]
+
+        if app_namespace_only:
+            raw = raw[raw['namespace'] == "tea-bench"]
 
 
         raw["wattage_scaph"] *= self.SCAPH_FACTOR
@@ -268,6 +271,12 @@ class ExperimentResults:
     def pods_energy(self, energy_workloads=True):
         wattages = ["wattage_kepler", "wattage_scaph", "cpu_usage", "memory_usage"]
         return self._calc_energy(self.pods, wattages, energy_workloads)
+    
+    def auth_pod_energy(self, energy_workloads=False):
+        auth_pods = self.pods[self.pods.name.str.contains("auth")]
+        wattages = ["wattage_kepler", "wattage_scaph", "cpu_usage", "memory_usage"]
+        return self._calc_energy(auth_pods, wattages, energy_workloads)
+
 
     def nodes_energy(self):
         wattages = ["wattage_kepler", "wattage_scaph", "wattage", "cpu_usage", "memory_usage"]
