@@ -106,6 +106,7 @@ class ExperimentResults:
 
         # Step 2: Subtract the minimum timestamp from each timestamp
         history["run_time"] = history["timestamp"] - min_timestamps
+        history["run_time"] += 30 # XXX, TODO: this is not quite stable, this is the time delay between workload start and measurment start, we should fix this in the future, really!
         return history 
 
     def _set_experiment_time(
