@@ -65,18 +65,6 @@ def custom_reruns():
         prometheus_url=prometheus_url,
         autoscaling=scale,
     )
-    e.env.set_workload(PausingWorkload())
-    exps.append(e)
-    
-    e = Experiment(
-        name="baseline",
-        target_branch="vanilla",
-        # patches=[],
-        namespace=namespace,
-        colocated_workload=True,
-        prometheus_url=prometheus_url,
-        autoscaling=scale,
-    )
     e.env.set_workload(ShapredWorkload())
     exps.append(e)
 
