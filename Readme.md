@@ -16,6 +16,7 @@ It can be used as part of your CI/CD pipeline to evaluate the impact of changes 
 The framework is designed to be extensible and can be easily integrated with existing cloud providers. We currently rely on Prometheus to collect all relevant metrics, but we are working on adding support for other monitoring tools. 
 Moreover, we are currently focusing on Kubernetes as the orchestrator, so as long as your application runs on Kubernetes, you can use Clue to evaluate it. However, we are working on adding support for other environments as well.
 
+This Readme describes the process of running experiments on different variants of the TeaStore microservice example.
 
 
 ## 0. Prerequisites
@@ -26,7 +27,7 @@ Moreover, we are currently focusing on Kubernetes as the orchestrator, so as lon
     * for the serverless variant, knative installed
     * for external power meters, connect e.g. a Tapo device (out of scope of this Readme)
   * [Helm](https://helm.sh/), e.g. v3.16
-  * Python, e.g. 3.11
+  * Python, e.g. 3.11, using pipenv in this Readme
 
 
 ## 1. Setup
@@ -38,7 +39,7 @@ Moreover, we are currently focusing on Kubernetes as the orchestrator, so as lon
 Install Python dependencies from the Pipfile using pip (or use a virtual environment with e.g. pipenv)
 
 ```bash
-pip install
+pipenv install
 ```
 
 Clone the system under test, i.e. the teastore. Each variant is in a separate branch.
@@ -106,6 +107,7 @@ If you create your own variants or make changes, the images need to be rebuilt a
 
 This will automatically create multiple public repositories in your account. When building images for the first time, pushing will take some time depending on your internet connection.
 
+If all the preliminaries for data collection are installed, Clue will fetch the relevant measuremens from Prometheus and save them into the data folder. For data analysis, we provide Python notebooks seperately.
 
 
 ## Troubleshooting / Known Issues
