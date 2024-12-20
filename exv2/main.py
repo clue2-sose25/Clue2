@@ -8,6 +8,7 @@ import sys
 import progressbar
 from kubernetes import config
 from tabulate import tabulate
+import argparse
 
 import experiment_list
 from experiment import Experiment
@@ -18,9 +19,18 @@ from workload_runner import WorkloadRunner
 from scaling_experiment_setting import ScalingExperimentSetting
 from experiment_workloads import ShapredWorkload, RampingWorkload, PausingWorkload, FixedRampingWorkload
 
-DIRTY = False
-SKIPBUILD = False
-DRY = False
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--skip_build" ,action="store_true",help="don't build, use latest image from registry")
+parser.add_argument("--dirty" ,action="store_true",help="skip build, don't wait, and mix results")
+parser.add_argument("--dry" ,action="store_true",help="just print exeriments")
+args = parser.parse_args()
+
+
+DIRTY = args.dirty
+SKIPBUILD = args.skip_build
+DRY = args.dry
 
 # setup clients
 config.load_kube_config()
@@ -77,8 +87,8 @@ def main():
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
 
-    #exps = full_run()
-    exps = custom_reruns()
+    exps = full_run()
+    # exps = custom_reruns()
     
 
     #sort by branch to speed up rebuilds ...

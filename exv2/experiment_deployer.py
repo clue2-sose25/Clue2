@@ -39,7 +39,8 @@ class ExperimentDeployer:
 
         # ensure mvn build ...
         # docker run -v foo:/mnt --rm -it --workdir /mnt  maven mvn clean install -DskipTests
-        mvn = self.docker_client.containers.run(
+        # try: 
+        mvn_output = self.docker_client.containers.run(
             image="maven",
             auto_remove=True,
             volumes={
@@ -52,12 +53,13 @@ class ExperimentDeployer:
             command="mvn clean install -DskipTests",
             # command="tail -f /dev/null",
         )
-        if "BUILD SUCCESS" not in mvn.decode("utf-8"):
+        if "BUILD SUCCESS" not in mvn_output.decode("utf-8"):
+            print(mvn_output)
             raise RuntimeError(
                 "failed to build teastore. Run mvn clean install -DskipTests manually and see why it fails"
             )
         else:
-            print("rebuild java deps")
+            print("rebuilt java deps")
 
         # patch build_docker.sh to use buildx
         with open(
@@ -160,6 +162,7 @@ class ExperimentDeployer:
         )
         helm_deploy = helm_deploy.decode("utf-8")
         if not "STATUS: deployed" in helm_deploy:
+            print(helm_deploy)
             raise RuntimeError(
                 "failed to deploy helm chart. Run helm install manually and see why it fails"
             )

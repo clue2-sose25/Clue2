@@ -4,7 +4,10 @@ from scaling_experiment_setting import ScalingExperimentSetting
 NUM_ITERATIONS = 2
 
 
-prometheus_url = "http://130.149.158.130:32426"
+# prometheus_url = "http://130.149.158.130:32426" # actual ip of prometheus node
+# prometheus_url = "http://host.minikube.internal:9090" # for minikube usage
+prometheus_url = "http://192.168.1.219:9090"
+
 namespace = "tea-bench"
 scale = ScalingExperimentSetting.BOTH
 
@@ -19,30 +22,30 @@ exps = [
         prometheus_url=prometheus_url,
         autoscaling=scale,
     ),
-    Experiment(
-        name="serverless",
-        target_branch="feature/serverless",
-        # patches=[],
-        namespace=namespace,
-        colocated_workload=True,
-        prometheus_url=prometheus_url,
-        autoscaling=scale,
-        critical_services=["teastore-registry", "teastore-webui"],
-        infrastrcutre_namespaces=["knative-serving"]
-    ),
-    Experiment(
-        name="monolith",
-        target_branch="feature/monolith",
-        namespace=namespace,
-        colocated_workload=True,
-        prometheus_url=prometheus_url,
-        autoscaling=scale,
-        critical_services=["teastore-all"],
-        target_host="http://teastore-all/tools.descartes.teastore.webui",
-    ),
+    # Experiment(
+    #     name="serverless",
+    #     target_branch="serverless-auth",
+    #     # patches=[],
+    #     namespace=namespace,
+    #     colocated_workload=True,
+    #     prometheus_url=prometheus_url,
+    #     autoscaling=scale,
+    #     critical_services=["teastore-registry", "teastore-webui"],
+    #     infrastrcutre_namespaces=["knative-serving"]
+    # ),
+    # Experiment(
+    #     name="monolith",
+    #     target_branch="monolith",
+    #     namespace=namespace,
+    #     colocated_workload=True,
+    #     prometheus_url=prometheus_url,
+    #     autoscaling=scale,
+    #     critical_services=["teastore-all"],
+    #     target_host="http://teastore-all/tools.descartes.teastore.webui",
+    # ),
     Experiment(
         name="jvm",
-        target_branch="jvm-impoove",
+        target_branch="runtime-replacement",
         # patches=[],
         namespace=namespace,
         colocated_workload=True,
@@ -51,7 +54,7 @@ exps = [
     ),
     Experiment(
         name="norec",
-        target_branch="feature/norecommendations",
+        target_branch="service-reduction",
         # patches=[],
         namespace=namespace,
         colocated_workload=True,
@@ -67,15 +70,15 @@ exps = [
     #     prometheus_url=prometheus_url,
     #     autoscaling=scale,
     # ),
-    Experiment(
-        name="obs",
-        target_branch="feature/object-storage",
-        # patches=[],
-        namespace=namespace,
-        colocated_workload=True,
-        prometheus_url=prometheus_url,
-        autoscaling=scale,
-    ),
+    # Experiment(
+    #     name="obs",
+    #     target_branch="feature/object-storage",
+    #     # patches=[],
+    #     namespace=namespace,
+    #     colocated_workload=True,
+    #     prometheus_url=prometheus_url,
+    #     autoscaling=scale,
+    # ),
     # Experiment(
     #     name="dbopt",
     #     target_branch="feature/db-optimization",
