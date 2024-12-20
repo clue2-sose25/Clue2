@@ -20,13 +20,14 @@ Moreover, we are currently focusing on Kubernetes as the orchestrator, so as lon
 
 ## 0. Prerequisites
 
-  * Docker
-  * Kubernetes (for testing purposes, minikube works)
-    * at least one Kubernetes node running Scaphandra/Kepler
+  * Docker, e.g. 20.10
+  * Kubernetes, e.g. 1.29 (for testing purposes, [minikube](https://minikube.sigs.k8s.io/docs/) works)
+    * at least one Kubernetes node running Scaphandra/[Kepler](https://sustainable-computing.io/installation/kepler-helm/), and a [NodeExporter](https://observability.thomasriley.co.uk/monitoring-kubernetes/metrics/node-exporter/). If the tracker does not find any energy data, the experiment will start, but the script will stop due to lack of usable insights
     * for the serverless variant, knative installed
     * for external power meters, connect e.g. a Tapo device (out of scope of this Readme)
-  * Helm 
-  * Python
+  * [Helm](https://helm.sh/), e.g. v3.16
+  * Python, e.g. 3.11
+
 
 ## 1. Setup
 
@@ -36,13 +37,13 @@ Moreover, we are currently focusing on Kubernetes as the orchestrator, so as lon
 
 Install Python dependencies from the Pipfile using pip (or use a virtual environment with e.g. pipenv)
 
-```
+```bash
 pip install
 ```
 
 Clone the system under test, i.e. the teastore. Each variant is in a separate branch.
 
-```
+```bash
 git clone https://github.com/ISE-TU-Berlin/sustainable_teastore.git teastore
 ```
 
@@ -69,13 +70,13 @@ Set your Prometheus url in `exv2/experiment_list.py` (when hosting locally, use 
 Run a variant indefinetely, e.g. baseline (see all experiment names in `exv2/experiment_list.py`)
 
 
-```
+```bash
 python exv2/run.py baseline --skip-build
 ```
 
 When using minikube, forward a port so you can access the TeaStore:
 
-```
+```bash
 kubectl port-forward service/teastore-webui 8080:80 --namespace=tea-bench
 ```
 
@@ -90,7 +91,7 @@ TeaStore may run some initial tasks on startup, so make sure to wait a minute if
 This will run the experiments from `exv2/experiment_list.py` and gather the results.
 Without building images, Clue will use the latest images from the public registry, not necessarily the variant checked out locally!
 
-```
+```bash
 python exv2/main.py --skip-build
 ```
 
@@ -104,9 +105,6 @@ If you create your own variants or make changes, the images need to be rebuilt a
  * Make sure to run docker login
 
 This will automatically create multiple public repositories in your account. When building images for the first time, pushing will take some time depending on your internet connection.
-
-
-
 
 
 
