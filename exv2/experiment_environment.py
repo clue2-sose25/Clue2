@@ -1,5 +1,6 @@
 from requests import get
 from typing import Protocol
+from cfgload import load_config
 
 class WorkloadAutoConfig(Protocol):
     def set_workload(self, exp:"ExperimentEnvironment"):
@@ -9,6 +10,11 @@ class WorkloadAutoConfig(Protocol):
 class ExperimentEnvironment:
 
     def __init__(self):
+
+        config = load_config()
+        # print(config)
+
+
         # files / io
         self.teastore_path = "teastore"  # where the repo with the teastore is located
 
@@ -17,9 +23,13 @@ class ExperimentEnvironment:
 
         self.local_port = 8888
         # infra
-        self.docker_user = (
-            "tawalaya"  # the docker user to use for pushing/pulling images
-        )
+        self.docker_user = config['images']['docker_hub_username']
+        
+        # (
+        #     "tawalaya"  # the docker user to use for pushing/pulling images
+        # )
+
+
         self.remote_platform_arch = "linux/amd64"  # the target platform to build images for (kubernetes node architecture)
         self.local_platform_arch = "linux/amd64"  # the local architecture to use for local latency measurements
 

@@ -7,6 +7,8 @@
   - [3. Testing the experiment setup (without building images)](#3-testing-the-experiment-setup-without-building-images)
   - [4. Running the experiments (with building and pushing images)](#4-running-the-experiments-with-building-and-pushing-images)
   - [Troubleshooting / Known Issues](#troubleshooting--known-issues)
+  - [Container Registry](#container-registry)
+    - [Running your own registry](#running-your-own-registry)
 
 
 Clue is  a benchmarking and observability framework for gathering and compiling sustainability and quality reports on changes in cloud-native applications. 
@@ -116,3 +118,49 @@ If all the preliminaries for data collection are installed, Clue will fetch the 
  * Ensure that you have a sufficient amount of memory alocated for docker, at least 12 GB
  * Run `minikube dashboard` to monitor deployment errors, e.g. missing node labels or insufficient memory
  * The monolith app has some specific handles, e.g. a different set name. If a a set is not found, especially when skipping builds, this can cause probelems
+
+
+## Container Registry
+
+
+### Running your own registry
+
+This is the most sensible way, but requires a bunch of nasty workarounds.
+
+First, choose a port and set your docker to allow insecure registries from there, e.g. using the Docker Desktop UI. You have to use your current LAN IP, as localhost or 127.0.0.1 will not work from inside the docker machine.
+
+```json
+  "insecure-registries": [
+    "192.168.0.124:22222"
+  ]
+```
+
+
+Then, enable the registry addon in minikube:
+
+```sh
+minikube addons enable registry
+```
+
+Take note of the non-standard port (it will change upon restart, so we cannot use it directly with docker), and save it to a variable:
+
+```sh
+export REGPORT=12345
+```
+
+Now forward it to the port chosen in the beginning:
+```sh
+ncat --sh-exec "ncat localhost $REGPORT" -l 22222 --keep-open
+```
+
+Finally, change you `clue.yaml` to use your new local registry:
+
+```yaml
+images:
+  # the docker hub user to use for pushing/pulling images
+  # docker_hub_username: kaozente
+  docker_hub_username: "192.168.0.124:22222/karl"
+```
+
+
+

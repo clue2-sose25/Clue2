@@ -155,17 +155,20 @@ class ExperimentDeployer:
         # write copy of used values to observations
         with open(path.join(observations, "values.yaml"), "w") as f:
             f.write(values)
-
-        helm_deploy = subprocess.check_output(
-            ["helm", "install", "teastore", "-n", exp.namespace, "."],
-            cwd=path.join(exp.env.teastore_path, "examples", "helm"),
-        )
-        helm_deploy = helm_deploy.decode("utf-8")
-        if not "STATUS: deployed" in helm_deploy:
-            print(helm_deploy)
-            raise RuntimeError(
-                "failed to deploy helm chart. Run helm install manually and see why it fails"
+        try:
+            helm_deploy = subprocess.check_output(
+                ["helm", "install", "teastore", "-n", exp.namespace, "."],
+                cwd=path.join(exp.env.teastore_path, "examples", "helm"),
             )
+            helm_deploy = helm_deploy.decode("utf-8")
+            if not "STATUS: deployed" in helm_deploy:
+                print(helm_deploy)
+                raise RuntimeError(
+                    "failed to deploy helm chart. Run helm install manually and see why it fails"
+                )
+        except subprocess.CalledProcessError as cpe:
+            print(cpe)
+
         
         self.wait_until_services_ready(
             exp.critical_services,
