@@ -18,4 +18,5 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-psc = { git = "https://git.tu-berlin.de/cloud-sustainability/prometeus-energy-agent" }
+# psc = { git = "https://git.tu-berlin.de/cloud-sustainability/prometeus-energy-agent" }
+psc = { path  = "./agent", editable=true }

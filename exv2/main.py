@@ -9,6 +9,7 @@ import progressbar
 from kubernetes import config
 from tabulate import tabulate
 import argparse
+import logging
 
 import experiment_list
 from experiment import Experiment
@@ -27,6 +28,12 @@ parser.add_argument("--dirty" ,action="store_true",help="skip build, don't wait,
 parser.add_argument("--dry" ,action="store_true",help="just print exeriments")
 args = parser.parse_args()
 
+logging.basicConfig()
+logging.getLogger().setLevel(logging.DEBUG)
+logging.getLogger("docker").setLevel(logging.INFO)
+logging.getLogger("kubernetes").setLevel(logging.INFO)
+
+logging.debug("debug log level")
 
 DIRTY = args.dirty
 SKIPBUILD = args.skip_build
@@ -48,9 +55,9 @@ def full_run():
 
     workloads = [
         ShapredWorkload(),
-        RampingWorkload(), 
-        PausingWorkload(),  
-        FixedRampingWorkload()
+        # RampingWorkload(), 
+        # PausingWorkload(),  
+        # FixedRampingWorkload()
     ]
 
     exps = []
@@ -60,25 +67,25 @@ def full_run():
 
     return exps
 
-def custom_reruns():
-    exps = []
-    prometheus_url = "http://130.149.158.130:32426"
-    namespace = "tea-bench"
-    scale = ScalingExperimentSetting.BOTH
+# def custom_reruns():
+#     exps = []
+#     prometheus_url = "http://130.149.158.130:32426"
+#     namespace = "tea-bench"
+#     scale = ScalingExperimentSetting.BOTH
     
-    e = Experiment(
-        name="baseline",
-        target_branch="vanilla",
-        # patches=[],
-        namespace=namespace,
-        colocated_workload=True,
-        prometheus_url=prometheus_url,
-        autoscaling=scale,
-    )
-    e.env.set_workload(ShapredWorkload())
-    exps.append(e)
+#     e = Experiment(
+#         name="baseline",
+#         target_branch="vanilla",
+#         # patches=[],
+#         namespace=namespace,
+#         colocated_workload=True,
+#         prometheus_url=prometheus_url,
+#         autoscaling=scale,
+#     )
+#     e.env.set_workload(ShapredWorkload())
+#     exps.append(e)
 
-    return exps
+#     return exps
 
 def main():
     if DIRTY:
@@ -90,6 +97,10 @@ def main():
     exps = full_run()
     # exps = custom_reruns()
     
+    if DIRTY:
+        for e in exps:
+            e.env.tags.append("dirty")
+
 
     #sort by branch to speed up rebuilds ...
     def exp_sort_key(exp:Experiment):
@@ -162,13 +173,14 @@ def run_experiment(exp: Experiment, observations_out_path):
         ExperimentRunner(exp).run(observations_out_path)
             
     except RuntimeError as e:
+        print("error running experiment!")
         print(e)
     finally:
         ExperimentRunner(exp).cleanup()
         if not DIRTY:
             print(f"waiting {exp.env.wait_after_workloads}s after cleaning the workload")
             time.sleep(exp.env.wait_after_workloads)
-    # additional sleep after a run just to be on the safe side
+    print("additional sleep after a run just to be on the safe side")
     time.sleep(60)
 
 

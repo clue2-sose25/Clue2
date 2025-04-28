@@ -61,6 +61,7 @@ class ExperimentRunner:
 
         # 5. start workload
         # start resource tracker
+        logging.debug("starting tracker")
         tracker.start()
         # MAIN timeout to kill the experiment after 2 min after the experiment should be over (to avoid hanging)
         timeout = exp.env.total_duration() + 2*60 + 30
@@ -75,14 +76,17 @@ class ExperimentRunner:
         signal.signal(signal.SIGALRM, cancel)
         signal.signal(signal.SIGINT, cancel) #also cancle on control-C
         
-        time.sleep(30)  # wait for 120s before stressing the workload
+        # time.sleep(30)  # wait for 120s before stressing the workload
 
         logging.info(f"starting workload with timeout {timeout}")
         signal.alarm(timeout)
         # deploy workload on different node or locally and wait for workload to be completed (or timeout)
         wlr = WorkloadRunner(experiment=exp)
         # will run remotely or locally based on experiment
+
         wlr.run_workload(observations_out_path)
+
+        logging.info("finished running workload, stopping trackers and flushing channels")
         # stop resource tracker
         tracker.stop()
         node_channel.flush()

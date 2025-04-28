@@ -1,6 +1,7 @@
 from requests import get
 from typing import Protocol
 from cfgload import load_config
+import logging
 
 class WorkloadAutoConfig(Protocol):
     def set_workload(self, exp:"ExperimentEnvironment"):
@@ -19,7 +20,10 @@ class ExperimentEnvironment:
         self.teastore_path = "teastore"  # where the repo with the teastore is located
 
         public_ip = get("https://api.ipify.org").content.decode("utf8")
-        self.local_public_ip = public_ip if public_ip else "130.149.158.80"  #
+        # self.local_public_ip = public_ip if public_ip else "130.149.158.80"  #
+        self.local_public_ip = "cluereg.local"
+
+        # logging.info("using workload public ip %s", self.local_public_ip)
 
         self.local_port = 8888
         # infra
@@ -32,8 +36,8 @@ class ExperimentEnvironment:
 
         # self.remote_platform_arch = "linux/amd64"  # the target platform to build images for (kubernetes node architecture)
         self.remote_platform_arch = "linux/arm64/v8"  # the target platform to build images for (kubernetes node architecture)
-        self.local_platform_arch = "linux/arm64/v8"  # the local architecture to use for local latency measurements
         # self.local_platform_arch = "linux/amd64"  # the local architecture to use for local latency measurements
+        self.local_platform_arch = "linux/arm64/v8"  # the local architecture to use for local latency measurements
 
         self.resource_limits = (
             {  # the resource limits to use for the experiment (see below)

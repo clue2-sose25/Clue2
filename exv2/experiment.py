@@ -21,6 +21,7 @@ class Experiment:
             critical_services:List[str]=["teastore-auth", "teastore-registry", "teastore-webui"],
             target_host:str="http://teastore-webui/tools.descartes.teastore.webui",
             infrastrcutre_namespaces:List[str] = [],
+
             # env = ExperimentEnvironment
     ):
 

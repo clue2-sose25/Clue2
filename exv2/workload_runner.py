@@ -48,6 +48,8 @@ class WorkloadRunner:
             else exp.env.remote_platform_arch
         )
 
+        logging.info("building workload for platform %s", platform)
+
         build = subprocess.check_call(
             [
                 "docker",
@@ -73,7 +75,7 @@ class WorkloadRunner:
             self._run_local_workload(outpath)
 
     def _run_remote_workload(self, outpath):
-        observations = os.path.join(outpath, "") # ensure trailing slash for later merging
+        observations = os.path.join(outpath, "") # ensure trailing slash for later path building
         core = client.CoreV1Api()
         exp = self.exp
 
@@ -91,6 +93,7 @@ class WorkloadRunner:
         signal.signal(signal.SIGUSR1, cancel)
 
         self._deploy_remote_workload(exp, core)
+        logging.debug("deployed workload container")
         
         self._wait_for_workload(core, exp, observations)
 
@@ -110,6 +113,7 @@ class WorkloadRunner:
                     label_selector="app=loadgenerator",
                     timeout_seconds=60,
             ):
+                logging.debug("container event: %s", event['type'])
                 pod = event["object"]
                 if pod.status.phase == "Succeeded" or pod.status.phase == "Completed":
                     print("container finished, downloading results")
@@ -150,6 +154,29 @@ class WorkloadRunner:
             )
         )
 
+        logging.debug("using workload container env: %s", container_env)
+
+
+        # make sure that the loadgenerator runs on a seperate node, unless we're using e.g. minikube
+        if 'dirty' not in exp.env.tags:
+            affinity = client.V1Affinity(
+                            node_affinity=client.V1NodeAffinity(
+                                required_during_scheduling_ignored_during_execution=client.V1NodeSelector(
+                                    node_selector_terms=[
+                                        client.V1NodeSelectorTerm(
+                                            match_expressions=[
+                                                client.V1NodeSelectorRequirement(
+                                                    key="scaphandre", operator="DoesNotExist"
+                                                )
+                                            ]
+                                        )
+                                    ]
+                                )
+                            ),
+                        ) 
+        else:
+            affinity=None
+
 
         core.create_namespaced_pod(
             namespace=exp.namespace,
@@ -168,27 +195,14 @@ class WorkloadRunner:
                             command=[
                                 "sh",
                                 "-c",
-                                "locust --csv teastore --csv-full-history --headless --only-summary 1>/dev/null 2>erros.log || tar zcf - teastore_stats.csv teastore_failures.csv teastore_stats_history.csv erros.log | base64 -w 0",
+#                                "echo 'meep' && locust --csv teastore --csv-full-history --headless --only-summary 1>/dev/null 2>errors.log || tar zcf - teastore_stats.csv teastore_failures.csv teastore_stats_history.csv errors.log | base64 -w 0",
+                                "locust --csv teastore --csv-full-history --headless --only-summary 1>/dev/null 2>errors.log || tar zcf - teastore_stats.csv teastore_failures.csv teastore_stats_history.csv errors.log | base64 -w 0",
                             ],
                             working_dir="/loadgenerator",
                         )
                     ],
                     # run this on a differnt node
-                    affinity=client.V1Affinity(
-                        node_affinity=client.V1NodeAffinity(
-                            required_during_scheduling_ignored_during_execution=client.V1NodeSelector(
-                                node_selector_terms=[
-                                    client.V1NodeSelectorTerm(
-                                        match_expressions=[
-                                            client.V1NodeSelectorRequirement(
-                                                key="scaphandre", operator="DoesNotExist"
-                                            )
-                                        ]
-                                    )
-                                ]
-                            )
-                        ),
-                    ),
+                    affinity=affinity,
                     restart_policy="Never",
                 ),
             ),
@@ -205,6 +219,8 @@ class WorkloadRunner:
             log_contents = resp
             if not log_contents or len(log_contents) == 0:
                 print(f"{pod_name} in namespace {namespace} has no logs, workload failed?")
+                return 
+            
             with TemporaryFile() as tar_buffer:
                 tar_buffer.write(base64.b64decode(log_contents))
                 tar_buffer.seek(0)
@@ -215,9 +231,9 @@ class WorkloadRunner:
                 ) as tar:
                     tar.extractall(path=destination_path)
         except ApiException as e:
-            logging.error(f"failed to get log from pod {pod_name} in namespace {namespace}", e)
+            logging.error(f"failed to get log from pod {pod_name} in namespace {namespace}: %s", e)
         except tarfile.TarError as e:
-            logging.error(f"failed to extract log", e, log_contents)
+            logging.error(f"failed to extract log from TAR", e, log_contents)
         except Exception as e:
             logging.error("failed to extraxt log",e,log_contents)
             

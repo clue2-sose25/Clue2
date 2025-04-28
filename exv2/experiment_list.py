@@ -1,7 +1,7 @@
 from experiment import Experiment
 from scaling_experiment_setting import ScalingExperimentSetting
 
-NUM_ITERATIONS = 2
+NUM_ITERATIONS = 1
 
 
 # prometheus_url = "http://130.149.158.130:32426" # actual ip of prometheus node
@@ -13,7 +13,7 @@ prometheus_url = "http://localhost:9090" # minikube
 # prometheus_url = "http://prometheus-server.default.svc.cluster.local" # minikube
 
 namespace = "tea-bench"
-scale = ScalingExperimentSetting.BOTH
+scale = ScalingExperimentSetting.CPUBOUND
 
 
 exps = [
@@ -47,24 +47,24 @@ exps = [
     #     critical_services=["teastore-all"],
     #     target_host="http://teastore-all/tools.descartes.teastore.webui",
     # ),
-    Experiment(
-        name="jvm",
-        target_branch="runtime-replacement",
-        # patches=[],
-        namespace=namespace,
-        colocated_workload=True,
-        prometheus_url=prometheus_url,
-        autoscaling=scale,
-    ),
-    Experiment(
-        name="norec",
-        target_branch="service-reduction",
-        # patches=[],
-        namespace=namespace,
-        colocated_workload=True,
-        prometheus_url=prometheus_url,
-        autoscaling=scale,
-    ),
+    # Experiment(
+    #     name="jvm",
+    #     target_branch="runtime-replacement",
+    #     # patches=[],
+    #     namespace=namespace,
+    #     colocated_workload=True,
+    #     prometheus_url=prometheus_url,
+    #     autoscaling=scale,
+    # ),
+    # Experiment(
+    #     name="norec",
+    #     target_branch="service-reduction",
+    #     # patches=[],
+    #     namespace=namespace,
+    #     colocated_workload=True,
+    #     prometheus_url=prometheus_url,
+    #     autoscaling=scale,
+    # ),
     # Experiment(
     #     name="lessrec",
     #     target_branch="feature/lessrecs",

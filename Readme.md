@@ -170,6 +170,17 @@ helm repo add prometheus-community https://prometheus-community.github.io/helm-c
 helm install kps1 prometheus-community/kube-prometheus-stack
 ```
 
+
+Install Kepler
+
+```
+helm install kepler kepler/kepler \
+    --namespace kepler \
+    --create-namespace \
+    --set serviceMonitor.enabled=true \
+    --set serviceMonitor.labels.release=kps1 
+```
+
 Make Prometheus available as localhost:9090
 
 ```
