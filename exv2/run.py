@@ -42,10 +42,10 @@ def available_experiments():
 @click.argument("exp-name", type=click.Choice(available_experiments())) # default="baseline")
 @click.option("--skip-build/--force-build", default=False)
 @click.option("--kind", default=None)
-@click.option("--platfrom", default="linux/amd64")
+@click.option("--platform", default="linux/amd64")
 # @click.option("--service_name", default="teastore-webui")
 # @click.option("--port", default="8080")
-def run(exp_name: str, skip_build, kind, platfrom):
+def run(exp_name: str, skip_build, kind, platform):
     """Build and run a given experiment's setup"""
 
     matching_exps = [e for e in experiment_list.exps if e.name == exp_name]
@@ -73,7 +73,7 @@ def run(exp_name: str, skip_build, kind, platfrom):
         if kind:
             exp.env.kind_cluster_name = kind
 
-        exp.env.remote_platform_arch = platfrom
+        exp.env.remote_platform_arch = platform
 
         if not skip_build:
             echo("building images")

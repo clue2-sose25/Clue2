@@ -30,8 +30,10 @@ class ExperimentEnvironment:
         # )
 
 
-        self.remote_platform_arch = "linux/amd64"  # the target platform to build images for (kubernetes node architecture)
-        self.local_platform_arch = "linux/amd64"  # the local architecture to use for local latency measurements
+        # self.remote_platform_arch = "linux/amd64"  # the target platform to build images for (kubernetes node architecture)
+        self.remote_platform_arch = "linux/arm64/v8"  # the target platform to build images for (kubernetes node architecture)
+        self.local_platform_arch = "linux/arm64/v8"  # the local architecture to use for local latency measurements
+        # self.local_platform_arch = "linux/amd64"  # the local architecture to use for local latency measurements
 
         self.resource_limits = (
             {  # the resource limits to use for the experiment (see below)

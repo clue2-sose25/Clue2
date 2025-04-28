@@ -9,6 +9,7 @@
   - [Troubleshooting / Known Issues](#troubleshooting--known-issues)
   - [Container Registry](#container-registry)
     - [Running your own registry](#running-your-own-registry)
+  - [Cluster Preparation](#cluster-preparation)
 
 
 Clue is  a benchmarking and observability framework for gathering and compiling sustainability and quality reports on changes in cloud-native applications. 
@@ -41,7 +42,7 @@ This Readme describes the process of running experiments on different variants o
 Install Python dependencies from the Pipfile using pip (or use a virtual environment with e.g. pipenv)
 
 ```bash
-pipenv install
+uv install
 ```
 
 Clone the system under test, i.e. the teastore. Each variant is in a separate branch.
@@ -131,7 +132,7 @@ First, choose a port and set your docker to allow insecure registries from there
 
 ```json
   "insecure-registries": [
-    "192.168.0.124:22222"
+    "cluereg.local:22222"
   ]
 ```
 
@@ -142,15 +143,11 @@ Then, enable the registry addon in minikube:
 minikube addons enable registry
 ```
 
-Take note of the non-standard port (it will change upon restart, so we cannot use it directly with docker), and save it to a variable:
-
-```sh
-export REGPORT=12345
-```
+Take note of the non-standard port (it will change upon restart, so we cannot use it directly with docker).
 
 Now forward it to the port chosen in the beginning:
 ```sh
-ncat --sh-exec "ncat localhost $REGPORT" -l 22222 --keep-open
+ncat --sh-exec "ncat localhost `docker container port minikube | grep 5000 | grep -E -o  "(\d*)$"`" -l 22222 --keep-open
 ```
 
 Finally, change you `clue.yaml` to use your new local registry:
@@ -164,3 +161,17 @@ images:
 
 
 
+## Cluster Preparation
+
+Install Prometheus and Node Exporter, e.g.:
+
+```bash
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm install kps1 prometheus-community/kube-prometheus-stack
+```
+
+Make Prometheus available as localhost:9090
+
+```
+kubectl --namespace default port-forward prometheus-kps1-kube-prometheus-stack-prometheus-0 9090
+```

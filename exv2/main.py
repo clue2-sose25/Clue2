@@ -22,7 +22,7 @@ from experiment_workloads import ShapredWorkload, RampingWorkload, PausingWorklo
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--skip_build" ,action="store_true",help="don't build, use latest image from registry")
+parser.add_argument("--skip-build" ,action="store_true",help="don't build, use latest image from registry")
 parser.add_argument("--dirty" ,action="store_true",help="skip build, don't wait, and mix results")
 parser.add_argument("--dry" ,action="store_true",help="just print exeriments")
 args = parser.parse_args()

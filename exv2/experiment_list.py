@@ -6,7 +6,11 @@ NUM_ITERATIONS = 2
 
 # prometheus_url = "http://130.149.158.130:32426" # actual ip of prometheus node
 # prometheus_url = "http://host.minikube.internal:9090" # for minikube usage
-prometheus_url = "http://192.168.1.219:9090"
+# prometheus_url = "http://192.168.1.219:9090"
+
+# helm install prometheus prometheus-community/prometheus
+prometheus_url = "http://localhost:9090" # minikube
+# prometheus_url = "http://prometheus-server.default.svc.cluster.local" # minikube
 
 namespace = "tea-bench"
 scale = ScalingExperimentSetting.BOTH
