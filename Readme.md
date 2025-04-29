@@ -8,7 +8,7 @@
   - [4. Running the experiments (with building and pushing images)](#4-running-the-experiments-with-building-and-pushing-images)
   - [Troubleshooting / Known Issues](#troubleshooting--known-issues)
   - [Container Registry](#container-registry)
-    - [Running your own registry](#running-your-own-registry)
+    - [Running in Minikube with your own registry](#running-in-minikube-with-your-own-registry)
   - [Cluster Preparation](#cluster-preparation)
 
 
@@ -30,7 +30,7 @@ This Readme describes the process of running experiments on different variants o
     * for the serverless variant, knative installed
     * for external power meters, connect e.g. a Tapo device (out of scope of this Readme)
   * [Helm](https://helm.sh/), e.g. v3.16
-  * Python, e.g. 3.11, using pipenv in this Readme
+  * Python, e.g. 3.11, using uv in this Readme
 
 
 ## 1. Setup
@@ -39,10 +39,16 @@ This Readme describes the process of running experiments on different variants o
 > Please note that this repository also contains work in progress parts -- not all CLUE features and experiment branches that are not mentioned in the paper might be thoroughly tested.
 
 
-Install Python dependencies from the Pipfile using pip (or use a virtual environment with e.g. pipenv)
+Install Python dependencies using [uv](https://docs.astral.sh/uv/) (or use a virtual environment with e.g. pipenv)
 
 ```bash
-uv install
+uv sync
+```
+
+For local development, clone the PSC tracker into `agent` (uv is configured in the toml to find it there):
+
+```bash
+git clone https://github.com/ISE-TU-Berlin/PSC.git agent
 ```
 
 Clone the system under test, i.e. the teastore. Each variant is in a separate branch.
@@ -65,7 +71,7 @@ In a multi-node setting, not all nodes might have the option to measure using sc
 kubectl label nodes minikube scaphandre=true
 ```
 
-Set your Prometheus url in `exv2/experiment_list.py` (when hosting locally, use your LAN IP -- localhost will not work) and select the experiments for tests.
+Set your Prometheus url in `exv2/experiment_list.py` and select the experiments for tests.
 
 
 
@@ -124,16 +130,33 @@ If all the preliminaries for data collection are installed, Clue will fetch the 
 ## Container Registry
 
 
-### Running your own registry
+### Running in Minikube with your own registry
 
 This is the most sensible way, but requires a bunch of nasty workarounds.
 
-First, choose a port and set your docker to allow insecure registries from there, e.g. using the Docker Desktop UI. You have to use your current LAN IP, as localhost or 127.0.0.1 will not work from inside the docker machine.
+First, choose a port and set your docker to allow insecure registries from there, e.g. using the Docker Desktop UI. You have to use your current LAN IP, as localhost or 127.0.0.1 will not work from inside the docker machine. It's best to tie it to a hostname. Just add it in `/etc/hosts` on your machine and resolve it to your public address.
 
 ```json
   "insecure-registries": [
     "cluereg.local:22222"
   ]
+```
+
+Make sure that minikube accepts the registry and has enough memory (configure docker before):
+
+```bash
+minikube start --insecure-registry "cluereg.local:22222" --cpus 8 --memory 12000
+```
+
+Once minikube is running, ssh into the machine and add your custom dns name for the local registry to resolve to the host of minikubes internal network (i.e., same as the ip that resolves to host.minikube.internal). This ip shouldn't change, but the hosts file is sometimes reset after restarting minikube.
+
+```bash
+minikube ssh
+
+# docker @ minikube
+cat /etc/hosts
+sudo su
+echo '192.168.65.254 cluereg.local' >> /etc/hosts
 ```
 
 
@@ -156,7 +179,7 @@ Finally, change you `clue.yaml` to use your new local registry:
 images:
   # the docker hub user to use for pushing/pulling images
   # docker_hub_username: kaozente
-  docker_hub_username: "192.168.0.124:22222/karl"
+  docker_hub_username: "cluereg.local:22222/karl"
 ```
 
 
