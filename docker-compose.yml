@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  registry:
+    image: registry:2
+    container_name: registry
+    ports:
+      - "6789:5000"
+    restart: unless-stopped
+    volumes:
+      - registry-data:/var/lib/registry
+
+volumes:
+  registry-data:

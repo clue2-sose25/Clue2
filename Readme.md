@@ -132,10 +132,10 @@ If all the preliminaries for data collection are installed, Clue will fetch the 
 
 This is the most sensible way for running the setup locally.
 
-First make sure docker is running and execute this command to bring up a container hosting your own registry:
+First make sure docker and docker compose is installed, then execute this command to bring up the docker stack conatining a service hosting your own registry:
 
 ```bash
-docker run -d -p 6789:5000 --restart always --name registry registry:2
+docker compose up -d
 ```
 
 Now make sure to allow insecure connections to your just started registry by adding these lines into you docker daemon json configuration:
