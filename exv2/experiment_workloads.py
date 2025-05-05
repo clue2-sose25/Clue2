@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from experiment_environment import ExperimentEnvironment
+from enum import StrEnum
 
 
 LOADGENERATOR_DURATION = 64 # 600
@@ -8,12 +9,17 @@ LOADGENERATOR_MAX_DAILY_USERS = 100 # 1000
 from abc import ABC, abstractmethod
 from experiment_environment import ExperimentEnvironment
 
+class WorkloadType(StrEnum):
+    SHAPED = "shaped"
+    RAMPUP = "rampup"
+    PAUSING = "pausing"
+    FIXED = "fixed"
 
 class Workload(ABC):
     """
     Abstract base class for all workloads. Contains shared constants and enforces a common interface.
     """
-    def __init__(self, load_generator_duration: int, max_daily_users: int):
+    def __init__(self, load_generator_duration: int = LOADGENERATOR_DURATION, max_daily_users: int = LOADGENERATOR_MAX_DAILY_USERS):
         self._load_generator_duration = load_generator_duration
         self._max_daily_users = max_daily_users
 
@@ -53,7 +59,7 @@ class ShapedWorkload(Workload):
             "LOADGENERATOR_MAX_DAILY_USERS": self.max_daily_users,  # max daily users
             "LOCUST_LOCUSTFILE": "./consumerbehavior.py,./loadshapes.py",  # 8 different stages
         }
-        exp.tags.append("shaped")
+        exp.tags.append(WorkloadType.SHAPED)
         exp.timeout_duration = self.load_generator_duration + 60
 
 
@@ -68,7 +74,7 @@ class RampingWorkload(Workload):
             "LOCUST_SPAWN_RATE": 3,  # users per second
             "LOCUST_USERS": self.max_daily_users,
         }
-        exp.tags.append("rampup")
+        exp.tags.append(WorkloadType.RAMPUP)
         exp.timeout_duration = self.load_generator_duration + 60
     
 class PausingWorkload(Workload):
@@ -84,7 +90,7 @@ class PausingWorkload(Workload):
             "PAUSE_BACKOFF": 120,
         }
         exp.timeout_duration = self.load_generator_duration + 60
-        exp.tags.append("pausing")
+        exp.tags.append(WorkloadType.PAUSING)
 
 
 class FixedRampingWorkload(Workload):
@@ -100,5 +106,5 @@ class FixedRampingWorkload(Workload):
             "LOCUST_USERS": self.max_daily_users,
             "MAXIMUM_REQUESTS": 200,
         }
-        exp.tags.append("fixed")
+        exp.tags.append(WorkloadType.FIXED)
         exp.timeout_duration = self.load_generator_duration + 60
