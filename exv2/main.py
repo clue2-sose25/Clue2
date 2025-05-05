@@ -14,11 +14,11 @@ import logging
 import experiment_list
 from experiment import Experiment
 from experiment_deployer import ExperimentDeployer
-from experiment_environment import ExperimentEnvironment, WorkloadAutoConfig
+from experiment_environment import ExperimentEnvironment
 from experiment_runner import ExperimentRunner
 from workload_runner import WorkloadRunner
 from scaling_experiment_setting import ScalingExperimentSetting
-from experiment_workloads import ShapredWorkload, RampingWorkload, PausingWorkload, FixedRampingWorkload
+from experiment_workloads import ShapedWorkload, RampingWorkload, PausingWorkload, FixedRampingWorkload
 
 
 
@@ -52,7 +52,7 @@ def full_run():
     exps = experiment_list.exps
 
     workloads = [
-        ShapredWorkload(),
+        ShapedWorkload(),
         # RampingWorkload(), 
         # PausingWorkload(),  
         # FixedRampingWorkload()

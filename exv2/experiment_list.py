@@ -1,4 +1,5 @@
 import yaml
+import copy
 
 from pydantic import BaseModel
 from dataclasses import dataclass
@@ -6,6 +7,7 @@ from pathlib import Path
 
 from experiment import Experiment
 from scaling_experiment_setting import ScalingExperimentSetting
+from experiment_workloads import Workload
 
 NUM_ITERATIONS = 1
 
@@ -53,6 +55,21 @@ class ExperimentList():
                 )
                 experiments.append(experiment)
         return ExperimentList(experiments=experiments)
+    
+    @staticmethod
+    def _set_workload(exp: Experiment, workload: Workload):
+        new_ex = copy.deepcopy(exp)
+        new_ex.env.set_workload(workload)
+        return new_ex
+
+    def full_run(self, workloads: list[Workload]):
+        exps = self.experiment_list.exps
+        exps = []
+        for w in workloads:
+            for exp in self.experiment_list.exps:
+                exps.append(self._set_workload(exp,w))
+
+        return exps
 
 
 # exps = [

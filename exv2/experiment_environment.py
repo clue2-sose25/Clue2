@@ -3,9 +3,10 @@ from typing import Protocol
 from cfgload import load_config
 import logging
 
-class WorkloadAutoConfig(Protocol):
-    def set_workload(self, exp:"ExperimentEnvironment"):
-        pass
+#not really necessary anymore
+# class WorkloadAutoConfig(Protocol):
+#     def set_workload(self, exp:"ExperimentEnvironment"):
+#         pass
 
 
 class ExperimentEnvironment:
