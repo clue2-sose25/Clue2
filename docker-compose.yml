@@ -1,4 +1,4 @@
-version: '3.8'
+name: "clue2"
 
 services:
   registry:

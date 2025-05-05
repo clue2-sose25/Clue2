@@ -50,7 +50,7 @@ First make sure `Docker` and `Docker Compose` is installed, then execute this co
 docker compose up -d
 ```
 
-Update the `Docker Deamon` configuration to allow insecure connections to the deployed image registry:
+Update the `Docker Deamon` configuration to allow insecure connections to the deployed image registry. For `Docker Desktop` go to the configuration and the `Docker Engine` tab and append the following option:
 
 ```json
   "insecure-registries": [
