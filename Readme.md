@@ -109,12 +109,10 @@ python exv2/main.py --skip-build
 
 ## 4. Running the experiments (with building and pushing images)
 
-If you create your own variants or make changes, the images need to be rebuilt and pushed to a registry. Currently, only managing images through docker hub is supported.
+If you create your own variants or make changes, the images need to be rebuilt and pushed to a registry.
 
- * Adapt `exv2/experiment_environment.py` to contain your docker username
- * Make sure to run docker login
-
-This will automatically create multiple public repositories in your account. When building images for the first time, pushing will take some time depending on your internet connection.
+ * Adapt `exv2/experiment_environment.py` to contain your docker registry url
+ * Make sure to run docker login in case authentication is needed
 
 If all the preliminaries for data collection are installed, Clue will fetch the relevant measuremens from Prometheus and save them into the data folder. For data analysis, we provide Python notebooks seperately.
 
@@ -130,56 +128,35 @@ If all the preliminaries for data collection are installed, Clue will fetch the 
 ## Container Registry
 
 
-### Running in Minikube with your own registry
+### Running locally with your own registry
 
-This is the most sensible way, but requires a bunch of nasty workarounds.
+This is the most sensible way for running the setup locally.
 
-First, choose a port and set your docker to allow insecure registries from there, e.g. using the Docker Desktop UI. You have to use your current LAN IP, as localhost or 127.0.0.1 will not work from inside the docker machine. It's best to tie it to a hostname. Just add it in `/etc/hosts` on your machine and resolve it to your public address.
+First make sure docker and docker compose is installed, then execute this command to bring up the docker stack conatining a service hosting your own registry:
+
+```bash
+docker compose up -d
+```
+
+Now make sure to allow insecure connections to your just started registry by adding these lines into you docker daemon json configuration:
 
 ```json
   "insecure-registries": [
-    "cluereg.local:22222"
+    "host.docker.internal:6789"
   ]
 ```
 
-Make sure that minikube accepts the registry and has enough memory (configure docker before):
+Make sure that minikube (or your other choosen local kubernets cluster) accepts the registry as well and has enough memory (configure docker before). In case you already have created a minikube cluster before make sure to delete if and recreate it using this command:
 
 ```bash
-minikube start --insecure-registry "cluereg.local:22222" --cpus 8 --memory 12000
+minikube start --insecure-registry "host.docker.internal:6789" --cpus 8 --memory 12000
 ```
 
-Once minikube is running, ssh into the machine and add your custom dns name for the local registry to resolve to the host of minikubes internal network (i.e., same as the ip that resolves to host.minikube.internal). This ip shouldn't change, but the hosts file is sometimes reset after restarting minikube.
-
-```bash
-minikube ssh
-
-# docker @ minikube
-cat /etc/hosts
-sudo su
-echo '192.168.65.254 cluereg.local' >> /etc/hosts
-```
-
-
-Then, enable the registry addon in minikube:
-
-```sh
-minikube addons enable registry
-```
-
-Take note of the non-standard port (it will change upon restart, so we cannot use it directly with docker).
-
-Now forward it to the port chosen in the beginning:
-```sh
-ncat --sh-exec "ncat localhost `docker container port minikube | grep 5000 | grep -E -o  "(\d*)$"`" -l 22222 --keep-open
-```
-
-Finally, change you `clue.yaml` to use your new local registry:
+Finally, change `clue.yaml` to use your new local registry:
 
 ```yaml
 images:
-  # the docker hub user to use for pushing/pulling images
-  # docker_hub_username: kaozente
-  docker_hub_username: "cluereg.local:22222/karl"
+  docker_registry_address: "host.docker.internal:6789/clue"
 ```
 
 
@@ -208,4 +185,10 @@ Make Prometheus available as localhost:9090
 
 ```
 kubectl --namespace default port-forward prometheus-kps1-kube-prometheus-stack-prometheus-0 9090
+```
+
+Lastly add an additional node to allow running the loadgenerator (which can not run on the same node as the experiment itself):
+
+```
+minikube node add
 ```

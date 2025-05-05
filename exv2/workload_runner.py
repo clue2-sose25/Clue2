@@ -58,7 +58,7 @@ class WorkloadRunner:
                 "--platform",
                 platform,
                 "-t",
-                f"{exp.env.docker_user}/loadgenerator",
+                f"{exp.env.docker_registry_address}/loadgenerator",
                 ".",
             ],
             cwd=path.join("loadgenerator"),
@@ -66,7 +66,7 @@ class WorkloadRunner:
         if build != 0:
             raise RuntimeError(f"failed to build {workload_branch}")
 
-        docker_client.images.push(f"{exp.env.docker_user}/loadgenerator")
+        docker_client.images.push(f"{exp.env.docker_registry_address}/loadgenerator")
 
     def run_workload(self, outpath):
         if self.exp.colocated_workload:
@@ -190,7 +190,7 @@ class WorkloadRunner:
                     containers=[
                         client.V1Container(
                             name="loadgenerator",
-                            image=f"{exp.env.docker_user}/loadgenerator",
+                            image=f"{exp.env.docker_registry_address}/loadgenerator",
                             env=container_env,
                             command=[
                                 "sh",
@@ -308,7 +308,7 @@ class WorkloadRunner:
         try:
             print("🏋️‍♀️ running loadgenerator")
             workload = docker_client.containers.run(
-                image=f"{self.exp.env.docker_user}/loadgenerator",
+                image=f"{self.exp.env.docker_registry_address}/loadgenerator",
                 auto_remove=True,
                 environment=self.workload_env,
                 stdout=True,

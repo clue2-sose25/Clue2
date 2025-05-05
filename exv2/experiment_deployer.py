@@ -88,7 +88,7 @@ class ExperimentDeployer:
 
         # 2. cd tools && ./build_docker.sh -r <env["docker_user"]/ -p && cd ..
         build = subprocess.check_call(
-            ["sh", "build_docker.sh", "-r", f"{exp.env.docker_user}/", "-p"],
+            ["sh", "build_docker.sh", "-r", f"{exp.env.docker_registry_address}/", "-p"],
             cwd=path.join(exp.env.teastore_path, "tools"),
         )
 
@@ -97,7 +97,7 @@ class ExperimentDeployer:
                 "failed to build docker images. Run build_docker.sh manually and see why it fails"
             )
 
-        print(f"build {exp.env.docker_user}/* images")
+        print(f"build {exp.env.docker_registry_address}/* images")
 
     def deploy_branch(self, observations: str = "data/default"):
         """
@@ -117,7 +117,7 @@ class ExperimentDeployer:
             path.join(exp.env.teastore_path, "examples", "helm", "values.yaml"), "r"
         ) as f:
             values = f.read()
-            values = values.replace("descartesresearch", exp.env.docker_user)
+            values = values.replace("descartesresearch", exp.env.docker_registry_address)
             # ensure we only run on nodes that we can observe
             values = values.replace(
                 r"nodeSelector: {}", r'nodeSelector: {"scaphandre": "true"}'

@@ -27,7 +27,7 @@ class ExperimentEnvironment:
 
         self.local_port = 8888
         # infra
-        self.docker_user = config['images']['docker_hub_username']
+        self.docker_registry_address = config['images']['docker_registry_address']
         
         # (
         #     "tawalaya"  # the docker user to use for pushing/pulling images
