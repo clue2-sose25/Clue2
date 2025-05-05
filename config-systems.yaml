@@ -1,0 +1,7 @@
+systems:
+ - name: teastore
+   repository: url
+   deployment_path: path/to/helm
+   experiments:
+     - X
+     - Y
