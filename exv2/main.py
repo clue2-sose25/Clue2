@@ -43,15 +43,13 @@ DRY = args.dry
 config.load_kube_config()
 
 
+def set_workload(exp: Experiment, conf: WorkloadAutoConfig):
+    new_ex = copy.deepcopy(exp)
+    new_ex.env.set_workload(conf)
+    return new_ex
+
 def full_run():
     exps = experiment_list.exps
-
-
-    # foreach experiment, make a copy that uses rampup
-    def set_workload(exp: Experiment, conf: WorkloadAutoConfig):
-        new_ex = copy.deepcopy(exp)
-        new_ex.env.set_workload(conf)
-        return new_ex
 
     workloads = [
         ShapredWorkload(),
@@ -87,68 +85,6 @@ def full_run():
 
 #     return exps
 
-def main():
-    if DIRTY:
-        print("☢️ will overwrite existing experiment data!!!!")
-
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-
-
-    exps = full_run()
-    # exps = custom_reruns()
-    
-    if DIRTY:
-        for e in exps:
-            e.env.tags.append("dirty")
-
-
-    #sort by branch to speed up rebuilds ...
-    def exp_sort_key(exp:Experiment):
-        return "_".join([exp.target_branch,exp.name])
-
-    exps.sort(key=exp_sort_key)
-    
-    print(tabulate([n.to_row() for n in exps], tablefmt="rounded_outline", headers=Experiment.headers()))
-
-    if DRY:
-        print("dry run -- exiting")
-        return
-
-    # master_env = copy.deepcopy(env)
-    # todo
-    progressbar.streams.wrap_stderr()
-    # todo: print not working with pg2
-    # for exp in progressbar.progressbar(exps, redirect_stdout=True, redirect_stderr=True):
-    last_build_branch = None
-    for exp in exps:
-        print(f"ℹ️  new experiment: {exp}")
-        if not SKIPBUILD:
-            print("👷 building...")
-            # if we know that branches don't change we could skip building some of them
-            WorkloadRunner(exp).build_workload()
-            if exp.target_branch != last_build_branch:
-                ExperimentDeployer(exp).build_images()
-            else:
-                print(".. skipping build step, we've build the images for the last run already...")
-            last_build_branch = exp.target_branch
-        else:
-            print("👷 skipping build...")
-
-        for i in range(experiment_list.NUM_ITERATIONS):
-
-            root = "data"
-            name = exp.__str__()
-            tags = "_".join(["exp"] + exp.env.tags)
-
-            out_path = path.join(root, timestamp, tags, name, str(i))
-
-            print(f"▶️ running ({i + 1}/{experiment_list.NUM_ITERATIONS}) to {out_path}...")
-            run_experiment(exp, out_path)
-        
-        print(f"sleeping for 120s to let the system settle after one feature")
-        time.sleep(120)
-
-
 def run_experiment(exp: Experiment, observations_out_path):
     # 0. create experiment folder
 
@@ -183,6 +119,70 @@ def run_experiment(exp: Experiment, observations_out_path):
     print("additional sleep after a run just to be on the safe side")
     time.sleep(60)
 
+
+def execute_experiment(exp: Experiment, timestamp: str) -> None:
+    print(f"ℹ️  new experiment: {exp}")
+    if not SKIPBUILD:
+        print("👷 building...")
+        # if we know that branches don't change we could skip building some of them
+        WorkloadRunner(exp).build_workload()
+        if exp.target_branch != last_build_branch:
+            ExperimentDeployer(exp).build_images()
+        else:
+            print(".. skipping build step, we've build the images for the last run already...")
+        last_build_branch = exp.target_branch
+    else:
+        print("👷 skipping build...")
+
+    for i in range(experiment_list.NUM_ITERATIONS):
+
+        root = "data"
+        name = exp.__str__()
+        tags = "_".join(["exp"] + exp.env.tags)
+
+        out_path = path.join(root, timestamp, tags, name, str(i))
+
+        print(f"▶️ running ({i + 1}/{experiment_list.NUM_ITERATIONS}) to {out_path}...")
+        run_experiment(exp, out_path)
+    
+    print(f"sleeping for 120s to let the system settle after one feature")
+    time.sleep(120)
+
+def main():
+    if DIRTY:
+        print("☢️ will overwrite existing experiment data!!!!")
+
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+
+    exps = full_run()
+    # exps = custom_reruns()
+    
+    if DIRTY:
+        for e in exps:
+            e.env.tags.append("dirty")
+
+
+    #sort by branch to speed up rebuilds ...
+    def exp_sort_key(exp:Experiment):
+        return "_".join([exp.target_branch,exp.name])
+
+    exps.sort(key=exp_sort_key)
+    
+    print(tabulate([n.to_row() for n in exps], tablefmt="rounded_outline", headers=Experiment.headers()))
+
+    if DRY:
+        print("dry run -- exiting")
+        return
+
+    # master_env = copy.deepcopy(env)
+    # todo
+    progressbar.streams.wrap_stderr()
+    # todo: print not working with pg2
+    # for exp in progressbar.progressbar(exps, redirect_stdout=True, redirect_stderr=True):
+    last_build_branch = None
+    for exp in exps:
+        execute_experiment(exp, timestamp)
 
 if __name__ == "__main__":
     main()
