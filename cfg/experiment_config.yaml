@@ -1,0 +1,3 @@
+config:
+  prometheus_url: "http://localhost:9090"  # minikube
+  namespace: "tea-bench"

@@ -1,31 +1,70 @@
+import yaml
+
+from pydantic import BaseModel
+from dataclasses import dataclass
+from pathlib import Path
+
 from experiment import Experiment
 from scaling_experiment_setting import ScalingExperimentSetting
 
 NUM_ITERATIONS = 1
 
+CONFIGS_DIR = Path("..").joinpath("cfg")
+EXPERIMENT_LIST = CONFIGS_DIR.joinpath("experiment_config.yaml")
+EXPERIMENT_CONFIG = CONFIGS_DIR.joinpath("experiments.yaml")
 
-# prometheus_url = "http://130.149.158.130:32426" # actual ip of prometheus node
-# prometheus_url = "http://host.minikube.internal:9090" # for minikube usage
-# prometheus_url = "http://192.168.1.219:9090"
+class Config(BaseModel):
+    prometheus_url: str
+    namespace: str
 
-# helm install prometheus prometheus-community/prometheus
-prometheus_url = "http://localhost:9090" # minikube
-# prometheus_url = "http://prometheus-server.default.svc.cluster.local" # minikube
+    @classmethod
+    def load_from_yaml(cls, config_path: Path = EXPERIMENT_CONFIG) -> "Config":
+        with open(config_path, 'r') as file:
+            cfg = yaml.safe_load(file).get('config', {})
+        return cls(**cfg)
 
-namespace = "tea-bench"
-scale = ScalingExperimentSetting.CPUBOUND
+@dataclass
+class ExperimentList():
+    experiments: list[Experiment]
+
+    @staticmethod
+    def load_experiments(experiments_path : Path = EXPERIMENT_LIST, config_path : Path = EXPERIMENT_CONFIG):
+        """
+        Load experiments from a YAML file and return an ExperimentList instance.
+        """
+        #load config
+        config = Config.load_from_yaml(config_path)
+        #load experiments
+        with open(experiments_path, 'r') as file:
+            data = yaml.safe_load(file)
+            experiments = []
+            for exp in data.get('experiments', []):
+                # Create an Experiment instance for each experiment in the YAML file
+                experiment = Experiment(
+                    name=exp.get('name'),
+                    target_branch=exp.get('target_branch'),
+                    patches=exp.get('patches', []),
+                    namespace=config.namespace,
+                    colocated_workload=exp.get('colocated_workload', False),
+                    prometheus_url=config.prometheus_url,
+                    autoscaling=exp.get('autoscaling', ScalingExperimentSetting.CPUBOUND),
+                    critical_services=exp.get('critical_services', []),
+                    infrastructure_namespaces=exp.get('infrastructure_namespaces', [])
+                )
+                experiments.append(experiment)
+        return ExperimentList(experiments=experiments)
 
 
-exps = [
-    Experiment(
-        name="baseline",
-        target_branch="vanilla",
-        # patches=[],
-        namespace=namespace,
-        colocated_workload=True,
-        prometheus_url=prometheus_url,
-        autoscaling=scale,
-    ),
+# exps = [
+#     Experiment(
+#         name="baseline",
+#         target_branch="vanilla",
+#         # patches=[],
+#         namespace=namespace,
+#         colocated_workload=True,
+#         prometheus_url=prometheus_url,
+#         autoscaling=scale,
+#     ),
     # Experiment(
     #     name="serverless",
     #     target_branch="serverless-auth",
@@ -110,4 +149,4 @@ exps = [
     #     prometheus_url=prometheus_url,
     #     autoscaling=scale,
     # ),
-]
+#]
