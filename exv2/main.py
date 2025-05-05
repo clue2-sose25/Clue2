@@ -19,7 +19,7 @@ from experiment_runner import ExperimentRunner
 from workload_runner import WorkloadRunner
 from scaling_experiment_setting import ScalingExperimentSetting
 from experiment_workloads import ShapedWorkload, RampingWorkload, PausingWorkload, FixedRampingWorkload
-
+from experiment_list import ExperimentList
 
 
 parser = argparse.ArgumentParser()
@@ -41,29 +41,6 @@ DRY = args.dry
 
 # setup clients
 config.load_kube_config()
-
-
-def set_workload(exp: Experiment, conf: WorkloadAutoConfig):
-    new_ex = copy.deepcopy(exp)
-    new_ex.env.set_workload(conf)
-    return new_ex
-
-def full_run():
-    exps = experiment_list.exps
-
-    workloads = [
-        ShapedWorkload(),
-        # RampingWorkload(), 
-        # PausingWorkload(),  
-        # FixedRampingWorkload()
-    ]
-
-    exps = []
-    for w in workloads:
-        for exp in experiment_list.exps:
-            exps.append(set_workload(exp,w))
-
-    return exps
 
 # def custom_reruns():
 #     exps = []
@@ -120,7 +97,7 @@ def run_experiment(exp: Experiment, observations_out_path):
     time.sleep(60)
 
 
-def execute_experiment(exp: Experiment, timestamp: str) -> None:
+def prepare_experiment(exp: Experiment, timestamp: str) -> None:
     print(f"ℹ️  new experiment: {exp}")
     if not SKIPBUILD:
         print("👷 building...")
@@ -154,20 +131,22 @@ def main():
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
+    exps = ExperimentList.load_experiments()
+    workloads = workloads = [
+        ShapedWorkload(),
+        # RampingWorkload(), 
+        # PausingWorkload(),  
+        # FixedRampingWorkload()
+    ]
 
-    exps = full_run()
-    # exps = custom_reruns()
+    exps.add_workloads(workloads)
     
     if DIRTY:
         for e in exps:
             e.env.tags.append("dirty")
 
-
-    #sort by branch to speed up rebuilds ...
-    def exp_sort_key(exp:Experiment):
-        return "_".join([exp.target_branch,exp.name])
-
-    exps.sort(key=exp_sort_key)
+    #sort experiments
+    exps.sort()
     
     print(tabulate([n.to_row() for n in exps], tablefmt="rounded_outline", headers=Experiment.headers()))
 
@@ -182,7 +161,7 @@ def main():
     # for exp in progressbar.progressbar(exps, redirect_stdout=True, redirect_stderr=True):
     last_build_branch = None
     for exp in exps:
-        execute_experiment(exp, timestamp)
+        prepare_experiment(exp, timestamp)
 
 if __name__ == "__main__":
     main()

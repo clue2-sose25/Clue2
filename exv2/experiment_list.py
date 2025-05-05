@@ -62,14 +62,19 @@ class ExperimentList():
         new_ex.env.set_workload(workload)
         return new_ex
 
-    def full_run(self, workloads: list[Workload]):
+    def add_workloads(self, workloads: list[Workload]):
         exps = self.experiment_list.exps
         exps = []
         for w in workloads:
             for exp in self.experiment_list.exps:
                 exps.append(self._set_workload(exp,w))
-
         return exps
+
+    def sort(self):
+        """
+        Sort the experiments based on their names.
+        """
+        self.experiments.sort(key=lambda exp: "_".join([exp.target_branch, exp.name]))
 
 
 # exps = [
