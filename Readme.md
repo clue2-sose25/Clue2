@@ -1,16 +1,8 @@
-# CLUE: Cloud-native Sustainability Evaluator
+<div align="center">
+  <h1 style="padding:15px;border-bottom: 0;">CLUE: Cloud-native Sustainability Evaluator</h1>
+</div>
 
-- [CLUE: Cloud-native Sustainability Evaluator](#clue-cloud-native-sustainability-evaluator)
-  - [0. Prerequisites](#0-prerequisites)
-  - [1. Setup](#1-setup)
-  - [2. Manually running a single variant (for debugging purposes)](#2-manually-running-a-single-variant-for-debugging-purposes)
-  - [3. Testing the experiment setup (without building images)](#3-testing-the-experiment-setup-without-building-images)
-  - [4. Running the experiments (with building and pushing images)](#4-running-the-experiments-with-building-and-pushing-images)
-  - [Troubleshooting / Known Issues](#troubleshooting--known-issues)
-  - [Container Registry](#container-registry)
-    - [Running in Minikube with your own registry](#running-in-minikube-with-your-own-registry)
-  - [Cluster Preparation](#cluster-preparation)
-
+## 📢 About the Project
 
 Clue is  a benchmarking and observability framework for gathering and compiling sustainability and quality reports on changes in cloud-native applications. 
 
@@ -21,8 +13,19 @@ Moreover, we are currently focusing on Kubernetes as the orchestrator, so as lon
 
 This Readme describes the process of running experiments on different variants of the TeaStore microservice example.
 
+### Quicklinks
 
-## 0. Prerequisites
+- [Prerequisites](prerequisites)
+- [System Setup](#1-system-setup)
+  - [Setting up the image registry]()
+  - [Setting up Prometheus]()
+  - [CLUE2 deployer setup]()
+  - [Manually running a single variant (for debugging purposes)](#2-manually-running-a-single-variant-for-debugging-purposes)
+  - [Testing the experiment setup (without building images)](#3-testing-the-experiment-setup-without-building-images)
+  - [Running the experiments (with building and pushing images)](#4-running-the-experiments-with-building-and-pushing-images)
+- [Troubleshooting / Known Issues](#troubleshooting--known-issues)
+
+## 📦 Prerequisites
 
   * Docker, e.g. 20.10
   * Kubernetes, e.g. 1.29 (for testing purposes, [minikube](https://minikube.sigs.k8s.io/docs/) works)
@@ -33,11 +36,66 @@ This Readme describes the process of running experiments on different variants o
   * Python, e.g. 3.11, using uv in this Readme
 
 
-## 1. Setup
+## 🚀 System Setup
 
 > [!CAUTION]
 > Please note that this repository also contains work in progress parts -- not all CLUE features and experiment branches that are not mentioned in the paper might be thoroughly tested.
 
+
+### 1. Setting up the image registry
+
+First make sure `Docker` and `Docker Compose` is installed, then execute this command to bring up the docker stack conatining a service hosting your own registry:
+
+```bash
+docker compose up -d
+```
+
+Update the `Docker Deamon` configuration to allow insecure connections to the deployed image registry:
+
+```json
+  "insecure-registries": [
+    "host.docker.internal:6789"
+  ]
+```
+
+Make sure that `Minikube` (or your other choosen local kubernets cluster) accepts the registry as well and has enough memory (configure docker before). In case you already have created a minikube cluster before make sure to delete if and recreate it using this command:
+
+```bash
+minikube start --insecure-registry "host.docker.internal:6789" --cpus 8 --memory 12000
+```
+
+### 2. Setting up Prometheus
+
+Install Prometheus and Node Exporter, e.g.:
+
+```bash
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm install kps1 prometheus-community/kube-prometheus-stack
+```
+
+Install Kepler
+
+```
+helm install kepler kepler/kepler \
+    --namespace kepler \
+    --create-namespace \
+    --set serviceMonitor.enabled=true \
+    --set serviceMonitor.labels.release=kps1 
+```
+
+Make Prometheus available as localhost:9090
+
+```
+kubectl --namespace default port-forward prometheus-kps1-kube-prometheus-stack-prometheus-0 9090
+```
+
+Lastly add an additional node to allow running the loadgenerator (which can not run on the same node as the experiment itself):
+
+```
+minikube node add
+```
+
+### 3. CLUE2 deployer setup
 
 Install Python dependencies using [uv](https://docs.astral.sh/uv/) (or use a virtual environment with e.g. pipenv)
 
@@ -75,7 +133,7 @@ Set your Prometheus url in `exv2/experiment_list.py` and select the experiments 
 
 
 
-## 2. Manually running a single variant (for debugging purposes)
+### 4. Manually running a single variant (for debugging purposes)
 
 Run a variant indefinetely, e.g. baseline (see all experiment names in `exv2/experiment_list.py`)
 
@@ -96,7 +154,7 @@ TeaStore may run some initial tasks on startup, so make sure to wait a minute if
 
 
 
-## 3. Testing the experiment setup (without building images)
+### 5. Testing the experiment setup (without building images)
 
 This will run the experiments from `exv2/experiment_list.py` and gather the results.
 Without building images, Clue will use the latest images from the public registry, not necessarily the variant checked out locally!
@@ -107,7 +165,7 @@ python exv2/main.py --skip-build
 
 ![Running the Experiments](readme/running_experiments.png)
 
-## 4. Running the experiments (with building and pushing images)
+### 6. Running the experiments (with building and pushing images)
 
 If you create your own variants or make changes, the images need to be rebuilt and pushed to a registry.
 
@@ -117,78 +175,9 @@ If you create your own variants or make changes, the images need to be rebuilt a
 If all the preliminaries for data collection are installed, Clue will fetch the relevant measuremens from Prometheus and save them into the data folder. For data analysis, we provide Python notebooks seperately.
 
 
-## Troubleshooting / Known Issues
+## 💻 Troubleshooting / Known Issues
 
  * When using docker desktop, enable in settings > advanced: *Allow the default Docker socket to be used*
  * Ensure that you have a sufficient amount of memory alocated for docker, at least 12 GB
  * Run `minikube dashboard` to monitor deployment errors, e.g. missing node labels or insufficient memory
  * The monolith app has some specific handles, e.g. a different set name. If a a set is not found, especially when skipping builds, this can cause probelems
-
-
-## Container Registry
-
-
-### Running locally with your own registry
-
-This is the most sensible way for running the setup locally.
-
-First make sure docker and docker compose is installed, then execute this command to bring up the docker stack conatining a service hosting your own registry:
-
-```bash
-docker compose up -d
-```
-
-Now make sure to allow insecure connections to your just started registry by adding these lines into you docker daemon json configuration:
-
-```json
-  "insecure-registries": [
-    "host.docker.internal:6789"
-  ]
-```
-
-Make sure that minikube (or your other choosen local kubernets cluster) accepts the registry as well and has enough memory (configure docker before). In case you already have created a minikube cluster before make sure to delete if and recreate it using this command:
-
-```bash
-minikube start --insecure-registry "host.docker.internal:6789" --cpus 8 --memory 12000
-```
-
-Finally, change `clue.yaml` to use your new local registry:
-
-```yaml
-images:
-  docker_registry_address: "host.docker.internal:6789/clue"
-```
-
-
-
-## Cluster Preparation
-
-Install Prometheus and Node Exporter, e.g.:
-
-```bash
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-helm install kps1 prometheus-community/kube-prometheus-stack
-```
-
-
-Install Kepler
-
-```
-helm install kepler kepler/kepler \
-    --namespace kepler \
-    --create-namespace \
-    --set serviceMonitor.enabled=true \
-    --set serviceMonitor.labels.release=kps1 
-```
-
-Make Prometheus available as localhost:9090
-
-```
-kubectl --namespace default port-forward prometheus-kps1-kube-prometheus-stack-prometheus-0 9090
-```
-
-Lastly add an additional node to allow running the loadgenerator (which can not run on the same node as the experiment itself):
-
-```
-minikube node add
-```
