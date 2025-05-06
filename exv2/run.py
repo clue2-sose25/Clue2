@@ -83,7 +83,7 @@ def run(exp_name: str, skip_build, kind, platform):
         ExperimentDeployer(exp).deploy_branch(observations_out_path)
 
         echo("To expose port run:")
-        echo(click.style("kubectl port-forward service/teastore-webui 8080:80", fg="cyan"))
+        echo(click.style("kubectl port-forward service/teastore-webui 8080:80 -n tea-bench", fg="cyan"))
         echo("")
         # v1 = kubernetes.client.AppsV1Api()
         # v1.list_name()
