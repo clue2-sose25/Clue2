@@ -13,6 +13,7 @@ CONFIG_PATH = Path("..").joinpath("cfg").joinpath("experiment_config.yaml")
 
 
 class EnvironmentConfig(BaseModel):
+    sut_path: str
     docker_user: str
     local_public_ip: str
     local_port: int
@@ -45,7 +46,7 @@ class ExperimentEnvironment:
         self.config = config
 
         # Files / IO
-        self.teastore_path = "teastore"  # Default path for the teastore repo
+        self.sut_path = Path(config.sut_path)
         self.local_public_ip = config.local_public_ip
 
         # Infra
