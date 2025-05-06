@@ -49,8 +49,7 @@ class ExperimentDeployer:
                 }
             },
             working_dir="/mnt",
-            command="mvn clean install -DskipTests",
-            # command="tail -f /dev/null",
+            command="bash -c 'apt-get update && apt-get install -y dos2unix && find . -type f -name \"*.sh\" -exec dos2unix {} \\; && mvn clean install -DskipTests'",
         )
         if "BUILD SUCCESS" not in mvn_output.decode("utf-8"):
             print(mvn_output)
