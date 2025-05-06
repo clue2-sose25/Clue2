@@ -38,7 +38,7 @@ class Experiment:
         self.prometheus = prometheus_url
         self.colocated_workload = colocated_workload
 
-        self.env = ExperimentEnvironment()
+        self.env = ExperimentEnvironment.from_config()
         self.autoscaling = autoscaling
         if autoscaling is not None:
             self.env.tags.append("scale")
@@ -62,7 +62,7 @@ class Experiment:
 
     def create_json(self, env: dict = {}):
 
-        env = ExperimentEnvironment().__dict__
+        env = ExperimentEnvironment().from_config().__dict__
 
         description = {
             "name": self.name,

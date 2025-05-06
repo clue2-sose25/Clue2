@@ -5,7 +5,6 @@ import kubernetes
 import docker
 
 from experiment import Experiment
-from experiment_environment import ExperimentEnvironment
 from scaling_experiment_setting import ScalingExperimentSetting
 from experiment_autoscaling import ExperimentAutoscaling
 

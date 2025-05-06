@@ -6,9 +6,6 @@ from enum import StrEnum
 LOADGENERATOR_DURATION = 64 # 600
 LOADGENERATOR_MAX_DAILY_USERS = 100 # 1000
 
-from abc import ABC, abstractmethod
-from experiment_environment import ExperimentEnvironment
-
 class WorkloadType(StrEnum):
     SHAPED = "shaped"
     RAMPUP = "rampup"

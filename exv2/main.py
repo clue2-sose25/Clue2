@@ -79,7 +79,7 @@ def run_experiment(exp: Experiment, observations_out_path):
 
         # 4. run collection agent (fetch prometheus )
         if not DIRTY:
-            wait = ExperimentEnvironment().wait_before_workloads
+            wait = ExperimentEnvironment().from_config().wait_before_workloads
             print(f"😴 waiting {wait}s before starting workload")
             time.sleep(wait)  # wait for 120s before stressing the workload
 

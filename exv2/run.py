@@ -15,7 +15,6 @@ import kubernetes
 import experiment_list
 from experiment import Experiment
 from experiment_deployer import ExperimentDeployer
-from experiment_environment import ExperimentEnvironment, WorkloadAutoConfig
 from experiment_runner import ExperimentRunner
 from workload_runner import WorkloadRunner
 from scaling_experiment_setting import ScalingExperimentSetting

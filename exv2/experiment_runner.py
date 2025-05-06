@@ -5,7 +5,6 @@ from psc.tracker import PodUsage
 from experiment import Experiment
 from flushing_queue import FlushingQueue
 
-from experiment_environment import ExperimentEnvironment
 from experiment_autoscaling import ExperimentAutoscaling
 from workload_runner import WorkloadRunner
 from psc import ResourceTracker, NodeUsage
