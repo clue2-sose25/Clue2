@@ -18,6 +18,7 @@ EXPERIMENT_CONFIG = CONFIGS_DIR.joinpath("experiments.yaml")
 class Config(BaseModel):
     prometheus_url: str
     namespace: str
+    target_host: str
 
     @classmethod
     def load_from_yaml(cls, config_path: Path = EXPERIMENT_CONFIG) -> "Config":
@@ -51,7 +52,8 @@ class ExperimentList():
                     prometheus_url=config.prometheus_url,
                     autoscaling=exp.get('autoscaling', ScalingExperimentSetting.CPUBOUND),
                     critical_services=exp.get('critical_services', []),
-                    infrastructure_namespaces=exp.get('infrastructure_namespaces', [])
+                    target_host=config.get('target_host'),
+                    infrastrcutre_namespaces=exp.get('infrastrcutre_namespaces', [])
                 )
                 experiments.append(experiment)
         return ExperimentList(experiments=experiments)
