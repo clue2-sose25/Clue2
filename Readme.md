@@ -75,6 +75,7 @@ helm install kps1 prometheus-community/kube-prometheus-stack
 Install Kepler
 
 ```bash
+helm repo add kepler https://sustainable-computing-io.github.io/kepler-helm-chart
 helm install kepler kepler/kepler --namespace kepler --create-namespace --set serviceMonitor.enabled=true --set serviceMonitor.labels.release=kps1 
 ```
 
