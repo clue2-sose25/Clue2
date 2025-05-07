@@ -1,6 +1,7 @@
 from cfgload import load_config
 from pydantic import BaseModel
 from pathlib import Path
+from config import SUTConfig, ClueConfig, ServicesConfig
 
 from experiment_workloads import Workload
 
@@ -39,37 +40,32 @@ class EnvironmentConfig(BaseModel):
 
 
 class ExperimentEnvironment:
-    def __init__(self, config: EnvironmentConfig):
+    def __init__(self, sut_config: SUTConfig,
+                 clue_config: ClueConfig,
+                 services_config: ServicesConfig):
         """
         Initialize the ExperimentEnvironment with an EnvironmentConfig instance.
         """
-        self.config = config
+        #self.config = config
 
         # Files / IO
-        self.sut_path = Path(config.sut_path)
-        self.local_public_ip = config.local_public_ip
+        self.sut_path = sut_config.sut_path
+        self.local_public_ip = clue_config.local_public_ip
 
         # Infra
-        self.docker_user = config.docker_user
-        self.local_port = config.local_port
-        self.remote_platform_arch = config.remote_platform_arch
-        self.local_platform_arch = config.local_platform_arch
-        self.resource_limits = config.resource_limits
-        self.default_resource_limits = config.default_resource_limits
-        self.workload_settings = config.workload_settings
-        self.timeout_duration = config.timeout_duration
-        self.wait_before_workloads = config.wait_before_workloads
-        self.wait_after_workloads = config.wait_after_workloads
-        self.tags = config.tags
-        self.kind_cluster_name = None
+        self.docker_user = clue_config.docker_user
+        self.local_port = clue_config.local_port
+        self.remote_platform_arch = clue_config.remote_platform_arch
+        self.local_platform_arch = clue_config.local_platform_arch
+        self.resource_limits = services_config.get_all_resource_limits()
+        self.default_resource_limits = sut_config.default_resource_limits
+        self.workload_settings = sut_config.workload_settings
+        self.timeout_duration = sut_config.timeout_duration
+        self.wait_before_workloads = sut_config.wait_before_workloads
+        self.wait_after_workloads = sut_config.wait_after_workloads
+        self.tags = sut_config.tags
+        self.kind_cluster_name = None #TODO
     
-    @staticmethod
-    def from_config(config_path: str = CONFIG_PATH) -> "ExperimentEnvironment":
-        """
-        Create an ExperimentEnvironment instance from a YAML configuration file.
-        """
-        config = EnvironmentConfig.load_from_yaml(config_path)
-        return ExperimentEnvironment(config)
     
     def __repr__(self):
         return f"ExperimentEnvironment({self.config})"

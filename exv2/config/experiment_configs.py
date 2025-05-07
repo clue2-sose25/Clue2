@@ -7,7 +7,7 @@ import yaml
 class SingleExperiment(BaseModel):
     name: str
     target_branch: str
-    colocated_workload: bool
+    colocated_workload: bool = Field(default=False)
     critical_services= Field(default_factory=list) #default empty list if not provided
 
 

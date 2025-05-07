@@ -10,6 +10,7 @@ class SUTConfig(BaseSettings):
     """
     Configuration class for the System Under Test (SUT) using pydantic's BaseSettings.
     """
+    sut_path: Path
     namespace: str
     target_host: str
     default_resource_limits: dict[str, int]
