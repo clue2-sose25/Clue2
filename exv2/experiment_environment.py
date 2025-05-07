@@ -1,50 +1,17 @@
-from cfgload import load_config
-from pydantic import BaseModel
 from pathlib import Path
 from config import SUTConfig, ClueConfig, ServicesConfig
 
 from experiment_workloads import Workload
 
-#not really necessary anymore
-# class WorkloadAutoConfig(Protocol):
-#     def set_workload(self, exp:"ExperimentEnvironment"):
-#         pass
 
 CONFIG_PATH = Path("..").joinpath("cfg").joinpath("experiment_config.yaml")
-
-
-class EnvironmentConfig(BaseModel):
-    sut_path: str
-    docker_user: str
-    local_public_ip: str
-    local_port: int
-    remote_platform_arch: str
-    local_platform_arch: str
-    resource_limits: dict[str, dict[str, int]]
-    default_resource_limits: dict[str, int]
-    workload_settings: dict[str, str]
-    timeout_duration: int
-    wait_before_workloads: int
-    wait_after_workloads: int
-    tags: list[str]
-
-    @classmethod
-    def load_from_yaml(cls, config_path: str) -> "EnvironmentConfig":
-        """
-        Load environment configuration from a YAML file.
-        """
-        with open(config_path, 'r') as file:
-            cfg = load_config()
-            return cls(**cfg)
-
-
 
 class ExperimentEnvironment:
     def __init__(self, sut_config: SUTConfig,
                  clue_config: ClueConfig,
                  services_config: ServicesConfig):
         """
-        Initialize the ExperimentEnvironment with an EnvironmentConfig instance.
+        Initialize the ExperimentEnvironment Instance.
         """
         #self.config = config
 

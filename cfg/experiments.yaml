@@ -1,9 +1,0 @@
-experiments:
-  - name: "baseline"
-    target_branch: "vanilla"
-    colocated_workload: true
-  
-  
-
-services:
-  - 

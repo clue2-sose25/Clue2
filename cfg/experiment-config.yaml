@@ -1,4 +1,0 @@
-config:
-  prometheus_url: "http://localhost:9090"  # minikube
-  namespace: "tea-bench"
-  target_host: "http://teastore-webui/tools.descartes.teastore.webui"
