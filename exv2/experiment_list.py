@@ -1,17 +1,11 @@
 import copy
 
 from dataclasses import dataclass
-from pathlib import Path
 from config import ClueConfig, ExperimentsConfig, SUTConfig
 
 from experiment import Experiment
 from scaling_experiment_setting import ScalingExperimentSetting
 from experiment_workloads import Workload
-
-
-CONFIGS_DIR = Path("..").joinpath("cfg")
-EXPERIMENT_LIST = CONFIGS_DIR.joinpath("experiment_config.yaml")
-EXPERIMENT_CONFIG = CONFIGS_DIR.joinpath("experiments.yaml")
 
 @dataclass
 class ExperimentList():
