@@ -66,9 +66,6 @@ class ExperimentEnvironment:
         self.tags = sut_config.tags
         self.kind_cluster_name = None #TODO
     
-    
-    def __repr__(self):
-        return f"ExperimentEnvironment({self.config})"
 
     def total_duration(self) -> int:
         """

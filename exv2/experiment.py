@@ -15,11 +15,11 @@ class Experiment:
             target_branch: str,
             namespace: str,
             prometheus_url: str,
+            critical_services:List[str],
+            target_host:str,
             colocated_workload: bool = False,
             autoscaling: ScalingExperimentSetting = None,
             max_autoscale: int = 3,
-            critical_services:List[str]=["teastore-auth", "teastore-registry", "teastore-webui"],
-            target_host:str="http://teastore-webui/tools.descartes.teastore.webui",
             infrastrcutre_namespaces:List[str] = [],
 
             # env = ExperimentEnvironment
