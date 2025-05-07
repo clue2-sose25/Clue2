@@ -1,17 +1,18 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List
 from pathlib import Path
 import yaml
 
 
-class Experiment(BaseModel):
+class SingleExperiment(BaseModel):
     name: str
     target_branch: str
     colocated_workload: bool
+    critical_services= Field(default_factory=list) #default empty list if not provided
 
 
 class ExperimentsConfig(BaseModel):
-    experiments: List[Experiment]
+    experiments: List[SingleExperiment]
 
     @classmethod
     def load_from_yaml(cls, config_path: Path) -> "ExperimentsConfig":

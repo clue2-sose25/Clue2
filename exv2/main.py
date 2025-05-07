@@ -12,6 +12,8 @@ import argparse
 import logging
 
 import experiment_list
+
+from config import load_configs
 from experiment import Experiment
 from experiment_deployer import ExperimentDeployer
 from experiment_environment import ExperimentEnvironment
@@ -109,6 +111,9 @@ def prepare_experiment(exp: Experiment, timestamp: str) -> None:
 def main():
     if DIRTY:
         print("☢️ will overwrite existing experiment data!!!!")
+
+    # load configs
+    clue_config, experiment_config, services_config, experiments_config = load_configs()
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 

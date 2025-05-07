@@ -1,4 +1,4 @@
-from pydantic import BaseSettings
+from pydantic import BaseSettings, Field
 from pathlib import Path
 import yaml
 
@@ -18,6 +18,7 @@ class SUTConfig(BaseSettings):
     wait_before_workloads: int
     wait_after_workloads: int
     tags: list[str]
+    infrastructure_namespaces: list[str] = Field(default_factory=list)  
 
     class Config:
         # Allow environment variable overrides
@@ -31,7 +32,3 @@ class SUTConfig(BaseSettings):
         with open(sut_config_path, 'r') as file:
             data = yaml.safe_load(file).get('config', {})
             return cls(**data)
-
-
-# Automatically load the configuration when the module is imported
-sut_config = SUTConfig.load_from_yaml()

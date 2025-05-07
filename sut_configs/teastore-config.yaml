@@ -37,4 +37,7 @@ experiments:
   - name: "baseline"
     target_branch: "vanilla"
     colocated_workload: true
+  - name: "serverless"
+    target_branch: "serverless"
+    colocated_workload: true
   
