@@ -42,25 +42,6 @@ DRY = args.dry
 # setup clients
 config.load_kube_config()
 
-# def custom_reruns():
-#     exps = []
-#     prometheus_url = "http://130.149.158.130:32426"
-#     namespace = "tea-bench"
-#     scale = ScalingExperimentSetting.BOTH
-    
-#     e = Experiment(
-#         name="baseline",
-#         target_branch="vanilla",
-#         # patches=[],
-#         namespace=namespace,
-#         colocated_workload=True,
-#         prometheus_url=prometheus_url,
-#         autoscaling=scale,
-#     )
-#     e.env.set_workload(ShapredWorkload())
-#     exps.append(e)
-
-#     return exps
 
 def run_experiment(exp: Experiment, observations_out_path):
     # 0. create experiment folder

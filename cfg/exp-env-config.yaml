@@ -1,10 +1,9 @@
 sut_path: "teastore"
 docker_user: "cluereg.local:22222/karl"
-local_public_ip: "cluere.local"
+local_public_ip: "cluereg.local"
 local_port: 8888
 remote_platform_arch: "linux/arm64/v8"
 local_platform_arch: "linux/amd64"
-
 resource_limits:
   teastore-auth:
     cpu: 450

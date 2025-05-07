@@ -12,6 +12,7 @@ dependencies = [
     "progressbar2>=4.5.0",
     "psc",
     "pydantic>=2.11.4",
+    "pydantic-yaml>=1.4.0",
     "requests>=2.32.3",
     "ruamel-yaml>=0.17.40",
     "tabulate>=0.9.0",
