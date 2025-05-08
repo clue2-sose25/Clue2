@@ -98,7 +98,7 @@ class ExperimentRunner:
         """
         Remove sets for autoscaling, remove workload pods,
         """
-        print("🧹 cleanup...")
+        print("🧹 Cleaning up...")
 
         if self.experiment.autoscaling:
             ExperimentAutoscaling(self.experiment).cleanup_autoscaling()
@@ -111,7 +111,7 @@ class ExperimentRunner:
                     name="loadgenerator", namespace=self.experiment.namespace
                 )
             except Exception as e:
-                logging.error("error cleaning up -- probably already deleted")
+                logging.error("Error cleaning up. Probably already deleted: " + str(e))
                 pass
 
         subprocess.run(["helm", "uninstall", "teastore", "-n", self.experiment.namespace])
