@@ -1,9 +1,9 @@
 config:
   prometheus_url: "http://localhost:9090"  # minikube
-  docker_user: "cluereg.local:22222/karl"
+  docker_user: "host.docker.internal:6789/clue"
   local_public_ip: "cluereg.local"
   local_port: 8888
   remote_platform_arch: "linux/arm64/v8"
   local_platform_arch: "linux/amd64"
-  docker_registry_address: "cluereg.local:22222"
+  docker_registry_address: "host.docker.internal:6789/clue"
   workloads: ["shaped"]
