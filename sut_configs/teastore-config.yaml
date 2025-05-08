@@ -1,5 +1,6 @@
 config:
   namespace: "tea-bench"
+  sut_path: "teastore"
   target_host: "http://teastore-webui/tools.descartes.teastore.webui"
   default_resource_limits:
     cpu: 1000
@@ -38,8 +39,8 @@ experiments:
   - name: "baseline"
     target_branch: "vanilla"
     colocated_workload: true
-  - name: "serverless"
-    target_branch: "serverless"
-    colocated_workload: true
-    critical_services: ["teastore-registry", "teastore-webui"]
+  # - name: "serverless"
+  #   target_branch: "serverless"
+  #   colocated_workload: true
+  #   critical_services: ["teastore-registry", "teastore-webui"]
   

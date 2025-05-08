@@ -8,7 +8,7 @@ class SingleExperiment(BaseModel):
     name: str
     target_branch: str
     colocated_workload: bool = Field(default=False)
-    critical_services= Field(default_factory=list) #default empty list if not provided
+    critical_services: list[str] = Field(default_factory=list) #default empty list if not provided
 
 
 class ExperimentsConfig(BaseModel):

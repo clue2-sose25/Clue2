@@ -20,20 +20,14 @@ from experiment_environment import ExperimentEnvironment
 from experiment_runner import ExperimentRunner
 from workload_runner import WorkloadRunner
 from scaling_experiment_setting import ScalingExperimentSetting
-from experiment_workloads import ShapedWorkload, RampingWorkload, PausingWorkload, FixedRampingWorkload, get_workload_class
+from experiment_workloads import ShapedWorkload, RampingWorkload, PausingWorkload, FixedRampingWorkload, get_workload_instance
 from experiment_list import ExperimentList
 
 #get the root directory of the project
-BASE_DIR = Path(__file__).resolve().parent
-
+BASE_DIR = Path(__file__).resolve().parent.parent
+print(f"BASE_DIR: {BASE_DIR}")
 #parse arguments
 parser = argparse.ArgumentParser(description="Experiment Runner")
-parser.add_argument(
-    "--help",
-    "-h",
-    action="help",
-    help="Show this help message and exit.",
-)
 parser.add_argument(
     "--skip-build",
     action="store_true",
@@ -54,7 +48,7 @@ parser.add_argument(
     "-s",
     type=Path,
     #default to the teastore-config.yaml in the parent directory
-    default=BASE_DIR.joinpath("..", "sut_configs", "teastore-config.yaml").resolve(), 
+    default=(BASE_DIR / "sut_configs" / "teastore-config.yaml"), 
     help="Path to the System Under Test (SUT).",
 )
 args = parser.parse_args()
@@ -112,7 +106,7 @@ def run_experiment(exp: Experiment, observations_out_path):
     time.sleep(60)
 
 
-def prepare_experiment(exp: Experiment, timestamp: str, num_iterations: int) -> None:
+def prepare_experiment(exp: Experiment, timestamp: str, num_iterations: int, last_build_branch = None) -> None:
     print(f"ℹ️  new experiment: {exp}")
     if not SKIPBUILD:
         print("👷 building...")
@@ -153,7 +147,7 @@ def main():
     exps = ExperimentList.load_experiments(config)
     
     #Get Workloads
-    workloads = [get_workload_class(w) for w in config.clue_config.workloads]
+    workloads = [get_workload_instance(w) for w in config.clue_config.workloads]
     exps.add_workloads(workloads)
     
     if DIRTY:
@@ -173,9 +167,8 @@ def main():
     progressbar.streams.wrap_stderr()
     # todo: print not working with pg2
     # for exp in progressbar.progressbar(exps, redirect_stdout=True, redirect_stderr=True):
-    last_build_branch = None
     for exp in exps:
-        prepare_experiment(exp, timestamp, num_iterations=config.experiment_config.num_iterations)
+        prepare_experiment(exp, timestamp, num_iterations=config.sut_config.num_iterations)
 
 if __name__ == "__main__":
     main()

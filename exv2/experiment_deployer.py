@@ -26,7 +26,7 @@ class ExperimentDeployer:
         exp = self.experiment
 
         git = subprocess.check_call(
-            ["git", "switch", exp.target_branch], cwd=path.join(exp.env.teastore_path)
+            ["git", "switch", exp.target_branch], cwd=path.join(exp.env.sut_path)
         )
         if git != 0:
             raise RuntimeError(f"failed to switch git to {exp.target_branch}")
@@ -42,7 +42,7 @@ class ExperimentDeployer:
             image="maven",
             auto_remove=True,
             volumes={
-                path.abspath(path.join(exp.env.teastore_path)): {
+                path.abspath(path.join(exp.env.sut_path)): {
                     "bind": "/mnt",
                     "mode": "rw",
                 }
@@ -61,7 +61,7 @@ class ExperimentDeployer:
         # patch build_docker.sh to use buildx
         print(f"Patching the build_docker.sh")
         with open(
-            path.join(exp.env.teastore_path, "tools", "build_docker.sh"), "r"
+            path.join(exp.env.sut_path, "tools", "build_docker.sh"), "r"
         ) as f:
             script = f.read()
 
@@ -78,7 +78,7 @@ class ExperimentDeployer:
                     f"kind load docker-image --name {exp.env.kind_cluster_name}",
                 )
             with open(
-                path.join(exp.env.teastore_path, "tools", "build_docker.sh"), "w"
+                path.join(exp.env.sut_path, "tools", "build_docker.sh"), "w"
             ) as f:
                 f.write(script)
             
@@ -86,7 +86,7 @@ class ExperimentDeployer:
         print(f"Running the build_docker.sh")
         build = subprocess.check_call(
             ["sh", "build_docker.sh", "-r", f"{exp.env.docker_registry_address}/", "-p"],
-            cwd=path.join(exp.env.teastore_path, "tools"),
+            cwd=path.join(exp.env.sut_path, "tools"),
         )
 
         if build != 0:
@@ -111,7 +111,7 @@ class ExperimentDeployer:
         exp = self.experiment
 
         with open(
-            path.join(exp.env.teastore_path, "examples", "helm", "values.yaml"), "r"
+            path.join(exp.env.sut_path, "examples", "helm", "values.yaml"), "r"
         ) as f:
             values = f.read()
             values = values.replace("descartesresearch", exp.env.docker_registry_address)
@@ -145,7 +145,7 @@ class ExperimentDeployer:
         # patch_yaml(values, exp.patches)
 
         with open(
-            path.join(exp.env.teastore_path, "examples", "helm", "values.yaml"), "w"
+            path.join(exp.env.sut_path, "examples", "helm", "values.yaml"), "w"
         ) as f:
             f.write(values)
 
@@ -155,7 +155,7 @@ class ExperimentDeployer:
         try:
             helm_deploy = subprocess.check_output(
                 ["helm", "install", "teastore", "-n", exp.namespace, "."],
-                cwd=path.join(exp.env.teastore_path, "examples", "helm"),
+                cwd=path.join(exp.env.sut_path, "examples", "helm"),
             )
             helm_deploy = helm_deploy.decode("utf-8")
             if not "STATUS: deployed" in helm_deploy:

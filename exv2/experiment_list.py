@@ -28,7 +28,7 @@ class ExperimentList():
             experiment = Experiment(
                 name=exp.name,
                 target_branch=exp.target_branch,
-                namespace=clue_config.namespace,
+                namespace=sut_config.namespace,
                 colocated_workload=exp.colocated_workload, #TODO default False
                 prometheus_url=clue_config.prometheus_url,
                 env=ExperimentEnvironment(config),
@@ -40,6 +40,19 @@ class ExperimentList():
             experiments.append(experiment)
         return ExperimentList(experiments=experiments)
     
+    def __iter__(self):
+        """
+        Make the ExperimentList class iterable by returning an iterator
+        for the list of experiments.
+        """
+        return iter(self.experiments)
+
+    def __repr__(self):
+        """
+        Return a string representation of the ExperimentList class.
+        """
+        return f"ExperimentList({self.experiments})"
+
     @staticmethod
     def _set_workload(exp: Experiment, workload: Workload):
         new_ex = copy.deepcopy(exp)
@@ -47,12 +60,12 @@ class ExperimentList():
         return new_ex
 
     def add_workloads(self, workloads: list[Workload]):
-        exps = self.experiment_list.exps
-        exps = []
+        exps = self.experiments
+        exps_with_workloads = []
         for w in workloads:
-            for exp in self.experiment_list.exps:
-                exps.append(self._set_workload(exp,w))
-        return exps
+            for exp in exps:
+                exps_with_workloads.append(self._set_workload(exp,w))
+        return exps_with_workloads
 
     def sort(self):
         """

@@ -1,7 +1,7 @@
 from pathlib import Path
 from config import Config
 
-from experiment_workloads import Workload
+#from experiment_workloads import Workload
 
 
 CONFIG_PATH = Path("..").joinpath("cfg").joinpath("experiment_config.yaml")
@@ -50,7 +50,4 @@ class ExperimentEnvironment:
     
     def total_duration(self):
         return self.timeout_duration + 30 #TODO make this more sensable but not based on the worklaod settings
-
-    def set_workload(self, conf: Workload):
-        conf.set_workload(self)
     

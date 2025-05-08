@@ -1,8 +1,9 @@
+from __future__ import annotations
 from pathlib import Path
-from clue_config import ClueConfig
-from experiment_configs import ExperimentsConfig, Experiment
-from services import ServicesConfig
-from sut_config import SUTConfig
+from .clue_config import ClueConfig
+from .experiment_configs import ExperimentsConfig
+from .services import ServicesConfig
+from .sut_config import SUTConfig
 
 
 
@@ -10,7 +11,7 @@ class Config:
     """
     Singleton class to manage and provide access to all configurations.
     """
-    _instance: "Config"|None = None
+    _instance: Config | None = None
 
     def __new__(cls, sut_config: Path, clue_config: Path):
         if cls._instance is None:

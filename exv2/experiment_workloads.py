@@ -12,9 +12,9 @@ class WorkloadType(StrEnum):
     PAUSING = "pausing"
     FIXED = "fixed"
 
-def get_workload_class(workload_type: WorkloadType) -> type:
+def get_workload_instance(workload_type: WorkloadType) -> "Workload":
     """
-    Returns the corresponding workload class for the given workload type.
+    Returns an instance of the corresponding workload class for the given workload type.
     """
     workload_mapping = {
         WorkloadType.SHAPED: ShapedWorkload,
@@ -22,7 +22,8 @@ def get_workload_class(workload_type: WorkloadType) -> type:
         WorkloadType.PAUSING: PausingWorkload,
         WorkloadType.FIXED: FixedRampingWorkload,
     }
-    return workload_mapping[workload_type]
+    workload_class = workload_mapping[workload_type]
+    return workload_class()  # Instantiate the class
 class Workload(ABC):
     """
     Abstract base class for all workloads. Contains shared constants and enforces a common interface.
