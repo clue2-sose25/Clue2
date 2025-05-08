@@ -54,18 +54,17 @@ class ExperimentList():
         return f"ExperimentList({self.experiments})"
 
     @staticmethod
-    def _set_workload(exp: Experiment, workload: Workload):
+    def _set_workload(exp: Experiment, workload: Workload) -> Experiment:
         new_ex = copy.deepcopy(exp)
         new_ex.env.set_workload(workload)
         return new_ex
 
-    def add_workloads(self, workloads: list[Workload]):
-        exps = self.experiments
+    def add_workloads(self, workloads: list[Workload]) -> None:
         exps_with_workloads = []
         for w in workloads:
-            for exp in exps:
+            for exp in self.experiments:
                 exps_with_workloads.append(self._set_workload(exp,w))
-        return exps_with_workloads
+        self.experiments = exps_with_workloads
 
     def sort(self):
         """
