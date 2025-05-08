@@ -150,9 +150,9 @@ class ExperimentRunner:
         subprocess.run(["helm", "uninstall", "teastore", "-n", self.experiment.namespace])
         subprocess.run(
             ["git", "checkout", "examples/helm/values.yaml"],
-            cwd=path.join(self.experiment.env.teastore_path),
+            cwd=path.join(self.experiment.env.sut_path),
         )
         subprocess.run(
             ["git", "checkout", "tools/build_docker.sh"],
-            cwd=path.join(self.experiment.env.teastore_path),
+            cwd=path.join(self.experiment.env.sut_path),
         )
