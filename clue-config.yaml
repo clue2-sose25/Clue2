@@ -6,5 +6,4 @@ config:
   remote_platform_arch: "linux/arm64/v8"
   local_platform_arch: "linux/amd64"
   docker_registry_address: "cluereg.local:22222"
-  sut_config_path: "sut_configs/teastore-config.yaml"
   workloads: ["shaped"]

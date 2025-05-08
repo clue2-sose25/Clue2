@@ -15,7 +15,6 @@ class ClueConfig(BaseSettings):
     remote_platform_arch: str
     local_platform_arch: str
     docker_registry_address: str
-    sut_config_path: Path  
     workloads: list[str] 
 
     class Config:

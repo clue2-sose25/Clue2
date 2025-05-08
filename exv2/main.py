@@ -13,7 +13,7 @@ import logging
 
 import experiment_list
 
-from config import load_configs
+from config import Config
 from experiment import Experiment
 from experiment_deployer import ExperimentDeployer
 from experiment_environment import ExperimentEnvironment
@@ -23,9 +23,16 @@ from scaling_experiment_setting import ScalingExperimentSetting
 from experiment_workloads import ShapedWorkload, RampingWorkload, PausingWorkload, FixedRampingWorkload, get_workload_class
 from experiment_list import ExperimentList
 
+BASE_DIR = Path(__file__).resolve().parent
 
 #parse arguments
 parser = argparse.ArgumentParser(description="Experiment Runner")
+parser.add_argument(
+    "--help",
+    "-h",
+    action="help",
+    help="Show this help message and exit.",
+)
 parser.add_argument(
     "--skip-build",
     action="store_true",
@@ -45,17 +52,18 @@ parser.add_argument(
     "--sut-path",
     "-s",
     type=Path,
-    default=None,
+    #default to the teastore-config.yaml in the parent directory
+    default=BASE_DIR.joinpath("..", "sut_configs", "teastore-config.yaml").resolve(), 
     help="Path to the System Under Test (SUT).",
 )
 args = parser.parse_args()
 
-# Constants
-CLUE_CONFIG_PATH = Path("..").joinpath("clue_config.yaml")
+
+CLUE_CONFIG_PATH = BASE_DIR.joinpath("clue-config.yaml")
 DIRTY = args.dirty
 SKIPBUILD = args.skip_build
 DRY = args.dry
-SUT_PATH = args.sut_path
+SUT_PATH = args.sut_path 
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.DEBUG)
@@ -63,8 +71,6 @@ logging.getLogger("docker").setLevel(logging.INFO)
 logging.getLogger("kubernetes").setLevel(logging.INFO)
 
 logging.debug("debug log level")
-
-
 
 # setup clients
 config.load_kube_config()
@@ -137,16 +143,16 @@ def main():
     if DIRTY:
         print("☢️ will overwrite existing experiment data!!!!")
 
+
     # load configs
-    clue_config, experiments_config, services_config, sut_config = load_configs()
+    config = Config(SUT_PATH, CLUE_CONFIG_PATH)
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-    exp_env = ExperimentEnvironment(sut_config, clue_config, services_config)
-    exps = ExperimentList.load_experiments(clue_config, experiments_config, sut_config, exp_env)
+    exps = ExperimentList.load_experiments(config)
     
     #Get Workloads
-    workloads = [get_workload_class(w) for w in clue_config.workloads]
+    workloads = [get_workload_class(w) for w in config.clue_config.workloads]
     exps.add_workloads(workloads)
     
     if DIRTY:
@@ -162,14 +168,13 @@ def main():
         print("dry run -- exiting")
         return
 
-    # master_env = copy.deepcopy(env)
-    # todo
+  
     progressbar.streams.wrap_stderr()
     # todo: print not working with pg2
     # for exp in progressbar.progressbar(exps, redirect_stdout=True, redirect_stderr=True):
     last_build_branch = None
     for exp in exps:
-        prepare_experiment(exp, timestamp, num_iterations=experiment_config.num_iterations)
+        prepare_experiment(exp, timestamp, num_iterations=config.experiment_config.num_iterations)
 
 if __name__ == "__main__":
     main()
