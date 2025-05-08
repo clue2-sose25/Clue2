@@ -1,5 +1,5 @@
 #! /usr/bin/env python3
-import copy
+from pathlib import Path
 from datetime import datetime
 import os
 import time
@@ -12,21 +12,53 @@ import argparse
 import logging
 
 import experiment_list
+
+from config import Config
 from experiment import Experiment
 from experiment_deployer import ExperimentDeployer
-from experiment_environment import ExperimentEnvironment, WorkloadAutoConfig
+from experiment_environment import ExperimentEnvironment
 from experiment_runner import ExperimentRunner
 from workload_runner import WorkloadRunner
 from scaling_experiment_setting import ScalingExperimentSetting
-from experiment_workloads import ShapredWorkload, RampingWorkload, PausingWorkload, FixedRampingWorkload
+from experiment_workloads import ShapedWorkload, RampingWorkload, PausingWorkload, FixedRampingWorkload, get_workload_instance
+from experiment_list import ExperimentList
 
-
-
-parser = argparse.ArgumentParser()
-parser.add_argument("--skip-build" ,action="store_true",help="don't build, use latest image from registry")
-parser.add_argument("--dirty" ,action="store_true",help="skip build, don't wait, and mix results")
-parser.add_argument("--dry" ,action="store_true",help="just print exeriments")
+#get the root directory of the project
+BASE_DIR = Path(__file__).resolve().parent.parent
+print(f"BASE_DIR: {BASE_DIR}")
+#parse arguments
+parser = argparse.ArgumentParser(description="Experiment Runner")
+parser.add_argument(
+    "--skip-build",
+    action="store_true",
+    help="Skip building images and use the latest image from the registry.",
+)
+parser.add_argument(
+    "--dirty",
+    action="store_true",
+    help="Skip building, don't wait, and mix results.",
+)
+parser.add_argument(
+    "--dry",
+    action="store_true",
+    help="Just print experiments without running them.",
+)
+parser.add_argument(
+    "--sut-path",
+    "-s",
+    type=Path,
+    #default to the teastore-config.yaml in the parent directory
+    default=(BASE_DIR / "sut_configs" / "teastore-config.yaml"), 
+    help="Path to the System Under Test (SUT).",
+)
 args = parser.parse_args()
+
+
+CLUE_CONFIG_PATH = BASE_DIR.joinpath("clue-config.yaml")
+DIRTY = args.dirty
+SKIPBUILD = args.skip_build
+DRY = args.dry
+SUT_PATH = args.sut_path 
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.DEBUG)
@@ -35,118 +67,8 @@ logging.getLogger("kubernetes").setLevel(logging.INFO)
 
 logging.debug("debug log level")
 
-DIRTY = args.dirty
-SKIPBUILD = args.skip_build
-DRY = args.dry
-
 # setup clients
 config.load_kube_config()
-
-
-def full_run():
-    exps = experiment_list.exps
-
-
-    # foreach experiment, make a copy that uses rampup
-    def set_workload(exp: Experiment, conf: WorkloadAutoConfig):
-        new_ex = copy.deepcopy(exp)
-        new_ex.env.set_workload(conf)
-        return new_ex
-
-    workloads = [
-        ShapredWorkload(),
-        # RampingWorkload(), 
-        # PausingWorkload(),  
-        # FixedRampingWorkload()
-    ]
-
-    exps = []
-    for w in workloads:
-        for exp in experiment_list.exps:
-            exps.append(set_workload(exp,w))
-
-    return exps
-
-# def custom_reruns():
-#     exps = []
-#     prometheus_url = "http://130.149.158.130:32426"
-#     namespace = "tea-bench"
-#     scale = ScalingExperimentSetting.BOTH
-    
-#     e = Experiment(
-#         name="baseline",
-#         target_branch="vanilla",
-#         # patches=[],
-#         namespace=namespace,
-#         colocated_workload=True,
-#         prometheus_url=prometheus_url,
-#         autoscaling=scale,
-#     )
-#     e.env.set_workload(ShapredWorkload())
-#     exps.append(e)
-
-#     return exps
-
-def main():
-    if DIRTY:
-        print("☢️ Using `--dirty` will overwrite existing experiment data!")
-
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-
-
-    exps = full_run()
-    # exps = custom_reruns()
-    
-    if DIRTY:
-        for e in exps:
-            e.env.tags.append("dirty")
-
-
-    #sort by branch to speed up rebuilds ...
-    def exp_sort_key(exp:Experiment):
-        return "_".join([exp.target_branch,exp.name])
-
-    exps.sort(key=exp_sort_key)
-    
-    print(tabulate([n.to_row() for n in exps], tablefmt="rounded_outline", headers=Experiment.headers()))
-
-    if DRY:
-        print("dry run -- exiting")
-        return
-
-    # master_env = copy.deepcopy(env)
-    # todo
-    progressbar.streams.wrap_stderr()
-    # todo: print not working with pg2
-    # for exp in progressbar.progressbar(exps, redirect_stdout=True, redirect_stderr=True):
-    last_build_branch = None
-    for exp in exps:
-        print(f"ℹ️  New experiment: {exp}")
-        if not SKIPBUILD:
-            print("👷 building...")
-            # if we know that branches don't change we could skip building some of them
-            WorkloadRunner(exp).build_workload()
-            if exp.target_branch != last_build_branch:
-                ExperimentDeployer(exp).build_images()
-            else:
-                print(".. skipping build step, we've build the images for the last run already...")
-            last_build_branch = exp.target_branch
-        else:
-            print("👷 Skipping the build process")
-
-        for i in range(experiment_list.NUM_ITERATIONS):
-
-            root = "data"
-            name = exp.__str__()
-            tags = "_".join(["exp"] + exp.env.tags)
-
-            out_path = path.join(root, timestamp, tags, name, str(i))
-
-            print(f"▶️ running ({i + 1}/{experiment_list.NUM_ITERATIONS}) to {out_path}...")
-            run_experiment(exp, out_path)
-        
-        print(f"sleeping for 120s to let the system settle after one feature")
-        time.sleep(120)
 
 
 def run_experiment(exp: Experiment, observations_out_path):
@@ -166,7 +88,7 @@ def run_experiment(exp: Experiment, observations_out_path):
 
         # 4. run collection agent (fetch prometheus )
         if not DIRTY:
-            wait = ExperimentEnvironment().wait_before_workloads
+            wait = ExperimentEnvironment.wait_before_workloads
             print(f"😴 Waiting {wait}s before starting workload")
             time.sleep(wait)  # wait for 120s before stressing the workload
 
@@ -183,6 +105,70 @@ def run_experiment(exp: Experiment, observations_out_path):
     print("additional sleep after a run just to be on the safe side")
     time.sleep(60)
 
+
+def prepare_experiment(exp: Experiment, timestamp: str, num_iterations: int, last_build_branch = None) -> None:
+    print(f"ℹ️  new experiment: {exp}")
+    if not SKIPBUILD:
+        print("👷 building...")
+        # if we know that branches don't change we could skip building some of them
+        WorkloadRunner(exp).build_workload()
+        if exp.target_branch != last_build_branch:
+            ExperimentDeployer(exp).build_images()
+        else:
+            print(".. skipping build step, we've build the images for the last run already...")
+        last_build_branch = exp.target_branch
+    else:
+        print("👷 skipping build...")
+
+    for i in range(num_iterations):
+
+        root = "data"
+        name = exp.__str__()
+        tags = "_".join(["exp"] + exp.env.tags)
+
+        out_path = path.join(root, timestamp, tags, name, str(i))
+
+        print(f"▶️ running ({i + 1}/{num_iterations}) to {out_path}...")
+        run_experiment(exp, out_path)
+    
+    print(f"sleeping for 120s to let the system settle after one feature")
+    time.sleep(120)
+
+def main():
+    if DIRTY:
+        print("☢️ will overwrite existing experiment data!!!!")
+
+
+    # load configs
+    config = Config(SUT_PATH, CLUE_CONFIG_PATH)
+
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+    exps = ExperimentList.load_experiments(config)
+    
+    #Get Workloads
+    workloads = [get_workload_instance(w) for w in config.clue_config.workloads]
+    exps.add_workloads(workloads)
+    
+    if DIRTY:
+        for e in exps:
+            e.env.tags.append("dirty")
+
+    #sort experiments
+    exps.sort()
+    
+    print(tabulate([n.to_row() for n in exps], tablefmt="rounded_outline", headers=Experiment.headers()))
+
+    if DRY:
+        print("dry run -- exiting")
+        return
+
+  
+    progressbar.streams.wrap_stderr()
+    # todo: print not working with pg2
+    # for exp in progressbar.progressbar(exps, redirect_stdout=True, redirect_stderr=True):
+    for exp in exps:
+        prepare_experiment(exp, timestamp, num_iterations=config.sut_config.num_iterations)
 
 if __name__ == "__main__":
     main()

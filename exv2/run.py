@@ -1,29 +1,26 @@
 #! /usr/bin/env python3
 import click
 from click import echo
-import copy
-from datetime import datetime
+from pathlib import Path
 import os
-import time
-from os import path
-import sys
-import progressbar
 from kubernetes import config
-from tabulate import tabulate
-import kubernetes
 
-import experiment_list
-from experiment import Experiment
+from experiment_list import ExperimentList
 from experiment_deployer import ExperimentDeployer
-from experiment_environment import ExperimentEnvironment, WorkloadAutoConfig
 from experiment_runner import ExperimentRunner
-from workload_runner import WorkloadRunner
-from scaling_experiment_setting import ScalingExperimentSetting
-from experiment_workloads import ShapredWorkload, RampingWorkload, PausingWorkload, FixedRampingWorkload
 
+from config import Config
 
 # setup clients
 config.load_kube_config()
+
+#get the root directory of the project
+BASE_DIR = Path(__file__).resolve().parent.parent
+print(f"BASE_DIR: {BASE_DIR}")
+CONFIG_PATH = BASE_DIR.joinpath("clue-config.yaml")
+SUT_CONFIG_PATH = BASE_DIR / "sut_configs" / "teastore-config.yaml"
+RUN_CONFIG = Config(SUT_CONFIG_PATH, CONFIG_PATH)
+
 
 @click.group()
 def cli():
@@ -34,8 +31,10 @@ def cli():
 #     """List available Experiments"""
 #     echo("\n".join([e.name for e in experiment_list.exps]))
 
+
 def available_experiments():
-    return [e.name for e in experiment_list.exps]
+    experiments= ExperimentList.load_experiments(RUN_CONFIG)
+    return [e.name for e in experiments]
 
 
 @click.command("run")
@@ -48,7 +47,7 @@ def available_experiments():
 def run(exp_name: str, skip_build, kind, platform):
     """Build and run a given experiment's setup"""
 
-    matching_exps = [e for e in experiment_list.exps if e.name == exp_name]
+    matching_exps = [e for e in ExperimentList.load_experiments(RUN_CONFIG) if e.name == exp_name]
 
     if not len(matching_exps):
         # echo(f"unknown experiment f{exp_name}, choose one of:")

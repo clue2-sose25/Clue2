@@ -14,12 +14,13 @@ class Experiment:
             name: str,
             target_branch: str,
             namespace: str,
+            prometheus_url: str,
+            critical_services:List[str],
+            target_host:str,
+            env: ExperimentEnvironment,
             colocated_workload: bool = False,
-            prometheus_url: str = "http://localhost:9090",
             autoscaling: ScalingExperimentSetting = None,
             max_autoscale: int = 3,
-            critical_services:List[str]=["teastore-auth", "teastore-registry", "teastore-webui"],
-            target_host:str="http://teastore-webui/tools.descartes.teastore.webui",
             infrastrcutre_namespaces:List[str] = [],
 
             # env = ExperimentEnvironment
@@ -38,7 +39,7 @@ class Experiment:
         self.prometheus = prometheus_url
         self.colocated_workload = colocated_workload
 
-        self.env = ExperimentEnvironment()
+        self.env = env
         self.autoscaling = autoscaling
         if autoscaling is not None:
             self.env.tags.append("scale")
@@ -53,6 +54,7 @@ class Experiment:
         else:
             return f"{self.name}_{self.target_branch}".replace("/", "_")
 
+
     def to_row(self):
         return [self.name, self.target_branch, self.namespace, self.autoscaling, self.env.tags]
 
@@ -60,9 +62,7 @@ class Experiment:
     def headers():
         return ["Name", "Branch", "Namespace", "Autoscaling", "Env Tags"]
 
-    def create_json(self, env: dict = {}):
-
-        env = ExperimentEnvironment().__dict__
+    def create_json(self) -> str:
 
         description = {
             "name": self.name,
@@ -73,5 +73,5 @@ class Experiment:
             "scaling": str(self.autoscaling),
             # "env_patches": self.env_patches,
         }
-        description = description | env
+        description = description | self.env
         return json.dumps(description)

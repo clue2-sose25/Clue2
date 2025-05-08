@@ -1,31 +1,88 @@
+import copy
+
+from dataclasses import dataclass
+from config import Config
+
 from experiment import Experiment
 from scaling_experiment_setting import ScalingExperimentSetting
+from experiment_workloads import Workload
+from experiment_environment import ExperimentEnvironment
 
-NUM_ITERATIONS = 1
+@dataclass
+class ExperimentList():
+    experiments: list[Experiment]
+
+    @staticmethod
+    def load_experiments(config: Config) -> "ExperimentList":
+        """
+        Load experiments from a YAML file and return an ExperimentList instance.
+        """
+        
+        clue_config = config.clue_config
+        sut_config = config.sut_config
+        experiments_config = config.experiments_config
+        
+        experiments = []
+        for exp in experiments_config.experiments:
+            # Create an Experiment instance for each experiment in the YAML file
+            experiment = Experiment(
+                name=exp.name,
+                target_branch=exp.target_branch,
+                namespace=sut_config.namespace,
+                colocated_workload=exp.colocated_workload, #TODO default False
+                prometheus_url=clue_config.prometheus_url,
+                env=ExperimentEnvironment(config),
+                autoscaling=ScalingExperimentSetting.CPUBOUND, #TODO customizable,
+                critical_services=exp.critical_services,
+                target_host=sut_config.target_host,
+                infrastrcutre_namespaces=sut_config.infrastructure_namespaces,
+            )
+            experiments.append(experiment)
+        return ExperimentList(experiments=experiments)
+    
+    def __iter__(self):
+        """
+        Make the ExperimentList class iterable by returning an iterator
+        for the list of experiments.
+        """
+        return iter(self.experiments)
+
+    def __repr__(self):
+        """
+        Return a string representation of the ExperimentList class.
+        """
+        return f"ExperimentList({self.experiments})"
+
+    @staticmethod
+    def _set_workload(exp: Experiment, workload: Workload) -> Experiment:
+        new_ex = copy.deepcopy(exp)
+        new_ex.env.set_workload(workload)
+        return new_ex
+
+    def add_workloads(self, workloads: list[Workload]) -> None:
+        exps_with_workloads = []
+        for w in workloads:
+            for exp in self.experiments:
+                exps_with_workloads.append(self._set_workload(exp,w))
+        self.experiments = exps_with_workloads
+
+    def sort(self):
+        """
+        Sort the experiments based on their names.
+        """
+        self.experiments.sort(key=lambda exp: "_".join([exp.target_branch, exp.name]))
 
 
-# prometheus_url = "http://130.149.158.130:32426" # actual ip of prometheus node
-# prometheus_url = "http://host.minikube.internal:9090" # for minikube usage
-# prometheus_url = "http://192.168.1.219:9090"
-
-# helm install prometheus prometheus-community/prometheus
-prometheus_url = "http://localhost:9090" # minikube
-# prometheus_url = "http://prometheus-server.default.svc.cluster.local" # minikube
-
-namespace = "tea-bench"
-scale = ScalingExperimentSetting.CPUBOUND
-
-
-exps = [
-    Experiment(
-        name="baseline",
-        target_branch="vanilla",
-        # patches=[],
-        namespace=namespace,
-        colocated_workload=True,
-        prometheus_url=prometheus_url,
-        autoscaling=scale,
-    ),
+# exps = [
+#     Experiment(
+#         name="baseline",
+#         target_branch="vanilla",
+#         # patches=[],
+#         namespace=namespace,
+#         colocated_workload=True,
+#         prometheus_url=prometheus_url,
+#         autoscaling=scale,
+#     ),
     # Experiment(
     #     name="serverless",
     #     target_branch="serverless-auth",
@@ -110,4 +167,4 @@ exps = [
     #     prometheus_url=prometheus_url,
     #     autoscaling=scale,
     # ),
-]
+#]
