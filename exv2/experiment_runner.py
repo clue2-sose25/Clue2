@@ -5,7 +5,7 @@ from datetime import datetime
 from psc.tracker import PodUsage
 
 from experiment import Experiment
-from exv2.workload_cancelled_exception import WorkloadCancelled
+from workload_cancelled_exception import WorkloadCancelled
 from flushing_queue import FlushingQueue
 from experiment_autoscaling import ExperimentAutoscaling
 from workload_runner import WorkloadRunner
