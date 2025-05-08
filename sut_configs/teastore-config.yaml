@@ -39,6 +39,7 @@ experiments:
   - name: "baseline"
     target_branch: "vanilla"
     colocated_workload: true
+    critical_services: ['teastore-auth', 'teastore-registry', 'teastore-webui']
   # - name: "serverless"
   #   target_branch: "serverless"
   #   colocated_workload: true
