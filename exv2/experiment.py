@@ -54,6 +54,7 @@ class Experiment:
         else:
             return f"{self.name}_{self.target_branch}".replace("/", "_")
 
+
     def to_row(self):
         return [self.name, self.target_branch, self.namespace, self.autoscaling, self.env.tags]
 
@@ -72,5 +73,9 @@ class Experiment:
             "scaling": str(self.autoscaling),
             # "env_patches": self.env_patches,
         }
+<<<<<<< HEAD
         description = description | env
+=======
+        description = description | self.env
+>>>>>>> 1a82bfa (removed double dict conversion)
         return json.dumps(description)
