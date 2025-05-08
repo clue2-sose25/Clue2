@@ -1,18 +1,19 @@
 import base64
 import os
+import platform
 import signal
 import subprocess
 import tarfile
 from os import path
 from tempfile import TemporaryFile
-
 import docker
 from kubernetes import client, watch
 from kubernetes.client.rest import ApiException
-
 from experiment import Experiment
-
 import logging
+
+from exv2.workload_cancelled_exception import WorkloadCancelled
+
 
 class WorkloadRunner:
 
@@ -75,11 +76,11 @@ class WorkloadRunner:
             self._run_local_workload(outpath)
 
     def _run_remote_workload(self, outpath):
-        observations = os.path.join(outpath, "") # ensure trailing slash for later path building
+        observations = os.path.join(outpath, "")  # ensure trailing slash for later path building
         core = client.CoreV1Api()
         exp = self.exp
 
-        def cancel(sig, frame):
+        def cancel(sig=None, frame=None):
             # attempt to download results before deleting the pod
             self._download_results("loadgenerator", observations)
             core.delete_collection_namespaced_pod(
@@ -88,16 +89,22 @@ class WorkloadRunner:
                 timeout_seconds=0,
                 grace_period_seconds=0,
             )
+            if platform.system() == "Windows":
+                raise WorkloadCancelled("Workload cancelled")  # Raise exception on Windows
 
-        # will only be called if the experiment runner cancels the experiment, e.g. due to timeout
-        signal.signal(signal.SIGUSR1, cancel)
+        # Set up SIGUSR1 handler only on Unix-like systems
+        if platform.system() != "Windows":
+            signal.signal(signal.SIGUSR1, cancel)
 
-        self._deploy_remote_workload(exp, core)
-        logging.debug("deployed workload container")
-        
-        self._wait_for_workload(core, exp, observations)
+        try:
+            self._deploy_remote_workload(exp, core)
+            logging.debug("deployed workload container")
 
-        core.delete_namespaced_pod(name="loadgenerator", namespace=exp.namespace)
+            self._wait_for_workload(core, exp, observations)
+
+            core.delete_namespaced_pod(name="loadgenerator", namespace=exp.namespace)
+        except WorkloadCancelled:
+            logging.info("Remote workload stopped due to cancellation")
 
     def _wait_for_workload(self, core: client.CoreV1Api, exp: Experiment, observations: str):
         """

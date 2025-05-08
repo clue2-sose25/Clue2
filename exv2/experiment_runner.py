@@ -1,21 +1,21 @@
+import platform
+import threading
 from datetime import datetime
 
 from psc.tracker import PodUsage
 
 from experiment import Experiment
+from exv2.workload_cancelled_exception import WorkloadCancelled
 from flushing_queue import FlushingQueue
-
 from experiment_environment import ExperimentEnvironment
 from experiment_autoscaling import ExperimentAutoscaling
 from workload_runner import WorkloadRunner
 from psc import ResourceTracker, NodeUsage
 from os import path
 import signal
-
 import subprocess
 import kubernetes
 import logging
-import time
 
 class ExperimentRunner:
 
@@ -63,35 +63,69 @@ class ExperimentRunner:
         # start resource tracker
         logging.debug("starting tracker")
         tracker.start()
+
         # MAIN timeout to kill the experiment after 2 min after the experiment should be over (to avoid hanging)
-        timeout = exp.env.total_duration() + 2*60 + 30
+        timeout = exp.env.total_duration() + 2 * 60 + 30
+
         # noinspection PyUnusedLocal
-        def cancel(sig, frame):
+        def cancel(sig=None, frame=None):
+            """Handler for timeout, SIGINT, or manual cancellation."""
             tracker.stop()
             pod_channel.flush()
             node_channel.flush()
-            signal.raise_signal(signal.SIGUSR1)  # raise signal to stop workload
+            if platform.system() != "Windows":
+                signal.raise_signal(signal.SIGUSR1)  # raise SIGUSR1 on Unix-like systems
+            else:
+                raise WorkloadCancelled("Workload cancelled")  # raise custom exception on Windows
             logging.warning(f"workload timeout ({timeout})s reached.")
+            raise SystemExit(0)  # Exit gracefully
 
-        signal.signal(signal.SIGALRM, cancel)
-        signal.signal(signal.SIGINT, cancel) #also cancle on control-C
-        
-        # time.sleep(30)  # wait for 120s before stressing the workload
+        # Set up SIGINT handler (Ctrl+C) for all platforms
+        signal.signal(signal.SIGINT, cancel)
 
-        logging.info(f"starting workload with timeout {timeout}")
-        signal.alarm(timeout)
-        # deploy workload on different node or locally and wait for workload to be completed (or timeout)
-        wlr = WorkloadRunner(experiment=exp)
-        # will run remotely or locally based on experiment
+        # Set up SIGUSR1 handler for Unix-like systems
+        if platform.system() != "Windows":
+            signal.signal(signal.SIGUSR1, cancel)
 
-        wlr.run_workload(observations_out_path)
+        def set_timeout(seconds):
+            """Cross-platform timeout setup."""
+            if platform.system() != "Windows":
+                # Unix-like systems: Use SIGALRM
+                signal.signal(signal.SIGALRM, cancel)
+                signal.alarm(seconds)
+            else:
+                # Windows: Use threading.Timer
+                timer = threading.Timer(seconds, cancel)
+                timer.start()
+                return timer  # Return timer to allow cancellation
 
-        logging.info("finished running workload, stopping trackers and flushing channels")
-        # stop resource tracker
-        tracker.stop()
-        node_channel.flush()
-        pod_channel.flush()
-        signal.alarm(0)  # cancel alarm
+        # Example usage
+        try:
+            logging.info(f"starting workload with timeout {timeout}")
+            # Set up the timeout
+            timer = set_timeout(timeout)
+
+            # deploy workload on different node or locally and wait for workload to be completed (or timeout)
+            wlr = WorkloadRunner(experiment=exp)
+            # will run remotely or locally based on experiment
+            try:
+                wlr.run_workload(observations_out_path)
+            except WorkloadCancelled:
+                logging.info("Workload stopped due to cancellation")
+
+            logging.info("finished running workload, stopping trackers and flushing channels")
+            # stop resource tracker
+            tracker.stop()
+            node_channel.flush()
+            pod_channel.flush()
+
+        except SystemExit:
+            # Clean up
+            if platform.system() == "Windows" and timer:
+                timer.cancel()  # Cancel the Windows timer
+            elif platform.system() != "Windows":
+                signal.alarm(0)  # Disable SIGALRM on Unix-like systems
+            logging.info("Program terminated")
 
 
     def cleanup(self):

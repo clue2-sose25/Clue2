@@ -89,7 +89,7 @@ def full_run():
 
 def main():
     if DIRTY:
-        print("☢️ will overwrite existing experiment data!!!!")
+        print("☢️ Using `--dirty` will overwrite existing experiment data!")
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
