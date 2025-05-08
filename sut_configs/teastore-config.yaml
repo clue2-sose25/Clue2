@@ -23,7 +23,7 @@ services:
       memory: 1500
   - name: "teastore-recommender"
     resource_limits:
-      cpu: 2000
+      cpu: 1000
       memory: 1024
   - name: "teastore-image"
     resource_limits:
@@ -31,7 +31,7 @@ services:
       memory: 1500
   - name: "teastore-all"
     resource_limits:
-      cpu: 1500
+      cpu: 1000
       memory: 2048
 
 
