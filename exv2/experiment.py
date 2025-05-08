@@ -62,7 +62,7 @@ class Experiment:
     def headers():
         return ["Name", "Branch", "Namespace", "Autoscaling", "Env Tags"]
 
-    def create_json(self, env: dict = {}):
+    def create_json(self) -> str:
 
         description = {
             "name": self.name,
@@ -73,9 +73,5 @@ class Experiment:
             "scaling": str(self.autoscaling),
             # "env_patches": self.env_patches,
         }
-<<<<<<< HEAD
-        description = description | env
-=======
         description = description | self.env
->>>>>>> 1a82bfa (removed double dict conversion)
         return json.dumps(description)
