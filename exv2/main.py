@@ -89,13 +89,13 @@ def run_experiment(exp: Experiment, observations_out_path):
             raise RuntimeError("data for this experiment already exist, skipping")
 
         # 3. rewrite helm values with <env["docker_user"]> && env details as necessary (namespace ...)
-        print("🏗️ deploying branch")
+        print("🏗️ Deploying the SUT...")
         ExperimentDeployer(exp).deploy_branch(observations_out_path)
 
         # 4. run collection agent (fetch prometheus )
         if not DIRTY:
             wait = ExperimentEnvironment.wait_before_workloads
-            print(f"😴 waiting {wait}s before starting workload")
+            print(f"😴 Waiting {wait}s before starting workload")
             time.sleep(wait)  # wait for 120s before stressing the workload
 
         ExperimentRunner(exp).run(observations_out_path)
