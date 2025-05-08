@@ -23,6 +23,7 @@ from scaling_experiment_setting import ScalingExperimentSetting
 from experiment_workloads import ShapedWorkload, RampingWorkload, PausingWorkload, FixedRampingWorkload, get_workload_class
 from experiment_list import ExperimentList
 
+#get the root directory of the project
 BASE_DIR = Path(__file__).resolve().parent
 
 #parse arguments
