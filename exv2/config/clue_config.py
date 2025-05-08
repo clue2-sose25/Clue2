@@ -3,6 +3,7 @@ from pathlib import Path
 import yaml
 
 
+
 class ClueConfig(BaseSettings):
     """
     Configuration class for CLUE using pydantic's BaseSettings.
@@ -13,6 +14,9 @@ class ClueConfig(BaseSettings):
     local_port: int
     remote_platform_arch: str
     local_platform_arch: str
+    docker_registry_address: str
+    sut_config_path: Path  
+    workloads: list[str] 
 
     class Config:
         # Allow environment variable overrides

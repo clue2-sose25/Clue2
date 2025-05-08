@@ -20,6 +20,7 @@ class SUTConfig(BaseSettings):
     wait_after_workloads: int
     tags: list[str]
     infrastructure_namespaces: list[str] = Field(default_factory=list)  
+    num_iterations: int = Field(default=1)
 
     class Config:
         # Allow environment variable overrides

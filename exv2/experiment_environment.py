@@ -1,5 +1,5 @@
 from pathlib import Path
-from config import SUTConfig, ClueConfig, ServicesConfig
+from config import Config
 
 from experiment_workloads import Workload
 
@@ -7,14 +7,15 @@ from experiment_workloads import Workload
 CONFIG_PATH = Path("..").joinpath("cfg").joinpath("experiment_config.yaml")
 
 class ExperimentEnvironment:
-    def __init__(self, sut_config: SUTConfig,
-                 clue_config: ClueConfig,
-                 services_config: ServicesConfig):
+    def __init__(self, config: Config):
         """
         Initialize the ExperimentEnvironment Instance.
         """
         #self.config = config
 
+        sut_config = config.sut_config
+        clue_config = config.clue_config
+        services_config = config.services_config
         # Files / IO
         self.sut_path = sut_config.sut_path
         self.local_public_ip = clue_config.local_public_ip

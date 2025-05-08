@@ -1,23 +1,26 @@
 import copy
 
 from dataclasses import dataclass
-from config import ClueConfig, ExperimentsConfig, SUTConfig
+from config import Config
 
 from experiment import Experiment
 from scaling_experiment_setting import ScalingExperimentSetting
 from experiment_workloads import Workload
+from experiment_environment import ExperimentEnvironment
 
 @dataclass
 class ExperimentList():
     experiments: list[Experiment]
 
     @staticmethod
-    def load_experiments(clue_config: ClueConfig,
-                         experiments_config: ExperimentsConfig,
-                         sut_config: SUTConfig) -> "ExperimentList":
+    def load_experiments(config: Config) -> "ExperimentList":
         """
         Load experiments from a YAML file and return an ExperimentList instance.
         """
+        
+        clue_config = config.clue_config
+        sut_config = config.sut_config
+        experiments_config = config.experiments_config
         
         experiments = []
         for exp in experiments_config.experiments:
@@ -28,6 +31,7 @@ class ExperimentList():
                 namespace=clue_config.namespace,
                 colocated_workload=exp.colocated_workload, #TODO default False
                 prometheus_url=clue_config.prometheus_url,
+                env=ExperimentEnvironment(config),
                 autoscaling=ScalingExperimentSetting.CPUBOUND, #TODO customizable,
                 critical_services=exp.critical_services,
                 target_host=sut_config.target_host,

@@ -17,6 +17,7 @@ class Experiment:
             prometheus_url: str,
             critical_services:List[str],
             target_host:str,
+            env: ExperimentEnvironment,
             colocated_workload: bool = False,
             autoscaling: ScalingExperimentSetting = None,
             max_autoscale: int = 3,
@@ -38,7 +39,7 @@ class Experiment:
         self.prometheus = prometheus_url
         self.colocated_workload = colocated_workload
 
-        self.env = ExperimentEnvironment.from_config()
+        self.env = env
         self.autoscaling = autoscaling
         if autoscaling is not None:
             self.env.tags.append("scale")

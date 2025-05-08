@@ -1,5 +1,5 @@
 #! /usr/bin/env python3
-import copy
+from pathlib import Path
 from datetime import datetime
 import os
 import time
@@ -20,15 +20,42 @@ from experiment_environment import ExperimentEnvironment
 from experiment_runner import ExperimentRunner
 from workload_runner import WorkloadRunner
 from scaling_experiment_setting import ScalingExperimentSetting
-from experiment_workloads import ShapedWorkload, RampingWorkload, PausingWorkload, FixedRampingWorkload
+from experiment_workloads import ShapedWorkload, RampingWorkload, PausingWorkload, FixedRampingWorkload, get_workload_class
 from experiment_list import ExperimentList
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--skip-build" ,action="store_true",help="don't build, use latest image from registry")
-parser.add_argument("--dirty" ,action="store_true",help="skip build, don't wait, and mix results")
-parser.add_argument("--dry" ,action="store_true",help="just print exeriments")
+#parse arguments
+parser = argparse.ArgumentParser(description="Experiment Runner")
+parser.add_argument(
+    "--skip-build",
+    action="store_true",
+    help="Skip building images and use the latest image from the registry.",
+)
+parser.add_argument(
+    "--dirty",
+    action="store_true",
+    help="Skip building, don't wait, and mix results.",
+)
+parser.add_argument(
+    "--dry",
+    action="store_true",
+    help="Just print experiments without running them.",
+)
+parser.add_argument(
+    "--sut-path",
+    "-s",
+    type=Path,
+    default=None,
+    help="Path to the System Under Test (SUT).",
+)
 args = parser.parse_args()
+
+# Constants
+CLUE_CONFIG_PATH = Path("..").joinpath("clue_config.yaml")
+DIRTY = args.dirty
+SKIPBUILD = args.skip_build
+DRY = args.dry
+SUT_PATH = args.sut_path
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.DEBUG)
@@ -37,9 +64,7 @@ logging.getLogger("kubernetes").setLevel(logging.INFO)
 
 logging.debug("debug log level")
 
-DIRTY = args.dirty
-SKIPBUILD = args.skip_build
-DRY = args.dry
+
 
 # setup clients
 config.load_kube_config()
@@ -62,7 +87,7 @@ def run_experiment(exp: Experiment, observations_out_path):
 
         # 4. run collection agent (fetch prometheus )
         if not DIRTY:
-            wait = ExperimentEnvironment().from_config().wait_before_workloads
+            wait = ExperimentEnvironment.wait_before_workloads
             print(f"😴 waiting {wait}s before starting workload")
             time.sleep(wait)  # wait for 120s before stressing the workload
 
@@ -80,7 +105,7 @@ def run_experiment(exp: Experiment, observations_out_path):
     time.sleep(60)
 
 
-def prepare_experiment(exp: Experiment, timestamp: str) -> None:
+def prepare_experiment(exp: Experiment, timestamp: str, num_iterations: int) -> None:
     print(f"ℹ️  new experiment: {exp}")
     if not SKIPBUILD:
         print("👷 building...")
@@ -94,7 +119,7 @@ def prepare_experiment(exp: Experiment, timestamp: str) -> None:
     else:
         print("👷 skipping build...")
 
-    for i in range(experiment_list.NUM_ITERATIONS):
+    for i in range(num_iterations):
 
         root = "data"
         name = exp.__str__()
@@ -102,7 +127,7 @@ def prepare_experiment(exp: Experiment, timestamp: str) -> None:
 
         out_path = path.join(root, timestamp, tags, name, str(i))
 
-        print(f"▶️ running ({i + 1}/{experiment_list.NUM_ITERATIONS}) to {out_path}...")
+        print(f"▶️ running ({i + 1}/{num_iterations}) to {out_path}...")
         run_experiment(exp, out_path)
     
     print(f"sleeping for 120s to let the system settle after one feature")
@@ -113,18 +138,15 @@ def main():
         print("☢️ will overwrite existing experiment data!!!!")
 
     # load configs
-    clue_config, experiment_config, services_config, experiments_config = load_configs()
+    clue_config, experiments_config, services_config, sut_config = load_configs()
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-    exps = ExperimentList.load_experiments()
-    workloads = workloads = [
-        ShapedWorkload(),
-        # RampingWorkload(), 
-        # PausingWorkload(),  
-        # FixedRampingWorkload()
-    ]
-
+    exp_env = ExperimentEnvironment(sut_config, clue_config, services_config)
+    exps = ExperimentList.load_experiments(clue_config, experiments_config, sut_config, exp_env)
+    
+    #Get Workloads
+    workloads = [get_workload_class(w) for w in clue_config.workloads]
     exps.add_workloads(workloads)
     
     if DIRTY:
@@ -147,7 +169,7 @@ def main():
     # for exp in progressbar.progressbar(exps, redirect_stdout=True, redirect_stderr=True):
     last_build_branch = None
     for exp in exps:
-        prepare_experiment(exp, timestamp)
+        prepare_experiment(exp, timestamp, num_iterations=experiment_config.num_iterations)
 
 if __name__ == "__main__":
     main()
