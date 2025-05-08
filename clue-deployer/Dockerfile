@@ -1,2 +1,5 @@
 # TO-DO: CLUE Deployer
-# Includes: python files, configs, etc.
+# Includes: 
+#    - Python files in this folder
+#    - Configs should be copied by dockerfile from the repo root
+#    - Download the repos (SUT and agent) specified in the config, etc. The local files should be ignored and not copied.
