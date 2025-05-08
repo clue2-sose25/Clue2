@@ -35,7 +35,7 @@ class ExperimentList():
                 autoscaling=ScalingExperimentSetting.CPUBOUND, #TODO customizable,
                 critical_services=exp.critical_services,
                 target_host=sut_config.target_host,
-                infrastrcutre_namespaces=sut_config.infrastructure_namespaces,
+                infrastructure_namespaces=sut_config.infrastructure_namespaces,
             )
             experiments.append(experiment)
         return ExperimentList(experiments=experiments)

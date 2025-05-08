@@ -1,38 +1,32 @@
 from typing import List
-from os import path
 import json
+from pathlib import Path
 
 from scaling_experiment_setting import ScalingExperimentSetting
 from experiment_environment import ExperimentEnvironment
 
 
 class Experiment:
-
     def __init__(
-
             self,
             name: str,
             target_branch: str,
             namespace: str,
             prometheus_url: str,
-            critical_services:List[str],
-            target_host:str,
+            critical_services: List[str],
+            target_host: str,
             env: ExperimentEnvironment,
             colocated_workload: bool = False,
             autoscaling: ScalingExperimentSetting = None,
             max_autoscale: int = 3,
-            infrastrcutre_namespaces:List[str] = [],
-
-            # env = ExperimentEnvironment
+            infrastructure_namespaces: List[str] = [],
     ):
-
         # metadata
         self.name = name
         self.target_branch = target_branch
         self.namespace = namespace
-        self.infrastrcutre_namespaces = infrastrcutre_namespaces
-        self.critical_services=critical_services
-        # self.patches = patches
+        self.infrastructure_namespaces = infrastructure_namespaces
+        self.critical_services = critical_services
         self.target_host = target_host
 
         # observability data
@@ -54,7 +48,6 @@ class Experiment:
         else:
             return f"{self.name}_{self.target_branch}".replace("/", "_")
 
-
     def to_row(self):
         return [self.name, self.target_branch, self.namespace, self.autoscaling, self.env.tags]
 
@@ -63,15 +56,21 @@ class Experiment:
         return ["Name", "Branch", "Namespace", "Autoscaling", "Env Tags"]
 
     def create_json(self) -> str:
-
         description = {
             "name": self.name,
             "target_branch": self.target_branch,
             "namespace": self.namespace,
-            # "patches": self.patches,
             "executor": "colocated" if self.colocated_workload else "local",
             "scaling": str(self.autoscaling),
-            # "env_patches": self.env_patches,
         }
-        description = description | self.env
+
+        # Convert Path objects in self.env.__dict__ to strings
+        env_dict = {}
+        for key, value in self.env.__dict__.items():
+            if isinstance(value, Path):
+                env_dict[key] = str(value)  # Convert Path to string
+            else:
+                env_dict[key] = value
+
+        description = description | env_dict
         return json.dumps(description)
