@@ -19,7 +19,7 @@ class ClueConfig(BaseSettings):
         env_prefix = "CLUE_"
 
     @classmethod
-    def load_from_yaml(cls, config_path: Path = CONFIG_PATH) -> "ClueConfig":
+    def load_from_yaml(cls, config_path: Path) -> "ClueConfig":
         """
         Load configuration from a YAML file.
         """

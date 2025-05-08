@@ -22,6 +22,7 @@ class ExperimentEnvironment:
         # Infra
         self.docker_user = clue_config.docker_user
         self.local_port = clue_config.local_port
+        self.docker_registry_address = clue_config.docker_registry_address
         self.remote_platform_arch = clue_config.remote_platform_arch
         self.local_platform_arch = clue_config.local_platform_arch
         self.resource_limits = services_config.get_all_resource_limits()
