@@ -63,7 +63,6 @@ class Experiment:
 
     def create_json(self, env: dict = {}):
 
-        env = ExperimentEnvironment().from_config().__dict__
 
         description = {
             "name": self.name,
@@ -74,5 +73,5 @@ class Experiment:
             "scaling": str(self.autoscaling),
             # "env_patches": self.env_patches,
         }
-        description = description | env
+        description = description | env.__dict__()
         return json.dumps(description)
