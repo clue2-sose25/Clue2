@@ -4,9 +4,6 @@ import time
 import kubernetes
 import docker
 
-from yaml_patch import patch_yaml
-
-
 from experiment import Experiment
 from experiment_environment import ExperimentEnvironment
 from scaling_experiment_setting import ScalingExperimentSetting
@@ -35,11 +32,13 @@ class ExperimentDeployer:
         if git != 0:
             raise RuntimeError(f"failed to switch git to {exp.target_branch}")
 
-        print(f"deploying {exp.target_branch}")
+        print(f"Using the `{exp.target_branch}` SUT branch")
 
         # ensure mvn build ...
         # docker run -v foo:/mnt --rm -it --workdir /mnt  maven mvn clean install -DskipTests
         # try: 
+
+        print(f"Deploying the maven container. Might take a while...")
         mvn_output = self.docker_client.containers.run(
             image="maven",
             auto_remove=True,
@@ -50,8 +49,7 @@ class ExperimentDeployer:
                 }
             },
             working_dir="/mnt",
-            command="mvn clean install -DskipTests",
-            # command="tail -f /dev/null",
+            command="bash -c 'apt-get update && apt-get install -y dos2unix && find . -type f -name \"*.sh\" -exec dos2unix {} \\; && mvn clean install -DskipTests'",
         )
         if "BUILD SUCCESS" not in mvn_output.decode("utf-8"):
             print(mvn_output)
@@ -59,9 +57,10 @@ class ExperimentDeployer:
                 "failed to build teastore. Run mvn clean install -DskipTests manually and see why it fails"
             )
         else:
-            print("rebuilt java deps")
+            print("Finished rebuiling java deps")
 
         # patch build_docker.sh to use buildx
+        print(f"Patching the build_docker.sh")
         with open(
             path.join(exp.env.teastore_path, "tools", "build_docker.sh"), "r"
         ) as f:
@@ -84,11 +83,10 @@ class ExperimentDeployer:
             ) as f:
                 f.write(script)
             
-       
-
         # 2. cd tools && ./build_docker.sh -r <env["docker_user"]/ -p && cd ..
+        print(f"Running the build_docker.sh")
         build = subprocess.check_call(
-            ["sh", "build_docker.sh", "-r", f"{exp.env.docker_user}/", "-p"],
+            ["sh", "build_docker.sh", "-r", f"{exp.env.docker_registry_address}/", "-p"],
             cwd=path.join(exp.env.teastore_path, "tools"),
         )
 
@@ -97,7 +95,7 @@ class ExperimentDeployer:
                 "failed to build docker images. Run build_docker.sh manually and see why it fails"
             )
 
-        print(f"build {exp.env.docker_user}/* images")
+        print(f"Finished building {exp.env.docker_registry_address}/* images")
 
     def deploy_branch(self, observations: str = "data/default"):
         """
@@ -117,7 +115,7 @@ class ExperimentDeployer:
             path.join(exp.env.teastore_path, "examples", "helm", "values.yaml"), "r"
         ) as f:
             values = f.read()
-            values = values.replace("descartesresearch", exp.env.docker_user)
+            values = values.replace("descartesresearch", exp.env.docker_registry_address)
             # ensure we only run on nodes that we can observe
             values = values.replace(
                 r"nodeSelector: {}", r'nodeSelector: {"scaphandre": "true"}'

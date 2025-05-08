@@ -1,6 +1,0 @@
-images:
-  # the docker hub user to use for pushing/pulling images
-  # docker_hub_username: kaozente
-  # docker_hub_username: "130.149.158.218:22222/karl"
-  # docker_hub_username: "192.168.0.124:22222/karl"
-  docker_hub_username: "cluereg.local:22222/karl"

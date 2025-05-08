@@ -21,7 +21,7 @@ class ExperimentAutoscaling:
         """
 
         exp = self.experiment
-        print(f"🚀 setting up hpa scaling")
+        print(f"🚀 Setting up HPA scaling...")
         if (exp.autoscaling == ScalingExperimentSetting.MEMORYBOUND):
             self._setup_mem_autoscaling()
         elif exp.autoscaling == ScalingExperimentSetting.CPUBOUND:

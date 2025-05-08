@@ -58,8 +58,7 @@ def run(exp_name: str, skip_build, kind, platform):
     else:
         exp = matching_exps[0]
 
-    echo(f"Experiment: {exp}")
-
+    echo(f"Running the experiment: {exp}")
 
     observations_out_path = "data_run/1"
     port_forward = None
@@ -76,15 +75,15 @@ def run(exp_name: str, skip_build, kind, platform):
         exp.env.remote_platform_arch = platform
 
         if not skip_build:
-            echo("building images")
+            echo("Building the SUT images")
             ExperimentDeployer(exp).build_images()
         else:
-            echo(click.style("skipping build", fg="green"))
-        echo("🏗️ deploying branch")
+            echo(click.style("Skipping the SUT build.", fg="green"))
+        echo("🏗️ Deploying the SUT")
         ExperimentDeployer(exp).deploy_branch(observations_out_path)
 
-        echo("to expose port run:")
-        echo(click.style("kubectl port-forward service/teastore-webui 8080:80", fg="cyan"))
+        echo("To expose port run:")
+        echo(click.style("kubectl port-forward service/teastore-webui 8080:80 -n tea-bench", fg="cyan"))
         echo("")
         # v1 = kubernetes.client.AppsV1Api()
         # v1.list_name()

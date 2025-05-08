@@ -1,16 +1,8 @@
-# CLUE: Cloud-native Sustainability Evaluator
+<div align="center">
+  <h1 style="padding:15px;border-bottom: 0;">CLUE: Cloud-native Sustainability Evaluator</h1>
+</div>
 
-- [CLUE: Cloud-native Sustainability Evaluator](#clue-cloud-native-sustainability-evaluator)
-  - [0. Prerequisites](#0-prerequisites)
-  - [1. Setup](#1-setup)
-  - [2. Manually running a single variant (for debugging purposes)](#2-manually-running-a-single-variant-for-debugging-purposes)
-  - [3. Testing the experiment setup (without building images)](#3-testing-the-experiment-setup-without-building-images)
-  - [4. Running the experiments (with building and pushing images)](#4-running-the-experiments-with-building-and-pushing-images)
-  - [Troubleshooting / Known Issues](#troubleshooting--known-issues)
-  - [Container Registry](#container-registry)
-    - [Running in Minikube with your own registry](#running-in-minikube-with-your-own-registry)
-  - [Cluster Preparation](#cluster-preparation)
-
+## 📢 About the Project
 
 Clue is  a benchmarking and observability framework for gathering and compiling sustainability and quality reports on changes in cloud-native applications. 
 
@@ -21,8 +13,19 @@ Moreover, we are currently focusing on Kubernetes as the orchestrator, so as lon
 
 This Readme describes the process of running experiments on different variants of the TeaStore microservice example.
 
+### Quicklinks
 
-## 0. Prerequisites
+- [Prerequisites](prerequisites)
+- [System Setup](#1-system-setup)
+  - [Setting up the image registry]()
+  - [Setting up Prometheus]()
+  - [CLUE2 deployer setup]()
+  - [Manually running a single variant (for debugging purposes)](#2-manually-running-a-single-variant-for-debugging-purposes)
+  - [Testing the experiment setup (without building images)](#3-testing-the-experiment-setup-without-building-images)
+  - [Running the experiments (with building and pushing images)](#4-running-the-experiments-with-building-and-pushing-images)
+- [Troubleshooting / Known Issues](#troubleshooting--known-issues)
+
+## 📦 Prerequisites
 
   * Docker, e.g. 20.10
   * Kubernetes, e.g. 1.29 (for testing purposes, [minikube](https://minikube.sigs.k8s.io/docs/) works)
@@ -33,16 +36,67 @@ This Readme describes the process of running experiments on different variants o
   * Python, e.g. 3.11, using uv in this Readme
 
 
-## 1. Setup
+## 🚀 System Setup
 
 > [!CAUTION]
 > Please note that this repository also contains work in progress parts -- not all CLUE features and experiment branches that are not mentioned in the paper might be thoroughly tested.
 
+### 1. Setting up the image registry
 
-Install Python dependencies using [uv](https://docs.astral.sh/uv/) (or use a virtual environment with e.g. pipenv)
+First make sure `Docker` (with `Docker Compose` support) is installed and running, then execute this command to spin up the image registry:
 
 ```bash
-uv sync
+docker compose up -d
+```
+
+Update the `Docker Deamon` configuration to allow insecure connections to the deployed image registry. For `Docker Desktop` go to the configuration and the `Docker Engine` tab and append the following option:
+
+```json
+  "insecure-registries": [
+    "host.docker.internal:6789"
+  ]
+```
+
+Make sure that `Minikube` (or your other choosen local kubernets cluster) accepts the registry as well and has enough memory (configure docker before). In case you already have created a minikube cluster before make sure to delete if and recreate it using this command:
+
+```bash
+minikube start --insecure-registry "host.docker.internal:6789" --cpus 8 --memory 12000
+```
+
+### 2. Setting up metrics collectors
+
+Install Prometheus and Node Exporter, e.g.:
+
+```bash
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm install kps1 prometheus-community/kube-prometheus-stack
+```
+
+Install Kepler
+
+```bash
+helm repo add kepler https://sustainable-computing-io.github.io/kepler-helm-chart
+helm install kepler kepler/kepler --namespace kepler --create-namespace --set serviceMonitor.enabled=true --set serviceMonitor.labels.release=kps1 
+```
+
+Make Prometheus available as localhost:9090
+
+```bash
+kubectl --namespace default port-forward prometheus-kps1-kube-prometheus-stack-prometheus-0 9090
+```
+
+Lastly add an additional node to allow running the loadgenerator (which can not run on the same node as the experiment itself):
+
+```bash
+minikube node add
+```
+
+### 3. CLUE2 deployer setup
+
+Clone the system under test, i.e. the teastore. Each variant is in a separate branch.
+
+```bash
+git clone https://github.com/ISE-TU-Berlin/sustainable_teastore.git teastore
 ```
 
 For local development, clone the PSC tracker into `agent` (uv is configured in the toml to find it there):
@@ -51,31 +105,27 @@ For local development, clone the PSC tracker into `agent` (uv is configured in t
 git clone https://github.com/ISE-TU-Berlin/PSC.git agent
 ```
 
-Clone the system under test, i.e. the teastore. Each variant is in a separate branch.
+Install Python dependencies using [uv](https://docs.astral.sh/uv/) (or use a virtual environment with e.g. pipenv)
 
 ```bash
-git clone https://github.com/ISE-TU-Berlin/sustainable_teastore.git teastore
+uv sync
 ```
-
-Start docker.
 
 Create a kubernetes namespace for the experiments to run in. By default, this is `tea-bench`
 
-```
+```bash
 kubectl create namespace tea-bench
 ```
 
 In a multi-node setting, not all nodes might have the option to measure using scaphandre, so Clue ensures that only appropiate nodes are assigned with experiment pods. To simulate this for, e.g., the minikube node, apply a label:
 
-```
+```bash
 kubectl label nodes minikube scaphandre=true
 ```
 
 Set your Prometheus url in `exv2/experiment_list.py` and select the experiments for tests.
 
-
-
-## 2. Manually running a single variant (for debugging purposes)
+### 4. Manually running a single variant (for debugging purposes)
 
 Run a variant indefinetely, e.g. baseline (see all experiment names in `exv2/experiment_list.py`)
 
@@ -94,9 +144,7 @@ TeaStore may run some initial tasks on startup, so make sure to wait a minute if
 
 ![TeaStore in the Browser](readme/teastore_jvm.png)
 
-
-
-## 3. Testing the experiment setup (without building images)
+### 5. Testing the experiment setup (without building images)
 
 This will run the experiments from `exv2/experiment_list.py` and gather the results.
 Without building images, Clue will use the latest images from the public registry, not necessarily the variant checked out locally!
@@ -107,105 +155,19 @@ python exv2/main.py --skip-build
 
 ![Running the Experiments](readme/running_experiments.png)
 
-## 4. Running the experiments (with building and pushing images)
+### 6. Running the experiments (with building and pushing images)
 
-If you create your own variants or make changes, the images need to be rebuilt and pushed to a registry. Currently, only managing images through docker hub is supported.
+If you create your own variants or make changes, the images need to be rebuilt and pushed to a registry.
 
- * Adapt `exv2/experiment_environment.py` to contain your docker username
- * Make sure to run docker login
-
-This will automatically create multiple public repositories in your account. When building images for the first time, pushing will take some time depending on your internet connection.
+ * Adapt `exv2/experiment_environment.py` to contain your docker registry url
+ * Make sure to run docker login in case authentication is needed
 
 If all the preliminaries for data collection are installed, Clue will fetch the relevant measuremens from Prometheus and save them into the data folder. For data analysis, we provide Python notebooks seperately.
 
 
-## Troubleshooting / Known Issues
+## 💻 Troubleshooting / Known Issues
 
  * When using docker desktop, enable in settings > advanced: *Allow the default Docker socket to be used*
  * Ensure that you have a sufficient amount of memory alocated for docker, at least 12 GB
  * Run `minikube dashboard` to monitor deployment errors, e.g. missing node labels or insufficient memory
  * The monolith app has some specific handles, e.g. a different set name. If a a set is not found, especially when skipping builds, this can cause probelems
-
-
-## Container Registry
-
-
-### Running in Minikube with your own registry
-
-This is the most sensible way, but requires a bunch of nasty workarounds.
-
-First, choose a port and set your docker to allow insecure registries from there, e.g. using the Docker Desktop UI. You have to use your current LAN IP, as localhost or 127.0.0.1 will not work from inside the docker machine. It's best to tie it to a hostname. Just add it in `/etc/hosts` on your machine and resolve it to your public address.
-
-```json
-  "insecure-registries": [
-    "cluereg.local:22222"
-  ]
-```
-
-Make sure that minikube accepts the registry and has enough memory (configure docker before):
-
-```bash
-minikube start --insecure-registry "cluereg.local:22222" --cpus 8 --memory 12000
-```
-
-Once minikube is running, ssh into the machine and add your custom dns name for the local registry to resolve to the host of minikubes internal network (i.e., same as the ip that resolves to host.minikube.internal). This ip shouldn't change, but the hosts file is sometimes reset after restarting minikube.
-
-```bash
-minikube ssh
-
-# docker @ minikube
-cat /etc/hosts
-sudo su
-echo '192.168.65.254 cluereg.local' >> /etc/hosts
-```
-
-
-Then, enable the registry addon in minikube:
-
-```sh
-minikube addons enable registry
-```
-
-Take note of the non-standard port (it will change upon restart, so we cannot use it directly with docker).
-
-Now forward it to the port chosen in the beginning:
-```sh
-ncat --sh-exec "ncat localhost `docker container port minikube | grep 5000 | grep -E -o  "(\d*)$"`" -l 22222 --keep-open
-```
-
-Finally, change you `clue.yaml` to use your new local registry:
-
-```yaml
-images:
-  # the docker hub user to use for pushing/pulling images
-  # docker_hub_username: kaozente
-  docker_hub_username: "cluereg.local:22222/karl"
-```
-
-
-
-## Cluster Preparation
-
-Install Prometheus and Node Exporter, e.g.:
-
-```bash
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-helm install kps1 prometheus-community/kube-prometheus-stack
-```
-
-
-Install Kepler
-
-```
-helm install kepler kepler/kepler \
-    --namespace kepler \
-    --create-namespace \
-    --set serviceMonitor.enabled=true \
-    --set serviceMonitor.labels.release=kps1 
-```
-
-Make Prometheus available as localhost:9090
-
-```
-kubectl --namespace default port-forward prometheus-kps1-kube-prometheus-stack-prometheus-0 9090
-```

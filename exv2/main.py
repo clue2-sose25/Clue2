@@ -89,7 +89,7 @@ def full_run():
 
 def main():
     if DIRTY:
-        print("☢️ will overwrite existing experiment data!!!!")
+        print("☢️ Using `--dirty` will overwrite existing experiment data!")
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
@@ -121,7 +121,7 @@ def main():
     # for exp in progressbar.progressbar(exps, redirect_stdout=True, redirect_stderr=True):
     last_build_branch = None
     for exp in exps:
-        print(f"ℹ️  new experiment: {exp}")
+        print(f"ℹ️  New experiment: {exp}")
         if not SKIPBUILD:
             print("👷 building...")
             # if we know that branches don't change we could skip building some of them
@@ -132,7 +132,7 @@ def main():
                 print(".. skipping build step, we've build the images for the last run already...")
             last_build_branch = exp.target_branch
         else:
-            print("👷 skipping build...")
+            print("👷 Skipping the build process")
 
         for i in range(experiment_list.NUM_ITERATIONS):
 
@@ -161,13 +161,13 @@ def run_experiment(exp: Experiment, observations_out_path):
             raise RuntimeError("data for this experiment already exist, skipping")
 
         # 3. rewrite helm values with <env["docker_user"]> && env details as necessary (namespace ...)
-        print("🏗️ deploying branch")
+        print("🏗️ Deploying the SUT...")
         ExperimentDeployer(exp).deploy_branch(observations_out_path)
 
         # 4. run collection agent (fetch prometheus )
         if not DIRTY:
             wait = ExperimentEnvironment().wait_before_workloads
-            print(f"😴 waiting {wait}s before starting workload")
+            print(f"😴 Waiting {wait}s before starting workload")
             time.sleep(wait)  # wait for 120s before stressing the workload
 
         ExperimentRunner(exp).run(observations_out_path)

@@ -1,0 +1,3 @@
+images:
+  # The address to the Docker image registry to push and pull images from 
+  docker_registry_address: "host.docker.internal:6789/clue"
