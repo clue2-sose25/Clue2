@@ -1,21 +1,42 @@
 import sys
+import click
 from pathlib import Path
 import docker
 import subprocess
 from os import path
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
 SOURCE_CODE_BASE = Path(__file__).resolve().parent.parent.parent
 # allow importing from the parent directory
 sys.path.append(str(SOURCE_CODE_BASE))
 from config import Config
+from experiment_list import ExperimentList
 CONFIG_PATH = BASE_DIR.joinpath("clue-config.yaml")
 SUT_CONFIG_PATH = BASE_DIR / "sut_configs" / "teastore-config.yaml"
 RUN_CONFIG = Config(SUT_CONFIG_PATH, CONFIG_PATH)
 
-def build():
+def available_experiments():
+    experiments= ExperimentList.load_experiments(RUN_CONFIG)
+    return [e.name for e in experiments]
+
+@click.command("run")
+@click.argument("exp-name", type=click.Choice(available_experiments()), required=False)
+@click.option("--build-all", default=None, help="Build images for all available experiments")
+def build(exp_name: str, build_all):
+
+    if build_all is not None:
+        experiments = ExperimentList.load_experiments(RUN_CONFIG)
+    elif exp_name is not None:
+        experiments = [e for e in ExperimentList.load_experiments(RUN_CONFIG) if e.name == exp_name]
+        if not len(experiments) and not build_all:
+            raise ValueError("invalid experiment name")
+        else:
+            experiments = [experiments[0]]
+    else:
+        raise ValueError("No experiment was specified! Either use --build_all or provide an experiment-name")
+    
     sut_path = RUN_CONFIG.sut_config.sut_path
-    experiments = RUN_CONFIG.experiments_config.experiments
     remote_platform_arch = RUN_CONFIG.clue_config.remote_platform_arch
     docker_registry_address = RUN_CONFIG.clue_config.docker_registry_address
     docker_client = docker.from_env()
@@ -37,7 +58,7 @@ def build():
 def build_docker_image(sut_path, docker_registry_address, branch_name):
     print(f"Running the build_docker.sh")
     build = subprocess.check_call(
-            ["sh", "build_docker.sh", "-r", f"{docker_registry_address}/", "-p"],
+            ["sh", "build_docker.sh", "-r", f"{docker_registry_address}/teastore/{branch_name}/", "-p"],
             cwd=path.join(sut_path, "tools"),
         )
         
@@ -46,7 +67,7 @@ def build_docker_image(sut_path, docker_registry_address, branch_name):
                 "failed to build docker images. Run build_docker.sh manually and see why it fails"
             )
 
-    print(f"Finished building images for {branch_name} branch, pushed to {docker_registry_address}")
+    print(f"Finished building images for {branch_name} branch, pushed to {docker_registry_address}/teastore/{branch_name}/")
 
 def patch_buildx(sut_path, remote_platform_arch):
     print(f"Patching the build_docker.sh to use buildx allowing multi-arch builds")
