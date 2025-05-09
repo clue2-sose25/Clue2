@@ -60,7 +60,7 @@ Update the `Docker Deamon` configuration to allow insecure connections to the de
 Make sure that `Minikube` (or your other choosen local kubernets cluster) accepts the registry as well and has enough memory (configure docker before). In case you already have created a minikube cluster before make sure to delete if and recreate it using this command:
 
 ```bash
-minikube start --insecure-registry "host.docker.internal:6789" --cpus 8 --memory 12000
+minikube start --cni=flannel --insecure-registry "host.docker.internal:6789" --cpus 8 --memory 12000
 ```
 
 ### 2. Setting up metrics collectors
@@ -90,6 +90,8 @@ Lastly add an additional node to allow running the loadgenerator (which can not 
 ```bash
 minikube node add
 ```
+
+Wait for all pods to be ready in the new node, check the state using `kubectl get all -A`.
 
 ### 3. CLUE2 deployer setup
 

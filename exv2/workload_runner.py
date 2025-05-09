@@ -12,7 +12,7 @@ from kubernetes.client.rest import ApiException
 from experiment import Experiment
 import logging
 
-from exv2.workload_cancelled_exception import WorkloadCancelled
+from workload_cancelled_exception import WorkloadCancelled
 
 
 class WorkloadRunner:

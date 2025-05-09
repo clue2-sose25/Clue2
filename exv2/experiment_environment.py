@@ -1,68 +1,53 @@
-from requests import get
-from typing import Protocol
-from cfgload import load_config
-import logging
+from pathlib import Path
+from config import Config
 
-class WorkloadAutoConfig(Protocol):
-    def set_workload(self, exp:"ExperimentEnvironment"):
-        pass
+#from experiment_workloads import Workload
 
+
+CONFIG_PATH = Path("..").joinpath("cfg").joinpath("experiment_config.yaml")
 
 class ExperimentEnvironment:
+    def __init__(self, config: Config):
+        """
+        Initialize the ExperimentEnvironment Instance.
+        """
+        #self.config = config
 
-    def __init__(self):
+        sut_config = config.sut_config
+        clue_config = config.clue_config
+        services_config = config.services_config
+        # Files / IO
+        self.sut_path = sut_config.sut_path
+        self.local_public_ip = clue_config.local_public_ip
 
-        config = load_config()
-        # print(config)
+        # Infra
+        self.docker_user = clue_config.docker_user
+        self.local_port = clue_config.local_port
+        self.docker_registry_address = clue_config.docker_registry_address
+        self.remote_platform_arch = clue_config.remote_platform_arch
+        self.local_platform_arch = clue_config.local_platform_arch
+        self.resource_limits = services_config.get_all_resource_limits()
+        self.default_resource_limits = sut_config.default_resource_limits
+        self.workload_settings = sut_config.workload_settings
+        self.timeout_duration = sut_config.timeout_duration
+        self.wait_before_workloads = sut_config.wait_before_workloads
+        self.wait_after_workloads = sut_config.wait_after_workloads
+        self.tags = sut_config.tags
+        self.kind_cluster_name = None #TODO
+    
 
+    def total_duration(self) -> int:
+        """
+        Calculate the total duration of the experiment.
+        """
+        return self.timeout_duration + 30  # Add a buffer of 30 seconds
 
-        # files / io
-        self.teastore_path = "teastore"  # where the repo with the teastore is located
-
-        public_ip = get("https://api.ipify.org").content.decode("utf8")
-        # self.local_public_ip = public_ip if public_ip else "130.149.158.80"  #
-        self.local_public_ip = "cluereg.local"
-
-        # logging.info("using workload public ip %s", self.local_public_ip)
-
-        self.local_port = 8888
-        # infra
-        self.docker_registry_address = config['images']['docker_registry_address']
-        
-        # (
-        #     "tawalaya"  # the docker user to use for pushing/pulling images
-        # )
-
-
-        # self.remote_platform_arch = "linux/amd64"  # the target platform to build images for (kubernetes node architecture)
-        self.remote_platform_arch = "linux/arm64/v8"  # the target platform to build images for (kubernetes node architecture)
-        # self.local_platform_arch = "linux/amd64"  # the local architecture to use for local latency measurements
-        self.local_platform_arch = "linux/arm64/v8"  # the local architecture to use for local latency measurements
-
-        self.resource_limits = (
-            {  # the resource limits to use for the experiment (see below)
-                "teastore-auth": {"cpu": 450, "memory": 1024},
-                "teastore-webui": {"cpu": 1000, "memory": 1500},
-                "teastore-recommender": {"cpu": 2000, "memory": 1024},
-                "teastore-image": {"cpu": 1000, "memory": 1500},
-                "teastore-all": {"cpu":1500, "memory":2048},
-            }
-        )
-
-        self.default_resource_limits = {"cpu": 1000, "memory": 1024}
-
-        self.workload_settings = {}
-        self.timeout_duration = 60*60 # at most we wait 60 minutes
-        self.wait_before_workloads = 180 # we wait 3 min to let the deplotment settle
-        self.wait_after_workloads = 180
-
-        self.tags = []
-
-        self.kind_cluster_name = None
+    def set_workload(self, workload):
+        """
+        Set the workload for the experiment.
+        """
+        workload.set_workload(self)
     
     def total_duration(self):
         return self.timeout_duration + 30 #TODO make this more sensable but not based on the worklaod settings
-
-    def set_workload(self, conf: WorkloadAutoConfig):
-        conf.set_workload(self)
     

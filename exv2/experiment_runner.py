@@ -5,9 +5,8 @@ from datetime import datetime
 from psc.tracker import PodUsage
 
 from experiment import Experiment
-from exv2.workload_cancelled_exception import WorkloadCancelled
+from workload_cancelled_exception import WorkloadCancelled
 from flushing_queue import FlushingQueue
-from experiment_environment import ExperimentEnvironment
 from experiment_autoscaling import ExperimentAutoscaling
 from workload_runner import WorkloadRunner
 from psc import ResourceTracker, NodeUsage
@@ -52,7 +51,7 @@ class ExperimentRunner:
             prometheus_url=exp.prometheus,
             node_channel=node_channel,
             pod_channel=pod_channel,
-            namespaces=[exp.namespace] + exp.infrastrcutre_namespaces,
+            namespaces=[exp.namespace] + exp.infrastructure_namespaces,
             interval=10,
         )
 
@@ -151,9 +150,9 @@ class ExperimentRunner:
         subprocess.run(["helm", "uninstall", "teastore", "-n", self.experiment.namespace])
         subprocess.run(
             ["git", "checkout", "examples/helm/values.yaml"],
-            cwd=path.join(self.experiment.env.teastore_path),
+            cwd=path.join(self.experiment.env.sut_path),
         )
         subprocess.run(
             ["git", "checkout", "tools/build_docker.sh"],
-            cwd=path.join(self.experiment.env.teastore_path),
+            cwd=path.join(self.experiment.env.sut_path),
         )
