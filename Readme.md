@@ -63,37 +63,13 @@ Make sure that `Minikube` (or your other choosen local kubernets cluster) accept
 minikube start --cni=flannel --insecure-registry "host.docker.internal:6789" --cpus 8 --memory 12000
 ```
 
-### 2. Setting up metrics collectors
-
-Install Prometheus and Node Exporter, e.g.:
-
-```bash
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-helm install kps1 prometheus-community/kube-prometheus-stack
-```
-
-Install Kepler
-
-```bash
-helm repo add kepler https://sustainable-computing-io.github.io/kepler-helm-chart
-helm install kepler kepler/kepler --namespace kepler --create-namespace --set serviceMonitor.enabled=true --set serviceMonitor.labels.release=kps1 
-```
-
-Make Prometheus available as localhost:9090
-
-```bash
-kubectl --namespace default port-forward prometheus-kps1-kube-prometheus-stack-prometheus-0 9090
-```
-
-Lastly add an additional node to allow running the loadgenerator (which can not run on the same node as the experiment itself):
+Also add an additional node to allow running the loadgenerator (which can not run on the same node as the experiment itself):
 
 ```bash
 minikube node add
 ```
 
-Wait for all pods to be ready in the new node, check the state using `kubectl get all -A`.
-
-### 3. CLUE2 deployer setup
+### 2. CLUE2 deployer setup
 
 Clone the system under test, i.e. the teastore. Each variant is in a separate branch.
 
@@ -113,27 +89,19 @@ Install Python dependencies using [uv](https://docs.astral.sh/uv/) (or use a vir
 uv sync
 ```
 
-Create a kubernetes namespace for the experiments to run in. By default, this is `tea-bench`
-
-```bash
-kubectl create namespace tea-bench
-```
-
 In a multi-node setting, not all nodes might have the option to measure using scaphandre, so Clue ensures that only appropiate nodes are assigned with experiment pods. To simulate this for, e.g., the minikube node, apply a label:
 
 ```bash
 kubectl label nodes minikube scaphandre=true
 ```
 
-Set your Prometheus url in `exv2/experiment_list.py` and select the experiments for tests.
-
-### 4. Manually running a single variant (for debugging purposes)
+### 3. Manually running a single variant (for debugging purposes)
 
 Run a variant indefinetely, e.g. baseline (see all experiment names in `exv2/experiment_list.py`)
 
 
 ```bash
-python exv2/run.py baseline --skip-build
+python exv2/run.py --sut teastore --exp-name baseline
 ```
 
 When using minikube, forward a port so you can access the TeaStore:
@@ -146,7 +114,7 @@ TeaStore may run some initial tasks on startup, so make sure to wait a minute if
 
 ![TeaStore in the Browser](readme/teastore_jvm.png)
 
-### 5. Testing the experiment setup (without building images)
+### 4. Testing the experiment setup (without building images)
 
 This will run the experiments from `exv2/experiment_list.py` and gather the results.
 Without building images, Clue will use the latest images from the public registry, not necessarily the variant checked out locally!

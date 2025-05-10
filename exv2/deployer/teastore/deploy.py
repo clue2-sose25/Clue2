@@ -39,6 +39,7 @@ def deploy(experiment: Experiment):
     create_namespace_if_not_exists(experiment.namespace)
     check_labeled_node_available()
     ensure_helm_requirements()
+    start_port_forward(experiment.namespace,"prometheus-kps1-kube-prometheus-stack-prometheus-0",9090,9090)
     patch_helm_deployment_for_experiment(experiment, sut_path, docker_registry_address)
     deploy_helm_chart(experiment, sut_path)
     wait_until_services_ready(experiment)
@@ -160,6 +161,9 @@ def ensure_helm_requirements():
         if "prometheus-community" not in helm_repos:
             print("Helm repository 'prometheus-community' is not added. Adding it now...")
             subprocess.check_call(["helm", "repo", "add", "prometheus-community", "https://prometheus-community.github.io/helm-charts"])
+        if "kepler" not in helm_repos:
+            print("Helm repository 'kepler' is not added. Adding it now...")
+            subprocess.check_call(["helm", "repo", "add", "kepler", "https://sustainable-computing-io.github.io/kepler-helm-chart"])
 
         # Check if kube-prometheus-stack is installed
         prometheus_status = subprocess.run(
@@ -192,3 +196,22 @@ def ensure_helm_requirements():
     except subprocess.CalledProcessError as e:
         print(f"Error while fulfilling Helm requirements: {e}")
         raise RuntimeError("Failed to fulfill Helm requirements. Please check the error above.")
+    
+        import subprocess
+    
+def start_port_forward(namespace: str, pod_name: str, local_port: int, remote_port: int):
+    try:
+        print(f"Starting port-forward: {local_port} -> {pod_name}:{remote_port} in namespace '{namespace}'")
+        process = subprocess.Popen(
+            [
+                "kubectl", "--namespace", namespace, "port-forward",
+                pod_name, f"{local_port}:{remote_port}"
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        print(f"Port-forward started successfully. PID: {process.pid}")
+        return process
+    except Exception as e:
+        print(f"Failed to start port-forward: {e}")
+        raise RuntimeError("Failed to start port-forward. Please check the error above.")

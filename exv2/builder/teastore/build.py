@@ -121,7 +121,7 @@ def build_workload(experiment: Experiment):
             else experiment.env.remote_platform_arch
         )
 
-        print("Building workload for platform %s", platform)
+        print(f"Building workload for platform {platform}")
 
         build = subprocess.check_call(
             [
@@ -140,7 +140,7 @@ def build_workload(experiment: Experiment):
             raise RuntimeError("Failed to build loadgenerator")
 
         docker_client.images.push(f"{experiment.env.docker_registry_address}/loadgenerator")
-        print("Built workload for platform %s", platform)
+        print(f"Built workload for platform {platform}")
         
 def check_docker_laod_generator_image_exist(registry_address):
     docker_client = docker.from_env()

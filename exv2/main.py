@@ -21,6 +21,8 @@ from workload_runner import WorkloadRunner
 from scaling_experiment_setting import ScalingExperimentSetting
 from experiment_workloads import ShapedWorkload, RampingWorkload, PausingWorkload, FixedRampingWorkload, get_workload_instance
 from experiment_list import ExperimentList
+from builder.teastore import build
+from deployer.teastore import deploy
 
 #get the root directory of the project
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -83,7 +85,7 @@ def run_experiment(exp: Experiment, observations_out_path):
 
         # 3. rewrite helm values with <env["docker_user"]> && env details as necessary (namespace ...)
         print("🏗️ Deploying the SUT...")
-        ExperimentDeployer(exp).deploy_branch(observations_out_path)
+        deploy.deploy(exp)
 
         # 4. run collection agent (fetch prometheus )
         if not DIRTY:
@@ -110,9 +112,9 @@ def prepare_experiment(exp: Experiment, timestamp: str, num_iterations: int, las
     if not SKIPBUILD:
         print("👷 building...")
         # if we know that branches don't change we could skip building some of them
-        WorkloadRunner(exp).build_workload()
+        build.build_workload(exp)
         if exp.target_branch != last_build_branch:
-            ExperimentDeployer(exp).build_images()
+            build.build(exp)
         else:
             print(".. skipping build step, we've build the images for the last run already...")
         last_build_branch = exp.target_branch
