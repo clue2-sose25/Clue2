@@ -3,6 +3,7 @@ from pathlib import Path
 from os import path
 from kubernetes.client import CoreV1Api, V1Namespace, V1ObjectMeta
 from kubernetes.client.exceptions import ApiException
+from kubernetes.client import AppsV1Api
 import time
 import os
 import subprocess
@@ -37,6 +38,7 @@ def deploy(experiment: Experiment):
 
     create_namespace_if_not_exists(experiment.namespace)
     check_labeled_node_available()
+    ensure_helm_requirements()
     patch_helm_deployment_for_experiment(experiment, sut_path, docker_registry_address)
     deploy_helm_chart(experiment, sut_path)
     wait_until_services_ready(experiment)
@@ -48,25 +50,35 @@ def deploy(experiment: Experiment):
     print("Deployment complete. You can now run the experiment.")
     
 def wait_until_services_ready(experiment: Experiment, timeout: int = 180):
-        v1 = CoreV1Api()
-        ready_services = set()
-        start_time = time.time()
-        services = set(experiment.critical_services)
-        namespace = experiment.namespace
-        print("Waiting for deployment to be ready...")
-        while (len(ready_services) < len(services) and time.time() - start_time < timeout):
-            for service in services.difference(ready_services):
-                try:
-                    service_status = v1.read_namespaced_stateful_set_status(service, namespace)
-                    if (service_status.status.ready_replicas and service_status.status.ready_replicas > 0):
-                        ready_services.add(service)
-                except Exception as e:
-                    pass
-            if services == ready_services:
-                print("All services are up!")
-                return True
-            time.sleep(1)
-        raise RuntimeError("Timeout reached. The following services are not ready: "+ str(list(set(services) - set(ready_services))))
+    v1_apps = AppsV1Api()
+    ready_services = set()
+    start_time = time.time()
+    services = set(experiment.critical_services)
+    namespace = experiment.namespace
+    print("Waiting for deployment to be ready...")
+
+    while len(ready_services) < len(services) and time.time() - start_time < timeout:
+        for service in services.difference(ready_services):
+            try:
+                # Check StatefulSet status
+                statefulset_status = v1_apps.read_namespaced_stateful_set_status(service, namespace)
+                if statefulset_status.status.ready_replicas and statefulset_status.status.ready_replicas > 0:
+                    ready_services.add(service)
+                    continue
+
+                # Check Deployment status
+                deployment_status = v1_apps.read_namespaced_deployment_status(service, namespace)
+                if deployment_status.status.ready_replicas and deployment_status.status.ready_replicas > 0:
+                    ready_services.add(service)
+            except ApiException as e:
+                if e.status != 404:  # Ignore not found errors
+                    print(f"Error checking status for service '{service}': {e}")
+        if services == ready_services:
+            print("All services are up!")
+            return True
+        time.sleep(1)
+
+    raise RuntimeError("Timeout reached. The following services are not ready: " + str(list(services - ready_services)))
 
 def deploy_helm_chart(experiment: Experiment, sut_path: str):
     try:
@@ -140,3 +152,43 @@ def check_labeled_node_available():
     if not nodes.items:
         raise RuntimeError("No nodes with label 'scaphandre=true' found. Please label a node and try again.")
     print(f"Found {len(nodes.items)} nodes with label 'scaphandre=true'.")
+
+def ensure_helm_requirements():
+    try:
+        # Check if the prometheus-community repository is added
+        helm_repos = subprocess.check_output(["helm", "repo", "list"], text=True)
+        if "prometheus-community" not in helm_repos:
+            print("Helm repository 'prometheus-community' is not added. Adding it now...")
+            subprocess.check_call(["helm", "repo", "add", "prometheus-community", "https://prometheus-community.github.io/helm-charts"])
+
+        # Check if kube-prometheus-stack is installed
+        prometheus_status = subprocess.run(
+            ["helm", "status", "kps1"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        if prometheus_status.returncode != 0:
+            print("Helm chart 'kube-prometheus-stack' is not installed. Installing it now...")
+            subprocess.check_call(["helm", "install", "kps1", "prometheus-community/kube-prometheus-stack"])
+
+        # Check if kepler is installed
+        kepler_status = subprocess.run(
+            ["helm", "status", "kepler", "--namespace", "kepler"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        if kepler_status.returncode != 0:
+            print("Helm chart 'kepler' is not installed. Installing it now...")
+            subprocess.check_call([
+                "helm", "install", "kepler", "kepler/kepler",
+                "--namespace", "kepler",
+                "--create-namespace",
+                "--set", "serviceMonitor.enabled=true",
+                "--set", "serviceMonitor.labels.release=kps1"
+            ])
+        print("All Helm requirements are fulfilled.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error while fulfilling Helm requirements: {e}")
+        raise RuntimeError("Failed to fulfill Helm requirements. Please check the error above.")
