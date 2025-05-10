@@ -1,17 +1,19 @@
 import sys
-import click
 from pathlib import Path
 import docker
 import subprocess
 from os import path
 
-
 BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
 SOURCE_CODE_BASE = Path(__file__).resolve().parent.parent.parent
+
 # allow importing from the parent directory
 sys.path.append(str(SOURCE_CODE_BASE))
+
 from config import Config
 from experiment_list import ExperimentList
+from experiment import Experiment
+
 CONFIG_PATH = BASE_DIR.joinpath("clue-config.yaml")
 SUT_CONFIG_PATH = BASE_DIR / "sut_configs" / "teastore-config.yaml"
 RUN_CONFIG = Config(SUT_CONFIG_PATH, CONFIG_PATH)
@@ -20,21 +22,7 @@ def available_experiments():
     experiments= ExperimentList.load_experiments(RUN_CONFIG)
     return [e.name for e in experiments]
 
-@click.command("run")
-@click.argument("exp-name", type=click.Choice(available_experiments()), required=False)
-@click.option("--build-all", default=None, help="Build images for all available experiments")
-def build(exp_name: str, build_all):
-
-    if build_all is not None:
-        experiments = ExperimentList.load_experiments(RUN_CONFIG)
-    elif exp_name is not None:
-        experiments = [e for e in ExperimentList.load_experiments(RUN_CONFIG) if e.name == exp_name]
-        if not len(experiments) and not build_all:
-            raise ValueError("invalid experiment name")
-        else:
-            experiments = [experiments[0]]
-    else:
-        raise ValueError("No experiment was specified! Either use --build_all or provide an experiment-name")
+def build(experiment: Experiment):
     
     sut_path = RUN_CONFIG.sut_config.sut_path
     remote_platform_arch = RUN_CONFIG.clue_config.remote_platform_arch
@@ -46,19 +34,36 @@ def build(exp_name: str, build_all):
         docker_client.ping()
     except docker.errors.NotFound:  
         raise RuntimeError("Docker is not running. Please start Docker and try again.")
+    
+    branch_name = experiment.target_branch
+    switchBranch(sut_path, branch_name)
+    deploy_maven_container(sut_path, docker_client)
+    patch_buildx(sut_path, remote_platform_arch)
+    build_docker_image(sut_path, docker_registry_address, branch_name)
 
-    #for every branch, build the docker image
-    for experiment in experiments:
-        branch_name = experiment.target_branch
-        switchBranch(sut_path, branch_name)
-        deploy_maven_container(sut_path, docker_client)
-        patch_buildx(sut_path, remote_platform_arch)
-        build_docker_image(sut_path, docker_registry_address, branch_name)
+def check_docker_all_images_exist(registry_address):
+    docker_client = docker.from_env()
+    # read all images planned to build from sut_path/tools/build_docker.sh
+    with open(path.join(RUN_CONFIG.sut_config.sut_path, "tools", "build_docker.sh"), "r") as f:
+        script = f.read()
+        # get image only name from push command: docker push "${registry}teastore-db"
+        images = [line.split(" ")[-1].split("/")[-1] for line in script.split("\n") if "docker push" in line]
+        images = [image.split(":")[0] for image in images]
+        images = [image.removeprefix("\"${registry}").removesuffix("\"") for image in images]
+        # check if the image exists in the local docker registry
+        for image in images:
+            try:
+                docker_client.images.get_registry_data(f"{registry_address}/{image}")
+            except docker.errors.APIError:
+                print(f"Image {image} not found in {registry_address} - rebuilding all images")
+                return False
+        print("All images found in local docker registry")
+        return True
 
 def build_docker_image(sut_path, docker_registry_address, branch_name):
     print(f"Running the build_docker.sh")
     build = subprocess.check_call(
-            ["sh", "build_docker.sh", "-r", f"{docker_registry_address}/teastore/{branch_name}/", "-p"],
+            ["sh", "build_docker.sh", "-r", f"{docker_registry_address}/", "-p"],
             cwd=path.join(sut_path, "tools"),
         )
         
@@ -107,6 +112,45 @@ def deploy_maven_container(sut_path, docker_client):
     else:
         print("Finished rebuiling java deps")
 
+def build_workload(experiment: Experiment):
+        docker_client = docker.from_env()
+
+        platform = (
+            experiment.env.remote_platform_arch
+            if experiment.colocated_workload
+            else experiment.env.remote_platform_arch
+        )
+
+        print("Building workload for platform %s", platform)
+
+        build = subprocess.check_call(
+            [
+                "docker",
+                "buildx",
+                "build",
+                "--platform",
+                platform,
+                "-t",
+                f"{experiment.env.docker_registry_address}/loadgenerator",
+                ".",
+            ],
+            cwd=path.join("exv2", "loadgenerators", "teastore"),
+        )
+        if build != 0:
+            raise RuntimeError("Failed to build loadgenerator")
+
+        docker_client.images.push(f"{experiment.env.docker_registry_address}/loadgenerator")
+        print("Built workload for platform %s", platform)
+        
+def check_docker_laod_generator_image_exist(registry_address):
+    docker_client = docker.from_env()
+    try:
+        docker_client.images.get_registry_data(f"{registry_address}/loadgenerator")
+        return True
+    except docker.errors.APIError:
+        print(f"Loadgenerator not found in {registry_address} - rebuilding all images")
+    return False
+
 def switchBranch(sut_path, branch_name):
     git = subprocess.check_call(
             ["git", "switch", branch_name], cwd=path.join(sut_path)
@@ -116,6 +160,3 @@ def switchBranch(sut_path, branch_name):
         
     print(f"Using the {branch_name} branch")
     return branch_name
-
-if __name__ == "__main__":
-    build()

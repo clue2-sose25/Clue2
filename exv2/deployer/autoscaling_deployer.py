@@ -6,7 +6,7 @@ from experiment import Experiment
 from scaling_experiment_setting import ScalingExperimentSetting
 import logging
 
-class ExperimentAutoscaling:
+class AutoscalingDeployer:
 
     target_utilization = 75
 
@@ -255,11 +255,3 @@ class ExperimentAutoscaling:
             )
 
         self._setup_autoscaling(_full_hpa_creator)
-
-    def cleanup_autoscaling(self):
-        hpas = kubernetes.client.AutoscalingV1Api()
-        _hpas = hpas.list_namespaced_horizontal_pod_autoscaler(self.experiment.namespace)
-        for stateful_set in _hpas.items:
-            hpas.delete_namespaced_horizontal_pod_autoscaler(
-                name=stateful_set.metadata.name, namespace=self.experiment.namespace
-            )

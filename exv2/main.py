@@ -15,7 +15,6 @@ import experiment_list
 
 from config import Config
 from experiment import Experiment
-from experiment_deployer import ExperimentDeployer
 from experiment_environment import ExperimentEnvironment
 from experiment_runner import ExperimentRunner
 from workload_runner import WorkloadRunner
