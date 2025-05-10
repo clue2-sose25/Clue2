@@ -7,7 +7,6 @@ from psc.tracker import PodUsage
 from experiment import Experiment
 from workload_cancelled_exception import WorkloadCancelled
 from flushing_queue import FlushingQueue
-from experiment_autoscaling import ExperimentAutoscaling
 from workload_runner import WorkloadRunner
 from psc import ResourceTracker, NodeUsage
 from os import path
@@ -134,7 +133,11 @@ class ExperimentRunner:
         print("🧹 Cleaning up...")
 
         if self.experiment.autoscaling:
-            ExperimentAutoscaling(self.experiment).cleanup_autoscaling()
+            hpas = kubernetes.client.AutoscalingV1Api()
+            _hpas = hpas.list_namespaced_horizontal_pod_autoscaler(self.experiment.namespace)
+            for stateful_set in _hpas.items:
+                hpas.delete_namespaced_horizontal_pod_autoscaler(name=stateful_set.metadata.name, namespace=self.experiment.namespace)
+
 
         if self.experiment.colocated_workload:
             core = kubernetes.client.CoreV1Api()

@@ -6,4 +6,5 @@ config:
   remote_platform_arch: "linux/arm64/v8"
   local_platform_arch: "linux/amd64"
   docker_registry_address: "host.docker.internal:6789/clue"
+  result_base_path: "results/"
   workloads: ["shaped"]
