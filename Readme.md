@@ -31,7 +31,7 @@ This Readme describes the process of running CLUE experiments on the selected SU
 
 ### 1. 🏁 Setting up the image registry
 
-First make sure `Docker` (with `Docker Compose` support) is installed and running, then execute this command to spin up the image registry:
+The docker image registry used by CLUE can be specified in the `clue-config.yaml` file (`docker_registry_address` parameter). By default, CLUE supports deploying a local image registry listed below. To deploy the local registry, make sure `Docker` (with `Docker Compose` support) is installed and running. For a custom registry, make sure to run `docker login` in case authentication is needed.
 
 ```bash
 docker compose up -d
@@ -126,7 +126,7 @@ python exv2/main.py --skip-build
 
 ### 6. 📋 (Optional) CLUE2 Deployment with local 
 
-If you create your own variants or make changes to the SUT, the images need to be rebuilt and pushed to the image registry specified in the config. Make sure to run `docker login` in case authentication is needed
+If you create your own variants or make changes to the SUT, the images need to be rebuilt and pushed to the image registry specified in the config. Make sure to run `docker login` in case authentication is needed.
 
 If all the preliminaries for data collection are installed, Clue will fetch the relevant measuremens from Prometheus and save them into the data folder. For data analysis, we provide Python notebooks seperately.
 
