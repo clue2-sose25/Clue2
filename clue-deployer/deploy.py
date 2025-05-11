@@ -9,12 +9,7 @@ import os
 import subprocess
 from kubernetes import config
 
-
-BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
-SOURCE_CODE_BASE = Path(__file__).resolve().parent.parent.parent
-
-# allow importing from the parent directory
-sys.path.append(str(SOURCE_CODE_BASE))
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 from experiment import Experiment
 from scaling_experiment_setting import ScalingExperimentSetting
@@ -195,8 +190,6 @@ def ensure_helm_requirements():
     except subprocess.CalledProcessError as e:
         print(f"Error while fulfilling Helm requirements: {e}")
         raise RuntimeError("Failed to fulfill Helm requirements. Please check the error above.")
-    
-        import subprocess
     
 def start_port_forward(namespace: str, pod_name: str, local_port: int, remote_port: int):
     try:

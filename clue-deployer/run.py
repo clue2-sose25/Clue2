@@ -23,7 +23,10 @@ def available_suts():
 @click.command("run")
 @click.option("--sut", required=True, type=click.Choice(available_suts()))
 @click.option("--exp-name", required=True, type=click.STRING, help="Name of the experiment to run")
-def run(exp_name):
+def run(sut, exp_name):
+
+    # TODO choose the correct sut_config and check if the experiment is available for the selected sut
+
     # Get the experiment object
     experiment_list = ExperimentList.load_experiments(RUN_CONFIG)
     experiments = [e for e in experiment_list if e.name == exp_name]
