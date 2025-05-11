@@ -22,7 +22,7 @@ from config import Config
 from autoscaling_deployer import AutoscalingDeployer
 
 CONFIG_PATH = BASE_DIR.joinpath("clue-config.yaml")
-SUT_CONFIG_PATH = BASE_DIR / "sut_configs" / "teastore-config.yaml"
+SUT_CONFIG_PATH = BASE_DIR / "sut_configs" / "teastore.yaml"
 RUN_CONFIG = Config(SUT_CONFIG_PATH, CONFIG_PATH)
 
 def deploy(experiment: Experiment):

@@ -41,8 +41,8 @@ parser.add_argument(
     "--sut-path",
     "-s",
     type=Path,
-    #default to the teastore-config.yaml in the parent directory
-    default=(BASE_DIR / "sut_configs" / "teastore-config.yaml"), 
+    #default to the teastore.yaml in the parent directory
+    default=(BASE_DIR / "sut_configs" / "teastore.yaml"), 
     help="Path to the System Under Test (SUT).",
 )
 args = parser.parse_args()
