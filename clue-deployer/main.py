@@ -50,7 +50,6 @@ args = parser.parse_args()
 
 CLUE_CONFIG_PATH = BASE_DIR.joinpath("clue-config.yaml")
 DIRTY = args.dirty
-SKIPBUILD = args.skip_build
 DRY = args.dry
 SUT_PATH = args.sut_path 
 
