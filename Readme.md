@@ -69,8 +69,7 @@ Also add an additional node to allow running the loadgenerator (which can not ru
 minikube node add
 ```
 
-### 2. CLUE2 deployer setup
-
+### 2. CLUE2 setup
 Clone the system under test, i.e. the teastore. Each variant is in a separate branch.
 
 ```bash
@@ -95,13 +94,20 @@ In a multi-node setting, not all nodes might have the option to measure using sc
 kubectl label nodes minikube scaphandre=true
 ```
 
-### 3. Manually running a single variant (for debugging purposes)
+### 2. CLUE2 building
 
-Run a variant indefinetely, e.g. baseline (see all experiment names in `exv2/experiment_list.py`)
-
+In order to deploy or run an experiment first the images have to be built. Adjust the configs according to your setup and run this command to built all required images for your experiments:
 
 ```bash
-python exv2/run.py --sut teastore --exp-name baseline
+python python clue-builders/teastore/build.py
+```
+
+### 3. CLUE2 deploying
+
+For deploying (without the laodgenerator) an experiment to your cluster, run the following command. Make sure to build the images before.
+
+```bash
+python python clue-deployer/run.py --sut teastore --exp-name baseline
 ```
 
 When using minikube, forward a port so you can access the TeaStore:
