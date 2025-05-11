@@ -4,25 +4,18 @@ from datetime import datetime
 import os
 import time
 from os import path
-import sys
 import progressbar
 from kubernetes import config
 from tabulate import tabulate
 import argparse
 import logging
-
-import experiment_list
-
 from config import Config
 from experiment import Experiment
 from experiment_environment import ExperimentEnvironment
 from experiment_runner import ExperimentRunner
-from workload_runner import WorkloadRunner
-from scaling_experiment_setting import ScalingExperimentSetting
-from experiment_workloads import ShapedWorkload, RampingWorkload, PausingWorkload, FixedRampingWorkload, get_workload_instance
+from experiment_workloads import get_workload_instance
 from experiment_list import ExperimentList
-from builder.teastore import build
-from deployer.teastore import deploy
+import deploy
 
 #get the root directory of the project
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -30,9 +23,9 @@ print(f"BASE_DIR: {BASE_DIR}")
 #parse arguments
 parser = argparse.ArgumentParser(description="Experiment Runner")
 parser.add_argument(
-    "--skip-build",
+    "--exp",
     action="store_true",
-    help="Skip building images and use the latest image from the registry.",
+    help="Which experiment to run",
 )
 parser.add_argument(
     "--dirty",
@@ -108,18 +101,8 @@ def run_experiment(exp: Experiment, observations_out_path):
 
 
 def prepare_experiment(exp: Experiment, timestamp: str, num_iterations: int, last_build_branch = None) -> None:
-    print(f"ℹ️  new experiment: {exp}")
-    if not SKIPBUILD:
-        print("👷 building...")
-        # if we know that branches don't change we could skip building some of them
-        build.build_workload(exp)
-        if exp.target_branch != last_build_branch:
-            build.build(exp)
-        else:
-            print(".. skipping build step, we've build the images for the last run already...")
-        last_build_branch = exp.target_branch
-    else:
-        print("👷 skipping build...")
+    
+    print(f"ℹ️  New experiment: {exp}")
 
     for i in range(num_iterations):
 
@@ -138,7 +121,6 @@ def prepare_experiment(exp: Experiment, timestamp: str, num_iterations: int, las
 def main():
     if DIRTY:
         print("☢️ will overwrite existing experiment data!!!!")
-
 
     # load configs
     config = Config(SUT_PATH, CLUE_CONFIG_PATH)

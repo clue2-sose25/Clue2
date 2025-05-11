@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+import click
 import docker
 import subprocess
 from os import path
@@ -72,7 +73,7 @@ def build_docker_image(sut_path, docker_registry_address, branch_name):
                 "failed to build docker images. Run build_docker.sh manually and see why it fails"
             )
 
-    print(f"Finished building images for {branch_name} branch, pushed to {docker_registry_address}/teastore/{branch_name}/")
+    print(f"Finished building images for {branch_name} branch, pushed to {docker_registry_address}")
 
 def patch_buildx(sut_path, remote_platform_arch):
     print(f"Patching the build_docker.sh to use buildx allowing multi-arch builds")
@@ -160,3 +161,20 @@ def switchBranch(sut_path, branch_name):
         
     print(f"Using the {branch_name} branch")
     return branch_name
+
+@click.command("run")
+@click.option("--exp-name", required=True, type=click.STRING, help="Name of the experiment to run")
+def build_main(exp_name: str):
+    # Get the experiment object
+    experiment_list = ExperimentList.load_experiments(RUN_CONFIG)
+    experiments = [e for e in experiment_list if e.name == exp_name]
+    if not len(experiments):
+        raise ValueError("invalid experiment name- the following are the available experiments for teastore: " + str([e.name for e in experiment_list]))
+    else:   
+        experiment = experiments[0]
+        
+    # Build the teastore images
+    build(experiment)
+
+if __name__ == "__main__":
+    build_main()
