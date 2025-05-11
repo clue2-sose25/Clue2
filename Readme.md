@@ -11,19 +11,7 @@ It can be used as part of your CI/CD pipeline to evaluate the impact of changes 
 The framework is designed to be extensible and can be easily integrated with existing cloud providers. We currently rely on Prometheus to collect all relevant metrics, but we are working on adding support for other monitoring tools. 
 Moreover, we are currently focusing on Kubernetes as the orchestrator, so as long as your application runs on Kubernetes, you can use Clue to evaluate it. However, we are working on adding support for other environments as well.
 
-This Readme describes the process of running experiments on different variants of the TeaStore microservice example.
-
-### Quicklinks
-
-- [Prerequisites](prerequisites)
-- [System Setup](#1-system-setup)
-  - [Setting up the image registry]()
-  - [Setting up Prometheus]()
-  - [CLUE2 deployer setup]()
-  - [Manually running a single variant (for debugging purposes)](#2-manually-running-a-single-variant-for-debugging-purposes)
-  - [Testing the experiment setup (without building images)](#3-testing-the-experiment-setup-without-building-images)
-  - [Running the experiments (with building and pushing images)](#4-running-the-experiments-with-building-and-pushing-images)
-- [Troubleshooting / Known Issues](#troubleshooting--known-issues)
+This Readme describes the process of running CLUE experiments on the selected SUT.
 
 ## 📦 Prerequisites
 
@@ -36,12 +24,12 @@ This Readme describes the process of running experiments on different variants o
   * Python, e.g. 3.11, using uv in this Readme
 
 
-## 🚀 System Setup
+## 🚀 System setup
 
 > [!CAUTION]
 > Please note that this repository also contains work in progress parts -- not all CLUE features and experiment branches that are not mentioned in the paper might be thoroughly tested.
 
-### 1. Setting up the image registry
+### 1. 🏁 Setting up the image registry
 
 First make sure `Docker` (with `Docker Compose` support) is installed and running, then execute this command to spin up the image registry:
 
@@ -69,8 +57,9 @@ Also add an additional node to allow running the loadgenerator (which can not ru
 minikube node add
 ```
 
-### 2. CLUE2 setup
-Clone the system under test, i.e. the teastore. Each variant is in a separate branch.
+### 2. 🛠️ CLUE2 setup
+
+Clone the system under test, i.e. the teastore.
 
 ```bash
 git clone https://github.com/ISE-TU-Berlin/sustainable_teastore.git teastore
@@ -94,36 +83,40 @@ In a multi-node setting, not all nodes might have the option to measure using sc
 kubectl label nodes minikube scaphandre=true
 ```
 
-### 2. CLUE2 building
+### 3. 🧱 SUT Build
 
-In order to deploy or run an experiment first the images have to be built. Adjust the configs according to your setup and run this command to built all required images for your experiments:
+Before running CLUE2, all images of the selected SUT have to be built and stored in the specified image registry. The image registry path `docker_registry_address` can be changed in the main config (by default, CLUE uses the registry deployed in previous steps).
+
+To build images for the `TeaStore`, use the command listed below. By default the script builds images for all experiments.
 
 ```bash
 python python clue-builders/teastore/build.py
 ```
 
-### 3. CLUE2 deploying
+To specify a single experiment to be build append the `--exp EXPERIMENT_NAME` flag.
 
-For deploying (without the laodgenerator) an experiment to your cluster, run the following command. Make sure to build the images before.
+### 4. 🧪 SUT Test Deployment
+
+For a test deployment of the SUT (without running the CLUE2, nor the workload generator), run the following command. Make sure that all required images are present in the specified image registry.
 
 ```bash
 python python clue-deployer/run.py --sut teastore --exp-name baseline
 ```
+, where the `--sut` is the name of the SUT config inside of the `sut_configs` directory, and the `--exp-name` is the name of the branch containing the desired experiment.
 
-When using minikube, forward a port so you can access the TeaStore:
+When deploying `Teastore` while using minikube, forward a port so you can test and access the TeaStore:
 
 ```bash
 kubectl port-forward service/teastore-webui 8080:80 --namespace=tea-bench
 ```
 
-TeaStore may run some initial tasks on startup, so make sure to wait a minute if is slow / unavailable (for experiments, this is handled through a waiting period as well)
+TeaStore may run some initial tasks on startup, so make sure to wait a minute if is slow / unavailable.
 
 ![TeaStore in the Browser](readme/teastore_jvm.png)
 
-### 4. Testing the experiment setup (without building images)
+### 5. 💨 CLUE2 Deployment
 
-This will run the experiments from `exv2/experiment_list.py` and gather the results.
-Without building images, Clue will use the latest images from the public registry, not necessarily the variant checked out locally!
+To run the main CLUE2, run the task below. Make sure that all required images are present in the specified image registry.
 
 ```bash
 python exv2/main.py --skip-build
@@ -131,15 +124,11 @@ python exv2/main.py --skip-build
 
 ![Running the Experiments](readme/running_experiments.png)
 
-### 6. Running the experiments (with building and pushing images)
+### 6. 📋 (Optional) CLUE2 Deployment with local 
 
-If you create your own variants or make changes, the images need to be rebuilt and pushed to a registry.
-
- * Adapt `exv2/experiment_environment.py` to contain your docker registry url
- * Make sure to run docker login in case authentication is needed
+If you create your own variants or make changes to the SUT, the images need to be rebuilt and pushed to the image registry specified in the config. Make sure to run `docker login` in case authentication is needed
 
 If all the preliminaries for data collection are installed, Clue will fetch the relevant measuremens from Prometheus and save them into the data folder. For data analysis, we provide Python notebooks seperately.
-
 
 ## 💻 Troubleshooting / Known Issues
 
