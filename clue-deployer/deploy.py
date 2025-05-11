@@ -19,8 +19,7 @@ sys.path.append(str(SOURCE_CODE_BASE))
 from experiment import Experiment
 from scaling_experiment_setting import ScalingExperimentSetting
 from config import Config
-from experiment_list import ExperimentList
-from deployer.autoscaling_deployer import AutoscalingDeployer
+from autoscaling_deployer import AutoscalingDeployer
 
 CONFIG_PATH = BASE_DIR.joinpath("clue-config.yaml")
 SUT_CONFIG_PATH = BASE_DIR / "sut_configs" / "teastore-config.yaml"
