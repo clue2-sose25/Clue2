@@ -5,8 +5,8 @@ import docker
 import subprocess
 from os import path
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
-SOURCE_CODE_BASE = Path(__file__).resolve().parent.parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+SOURCE_CODE_BASE = Path(__file__).resolve().parent.parent.parent.joinpath("clue-deployer")
 
 # allow importing from the parent directory
 sys.path.append(str(SOURCE_CODE_BASE))
@@ -18,10 +18,6 @@ from experiment import Experiment
 CONFIG_PATH = BASE_DIR.joinpath("clue-config.yaml")
 SUT_CONFIG_PATH = BASE_DIR / "sut_configs" / "teastore.yaml"
 RUN_CONFIG = Config(SUT_CONFIG_PATH, CONFIG_PATH)
-
-def available_experiments():
-    experiments= ExperimentList.load_experiments(RUN_CONFIG)
-    return [e.name for e in experiments]
 
 def build(experiment: Experiment):
     
@@ -135,7 +131,7 @@ def build_workload(experiment: Experiment):
                 f"{experiment.env.docker_registry_address}/loadgenerator",
                 ".",
             ],
-            cwd=path.join("exv2", "loadgenerators", "teastore"),
+            cwd=path.join("clue-loadgenerator", "teastore"),
         )
         if build != 0:
             raise RuntimeError("Failed to build loadgenerator")
@@ -162,19 +158,30 @@ def switchBranch(sut_path, branch_name):
     print(f"Using the {branch_name} branch")
     return branch_name
 
-@click.command("run")
-@click.option("--exp-name", required=True, type=click.STRING, help="Name of the experiment to run")
+@click.command("build")
+@click.option("--exp-name", required=False, type=click.STRING, help="Name of the experiment to build")
 def build_main(exp_name: str):
+    
     # Get the experiment object
     experiment_list = ExperimentList.load_experiments(RUN_CONFIG)
-    experiments = [e for e in experiment_list if e.name == exp_name]
-    if not len(experiments):
-        raise ValueError("invalid experiment name- the following are the available experiments for teastore: " + str([e.name for e in experiment_list]))
-    else:   
-        experiment = experiments[0]
+    selected_experiment = [e for e in experiment_list if e.name == exp_name]
+    
+    # If no experiment is specified, build all experiments
+    if not exp_name:
+        experiments = experiment_list
+    elif selected_experiment:
+        experiments = selected_experiment
+    else:
+        print(f"Experiment {exp_name} not found")
+        return
         
     # Build the teastore images
-    build(experiment)
+    for experiment in experiments:
+        print(f"Building teastore images for {experiment.name}")
+        # Build the experiment
+        #build(experiment)
+        # Build the workload
+        build_workload(experiment)
 
 if __name__ == "__main__":
     build_main()
