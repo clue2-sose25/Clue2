@@ -9,7 +9,7 @@ import os
 import subprocess
 from kubernetes import config
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 from experiment import Experiment
 from scaling_experiment_setting import ScalingExperimentSetting
