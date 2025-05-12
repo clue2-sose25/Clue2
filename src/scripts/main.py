@@ -10,12 +10,12 @@ from tabulate import tabulate
 import argparse
 import logging
 from config import Config
-from experiment import Experiment
-from experiment_environment import ExperimentEnvironment
-from experiment_runner import ExperimentRunner
-from experiment_workloads import get_workload_instance
-from experiment_list import ExperimentList
-import deploy
+from clue_deployer.experiment import Experiment
+from clue_deployer.experiment_environment import ExperimentEnvironment
+from clue_deployer.experiment_runner import ExperimentRunner
+from clue_deployer.experiment_workloads import get_workload_instance
+from clue_deployer.experiment_list import ExperimentList
+import clue_deployer.deploy as deploy
 
 #get the root directory of the project
 BASE_DIR = Path(__file__).resolve().parent.parent

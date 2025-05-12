@@ -1,9 +1,8 @@
 #! /usr/bin/env python3
 import click
-import os
-import deploy
+import clue_deployer.deploy as deploy
 from pathlib import Path
-from experiment_list import ExperimentList
+from clue_deployer.experiment_list import ExperimentList
 from config import Config
 
 #get the root directory of the project
