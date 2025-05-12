@@ -44,7 +44,7 @@ def run(sut, exp_name):
         experiment = experiments[0]
         
     # Deploy the experiment, without the workload generator
-    deploy.deploy(experiment)
+    deploy.deploy(experiment, config = RUN_CONFIG)
 
 if __name__ == "__main__":
     run()

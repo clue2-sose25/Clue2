@@ -18,11 +18,10 @@ from autoscaling_deployer import AutoscalingDeployer
 
 CONFIG_PATH = BASE_DIR.joinpath("clue-config.yaml")
 SUT_CONFIG_PATH = BASE_DIR / "sut_configs" / "teastore.yaml"
-RUN_CONFIG = Config(SUT_CONFIG_PATH, CONFIG_PATH)
 
-def deploy(experiment: Experiment):
-    sut_path = RUN_CONFIG.sut_config.sut_path
-    docker_registry_address = RUN_CONFIG.clue_config.docker_registry_address
+def deploy(experiment: Experiment, config: Config):
+    sut_path = config.sut_config.sut_path
+    docker_registry_address = config.clue_config.docker_registry_address
     
     try:
         config.load_kube_config()
@@ -34,7 +33,7 @@ def deploy(experiment: Experiment):
     check_labeled_node_available()
     ensure_helm_requirements()
     start_port_forward(experiment.namespace,"prometheus-kps1-kube-prometheus-stack-prometheus-0",9090,9090)
-    patch_helm_deployment_for_experiment(experiment, sut_path, docker_registry_address)
+    patch_helm_deployment_for_experiment(experiment, sut_path, docker_registry_address, config)
     deploy_helm_chart(experiment, sut_path)
     wait_until_services_ready(experiment)
 
@@ -89,7 +88,8 @@ def deploy_helm_chart(experiment: Experiment, sut_path: str):
         print(cpe)
     
 
-def patch_helm_deployment_for_experiment(experiment: Experiment, sut_path: str, docker_image_location: str):
+def patch_helm_deployment_for_experiment(experiment: Experiment, sut_path: str, docker_image_location: str,
+                                         config: Config):
     with open(path.join(sut_path, "examples", "helm", "values.yaml"), "r") as f:
         values = f.read()
         values = values.replace("descartesresearch", docker_image_location)
@@ -120,7 +120,7 @@ def patch_helm_deployment_for_experiment(experiment: Experiment, sut_path: str, 
         f.write(values)
     
     # create observations directory in the format RUN_CONFIG.clue_config.result_base_path / experiment.name / dd.mm.yyyy_hh:mm
-    observations = path.join(RUN_CONFIG.clue_config.result_base_path, experiment.name, time.strftime("%d.%m.%Y_%H:%M"))
+    observations = path.join(config.clue_config.result_base_path, experiment.name, time.strftime("%d.%m.%Y_%H:%M"))
     os.makedirs(observations)
 
     # write copy of used values to observations 
