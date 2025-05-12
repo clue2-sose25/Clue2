@@ -7,5 +7,5 @@ agent
 .github
 .vscode
 results/*
-/teastore/
+teastore
 *.egg-info/
