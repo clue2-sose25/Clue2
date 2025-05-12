@@ -5,3 +5,4 @@ data*
 .idea
 mock_data/
 agent
+results/*

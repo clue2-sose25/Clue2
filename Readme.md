@@ -4,25 +4,24 @@
 
 ## 📢 About the Project
 
-Clue is  a benchmarking and observability framework for gathering and compiling sustainability and quality reports on changes in cloud-native applications. 
+Clue is a benchmarking and observability framework for gathering and compiling sustainability and quality reports on changes in cloud-native applications.
 
 It can be used as part of your CI/CD pipeline to evaluate the impact of changes or as a standalone tool to evaluate prototypes you are working on.
 
-The framework is designed to be extensible and can be easily integrated with existing cloud providers. We currently rely on Prometheus to collect all relevant metrics, but we are working on adding support for other monitoring tools. 
+The framework is designed to be extensible and can be easily integrated with existing cloud providers. We currently rely on Prometheus to collect all relevant metrics, but we are working on adding support for other monitoring tools.
 Moreover, we are currently focusing on Kubernetes as the orchestrator, so as long as your application runs on Kubernetes, you can use Clue to evaluate it. However, we are working on adding support for other environments as well.
 
 This Readme describes the process of running CLUE experiments on the selected SUT.
 
 ## 📦 Prerequisites
 
-  * Docker, e.g. 20.10
-  * Kubernetes, e.g. 1.29 (for testing purposes, [minikube](https://minikube.sigs.k8s.io/docs/) works)
-    * at least one Kubernetes node running Scaphandra/[Kepler](https://sustainable-computing.io/installation/kepler-helm/), and a [NodeExporter](https://observability.thomasriley.co.uk/monitoring-kubernetes/metrics/node-exporter/). If the tracker does not find any energy data, the experiment will start, but the script will stop due to lack of usable insights
-    * for the serverless variant, knative installed
-    * for external power meters, connect e.g. a Tapo device (out of scope of this Readme)
-  * [Helm](https://helm.sh/), e.g. v3.16
-  * Python, e.g. 3.11, using uv in this Readme
-
+- Docker, e.g. 20.10
+- Kubernetes, e.g. 1.29 (for testing purposes, [minikube](https://minikube.sigs.k8s.io/docs/) works)
+  - at least one Kubernetes node running Scaphandra/[Kepler](https://sustainable-computing.io/installation/kepler-helm/), and a [NodeExporter](https://observability.thomasriley.co.uk/monitoring-kubernetes/metrics/node-exporter/). If the tracker does not find any energy data, the experiment will start, but the script will stop due to lack of usable insights
+  - for the serverless variant, knative installed
+  - for external power meters, connect e.g. a Tapo device (out of scope of this Readme)
+- [Helm](https://helm.sh/), e.g. v3.16
+- Python, e.g. 3.11, using uv in this Readme
 
 ## 🚀 System setup
 
@@ -37,18 +36,25 @@ The docker image registry used by CLUE can be specified in the `clue-config.yaml
 docker compose up -d
 ```
 
-Update the `Docker Deamon` configuration to allow insecure connections to the deployed image registry. For `Docker Desktop` go to the configuration and the `Docker Engine` tab and append the following option:
+Update the `Docker Deamon` configuration to allow insecure connections to the deployed image registry (e.g. at /etc/docker/daemon.json). For `Docker Desktop` go to the configuration and the `Docker Engine` tab and append the following option:
 
 ```json
   "insecure-registries": [
-    "host.docker.internal:6789"
+    "host.minikube.internal:6789"
   ]
+```
+
+You may need to restart docker to apply the changes:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart docker
 ```
 
 Make sure that `Minikube` (or your other choosen local kubernets cluster) accepts the registry as well and has enough memory (configure docker before). In case you already have created a minikube cluster before make sure to delete if and recreate it using this command:
 
 ```bash
-minikube start --cni=flannel --insecure-registry "host.docker.internal:6789" --cpus 8 --memory 12000
+minikube start --cni=flannel --insecure-registry "host.minikube.internal:6789" --cpus 8 --memory 12000
 ```
 
 Also add an additional node to allow running the loadgenerator (which can not run on the same node as the experiment itself):
@@ -90,7 +96,7 @@ Before running CLUE2, all images of the selected SUT have to be built and stored
 To build images for the `TeaStore`, use the command listed below. By default the script builds images for all experiments.
 
 ```bash
-python python clue-builders/teastore/build.py
+uv run clue-builders/teastore/build.py
 ```
 
 To specify a single experiment to be build append the `--exp EXPERIMENT_NAME` flag.
@@ -100,8 +106,9 @@ To specify a single experiment to be build append the `--exp EXPERIMENT_NAME` fl
 For a test deployment of the SUT (without running the CLUE2, nor the workload generator), run the following command. Make sure that all required images are present in the specified image registry.
 
 ```bash
-python python clue-deployer/run.py --sut teastore --exp-name baseline
+uv run clue-deployer/run.py --sut teastore --exp-name baseline
 ```
+
 , where the `--sut` is the name of the SUT config inside of the `sut_configs` directory, and the `--exp-name` is the name of the branch containing the desired experiment.
 
 When deploying `Teastore` while using minikube, forward a port so you can test and access the TeaStore:
@@ -117,14 +124,15 @@ TeaStore may run some initial tasks on startup, so make sure to wait a minute if
 ### 5. 💨 CLUE2 Deployment
 
 To run the main CLUE2, run the task below. Make sure that all required images are present in the specified image registry.
+The following command runs clue with the teastore as the SUT.
 
 ```bash
-python exv2/main.py --skip-build
+uv run clue-deployer/main.py
 ```
 
 ![Running the Experiments](readme/running_experiments.png)
 
-### 6. 📋 (Optional) CLUE2 Deployment with local 
+### 6. 📋 (Optional) CLUE2 Deployment with local
 
 If you create your own variants or make changes to the SUT, the images need to be rebuilt and pushed to the image registry specified in the config. Make sure to run `docker login` in case authentication is needed.
 
@@ -132,7 +140,7 @@ If all the preliminaries for data collection are installed, Clue will fetch the 
 
 ## 💻 Troubleshooting / Known Issues
 
- * When using docker desktop, enable in settings > advanced: *Allow the default Docker socket to be used*
- * Ensure that you have a sufficient amount of memory alocated for docker, at least 12 GB
- * Run `minikube dashboard` to monitor deployment errors, e.g. missing node labels or insufficient memory
- * The monolith app has some specific handles, e.g. a different set name. If a a set is not found, especially when skipping builds, this can cause probelems
+- When using docker desktop, enable in settings > advanced: _Allow the default Docker socket to be used_
+- Ensure that you have a sufficient amount of memory alocated for docker, at least 12 GB
+- Run `minikube dashboard` to monitor deployment errors, e.g. missing node labels or insufficient memory
+- The monolith app has some specific handles, e.g. a different set name. If a a set is not found, especially when skipping builds, this can cause probelems
