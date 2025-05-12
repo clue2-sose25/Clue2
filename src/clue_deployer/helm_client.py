@@ -1,5 +1,4 @@
 import subprocess
-from os import path
 from pathlib import Path
 from typing import Optional, List, Dict
 

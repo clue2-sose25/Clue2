@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 import click
-import clue_deployer.deploy as deploy
+from clue_deployer.deploy import ExperimentDeployer
 from pathlib import Path
 from clue_deployer.experiment_list import ExperimentList
 from config import Config
@@ -45,7 +45,8 @@ def run(sut, exp_name):
         experiment = experiments[0]
         
     # Deploy the experiment, without the workload generator
-    deploy.deploy(experiment, config = RUN_CONFIG)
+    deployer = ExperimentDeployer(experiment, RUN_CONFIG)
+    deployer.execute_deployment()
 
 if __name__ == "__main__":
     run()
