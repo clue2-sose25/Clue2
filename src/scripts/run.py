@@ -28,6 +28,7 @@ def available_suts():
     return sut_files
 
 
+#TODO make this work for other SUTs
 @click.command("run")
 @click.option("--sut", required=True, type=click.Choice(available_suts()))
 @click.option("--exp-name", required=True, type=click.STRING, help="Name of the experiment to run")

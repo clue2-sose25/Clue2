@@ -9,10 +9,10 @@ from tempfile import TemporaryFile
 import docker
 from kubernetes import client, watch
 from kubernetes.client.rest import ApiException
-from experiment import Experiment
+from clue_deployer.experiment import Experiment
 import logging
 
-from workload_cancelled_exception import WorkloadCancelled
+from clue_deployer.workload_cancelled_exception import WorkloadCancelled
 
 
 class WorkloadRunner:

@@ -11,10 +11,10 @@ from kubernetes import config
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-from experiment import Experiment
-from scaling_experiment_setting import ScalingExperimentSetting
+from clue_deployer.experiment import Experiment
+from clue_deployer.scaling_experiment_setting import ScalingExperimentSetting
 from config import Config
-from autoscaling_deployer import AutoscalingDeployer
+from clue_deployer.autoscaling_deployer import AutoscalingDeployer
 
 CONFIG_PATH = BASE_DIR.joinpath("clue-config.yaml")
 SUT_CONFIG_PATH = BASE_DIR / "sut_configs" / "teastore.yaml"
@@ -77,7 +77,7 @@ def wait_until_services_ready(experiment: Experiment, timeout: int = 180):
 def deploy_helm_chart(experiment: Experiment, sut_path: str):
     try:
         helm_deploy = subprocess.check_output(
-            ["helm", "install", "teastore", "-n", experiment.namespace, "."],
+            ["helm", "install", experiment.name, "-n", experiment.namespace, "."],
             cwd=path.join(sut_path, "examples", "helm"),
         )
         helm_deploy = helm_deploy.decode("utf-8")

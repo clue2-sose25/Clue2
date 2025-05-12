@@ -3,10 +3,10 @@ import copy
 from dataclasses import dataclass
 from config import Config
 
-from experiment import Experiment
-from scaling_experiment_setting import ScalingExperimentSetting
-from experiment_workloads import Workload
-from experiment_environment import ExperimentEnvironment
+from clue_deployer.experiment import Experiment
+from clue_deployer.scaling_experiment_setting import ScalingExperimentSetting
+from clue_deployer.experiment_workloads import Workload
+from clue_deployer.experiment_environment import ExperimentEnvironment
 
 @dataclass
 class ExperimentList():

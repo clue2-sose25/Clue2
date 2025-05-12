@@ -4,10 +4,10 @@ from datetime import datetime
 
 from psc.tracker import PodUsage
 
-from experiment import Experiment
-from workload_cancelled_exception import WorkloadCancelled
-from flushing_queue import FlushingQueue
-from workload_runner import WorkloadRunner
+from clue_deployer.experiment import Experiment
+from clue_deployer.workload_cancelled_exception import WorkloadCancelled
+from clue_deployer.flushing_queue import FlushingQueue
+from clue_deployer.workload_runner import WorkloadRunner
 from psc import ResourceTracker, NodeUsage
 from os import path
 import signal

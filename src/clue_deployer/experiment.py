@@ -2,8 +2,8 @@ from typing import List
 import json
 from pathlib import Path
 
-from scaling_experiment_setting import ScalingExperimentSetting
-from experiment_environment import ExperimentEnvironment
+from clue_deployer.scaling_experiment_setting import ScalingExperimentSetting
+from clue_deployer.experiment_environment import ExperimentEnvironment
 
 
 class Experiment:
