@@ -1,4 +1,3 @@
-import sys
 from pathlib import Path
 import click
 import docker
@@ -6,14 +5,10 @@ import subprocess
 from os import path
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
-SOURCE_CODE_BASE = Path(__file__).resolve().parent.parent.parent.joinpath("clue-deployer")
-
-# allow importing from the parent directory
-sys.path.append(str(SOURCE_CODE_BASE))
 
 from config import Config
-from experiment_list import ExperimentList
-from experiment import Experiment
+from clue_deployer.experiment_list import ExperimentList
+from clue_deployer.experiment import Experiment
 
 CONFIG_PATH = BASE_DIR.joinpath("clue-config.yaml")
 SUT_CONFIG_PATH = BASE_DIR / "sut_configs" / "teastore.yaml"

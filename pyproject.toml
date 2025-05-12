@@ -23,6 +23,12 @@ dependencies = [
     "yaml-patch>=1.1.0",
 ]
 
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
 [tool.uv.sources]
 # psc = { git = "https://git.tu-berlin.de/cloud-sustainability/prometeus-energy-agent" }
 psc = { path = "./agent", editable = true }

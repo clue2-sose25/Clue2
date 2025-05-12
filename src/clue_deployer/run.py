@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 import click
+import os
 import deploy
 from pathlib import Path
 from experiment_list import ExperimentList
@@ -16,8 +17,16 @@ def cli():
     pass
 
 def available_suts():
-    # TO-DO Refactor to read the sut_configs folder
-    return ["teastore"]
+    """
+    Reads the 'sut_configs' folder and returns a list of available SUT names.
+    """
+    sut_configs_path = BASE_DIR / "sut_configs"
+    if not sut_configs_path.exists():
+        raise FileNotFoundError(f"SUT configs folder not found: {sut_configs_path}")
+
+    # Get all YAML files in the 'sut_configs' folder
+    sut_files = [f.stem for f in sut_configs_path.glob("*.yaml")]
+    return sut_files
 
 
 @click.command("run")

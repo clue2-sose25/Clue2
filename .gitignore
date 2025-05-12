@@ -1,4 +1,3 @@
-teastore/
 .DS_Store
 __pycache__/
 data*
@@ -8,3 +7,5 @@ agent
 .github
 .vscode
 results/*
+/teastore/
+*.egg-info/
