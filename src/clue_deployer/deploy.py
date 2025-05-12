@@ -7,7 +7,7 @@ from kubernetes.client import AppsV1Api
 import time
 import os
 import subprocess
-from kubernetes import config
+from kubernetes import config as k_config
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -24,7 +24,7 @@ def deploy(experiment: Experiment, config: Config):
     docker_registry_address = config.clue_config.docker_registry_address
     
     try:
-        config.load_kube_config()
+        k_config.load_kube_config()
     except Exception as e:
         print("Failed to load kube config. Make sure you have a cluster available via kubectl.")
         raise e
