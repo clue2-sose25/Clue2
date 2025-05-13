@@ -228,12 +228,6 @@ class ExperimentDeployer:
                 return True
             time.sleep(1)
         raise RuntimeError("Timeout reached. The following services are not ready: " + str(list(services - ready_services)))
-    
-    def _setup_autoscaling(self):
-        print("Autoscaling is enabled. Deploying autoscaling...")
-        # Pass necessary API clients to AutoscalingDeployer if it needs them
-        autoscaler = AutoscalingDeployer(self.experiment, self.apps_v1_api, self.core_v1_api)
-        autoscaler.setup_autoscaling()
 
 
     def execute_deployment(self):
