@@ -13,11 +13,8 @@ from clue_deployer.scaling_experiment_setting import ScalingExperimentSetting
 from config import Config # Assuming this is your main combined config object
 from clue_deployer.autoscaling_deployer import AutoscalingDeployer
 
-# BASE_DIR and other global constants might be better managed within the Config object
-# or passed to the ExperimentDeployer if they vary. For now, assuming they are accessible.
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent # Adjust if deploy.py is not 3 levels down from project root
-# CONFIG_PATH = BASE_DIR.joinpath("clue-config.yaml") # Likely part of the 'Config' object now
-# SUT_CONFIG_PATH = BASE_DIR / "sut_configs" / "teastore.yaml" # Likely part of the 'Config' object now
 
 
 class ExperimentDeployer:
@@ -247,10 +244,6 @@ class ExperimentDeployer:
         self._create_namespace_if_not_exists()
         self._check_labeled_node_available() # Checks for "scaphandre=true"
         self._ensure_helm_requirements() # Installs Prometheus, Kepler
-
-        # Determine Prometheus pod name for port-forwarding
-        # This is a common pattern but might need adjustment based on actual prometheus deployment
-        # For kube-prometheus-stack, the service is often more stable
         #TODO remove the hardcoding here
         self._start_port_forward("prometheus-kps1-kube-prometheus-stack-prometheus-0",9090,9090)
         self._patch_helm_deployment()

@@ -32,7 +32,6 @@ class HelmUninstallError(HelmError):
 class HelmClient:
     def __init__(self, helm_executable: str = "helm"):
         self.helm_executable = helm_executable
-        # You could add more default configurations here if needed
 
     def _run_command(self, command_args: List[str], cwd: Optional[str | Path] = None) -> str:
         """Helper method to run a Helm command and return its decoded output."""
@@ -84,8 +83,6 @@ class HelmClient:
         # For now, assuming chart_path is the directory containing the chart.
         cwd_path = Path(chart_path) if isinstance(chart_path, str) else chart_path
         if not cwd_path.is_dir():
-            # This is a simplification. Real chart_path could be repo/name.
-            # For now, we assume it's a local path to the chart dir.
             raise ValueError(f"chart_path '{chart_path}' must be a directory for this simplified install method.")
 
 
@@ -130,8 +127,6 @@ class HelmClient:
     def patch_values_file(self, values_file_path: str | Path, patches: Dict[str, str]):
         """
         Patches a values.yaml file with simple string replacements.
-        WARNING: This modifies the file in-place. For production, consider templating
-                 or using a proper YAML library for safer modifications.
         """
         values_file_path = Path(values_file_path)
         if not values_file_path.exists():
