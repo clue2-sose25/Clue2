@@ -135,15 +135,13 @@ def run_maven(sut_path):
         raise
 
 def build_workload(experiment):
-        docker_client = docker.from_env()
-
         platform = (
             experiment.env.remote_platform_arch
             if experiment.colocated_workload
             else experiment.env.remote_platform_arch
         )
 
-        print(f"Building workload for platform {platform}")
+        print(f"Building Teastore workload generator for platform {platform}")
 
         build = subprocess.check_call(
             [
@@ -152,17 +150,17 @@ def build_workload(experiment):
                 "build",
                 "--platform",
                 platform,
+                "--push",
                 "-t",
                 f"{experiment.env.docker_registry_address}/loadgenerator",
                 ".",
             ],
-            cwd=path.join("clue-loadgenerator", "teastore"),
+            cwd=path.join("workload-generator"),
         )
         if build != 0:
-            raise RuntimeError("Failed to build loadgenerator")
+            raise RuntimeError("Failed to build the workload generator")
 
-        docker_client.images.push(f"{experiment.env.docker_registry_address}/loadgenerator")
-        print(f"Built workload for platform {platform}")
+        print(f"Built workload generator for platform {platform}")
 
 def switchBranch(sut_path, branch_name):
     git = subprocess.check_call(
@@ -210,7 +208,7 @@ def build_main():
     for experiment in selected_experiments:
         print(f"Building teastore images for {experiment.name}")
         # Build the experiment
-        build(experiment)
+        # build(experiment)
         # Build the workload
         build_workload(experiment)
 

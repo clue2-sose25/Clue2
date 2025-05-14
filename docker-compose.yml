@@ -20,6 +20,8 @@ services:
       dockerfile: ./clue-builders/teastore/Dockerfile
     container_name: teastore-builder
     privileged: true
+    depends_on:
+      - registry
     environment:
       DOCKER_BUILDKIT: 1
       SUT_EXPERIMENT: baseline
