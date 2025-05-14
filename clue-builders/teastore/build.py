@@ -26,7 +26,7 @@ def load_configs():
     config = type('Config', (), {
         'clue_config': type('ClueConfig', (), {
             'remote_platform_arch': clue_config['config']['remote_platform_arch'],
-            'docker_registry_address': clue_config['config']['docker_registry_address']
+            'docker_registry_address': "registry:5000/clue"
         })(),
         'sut_config': type('SutConfig', (), {
             'sut_path': sut_config['config']['sut_path'],
@@ -156,7 +156,6 @@ def build_workload(experiment):
                 f"{experiment.env.docker_registry_address}/loadgenerator",
                 ".",
             ],
-            capture_output=False,
             cwd=path.join("clue-loadgenerator", "teastore"),
         )
         if build != 0:
@@ -192,7 +191,7 @@ def build_main():
             'colocated_workload': exp_dict.get('colocated_workload', False),
             'env': type('Env', (), {
                 'remote_platform_arch': RUN_CONFIG.clue_config.remote_platform_arch,
-                'docker_registry_address': RUN_CONFIG.clue_config.docker_registry_address
+                'docker_registry_address': "registry:5000/clue"
             })()
         })()
         experiments.append(exp)

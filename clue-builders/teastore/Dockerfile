@@ -1,30 +1,35 @@
-FROM python:3.13.3-alpine
+# Dockerfile.dind-privileged
+FROM docker:28.1-dind
 
-# Set working directory
+# Install system tools
+RUN apk update \
+ && apk add --no-cache \
+      openjdk17 \
+      maven \
+      git \
+      dos2unix \
+      python3 \
+      py3-pip \
+ && rm -rf /var/cache/apk/*
+
 WORKDIR /app
 
-# Install system dependencies, Docker CLI, buildx plugin, Git, dos2unix, and Maven
-RUN apk update \
-    && apk add --no-cache \
-       docker-cli \
-       docker-cli-buildx \
-       git \
-       dos2unix \
-       openjdk17 \
-       maven \
-    && rm -rf /var/cache/apk/*
+# Copy just requirements.txt first to benefit from cache
+COPY clue-builders/teastore/requirements.txt .
 
-# Copy all necessary files
-COPY ./clue-builders/teastore/ .
-# Copy configs
-COPY ./clue-config.yaml .
-COPY ./sut_configs/teastore.yaml .
+# Create a venv, install deps (ignoring PEP668)
+RUN python3 -m venv /opt/venv \
+ && /opt/venv/bin/pip install --upgrade pip \
+ && /opt/venv/bin/pip install --no-cache-dir --break-system-packages -r requirements.txt
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy the rest of your code & configs
+COPY clue-builders/teastore/ .  
+COPY clue-config.yaml .  
+COPY sut_configs/teastore.yaml .  
 
-# Use Docker socket from host, so builder can invoke builds/pushes
-VOLUME ["/var/run/docker.sock:/var/run/docker.sock"]
+# Ensure python/pip from your venv are first in PATH
+ENV PATH="/opt/venv/bin:${PATH}"
 
-# Entrypoint
-ENTRYPOINT ["python", "build.py"]
+# Run the DinD entrypoint
+RUN chmod +x /app/entrypoint.sh
+ENTRYPOINT ["/app/entrypoint.sh"]

@@ -37,14 +37,6 @@ The docker image registry used by CLUE can be specified in the `clue-config.yaml
 docker compose up -d
 ```
 
-Update the `Docker Deamon` configuration to allow insecure connections to the deployed image registry. For `Docker Desktop` go to the configuration and the `Docker Engine` tab and append the following option:
-
-```json
-  "insecure-registries": [
-    "host.docker.internal:6789"
-  ]
-```
-
 Make sure that `Minikube` (or your other choosen local kubernets cluster) accepts the registry as well and has enough memory (configure docker before). In case you already have created a minikube cluster before make sure to delete if and recreate it using this command:
 
 ```bash
