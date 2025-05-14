@@ -208,7 +208,7 @@ def build_main():
     for experiment in selected_experiments:
         print(f"Building teastore images for {experiment.name}")
         # Build the experiment
-        # build(experiment)
+        build(experiment)
         # Build the workload
         build_workload(experiment)
 
