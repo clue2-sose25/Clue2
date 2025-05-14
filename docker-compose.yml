@@ -1,14 +1,27 @@
 name: "clue2"
 
 services:
+  # The main image registry
   registry:
     image: registry:2
     container_name: registry
     ports:
       - "6789:5000"
-    restart: unless-stopped
+    environment:
+      DOCKER_BUILDKIT: 1
     volumes:
       - registry-data:/var/lib/registry
+
+  # The optional Teastore builder
+  teastore-builder:
+    image: ghcr.io/clue2-sose25/clue2/teastore-builder:latest
+    build:
+      context: .
+      dockerfile: ./clue-builders/teastore/Dockerfile
+    container_name: teastore-builder
+    environment:
+      DOCKER_BUILDKIT: 1
+      SUT_EXPERIMENT: baseline 
 
 volumes:
   registry-data:

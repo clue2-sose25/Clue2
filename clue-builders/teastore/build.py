@@ -1,6 +1,6 @@
+import os
 import sys
 from pathlib import Path
-import click
 import docker
 import subprocess
 from os import path
@@ -20,7 +20,6 @@ SUT_CONFIG_PATH = BASE_DIR / "sut_configs" / "teastore.yaml"
 RUN_CONFIG = Config(SUT_CONFIG_PATH, CONFIG_PATH)
 
 def build(experiment: Experiment):
-    
     sut_path = RUN_CONFIG.sut_config.sut_path
     remote_platform_arch = RUN_CONFIG.clue_config.remote_platform_arch
     docker_registry_address = RUN_CONFIG.clue_config.docker_registry_address
@@ -32,8 +31,14 @@ def build(experiment: Experiment):
     except docker.errors.NotFound:  
         raise RuntimeError("Docker is not running. Please start Docker and try again.")
     
+    # Clone the sustainable_teastore repository if it doesn't exist
+    teastore_path = path.join(sut_path, "teastore")
+    if not path.exists(teastore_path):
+        subprocess.check_call(["git", "clone", "https://github.com/ISE-TU-Berlin/sustainable_teastore.git", "teastore"], cwd=sut_path)
+        print("Cloned sustainable_teastore repository")
+    
     branch_name = experiment.target_branch
-    switchBranch(sut_path, branch_name)
+    switchBranch(teastore_path, branch_name)
     deploy_maven_container(sut_path, docker_client)
     patch_buildx(sut_path, remote_platform_arch)
     build_docker_image(sut_path, docker_registry_address, branch_name)
@@ -158,23 +163,25 @@ def switchBranch(sut_path, branch_name):
     print(f"Using the {branch_name} branch")
     return branch_name
 
-@click.command("build")
-@click.option("--exp-name", required=False, type=click.STRING, help="Name of the experiment to build")
-def build_main(exp_name: str):
+def build_main():
+    # Read SUT_EXPERIMENT environment variable, use "all" for default
+    exp_name = os.environ.get("SUT_EXPERIMENT", "all")
     
     # Get the experiment object
     experiment_list = ExperimentList.load_experiments(RUN_CONFIG)
-    selected_experiment = [e for e in experiment_list if e.name == exp_name]
     
-    # If no experiment is specified, build all experiments
-    if not exp_name:
+    # If SUT_EXPERIMENT is "all" or unset, build all experiments
+    if not exp_name or exp_name.lower() == "all":
         experiments = experiment_list
-    elif selected_experiment:
-        experiments = selected_experiment
     else:
-        print(f"Experiment {exp_name} not found")
-        return
-        
+        # Look for the specified experiment
+        selected_experiment = [e for e in experiment_list if e.name == exp_name]
+        if selected_experiment:
+            experiments = selected_experiment
+        else:
+            print(f"Experiment {exp_name} not found")
+            sys.exit(1)  # Exit with error if experiment not found
+    
     # Build the teastore images
     for experiment in experiments:
         print(f"Building teastore images for {experiment.name}")
