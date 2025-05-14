@@ -58,7 +58,7 @@ def build(experiment=None):
     
     branch_name = experiment.target_branch if experiment else RUN_CONFIG.sut_config.get('default_branch', 'master')
     switchBranch(sut_path, branch_name)
-    deploy_maven_container(sut_path, docker_client)
+    run_maven(sut_path)
     patch_buildx(sut_path, remote_platform_arch)
     build_docker_image(sut_path, docker_registry_address, branch_name)
 
@@ -91,7 +91,7 @@ def patch_buildx(sut_path, remote_platform_arch):
         with open(path.join(sut_path, "tools", "build_docker.sh"), "w") as f:
             f.write(script)
 
-def deploy_maven_container(sut_path, docker_client):
+def run_maven(sut_path):
     print("Running Maven build directly for teastore. Might take a while...")
     
     try:
@@ -110,7 +110,7 @@ def deploy_maven_container(sut_path, docker_client):
         process = subprocess.run(
             ["mvn", "clean", "install", "-DskipTests"],
             cwd=abs_path,
-            capture_output=True,  # Capture stdout and stderr
+            capture_output=False,  # Capture stdout and stderr
             text=True  # Return output as strings instead of bytes
         )
         
@@ -156,6 +156,7 @@ def build_workload(experiment):
                 f"{experiment.env.docker_registry_address}/loadgenerator",
                 ".",
             ],
+            capture_output=False,
             cwd=path.join("clue-loadgenerator", "teastore"),
         )
         if build != 0:
