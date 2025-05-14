@@ -4,20 +4,19 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+click = "*"
 docker = "*"
 kubernetes = "*"
 locust = "*"
-seaborn = "*"
-yaml-patch = "*"
-# the space is on purpose and very important
 progressbar2 = "*"
-scipy = "*"
+psc = {path = "./agent", editable = true}
+pydantic = "*"
+pydantic-settings = "*"
+pydantic-yaml = "*"
+requests = "*"
+ruamel-yaml = "*"
 tabulate = "*"
-"psc " = {ref = "git.tu-berlin.de/cloud-sustainability/prometeus-energy-agent.git", git = "git+https://pipthing:to4B7fmd6Hs993ZqKHSk"}
-glasbey = "*"
-
-[dev-packages]
-ipykernel = "*"
+yaml-patch = "*"
 
 [requires]
-python_version = "3.11"
+python_version = "3.13"

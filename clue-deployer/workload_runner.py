@@ -32,43 +32,6 @@ class WorkloadRunner:
                             } | self.exp.env.workload_settings
         
 
-    def build_workload(
-            self, workload_branch: str = "priv/lierseleow/loadgenerator"
-    ):
-        """
-        build the workload image as a docker image, either to be deployed locally or colocated with the service
-        """
-
-        docker_client = docker.from_env()
-
-        exp = self.exp
-
-        platform = (
-            exp.env.local_platform_arch
-            if exp.colocated_workload
-            else exp.env.remote_platform_arch
-        )
-
-        logging.info("building workload for platform %s", platform)
-
-        build = subprocess.check_call(
-            [
-                "docker",
-                "buildx",
-                "build",
-                "--platform",
-                platform,
-                "-t",
-                f"{exp.env.docker_registry_address}/loadgenerator",
-                ".",
-            ],
-            cwd=path.join("loadgenerator"),
-        )
-        if build != 0:
-            raise RuntimeError(f"failed to build {workload_branch}")
-
-        docker_client.images.push(f"{exp.env.docker_registry_address}/loadgenerator")
-
     def run_workload(self, outpath):
         if self.exp.colocated_workload:
             self._run_remote_workload(outpath)
