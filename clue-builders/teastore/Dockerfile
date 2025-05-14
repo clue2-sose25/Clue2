@@ -3,13 +3,15 @@ FROM python:3.13.3-alpine
 # Set working directory
 WORKDIR /app
 
-# Install system + Docker CLI + buildx plugin + Git + dos2unix
+# Install system dependencies, Docker CLI, buildx plugin, Git, dos2unix, and Maven
 RUN apk update \
     && apk add --no-cache \
        docker-cli \
        docker-cli-buildx \
        git \
        dos2unix \
+       openjdk17 \
+       maven \
     && rm -rf /var/cache/apk/*
 
 # Copy all necessary files

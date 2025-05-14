@@ -15,7 +15,6 @@ def load_configs():
         print("Error: clue-config.yaml not found")
         sys.exit(1)
     
-    # Load teastore.yaml
     try:
         with open("teastore.yaml", "r") as f:
             sut_config = yaml.safe_load(f)
@@ -52,19 +51,13 @@ def build(experiment=None):
     except docker.errors.NotFound:  
         raise RuntimeError("Docker is not running. Please start Docker and try again.")
     
-    # Create the sut_path directory if it doesn't exist
+    # Clone the sustainable_teastore 
     if not path.exists(sut_path):
-        os.makedirs(sut_path, exist_ok=True)
-        print(f"Created directory: {sut_path}")
-    
-    # Clone the sustainable_teastore repository if it doesn't exist
-    teastore_path = path.join(sut_path, "teastore")
-    if not path.exists(teastore_path):
-        subprocess.check_call(["git", "clone", "https://github.com/ISE-TU-Berlin/sustainable_teastore.git", "teastore"], cwd=sut_path)
+        subprocess.check_call(["git", "clone", "https://github.com/ISE-TU-Berlin/sustainable_teastore.git", "teastore"])
         print("Cloned sustainable_teastore repository")
     
     branch_name = experiment.target_branch if experiment else RUN_CONFIG.sut_config.get('default_branch', 'master')
-    switchBranch(teastore_path, branch_name)
+    switchBranch(sut_path, branch_name)
     deploy_maven_container(sut_path, docker_client)
     patch_buildx(sut_path, remote_platform_arch)
     build_docker_image(sut_path, docker_registry_address, branch_name)
@@ -99,27 +92,47 @@ def patch_buildx(sut_path, remote_platform_arch):
             f.write(script)
 
 def deploy_maven_container(sut_path, docker_client):
-    print(f"Deploying the maven container for building teastore. Might take a while...")
+    print("Running Maven build directly for teastore. Might take a while...")
+    
+    try:
+        # Print absolute path for debugging
+        abs_path = path.abspath(sut_path)
+        print(f"Using absolute path for Maven build: {abs_path}")
         
-    mvn_output = docker_client.containers.run(
-            image="maven",
-            auto_remove=True,
-            volumes={
-                path.abspath(path.join(sut_path)): {
-                    "bind": "/mnt",
-                    "mode": "rw",
-                }
-            },
-            working_dir="/mnt",
-            command="bash -c 'apt-get update && apt-get install -y dos2unix && find . -type f -name \"*.sh\" -exec dos2unix {} \\; && mvn clean install -DskipTests'",
+        # Check if the directory exists and has content
+        if not path.exists(abs_path):
+            print(f"Error: Path {abs_path} does not exist")
+            sys.exit(1)
+        else:
+            print(f"Path exists. Contents: {os.listdir(abs_path)}")
+        
+        # Run Maven command directly
+        process = subprocess.run(
+            ["mvn", "clean", "install", "-DskipTests"],
+            cwd=abs_path,
+            capture_output=True,  # Capture stdout and stderr
+            text=True  # Return output as strings instead of bytes
         )
-    if "BUILD SUCCESS" not in mvn_output.decode("utf-8"):
-        print(mvn_output)
-        raise RuntimeError(
-                "failed to build teastore. Run mvn clean install -DskipTests manually and see why it fails"
-            )
-    else:
-        print("Finished rebuiling java deps")
+        
+        # Print Maven output for debugging
+        print("Maven build output:")
+        print(process.stdout)
+        
+        # Check the exit code
+        if process.returncode != 0:
+            print("Maven build failed with exit code:", process.returncode)
+            print("Error logs:")
+            print(process.stderr)
+            raise RuntimeError(f"Failed to build teastore. Maven execution failed with exit code {process.returncode}")
+        else:
+            print("Finished rebuilding Java dependencies")
+            
+    except FileNotFoundError as e:
+        print(f"Error: Maven is not installed or not found in PATH: {e}")
+        raise RuntimeError("Maven is not installed or not found in PATH. Please install Maven and try again.")
+    except Exception as e:
+        print(f"Unexpected error during Maven build: {e}")
+        raise
 
 def build_workload(experiment):
         docker_client = docker.from_env()
@@ -164,6 +177,7 @@ def switchBranch(sut_path, branch_name):
 def build_main():
     # Read SUT_EXPERIMENT environment variable, use "all" for default
     exp_name = os.environ.get("SUT_EXPERIMENT", "all")
+    print(f"Starting Teastore Builder for experiment: {exp_name}")
     
     # Get the experiments directly from the config
     all_experiments = RUN_CONFIG.sut_config.experiments
