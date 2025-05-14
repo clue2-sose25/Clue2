@@ -25,8 +25,14 @@ def load_configs():
         
     # Create a simple config object with the loaded data
     config = type('Config', (), {
-        'clue_config': type('ClueConfig', (), clue_config)(),
-        'sut_config': type('SutConfig', (), sut_config)()
+        'clue_config': type('ClueConfig', (), {
+            'remote_platform_arch': clue_config['config']['remote_platform_arch'],
+            'docker_registry_address': clue_config['config']['docker_registry_address']
+        })(),
+        'sut_config': type('SutConfig', (), {
+            'sut_path': sut_config['config']['sut_path'],
+            'experiments': sut_config.get('experiments', [])
+        })()
     })()
     
     return config
@@ -45,6 +51,11 @@ def build(experiment=None):
         docker_client.ping()
     except docker.errors.NotFound:  
         raise RuntimeError("Docker is not running. Please start Docker and try again.")
+    
+    # Create the sut_path directory if it doesn't exist
+    if not path.exists(sut_path):
+        os.makedirs(sut_path, exist_ok=True)
+        print(f"Created directory: {sut_path}")
     
     # Clone the sustainable_teastore repository if it doesn't exist
     teastore_path = path.join(sut_path, "teastore")
@@ -150,53 +161,39 @@ def switchBranch(sut_path, branch_name):
     print(f"Using the {branch_name} branch")
     return branch_name
 
-# Update the existing ExperimentList class to use configs
-class ExperimentList:
-    @staticmethod
-    def load_experiments(run_config):
-        # This is a placeholder for the actual experiment loading logic
-        # You would replace this with your real experiment loading code
-        experiments = []
-        
-        # Example of using config values
-        try:
-            # Get experiment definitions from config
-            experiment_defs = run_config.clue_config.experiments
-            for exp_def in experiment_defs:
-                # Create experiment object with properties from config
-                exp = type('Experiment', (), {
-                    'name': exp_def.get('name'),
-                    'target_branch': exp_def.get('target_branch', 'master'),
-                    'colocated_workload': exp_def.get('colocated_workload', False),
-                    'env': run_config.clue_config  # Pass the entire clue config as env
-                })()
-                experiments.append(exp)
-        except (AttributeError, KeyError) as e:
-            print(f"Error loading experiments from config: {e}")
-            
-        return experiments
-
 def build_main():
     # Read SUT_EXPERIMENT environment variable, use "all" for default
     exp_name = os.environ.get("SUT_EXPERIMENT", "all")
     
-    # Get the experiment object
-    experiment_list = ExperimentList.load_experiments(RUN_CONFIG)
+    # Get the experiments directly from the config
+    all_experiments = RUN_CONFIG.sut_config.experiments
+    
+    # Convert experiment dicts to simple objects for compatibility with the rest of the code
+    experiments = []
+    for exp_dict in all_experiments:
+        exp = type('Experiment', (), {
+            'name': exp_dict.get('name'),
+            'target_branch': exp_dict.get('target_branch', 'master'),
+            'colocated_workload': exp_dict.get('colocated_workload', False),
+            'env': type('Env', (), {
+                'remote_platform_arch': RUN_CONFIG.clue_config.remote_platform_arch,
+                'docker_registry_address': RUN_CONFIG.clue_config.docker_registry_address
+            })()
+        })()
+        experiments.append(exp)
     
     # If SUT_EXPERIMENT is "all" or unset, build all experiments
     if not exp_name or exp_name.lower() == "all":
-        experiments = experiment_list
+        selected_experiments = experiments
     else:
         # Look for the specified experiment
-        selected_experiment = [e for e in experiment_list if e.name == exp_name]
-        if selected_experiment:
-            experiments = selected_experiment
-        else:
+        selected_experiments = [e for e in experiments if e.name == exp_name]
+        if not selected_experiments:
             print(f"Experiment {exp_name} not found")
             sys.exit(1)  # Exit with error if experiment not found
     
     # Build the teastore images
-    for experiment in experiments:
+    for experiment in selected_experiments:
         print(f"Building teastore images for {experiment.name}")
         # Build the experiment
         build(experiment)
