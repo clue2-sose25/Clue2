@@ -21,7 +21,10 @@ services:
     container_name: teastore-builder
     environment:
       DOCKER_BUILDKIT: 1
-      SUT_EXPERIMENT: baseline 
+      SUT_EXPERIMENT: baseline
+    volumes:
+      # Mount docker socket for building and pushing
+      - /var/run/docker.sock:/var/run/docker.sock
 
 volumes:
   registry-data:

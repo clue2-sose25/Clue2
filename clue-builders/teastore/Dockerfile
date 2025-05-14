@@ -3,10 +3,14 @@ FROM python:3.13.3-alpine
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies (Docker CLI, Git, dos2unix, and other essentials)
-RUN apk update 
-RUN apk add --no-cache docker git dos2unix 
-RUN rm -rf /var/cache/apk/*
+# Install system + Docker CLI + buildx plugin + Git + dos2unix
+RUN apk update \
+    && apk add --no-cache \
+       docker-cli \
+       docker-cli-buildx \
+       git \
+       dos2unix \
+    && rm -rf /var/cache/apk/*
 
 # Copy all necessary files
 COPY ./clue-builders/teastore/ .
@@ -14,8 +18,11 @@ COPY ./clue-builders/teastore/ .
 COPY ./clue-config.yaml .
 COPY ./sut_configs/teastore.yaml .
 
-# Install Python dependencies from requirements.txt
+# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Set the entrypoint to run the build.py script
+# Use Docker socket from host, so builder can invoke builds/pushes
+VOLUME ["/var/run/docker.sock:/var/run/docker.sock"]
+
+# Entrypoint
 ENTRYPOINT ["python", "build.py"]
