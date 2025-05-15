@@ -24,10 +24,7 @@ dependencies = [
 ]
 
 [tool.setuptools]
-package-dir = { "" = "src" }
-
-[tool.setuptools.packages.find]
-where = ["src"]
+packages = ["clue_builders", "clue_deployer", "clue_load_generator"]
 
 [tool.uv.sources]
 # psc = { git = "https://git.tu-berlin.de/cloud-sustainability/prometeus-energy-agent" }
