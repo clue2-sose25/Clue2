@@ -1,26 +1,45 @@
+import os
+from os import path
 import sys
-from pathlib import Path
-import click
 import docker
 import subprocess
-from os import path
+import yaml
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
-SOURCE_CODE_BASE = Path(__file__).resolve().parent.parent.parent.joinpath("clue-deployer")
-
-# allow importing from the parent directory
-sys.path.append(str(SOURCE_CODE_BASE))
-
-from config import Config
-from experiment_list import ExperimentList
-from experiment import Experiment
-
-CONFIG_PATH = BASE_DIR.joinpath("clue-config.yaml")
-SUT_CONFIG_PATH = BASE_DIR / "sut_configs" / "teastore.yaml"
-RUN_CONFIG = Config(SUT_CONFIG_PATH, CONFIG_PATH)
-
-def build(experiment: Experiment):
+# Add function to load YAML configs
+def load_configs():
+    # Load clue-config.yaml
+    try:
+        with open("clue-config.yaml", "r") as f:
+            clue_config = yaml.safe_load(f)
+    except FileNotFoundError:
+        print("Error: clue-config.yaml not found")
+        sys.exit(1)
     
+    try:
+        with open("teastore.yaml", "r") as f:
+            sut_config = yaml.safe_load(f)
+    except FileNotFoundError:
+        print("Error: teastore.yaml not found")
+        sys.exit(1)
+        
+    # Create a simple config object with the loaded data
+    config = type('Config', (), {
+        'clue_config': type('ClueConfig', (), {
+            'remote_platform_arch': clue_config['config']['remote_platform_arch'],
+            'docker_registry_address': "registry:5000/clue"
+        })(),
+        'sut_config': type('SutConfig', (), {
+            'sut_path': sut_config['config']['sut_path'],
+            'experiments': sut_config.get('experiments', [])
+        })()
+    })()
+    
+    return config
+
+# Global RUN_CONFIG
+RUN_CONFIG = load_configs()
+
+def build(experiment=None):
     sut_path = RUN_CONFIG.sut_config.sut_path
     remote_platform_arch = RUN_CONFIG.clue_config.remote_platform_arch
     docker_registry_address = RUN_CONFIG.clue_config.docker_registry_address
@@ -32,30 +51,16 @@ def build(experiment: Experiment):
     except docker.errors.NotFound:  
         raise RuntimeError("Docker is not running. Please start Docker and try again.")
     
-    branch_name = experiment.target_branch
+    # Clone the sustainable_teastore 
+    if not path.exists(sut_path):
+        subprocess.check_call(["git", "clone", "https://github.com/ISE-TU-Berlin/sustainable_teastore.git", "teastore"])
+        print("Cloned sustainable_teastore repository")
+    
+    branch_name = experiment.target_branch if experiment else RUN_CONFIG.sut_config.get('default_branch', 'master')
     switchBranch(sut_path, branch_name)
-    deploy_maven_container(sut_path, docker_client)
+    run_maven(sut_path)
     patch_buildx(sut_path, remote_platform_arch)
     build_docker_image(sut_path, docker_registry_address, branch_name)
-
-def check_docker_all_images_exist(registry_address):
-    docker_client = docker.from_env()
-    # read all images planned to build from sut_path/tools/build_docker.sh
-    with open(path.join(RUN_CONFIG.sut_config.sut_path, "tools", "build_docker.sh"), "r") as f:
-        script = f.read()
-        # get image only name from push command: docker push "${registry}teastore-db"
-        images = [line.split(" ")[-1].split("/")[-1] for line in script.split("\n") if "docker push" in line]
-        images = [image.split(":")[0] for image in images]
-        images = [image.removeprefix("\"${registry}").removesuffix("\"") for image in images]
-        # check if the image exists in the local docker registry
-        for image in images:
-            try:
-                docker_client.images.get_registry_data(f"{registry_address}/{image}")
-            except docker.errors.APIError:
-                print(f"Image {image} not found in {registry_address} - rebuilding all images")
-                return False
-        print("All images found in local docker registry")
-        return True
 
 def build_docker_image(sut_path, docker_registry_address, branch_name):
     print(f"Running the build_docker.sh")
@@ -86,39 +91,57 @@ def patch_buildx(sut_path, remote_platform_arch):
         with open(path.join(sut_path, "tools", "build_docker.sh"), "w") as f:
             f.write(script)
 
-def deploy_maven_container(sut_path, docker_client):
-    print(f"Deploying the maven container for building teastore. Might take a while...")
+def run_maven(sut_path):
+    print("Running Maven build directly for teastore. Might take a while...")
+    
+    try:
+        # Print absolute path for debugging
+        abs_path = path.abspath(sut_path)
+        print(f"Using absolute path for Maven build: {abs_path}")
         
-    mvn_output = docker_client.containers.run(
-            image="maven",
-            auto_remove=True,
-            volumes={
-                path.abspath(path.join(sut_path)): {
-                    "bind": "/mnt",
-                    "mode": "rw",
-                }
-            },
-            working_dir="/mnt",
-            command="bash -c 'apt-get update && apt-get install -y dos2unix && find . -type f -name \"*.sh\" -exec dos2unix {} \\; && mvn clean install -DskipTests'",
+        # Check if the directory exists and has content
+        if not path.exists(abs_path):
+            print(f"Error: Path {abs_path} does not exist")
+            sys.exit(1)
+        else:
+            print(f"Path exists. Contents: {os.listdir(abs_path)}")
+        
+        # Run Maven command directly
+        process = subprocess.run(
+            ["mvn", "clean", "install", "-DskipTests"],
+            cwd=abs_path,
+            capture_output=False,  # Capture stdout and stderr
+            text=True  # Return output as strings instead of bytes
         )
-    if "BUILD SUCCESS" not in mvn_output.decode("utf-8"):
-        print(mvn_output)
-        raise RuntimeError(
-                "failed to build teastore. Run mvn clean install -DskipTests manually and see why it fails"
-            )
-    else:
-        print("Finished rebuiling java deps")
+        
+        # Print Maven output for debugging
+        print("Maven build output:")
+        print(process.stdout)
+        
+        # Check the exit code
+        if process.returncode != 0:
+            print("Maven build failed with exit code:", process.returncode)
+            print("Error logs:")
+            print(process.stderr)
+            raise RuntimeError(f"Failed to build teastore. Maven execution failed with exit code {process.returncode}")
+        else:
+            print("Finished rebuilding Java dependencies")
+            
+    except FileNotFoundError as e:
+        print(f"Error: Maven is not installed or not found in PATH: {e}")
+        raise RuntimeError("Maven is not installed or not found in PATH. Please install Maven and try again.")
+    except Exception as e:
+        print(f"Unexpected error during Maven build: {e}")
+        raise
 
-def build_workload(experiment: Experiment):
-        docker_client = docker.from_env()
-
+def build_workload(experiment):
         platform = (
             experiment.env.remote_platform_arch
             if experiment.colocated_workload
             else experiment.env.remote_platform_arch
         )
 
-        print(f"Building workload for platform {platform}")
+        print(f"Building Teastore workload generator for platform {platform}")
 
         build = subprocess.check_call(
             [
@@ -127,26 +150,17 @@ def build_workload(experiment: Experiment):
                 "build",
                 "--platform",
                 platform,
+                "--push",
                 "-t",
                 f"{experiment.env.docker_registry_address}/loadgenerator",
                 ".",
             ],
-            cwd=path.join("clue-loadgenerator", "teastore"),
+            cwd=path.join("workload-generator"),
         )
         if build != 0:
-            raise RuntimeError("Failed to build loadgenerator")
+            raise RuntimeError("Failed to build the workload generator")
 
-        docker_client.images.push(f"{experiment.env.docker_registry_address}/loadgenerator")
-        print(f"Built workload for platform {platform}")
-        
-def check_docker_laod_generator_image_exist(registry_address):
-    docker_client = docker.from_env()
-    try:
-        docker_client.images.get_registry_data(f"{registry_address}/loadgenerator")
-        return True
-    except docker.errors.APIError:
-        print(f"Loadgenerator not found in {registry_address} - rebuilding all images")
-    return False
+        print(f"Built workload generator for platform {platform}")
 
 def switchBranch(sut_path, branch_name):
     git = subprocess.check_call(
@@ -158,28 +172,43 @@ def switchBranch(sut_path, branch_name):
     print(f"Using the {branch_name} branch")
     return branch_name
 
-@click.command("build")
-@click.option("--exp-name", required=False, type=click.STRING, help="Name of the experiment to build")
-def build_main(exp_name: str):
+def build_main():
+    # Read SUT_EXPERIMENT environment variable, use "all" for default
+    exp_name = os.environ.get("SUT_EXPERIMENT", "all")
+    print(f"Starting Teastore Builder for experiment: {exp_name}")
     
-    # Get the experiment object
-    experiment_list = ExperimentList.load_experiments(RUN_CONFIG)
-    selected_experiment = [e for e in experiment_list if e.name == exp_name]
+    # Get the experiments directly from the config
+    all_experiments = RUN_CONFIG.sut_config.experiments
     
-    # If no experiment is specified, build all experiments
-    if not exp_name:
-        experiments = experiment_list
-    elif selected_experiment:
-        experiments = selected_experiment
+    # Convert experiment dicts to simple objects for compatibility with the rest of the code
+    experiments = []
+    for exp_dict in all_experiments:
+        exp = type('Experiment', (), {
+            'name': exp_dict.get('name'),
+            'target_branch': exp_dict.get('target_branch', 'master'),
+            'colocated_workload': exp_dict.get('colocated_workload', False),
+            'env': type('Env', (), {
+                'remote_platform_arch': RUN_CONFIG.clue_config.remote_platform_arch,
+                'docker_registry_address': "registry:5000/clue"
+            })()
+        })()
+        experiments.append(exp)
+    
+    # If SUT_EXPERIMENT is "all" or unset, build all experiments
+    if not exp_name or exp_name.lower() == "all":
+        selected_experiments = experiments
     else:
-        print(f"Experiment {exp_name} not found")
-        return
-        
+        # Look for the specified experiment
+        selected_experiments = [e for e in experiments if e.name == exp_name]
+        if not selected_experiments:
+            print(f"Experiment {exp_name} not found")
+            sys.exit(1)  # Exit with error if experiment not found
+    
     # Build the teastore images
-    for experiment in experiments:
+    for experiment in selected_experiments:
         print(f"Building teastore images for {experiment.name}")
         # Build the experiment
-        #build(experiment)
+        build(experiment)
         # Build the workload
         build_workload(experiment)
 
