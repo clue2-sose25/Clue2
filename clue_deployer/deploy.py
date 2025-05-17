@@ -45,6 +45,7 @@ class ExperimentDeployer:
             raise
 
         self.port_forward_process = None # To keep track of the port-forwarding process
+        self.helm_wrapper = HelmWrapper(self.config.sut_config) 
 
     def _create_namespace_if_not_exists(self):
         namespace = self.experiment.namespace
@@ -149,58 +150,34 @@ class ExperimentDeployer:
         except Exception as e:
             print(f"Failed to start port-forward: {e}")
             raise RuntimeError("Failed to start port-forward. Please check the error above.")
-
-
+    
     def _patch_helm_deployment(self):
-        with open(path.join(self.sut_path, "examples", "helm", "values.yaml"), "r") as f:
-            values = f.read()
-            values = values.replace("descartesresearch", self.config.clue_config.docker_registry_address)
-            # ensure we only run on nodes that we can observe - set nodeSelector to scaphandre
-            values = values.replace(
-                r"nodeSelector: {}", r'nodeSelector: {"scaphandre": "true"}'
-            )
-            values = values.replace("pullPolicy: IfNotPresent", "pullPolicy: Always")
-            values = values.replace(r'tag: ""', r'tag: "latest"')
-            if self.experiment.autoscaling:
-                values = values.replace(r"enabled: false", "enabled: true")
-                # values = values.replace(r"clientside_loadbalancer: false",r"clientside_loadbalancer: true")
-                if self.experiment.autoscaling == ScalingExperimentSetting.MEMORYBOUND:
-                    values = values.replace(
-                        r"targetCPUUtilizationPercentage: 80",
-                        r"# targetCPUUtilizationPercentage: 80",
-                    )
-                    values = values.replace(
-                        r"# targetMemoryUtilizationPercentage: 80",
-                        r"targetMemoryUtilizationPercentage: 80",
-                    )
-                elif self.experiment.autoscaling == ScalingExperimentSetting.BOTH:
-                    values = values.replace(
-                        r"targetMemoryUtilizationPercentage: 80",
-                        r"targetMemoryUtilizationPercentage: 80",
-                    )
-        with open(path.join(self.sut_path, "examples", "helm", "values.yaml"), "w") as f:
-            f.write(values)
-        
+        values = self.helm_wrapper.values
+        values["image"]["repository"] = self.docker_registry_address
+        values["image"]["pullPolicy"] = "Always"
+        values["nodeSelector"] = {"scaphandre": "true"}
+        values["image"]["tag"] = "latest"
+        if self.experiment.autoscaling:
+            values["autoscaling"]["enabled"] = True
+            if self.experiment.autoscaling == ScalingExperimentSetting.MEMORYBOUND:
+                values["autoscaling"]["targetCPUUtilizationPercentage"] = 80
+                values["autoscaling"]["targetMemoryUtilizationPercentage"] = 80
+            elif self.experiment.autoscaling == ScalingExperimentSetting.BOTH:
+                values["autoscaling"]["targetMemoryUtilizationPercentage"] = 80
+        # Save the updated values back to the file
+        self.helm_wrapper.update_values(**values)
         # create observations directory in the format RUN_CONFIG.clue_config.result_base_path / experiment.name / dd.mm.yyyy_hh:mm
         observations = path.join(self.config.clue_config.result_base_path, self.experiment.name, time.strftime("%d.%m.%Y_%H:%M"))
+
         os.makedirs(observations)
 
         # write copy of used values to observations 
         with open(path.join(observations, "values.yaml"), "w") as f:
             f.write(values)
 
+
     def _deploy_helm_chart(self):
-        try:
-            helm_deploy = subprocess.check_output(
-                ["helm", "install", "teastore", "-n", self.experiment.namespace, "."],
-                cwd=path.join(self.sut_path, "examples", "helm"),
-            )
-            helm_deploy = helm_deploy.decode("utf-8")
-            if not "STATUS: deployed" in helm_deploy:
-                print(helm_deploy)
-                raise RuntimeError("failed to deploy helm chart. Run helm install manually and see why it fails")
-        except subprocess.CalledProcessError as cpe:
-            print(cpe)
+        self.helm_wrapper.deploy()
 
     def _wait_until_services_ready(self, timeout: int = 180):
         v1_apps = self.apps_v1_api
