@@ -6,7 +6,7 @@ from os import path
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-from config import Config
+from clue_deployer.config import Config
 from clue_deployer.experiment_list import ExperimentList
 from clue_deployer.experiment import Experiment
 
@@ -126,7 +126,7 @@ def build_workload(experiment: Experiment):
                 f"{experiment.env.docker_registry_address}/loadgenerator",
                 ".",
             ],
-            cwd=path.join("clue-loadgenerator", "teastore"),
+            cwd=path.join("clue_loadgenerator", "teastore"),
         )
         if build != 0:
             raise RuntimeError("Failed to build loadgenerator")

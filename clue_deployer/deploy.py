@@ -45,7 +45,7 @@ class ExperimentDeployer:
             raise
 
         self.port_forward_process = None # To keep track of the port-forwarding process
-        self.helm_wrapper = HelmWrapper(self.config.sut_config) 
+        self.helm_wrapper = HelmWrapper(self.config, self.experiment.autoscaling) 
 
     def _create_namespace_if_not_exists(self):
         namespace = self.experiment.namespace
@@ -152,23 +152,10 @@ class ExperimentDeployer:
             raise RuntimeError("Failed to start port-forward. Please check the error above.")
     
     def _patch_helm_deployment(self):
-        values = self.helm_wrapper.values
-        values["image"]["repository"] = self.docker_registry_address
-        values["image"]["pullPolicy"] = "Always"
-        values["nodeSelector"] = {"scaphandre": "true"}
-        values["image"]["tag"] = "latest"
-        if self.experiment.autoscaling:
-            values["autoscaling"]["enabled"] = True
-            if self.experiment.autoscaling == ScalingExperimentSetting.MEMORYBOUND:
-                values["autoscaling"]["targetCPUUtilizationPercentage"] = 80
-                values["autoscaling"]["targetMemoryUtilizationPercentage"] = 80
-            elif self.experiment.autoscaling == ScalingExperimentSetting.BOTH:
-                values["autoscaling"]["targetMemoryUtilizationPercentage"] = 80
-        # Save the updated values back to the file
-        self.helm_wrapper.update_values(**values)
+        values = self.helm_wrapper.update_helm_chart()
+
         # create observations directory in the format RUN_CONFIG.clue_config.result_base_path / experiment.name / dd.mm.yyyy_hh:mm
         observations = path.join(self.config.clue_config.result_base_path, self.experiment.name, time.strftime("%d.%m.%Y_%H:%M"))
-
         os.makedirs(observations)
 
         # write copy of used values to observations 

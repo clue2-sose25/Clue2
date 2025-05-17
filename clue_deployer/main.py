@@ -9,13 +9,13 @@ from kubernetes import config
 from tabulate import tabulate
 import argparse
 import logging
-from config import Config
+from clue_deployer.config import Config
 from clue_deployer.experiment import Experiment
 from clue_deployer.experiment_environment import ExperimentEnvironment
 from clue_deployer.experiment_runner import ExperimentRunner
 from clue_deployer.experiment_workloads import get_workload_instance
 from clue_deployer.experiment_list import ExperimentList
-import clue_deployer.deploy as deploy
+from clue_deployer.deploy import ExperimentDeployer
 
 #get the root directory of the project
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -52,6 +52,7 @@ CLUE_CONFIG_PATH = BASE_DIR.joinpath("clue-config.yaml")
 DIRTY = args.dirty
 DRY = args.dry
 SUT_PATH = args.sut_path 
+CONFIG = Config(SUT_PATH, CLUE_CONFIG_PATH)
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.DEBUG)
@@ -77,7 +78,7 @@ def run_experiment(exp: Experiment, observations_out_path):
 
         # 3. rewrite helm values with <env["docker_user"]> && env details as necessary (namespace ...)
         print("🏗️ Deploying the SUT...")
-        deploy.deploy(exp)
+        ExperimentDeployer(exp, CONFIG).execute_deployment()
 
         # 4. run collection agent (fetch prometheus )
         if not DIRTY:
@@ -122,14 +123,14 @@ def main():
         print("☢️ will overwrite existing experiment data!!!!")
 
     # load configs
-    config = Config(SUT_PATH, CLUE_CONFIG_PATH)
+    
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-    exps = ExperimentList.load_experiments(config)
+    exps = ExperimentList.load_experiments(CONFIG)
     
     #Get Workloads
-    workloads = [get_workload_instance(w) for w in config.clue_config.workloads]
+    workloads = [get_workload_instance(w) for w in CONFIG.clue_config.workloads]
     exps.add_workloads(workloads)
     
     if DIRTY:
@@ -150,7 +151,7 @@ def main():
     # todo: print not working with pg2
     # for exp in progressbar.progressbar(exps, redirect_stdout=True, redirect_stderr=True):
     for exp in exps:
-        prepare_experiment(exp, timestamp, num_iterations=config.sut_config.num_iterations)
+        prepare_experiment(exp, timestamp, num_iterations=CONFIG.sut_config.num_iterations)
 
 if __name__ == "__main__":
     main()
