@@ -8,6 +8,7 @@ from clue_deployer.experiment import Experiment
 from clue_deployer.workload_cancelled_exception import WorkloadCancelled
 from clue_deployer.flushing_queue import FlushingQueue
 from clue_deployer.workload_runner import WorkloadRunner
+from clue_deployer.helm_wrapper import HelmWrapper
 from psc import ResourceTracker, NodeUsage
 from os import path
 import signal
@@ -126,7 +127,7 @@ class ExperimentRunner:
             logging.info("Program terminated")
 
 
-    def cleanup(self):
+    def cleanup(self, helm_wrapper: HelmWrapper):
         """
         Remove sets for autoscaling, remove workload pods,
         """
@@ -149,15 +150,5 @@ class ExperimentRunner:
             except Exception as e:
                 logging.error("Error cleaning up. Probably already deleted: " + str(e))
                 pass
-
-        subprocess.run(["helm", "uninstall", "teastore", "-n", self.experiment.namespace])
-        subprocess.run(
-            ["git", "checkout", "examples/helm/values.yaml"],
-            cwd=path.join(self.experiment.env.sut_path),
-        )
-
-        #TODO use tempfiles
-        subprocess.run(
-            ["git", "checkout", "tools/build_docker.sh"],
-            cwd=path.join(self.experiment.env.sut_path),
-        )
+        
+        helm_wrapper.uninstall()

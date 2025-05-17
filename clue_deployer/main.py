@@ -78,7 +78,8 @@ def run_experiment(exp: Experiment, observations_out_path):
 
         # 3. rewrite helm values with <env["docker_user"]> && env details as necessary (namespace ...)
         print("🏗️ Deploying the SUT...")
-        ExperimentDeployer(exp, CONFIG).execute_deployment()
+        experiment_deployer = ExperimentDeployer(exp, CONFIG)
+        experiment_deployer.execute_deployment()
 
         # 4. run collection agent (fetch prometheus )
         if not DIRTY:
@@ -92,7 +93,7 @@ def run_experiment(exp: Experiment, observations_out_path):
         print("error running experiment!")
         print(e)
     finally:
-        ExperimentRunner(exp).cleanup()
+        ExperimentRunner(exp).cleanup(experiment_deployer.helm_wrapper)
         if not DIRTY:
             print(f"waiting {exp.env.wait_after_workloads}s after cleaning the workload")
             time.sleep(exp.env.wait_after_workloads)

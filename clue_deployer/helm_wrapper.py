@@ -12,12 +12,18 @@ from clue_deployer.scaling_experiment_setting import ScalingExperimentSetting
 
 class HelmWrapper():
     
-    def __init__(self, config: Config, autoscaling: bool):
+    def __init__(self, config: Config, autoscaling: bool = True):
         self.clue_config = config.clue_config
         self.sut_config = config.sut_config
         self.autoscaling = autoscaling
         self.values_file_full_path = self.sut_config.helm_chart_path / self.sut_config.values_yaml_name
         self.name = self.sut_config.sut_path.name
+
+        # Path to the ORIGINAL Helm chart in the SUT directory
+        self.original_helm_chart_path = Path(self.sut_config.helm_chart_path) # Ensure this is a Path
+        
+        self.original_values_file_name = self.sut_config.values_yaml_name
+
 
         # This will be set when a temporary chart copy is active
         self.active_chart_path: Path | None = None
@@ -35,7 +41,7 @@ class HelmWrapper():
 
         
         # This creates a temporary directory that will be cleaned up automatically
-        self._temp_dir_context = tempfile.TemporaryDirectory(prefix=f"helm-{self.experiment_name}-")
+        self._temp_dir_context = tempfile.TemporaryDirectory()
         temp_dir_path = Path(self._temp_dir_context.name)
 
         # The copied chart will be inside this temp_dir, maintaining its original name
@@ -124,4 +130,6 @@ class HelmWrapper():
             print(cpe)
     
     def uninstall(self) -> None:
-        pass
+        """uninstalls the helm chart"""
+        print(f"uninstalling helm chart {self.name}")
+        subprocess.run(["helm", "uninstall", self.name, "-n", self.sut_config.namespace])
