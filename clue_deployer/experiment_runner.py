@@ -155,6 +155,8 @@ class ExperimentRunner:
             ["git", "checkout", "examples/helm/values.yaml"],
             cwd=path.join(self.experiment.env.sut_path),
         )
+
+        #TODO use tempfiles
         subprocess.run(
             ["git", "checkout", "tools/build_docker.sh"],
             cwd=path.join(self.experiment.env.sut_path),
