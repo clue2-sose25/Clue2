@@ -1,6 +1,8 @@
 config:
   namespace: "tea-bench"
   sut_path: "teastore"
+  helm_chart_path: "teastore/examples/helm"
+  values_yaml_name: "values.yaml"
   target_host: "http://teastore-webui/tools.descartes.teastore.webui"
   default_resource_limits:
     cpu: 1000

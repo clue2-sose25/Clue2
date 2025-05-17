@@ -20,6 +20,8 @@ class SUTConfig(BaseSettings):
     wait_before_workloads: int
     wait_after_workloads: int
     tags: list[str]
+    helm_chart_path: Path
+    values_yaml_name: str = Field(default="values.yaml")
     infrastructure_namespaces: list[str] = Field(default_factory=list)  
     num_iterations: int = Field(default=1)
 

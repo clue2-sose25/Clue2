@@ -8,6 +8,7 @@ import subprocess
 from kubernetes import config as k_config
 
 # Assuming these are correctly imported from your project structure
+from helm_wrapper import HelmWrapper
 from clue_deployer.experiment import Experiment
 from clue_deployer.scaling_experiment_setting import ScalingExperimentSetting 
 from config import Config # Assuming this is your main combined config object
@@ -32,6 +33,8 @@ class ExperimentDeployer:
             raise ValueError("Config object must have 'clue_config' with a 'docker_registry_address' attribute.")
         self.docker_registry_address = config.clue_config.docker_registry_address
         
+        self.helm_chart_path = config.sut_config.helm_chart_path
+        self.values_yaml_name = config.sut_config.values_yaml_name
         # Initialize Kubernetes API clients
         try:
             k_config.load_kube_config()
