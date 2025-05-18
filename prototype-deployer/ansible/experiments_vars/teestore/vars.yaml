@@ -1,0 +1,12 @@
+# ---------------- image of the **deployer pod** ----------------
+deployer_image: host.docker.internal:6789/simple_deployer:latest
+
+# ---------------- sibling work-load (TeaStore WebUI) ------------
+env_vars:
+  SUT_NS: tea-bench
+  IMAGE_REPO:      host.docker.internal:6789
+  IMAGE_NAME:      teestore/webui
+  IMAGE_TAG:       latest
+  APP_PORT:        "8080" 
+  NODE_SELECTOR:   scaphandre=true      # where the deployer will run pods, leave empty "" if you don't need it
+

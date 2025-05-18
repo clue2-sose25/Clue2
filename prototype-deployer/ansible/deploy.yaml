@@ -1,0 +1,153 @@
+---
+- hosts: k8s_cluster
+  gather_facts: false
+  become: true
+
+  ####################################################################
+  # Vars & experiment selection
+  ####################################################################
+  vars:
+    experiment_name: "{{ experiment_name | default('teestore') }}"
+    deployer_job: prototype-deployer
+    deployer_sa:  prototype-deployer-sa
+    sibling_pod:  sut-app            # hard-coded in simple_deployer
+
+  vars_files:
+    - "{{ playbook_dir }}/experiments_vars/{{ experiment_name }}/vars.yaml"
+
+  ####################################################################
+  # 1. Ensure python3 + pip + kubernetes libs on target host
+  ####################################################################
+  pre_tasks:
+    - name: Install python3 & pip (Debian/Ubuntu)
+      apt:
+        name:
+          - python3
+          - python3-pip
+        state: present
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+    - name: Upgrade pip
+      pip:
+        executable: pip3
+        name: pip
+        state: latest
+
+    - name: Install Python libs for Ansible k8s module
+      pip:
+        executable: pip3
+        name:
+          - kubernetes>=24.2.0
+          - openshift>=0.11
+          - PyYAML>=3.11
+          - jsonpatch
+
+  ####################################################################
+  # 2. Build env list for the Job & pull out sut_ns
+  ####################################################################
+  tasks:
+    - name: Convert env_vars dict → list[{name,value}]
+      set_fact:
+        deployer_env: "{{ env_vars | dict2items(key_name='name',
+                                                value_name='value') }}"
+        sut_ns: "{{ env_vars.SUT_NS }}"
+
+    ##################################################################
+    # 3. Create / ensure SUT namespace
+    ##################################################################
+    - name: Ensure SUT namespace exists
+      k8s:
+        kubeconfig: "{{ kubeconfig }}"
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata: { name: "{{ sut_ns }}" }
+
+    ##################################################################
+    # 4. ServiceAccount for deployer Job (in deployer_ns)
+    ##################################################################
+    - name: Ensure deployer ServiceAccount exists
+      k8s:
+        kubeconfig: "{{ kubeconfig }}"
+        state: present
+        definition:
+          apiVersion: v1
+          kind: ServiceAccount
+          metadata:
+            name: "{{ deployer_sa }}"
+            namespace: "{{ deployer_ns }}"
+
+    ##################################################################
+    # 5. Bind that SA to ClusterRole **edit** in the SUT namespace
+    ##################################################################
+    - name: Bind deployer SA to ClusterRole edit in sut_ns
+      k8s:
+        kubeconfig: "{{ kubeconfig }}"
+        state: present
+        definition:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: RoleBinding
+          metadata:
+            name: "{{ deployer_sa }}-edit"
+            namespace: "{{ sut_ns }}"
+          roleRef:
+            kind: ClusterRole
+            name: edit
+            apiGroup: rbac.authorization.k8s.io
+          subjects:
+            - kind: ServiceAccount
+              name: "{{ deployer_sa }}"
+              namespace: "{{ deployer_ns }}"
+
+    ##################################################################
+    # 6. Run / update the prototype-deployer Job
+    ##################################################################
+    - name: Run prototype-deployer Job
+      k8s:
+        kubeconfig: "{{ kubeconfig }}"
+        state: present
+        definition:
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            name: "{{ deployer_job }}"
+            namespace: "{{ deployer_ns }}"
+          spec:
+            backoffLimit: 1
+            ttlSecondsAfterFinished: 1800
+            template:
+              metadata: { labels: { app: prototype-deployer } }
+              spec:
+                serviceAccountName: "{{ deployer_sa }}"
+                restartPolicy: Never
+                containers:
+                  - name: deployer
+                    image: "{{ deployer_image }}"
+                    env: "{{ deployer_env }}"
+                    volumeMounts:
+                      - { name: logs, mountPath: /results }
+                volumes:
+                  - { name: logs, emptyDir: {} }
+
+    ##################################################################
+    # 7. Wait until sibling pod (sut-app) is Ready
+    ##################################################################
+#    - name: Wait for sibling pod to be Ready
+#      k8s_info:
+#        kubeconfig: "{{ kubeconfig }}"
+#        kind: Pod
+#        namespace: "{{ sut_ns }}"
+#        name: "{{ sibling_pod }}"
+#      register: pod_info
+#      until: >
+#        pod_info.resources
+#        and pod_info.resources[0].status
+#        and pod_info.resources[0].status.conditions
+#        | selectattr('type', 'equalto', 'Ready')
+#        | selectattr('status', 'equalto', 'True')
+#        | list | length > 0
+#      retries: 30      # 30 × 6 s ≈ 3 min
+#      delay: 6
+#

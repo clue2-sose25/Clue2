@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sut-app
+  namespace: {{NS}}
+spec:
+  serviceAccountName: {{SA_NAME}}
+  {% if NODE_SELECTOR %}
+  nodeSelector:
+    {{NODE_SELECTOR.split('=')[0]}}: {{NODE_SELECTOR.split('=')[1]}}
+  {% endif %}
+  containers:
+    - name: app
+      image: {{IMAGE_REPO}}/{{IMAGE_NAME}}:{{IMAGE_TAG}}
+      ports:
+        - containerPort: {{APP_PORT}}

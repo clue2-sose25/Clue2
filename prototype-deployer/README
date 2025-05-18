@@ -1,0 +1,21 @@
+### Quick start
+
+```bash
+# 1. Build the prototype-deployer image & push it (only once)
+cd simple_deployer
+docker build -t host.docker.internal:6789/simple_deployer:latest .
+docker push host.docker.internal:6789/simple_deployer:latest
+
+# 2. Point the inventory at your cluster (local Minikube or remote)
+vim ansible/inventory/hosts.yaml      # adjust kubeconfig or SSH details
+
+# 3. Edit or duplicate an experiment vars file
+vim ansible/experiments_vars/teestore/vars.yaml      # or copy to experiments_vars/other_sut/vars.yaml and edit there
+
+# 4a. Run the default experiment ("teestore")
+ansible-playbook -i ansible/inventory/hosts.yaml ansible/deploy.yml
+
+#   Run different experiment (other_sut, etc.)
+ansible-playbook -i ansible/inventory/hosts.yaml \
+                 -e "experiment_name=other_sut" \
+                 ansible/deploy.yml
