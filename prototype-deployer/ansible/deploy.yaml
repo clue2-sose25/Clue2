@@ -126,10 +126,10 @@
                   - name: deployer
                     image: "{{ deployer_image }}"
                     env: "{{ deployer_env }}"
-                    volumeMounts:
-                      - { name: logs, mountPath: /results }
-                volumes:
-                  - { name: logs, emptyDir: {} }
+#                    volumeMounts: # to get the results later 
+#                      - { name: logs, mountPath: /results }
+#                volumes:
+#                  - { name: logs, emptyDir: {} }
 
     ##################################################################
     # 7. Wait until sibling pod (sut-app) is Ready
