@@ -30,6 +30,8 @@ COPY sut_configs/teastore.yaml .
 # Ensure python/pip from your venv are first in PATH
 ENV PATH="/opt/venv/bin:${PATH}"
 
-# Run the DinD entrypoint
-RUN chmod +x /app/entrypoint.sh
+# Convert line endings and make executable
+RUN dos2unix /app/entrypoint.sh \
+ && chmod +x /app/entrypoint.sh
+
 ENTRYPOINT ["/app/entrypoint.sh"]
