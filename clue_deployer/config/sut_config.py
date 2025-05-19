@@ -1,4 +1,4 @@
-from pydantic import Field
+from pydantic import Field, computed_field
 from pydantic_settings import BaseSettings
 from pathlib import Path
 import yaml
@@ -13,7 +13,9 @@ class SUTConfig(BaseSettings):
     """
     sut_path: Path
     namespace: str
-    target_host: str
+    #target_host: str
+    target_service_name: str
+    application_endpoint_path: str
     default_resource_limits: dict[str, int]
     workload_settings: dict[str, str]
     timeout_duration: int
@@ -28,6 +30,19 @@ class SUTConfig(BaseSettings):
     class Config:
         # Allow environment variable overrides
         env_prefix = "SUT_"
+    
+    @computed_field
+    @property
+    def target_host(self) -> str:
+        """
+        Constructs the target host URL 
+        """
+        # Ensure application_endpoint_path starts with a slash if it's not guaranteed
+        path = self.application_endpoint_path
+        if not path.startswith("/"):
+            path = "/" + path
+         
+        return f"http://{self.target_service_name}{self.application_endpoint_path}"
 
     @classmethod
     def load_from_yaml(cls, sut_config_path) -> "SUTConfig":
