@@ -1,6 +1,8 @@
 import os
 from os import path
 import sys
+import argparse
+import re
 import docker
 import subprocess
 import yaml
@@ -59,7 +61,7 @@ def build(experiment=None):
     branch_name = experiment.target_branch if experiment else RUN_CONFIG.sut_config.get('default_branch', 'master')
     switchBranch(sut_path, branch_name)
     run_maven(sut_path)
-    patch_buildx(sut_path, remote_platform_arch)
+    patch_buildx(sut_path, remote_platform_arch, branch_name)
     build_docker_image(sut_path, docker_registry_address, branch_name)
 
 def build_docker_image(sut_path, docker_registry_address, branch_name):
@@ -76,7 +78,7 @@ def build_docker_image(sut_path, docker_registry_address, branch_name):
 
     print(f"Finished building images for {branch_name} branch, pushed to {docker_registry_address}")
 
-def patch_buildx(sut_path, remote_platform_arch):
+def patch_buildx(sut_path, remote_platform_arch, branch_name):
     print(f"Patching the build_docker.sh to use buildx allowing multi-arch builds")
     with open(path.join(sut_path, "tools", "build_docker.sh"), "r") as f:
         script = f.read()
@@ -88,8 +90,23 @@ def patch_buildx(sut_path, remote_platform_arch):
                 "docker build",
                 f"docker buildx build --platform {remote_platform_arch}",
             )
-        with open(path.join(sut_path, "tools", "build_docker.sh"), "w") as f:
-            f.write(script)
+
+    # idempotent tagging: remove :whatever if present and append :branch_name
+    script = re.sub(
+        r'-t\s+"(\$\{registry\}[^:"]+)(?::[^"]*)?"',
+        rf'-t "\1:{branch_name}"',
+        script
+    )
+
+    # also for pushes
+    script = re.sub(
+        r'docker push\s+"(\$\{registry\}[^:"]+)(?::[^"]*)?"',
+        rf'docker push "\1:{branch_name}"',
+        script
+    )
+
+    with open(path.join(sut_path, "tools", "build_docker.sh"), "w") as f:
+        f.write(script)
 
 def run_maven(sut_path):
     print("Running Maven build directly for teastore. Might take a while...")
@@ -140,19 +157,19 @@ def build_workload(experiment):
             if experiment.colocated_workload
             else experiment.env.remote_platform_arch
         )
+        registry = experiment.env.docker_registry_address
+        branch = experiment.target_branch
 
         print(f"Building Teastore workload generator for platform {platform}")
-
+        tag = f"{registry}/loadgenerator:{branch}"
         build = subprocess.check_call(
             [
                 "docker",
                 "buildx",
                 "build",
-                "--platform",
-                platform,
+                "--platform", platform,
                 "--push",
-                "-t",
-                f"{experiment.env.docker_registry_address}/loadgenerator",
+                "-t", tag,
                 ".",
             ],
             cwd=path.join("workload-generator"),
@@ -160,7 +177,7 @@ def build_workload(experiment):
         if build != 0:
             raise RuntimeError("Failed to build the workload generator")
 
-        print(f"Built workload generator for platform {platform}")
+        print(f"Built workload generator for platform {platform} and pushed to {tag}")
 
 def switchBranch(sut_path, branch_name):
     git = subprocess.check_call(
@@ -173,8 +190,18 @@ def switchBranch(sut_path, branch_name):
     return branch_name
 
 def build_main():
-    # Read SUT_EXPERIMENT environment variable, use "all" for default
-    exp_name = os.environ.get("SUT_EXPERIMENT", "all")
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description="Teastore Builder")
+    parser.add_argument(
+        "--exp", "-e",
+        help="Name of the experiment to build (default: all)",
+        default=None
+    )
+    args = parser.parse_args()
+    # Get the experiment name from command line argument or environment variable
+    # If not provided, default to "all"
+    exp_name = args.exp or os.environ.get("SUT_EXPERIMENT", "all")
+
     print(f"Starting Teastore Builder for experiment: {exp_name}")
     
     # Get the experiments directly from the config
