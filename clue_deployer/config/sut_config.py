@@ -1,4 +1,4 @@
-from pydantic import Field, computed_field
+from pydantic import Field, computed_field, field_validator, ValidationInfo
 from pydantic_settings import BaseSettings
 from pathlib import Path
 import yaml
@@ -25,12 +25,23 @@ class SUTConfig(BaseSettings):
     values_yaml_name: str = Field(default="values.yaml")
     infrastructure_namespaces: list[str] = Field(default_factory=list)  
     num_iterations: int = Field(default=1)
-    sut_name: str = Field(default_factory=lambda self: self.sut_path.stem)
+    sut_name: str = Field(default="")
 
     class Config:
         # Allow environment variable overrides
         env_prefix = "SUT_"
     
+    @field_validator("sut_name")
+    def get_sut_name(cls, sut_name: str, info: ValidationInfo) -> str:
+        """
+        Set the sut_name to the stem of the sut_path if not provided.
+        """
+        if sut_name:
+            return sut_name
+        sut_path = info.data.get("sut_path")
+        if sut_path:
+            return sut_path.stem
+
     @computed_field
     @property
     def target_host(self) -> str:

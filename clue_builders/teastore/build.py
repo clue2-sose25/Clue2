@@ -14,6 +14,9 @@ CONFIG_PATH = BASE_DIR.joinpath("clue-config.yaml")
 SUT_CONFIG_PATH = BASE_DIR / "sut_configs" / "teastore.yaml"
 RUN_CONFIG = Config(SUT_CONFIG_PATH, CONFIG_PATH)
 
+print(RUN_CONFIG.clue_config)
+print(RUN_CONFIG.sut_config)
+
 def build(experiment: Experiment):
     
     sut_path = RUN_CONFIG.sut_config.sut_path
@@ -32,8 +35,10 @@ def build(experiment: Experiment):
     deploy_maven_container(sut_path, docker_client)
     patch_buildx(sut_path, remote_platform_arch)
     build_docker_image(sut_path, docker_registry_address, branch_name)
+    check_docker_all_images_exist(docker_registry_address)
 
 def check_docker_all_images_exist(registry_address):
+    print("Checking if all images exist in the local docker registry")
     docker_client = docker.from_env()
     # read all images planned to build from sut_path/tools/build_docker.sh
     with open(path.join(RUN_CONFIG.sut_config.sut_path, "tools", "build_docker.sh"), "r") as f:
@@ -174,7 +179,7 @@ def build_main(exp_name: str):
     for experiment in experiments:
         print(f"Building teastore images for {experiment.name}")
         # Build the experiment
-        #build(experiment)
+        build(experiment)
         # Build the workload
         build_workload(experiment)
 
