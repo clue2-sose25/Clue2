@@ -13,7 +13,6 @@ class SUTConfig(BaseSettings):
     """
     sut_path: Path
     namespace: str
-    #target_host: str
     target_service_name: str
     application_endpoint_path: str
     default_resource_limits: dict[str, int]
@@ -26,6 +25,7 @@ class SUTConfig(BaseSettings):
     values_yaml_name: str = Field(default="values.yaml")
     infrastructure_namespaces: list[str] = Field(default_factory=list)  
     num_iterations: int = Field(default=1)
+    sut_name: str = Field(default_factory=lambda self: self.sut_path.stem)
 
     class Config:
         # Allow environment variable overrides

@@ -20,6 +20,7 @@ class ExperimentRunner:
 
     def __init__(self, experiment: Experiment):
         self.experiment = experiment
+        self.config = experiment.config
 
     def run(self, observations_out_path: str = "data/default"):
         exp = self.experiment
