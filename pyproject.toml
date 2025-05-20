@@ -14,7 +14,6 @@ dependencies = [
     "kubernetes>=32.0.1",
     "locust>=2.33.0",
     "progressbar2>=4.5.0",
-    "psc",
     "pydantic>=2.11.4",
     "pydantic-settings>=2.9.1",
     "pydantic-yaml>=1.4.0",

@@ -49,6 +49,23 @@ class Experiment:
         else:
             return f"{self.name}_{self.target_branch}".replace("/", "_")
 
+    def __deepcopy__(self, memo=None):
+        """
+        Custom deepcopy method to ensure that the Experiment class is copied correctly. 
+        """
+        # Create a new instance of the class
+        new_instance = Experiment(
+            config=self.config,
+            name=self.name,
+            target_branch=self.target_branch,
+            critical_services=self.critical_services,
+            env=self.env,
+            colocated_workload=self.colocated_workload,
+            autoscaling=self.autoscaling,
+            max_autoscale=self.max_autoscale,
+        )
+        return new_instance
+
     def to_row(self):
         return [self.name, self.target_branch, self.namespace, self.autoscaling, self.env.tags]
 
