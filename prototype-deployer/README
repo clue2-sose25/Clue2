@@ -10,10 +10,10 @@ docker push host.docker.internal:6789/simple_deployer:latest
 vim ansible/inventory/hosts.yaml      # adjust kubeconfig or SSH details
 
 # 3. Edit or duplicate an experiment vars file
-vim ansible/experiments_vars/teestore/vars.yaml      # or copy to experiments_vars/other_sut/vars.yaml and edit there
+vim ansible/experiments_vars/teastore/vars.yaml      # or copy to experiments_vars/other_sut/vars.yaml and edit there
 
 # 4a. Run the default experiment ("teestore")
-ansible-playbook -i ansible/inventory/hosts.yaml ansible/deploy.yml
+ansible-playbook -i ansible/inventory/hosts.yaml ansible/deploy.yaml
 
 #   Run different experiment (other_sut, etc.)
 ansible-playbook -i ansible/inventory/hosts.yaml \

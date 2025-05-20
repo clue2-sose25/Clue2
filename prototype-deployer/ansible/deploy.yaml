@@ -7,7 +7,7 @@
   # Vars & experiment selection
   ####################################################################
   vars:
-    experiment_name: "{{ experiment_name | default('teestore') }}"
+    experiment_name: teastore
     deployer_job: prototype-deployer
     deployer_sa:  prototype-deployer-sa
     sibling_pod:  sut-app            # hard-coded in simple_deployer
