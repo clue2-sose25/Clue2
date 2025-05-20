@@ -34,15 +34,7 @@ This Readme describes the process of running CLUE experiments on the selected SU
 The docker image registry used by CLUE can be specified in the `clue-config.yaml` file (`docker_registry_address` parameter). By default, CLUE supports deploying a local image registry listed below. To deploy the local registry, make sure `Docker` (with `Docker Compose` support) is installed and running. For a custom registry, make sure to run `docker login` in case authentication is needed.
 
 ```bash
-docker compose up -d
-```
-
-Update the `Docker Deamon` configuration to allow insecure connections to the deployed image registry. For `Docker Desktop` go to the configuration and the `Docker Engine` tab and append the following option:
-
-```json
-  "insecure-registries": [
-    "host.docker.internal:6789"
-  ]
+docker compose up -d --build
 ```
 
 Make sure that `Minikube` (or your other choosen local kubernets cluster) accepts the registry as well and has enough memory (configure docker before). In case you already have created a minikube cluster before make sure to delete if and recreate it using this command:
