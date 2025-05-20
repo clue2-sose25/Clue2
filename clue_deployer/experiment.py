@@ -2,6 +2,7 @@ from typing import List
 import json
 from pathlib import Path
 
+from clue_deployer.config import Config
 from clue_deployer.scaling_experiment_setting import ScalingExperimentSetting
 from clue_deployer.experiment_environment import ExperimentEnvironment
 
@@ -9,28 +10,28 @@ from clue_deployer.experiment_environment import ExperimentEnvironment
 class Experiment:
     def __init__(
             self,
+            config : Config,
             name: str,
             target_branch: str,
-            namespace: str,
-            prometheus_url: str,
             critical_services: List[str],
-            target_host: str,
             env: ExperimentEnvironment,
             colocated_workload: bool = False,
             autoscaling: ScalingExperimentSetting = None,
             max_autoscale: int = 3,
-            infrastructure_namespaces: List[str] = [],
     ):
+        clue_config = config.clue_config
+        sut_config = config.sut_config
         # metadata
+        self.config = config
         self.name = name
         self.target_branch = target_branch
-        self.namespace = namespace
-        self.infrastructure_namespaces = infrastructure_namespaces
+        self.namespace = sut_config.namespace
+        self.infrastructure_namespaces = sut_config.infrastructure_namespaces
         self.critical_services = critical_services
-        self.target_host = target_host
+        self.target_host = sut_config.target_host
 
         # observability data
-        self.prometheus = prometheus_url
+        self.prometheus = clue_config.prometheus_url
         self.colocated_workload = colocated_workload
 
         self.env = env
