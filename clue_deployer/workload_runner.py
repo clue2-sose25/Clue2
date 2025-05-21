@@ -7,12 +7,14 @@ import tarfile
 from os import path
 from tempfile import TemporaryFile
 import docker
+import logging
 from kubernetes import client, watch
 from kubernetes.client.rest import ApiException
-from experiment import Experiment
-import logging
+from clue_deployer.experiment import Experiment
+from clue_deployer.result_files import ResultFiles
 
-from workload_cancelled_exception import WorkloadCancelled
+
+from clue_deployer.workload_cancelled_exception import WorkloadCancelled
 
 
 class WorkloadRunner:
@@ -20,18 +22,21 @@ class WorkloadRunner:
     def __init__(self, experiment: Experiment):
         self.exp = experiment
         wls = self.exp.env.workload_settings
+        self.config = experiment.config
 
         self.workload_env = {
                                 # The duration of a stage in seconds.
                                 "LOADGENERATOR_USE_CURRENTTIME": "n",
                                 # using current time to drive worload (e.g. day/night cycle)
                                 "LOADGENERATOR_ENDPOINT_NAME": "Vanilla",  # the workload profile
-                                "LOCUST_HOST": f"http://{self.exp.env.local_public_ip}:{self.exp.env.local_port}/tools.descartes.teastore.webui",
+                                "LOCUST_HOST": f"http://{self.exp.env.local_public_ip}:{self.exp.env.local_port}{self.config.sut_config.application_endpoint_path}",
                                 # endpoint of the deployed service,
                                 # "LOCUST_LOCUSTFILE": wls["LOCUSTFILE"],
                             } | self.exp.env.workload_settings
         
-
+        self.sut_name = self.exp.config.sut_config.sut_name
+        self.result_filenames = ResultFiles(sut_name=self.sut_name)
+    
     def run_workload(self, outpath):
         if self.exp.colocated_workload:
             self._run_remote_workload(outpath)
@@ -166,7 +171,8 @@ class WorkloadRunner:
                                 "sh",
                                 "-c",
 #                                "echo 'meep' && locust --csv teastore --csv-full-history --headless --only-summary 1>/dev/null 2>errors.log || tar zcf - teastore_stats.csv teastore_failures.csv teastore_stats_history.csv errors.log | base64 -w 0",
-                                "locust --csv teastore --csv-full-history --headless --only-summary 1>/dev/null 2>errors.log || tar zcf - teastore_stats.csv teastore_failures.csv teastore_stats_history.csv errors.log | base64 -w 0",
+                                f"locust --csv {self.sut_name} --csv-full-history --headless --only-summary 1>/dev/null 2>errors.log || tar zcf - \
+                                    {self.result_filenames.stats_csv} {self.result_filenames.failures_csv} {self.result_filenames.stats_history_csv} errors.log | base64 -w 0",
                             ],
                             working_dir="/loadgenerator",
                         )
@@ -221,7 +227,7 @@ class WorkloadRunner:
                 "port-forward",
                 "--address",
                 "0.0.0.0",
-                "services/teastore-webui",
+                f"services/{self.config.sut_config.target_service_name}",
                 f"{self.exp.env.local_port}:80",
             ],
             stdin=subprocess.PIPE,
@@ -229,21 +235,23 @@ class WorkloadRunner:
         )
 
         # create locust stats files
+
+
         mounts = {
             path.abspath(path.join(observations, "locust_stats.csv")): {
-                "bind": "/loadgenerator/teastore_stats.csv",
+                "bind": f"/loadgenerator/{self.result_filenames.stats_csv}",
                 "mode": "rw",
             },
             path.abspath(path.join(observations, "locust_failures.csv")): {
-                "bind": "/loadgenerator/teastore_failures.csv",
+                "bind": f"/loadgenerator/{self.result_filenames.failures_csv}",
                 "mode": "rw",
             },
             path.abspath(path.join(observations, "locust_stats_history.csv")): {
-                "bind": "/loadgenerator/teastore_stats_history.csv",
+                "bind": f"/loadgenerator/{self.result_filenames.stats_history_csv}",
                 "mode": "rw",
             },
             path.abspath(path.join(observations, "locust_report.html")): {
-                "bind": "/loadgenerator/teastore_report.html",
+                "bind": f"/loadgenerator/{self.result_filenames.report}",
                 "mode": "rw",
             },
         }

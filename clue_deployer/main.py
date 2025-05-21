@@ -9,13 +9,13 @@ from kubernetes import config
 from tabulate import tabulate
 import argparse
 import logging
-from config import Config
-from experiment import Experiment
-from experiment_environment import ExperimentEnvironment
-from experiment_runner import ExperimentRunner
-from experiment_workloads import get_workload_instance
-from experiment_list import ExperimentList
-import deploy
+from clue_deployer.config import Config
+from clue_deployer.experiment import Experiment
+from clue_deployer.experiment_environment import ExperimentEnvironment
+from clue_deployer.experiment_runner import ExperimentRunner
+from clue_deployer.experiment_workloads import get_workload_instance
+from clue_deployer.experiment_list import ExperimentList
+from clue_deployer.deploy import ExperimentDeployer
 
 #get the root directory of the project
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -52,6 +52,7 @@ CLUE_CONFIG_PATH = BASE_DIR.joinpath("clue-config.yaml")
 DIRTY = args.dirty
 DRY = args.dry
 SUT_PATH = args.sut_path 
+CONFIG = Config(SUT_PATH, CLUE_CONFIG_PATH)
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.DEBUG)
@@ -65,37 +66,26 @@ config.load_kube_config()
 
 
 def run_experiment(exp: Experiment, observations_out_path):
-    # 0. create experiment folder
-
-    # new format: data/timestamp/scale/branch/i/files
-
+    # Create the experiment folder
     try:
-        try:
-            os.makedirs(observations_out_path, exist_ok=DIRTY)
-        except OSError:
-            raise RuntimeError("data for this experiment already exist, skipping")
-
-        # 3. rewrite helm values with <env["docker_user"]> && env details as necessary (namespace ...)
-        print("🏗️ Deploying the SUT...")
-        deploy.deploy(exp)
-
-        # 4. run collection agent (fetch prometheus )
-        if not DIRTY:
-            wait = ExperimentEnvironment.wait_before_workloads
-            print(f"😴 Waiting {wait}s before starting workload")
-            time.sleep(wait)  # wait for 120s before stressing the workload
-
-        ExperimentRunner(exp).run(observations_out_path)
-            
-    except RuntimeError as e:
-        print("error running experiment!")
-        print(e)
-    finally:
-        ExperimentRunner(exp).cleanup()
-        if not DIRTY:
-            print(f"waiting {exp.env.wait_after_workloads}s after cleaning the workload")
-            time.sleep(exp.env.wait_after_workloads)
-    print("additional sleep after a run just to be on the safe side")
+        os.makedirs(observations_out_path, exist_ok=DIRTY)
+    except OSError:
+        raise RuntimeError("data for this experiment already exist, skipping")
+    # Rewrite helm values with <env["docker_user"]> && env details as necessary (namespace ...)
+    print("🏗️ Deploying the SUT...")
+    experiment_deployer = ExperimentDeployer(exp, CONFIG)
+    experiment_deployer.execute_deployment()
+    # Wait for the SUT
+    wait = ExperimentEnvironment.wait_before_workloads
+    print(f"😴 Waiting {wait}s before starting workload")
+    time.sleep(wait)  # wait for 120s before stressing the workload
+    # Run the experiment
+    ExperimentRunner(exp).run(observations_out_path)
+    # Clean up
+    ExperimentRunner(exp).cleanup(experiment_deployer.helm_wrapper)
+    print(f"Waiting {exp.env.wait_after_workloads}s after cleaning the workload")
+    time.sleep(exp.env.wait_after_workloads)
+    print("Additional sleep after a run just to be on the safe side")
     time.sleep(60)
 
 
@@ -122,14 +112,14 @@ def main():
         print("☢️ will overwrite existing experiment data!!!!")
 
     # load configs
-    config = Config(SUT_PATH, CLUE_CONFIG_PATH)
+    
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-    exps = ExperimentList.load_experiments(config)
+    exps = ExperimentList.load_experiments(CONFIG)
     
     #Get Workloads
-    workloads = [get_workload_instance(w) for w in config.clue_config.workloads]
+    workloads = [get_workload_instance(w) for w in CONFIG.clue_config.workloads]
     exps.add_workloads(workloads)
     
     if DIRTY:
@@ -150,7 +140,7 @@ def main():
     # todo: print not working with pg2
     # for exp in progressbar.progressbar(exps, redirect_stdout=True, redirect_stderr=True):
     for exp in exps:
-        prepare_experiment(exp, timestamp, num_iterations=config.sut_config.num_iterations)
+        prepare_experiment(exp, timestamp, num_iterations=CONFIG.sut_config.num_iterations)
 
 if __name__ == "__main__":
     main()

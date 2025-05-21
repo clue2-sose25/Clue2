@@ -2,35 +2,36 @@ from typing import List
 import json
 from pathlib import Path
 
-from scaling_experiment_setting import ScalingExperimentSetting
-from experiment_environment import ExperimentEnvironment
+from clue_deployer.config import Config
+from clue_deployer.scaling_experiment_setting import ScalingExperimentSetting
+from clue_deployer.experiment_environment import ExperimentEnvironment
 
 
 class Experiment:
     def __init__(
             self,
+            config : Config,
             name: str,
             target_branch: str,
-            namespace: str,
-            prometheus_url: str,
             critical_services: List[str],
-            target_host: str,
             env: ExperimentEnvironment,
             colocated_workload: bool = False,
             autoscaling: ScalingExperimentSetting = None,
             max_autoscale: int = 3,
-            infrastructure_namespaces: List[str] = [],
     ):
+        clue_config = config.clue_config
+        sut_config = config.sut_config
         # metadata
+        self.config = config
         self.name = name
         self.target_branch = target_branch
-        self.namespace = namespace
-        self.infrastructure_namespaces = infrastructure_namespaces
+        self.namespace = sut_config.namespace
+        self.infrastructure_namespaces = sut_config.infrastructure_namespaces
         self.critical_services = critical_services
-        self.target_host = target_host
+        self.target_host = sut_config.target_host
 
         # observability data
-        self.prometheus = prometheus_url
+        self.prometheus = clue_config.prometheus_url
         self.colocated_workload = colocated_workload
 
         self.env = env
@@ -47,6 +48,23 @@ class Experiment:
             )
         else:
             return f"{self.name}_{self.target_branch}".replace("/", "_")
+
+    def __deepcopy__(self, memo=None):
+        """
+        Custom deepcopy method to ensure that the Experiment class is copied correctly. 
+        """
+        # Create a new instance of the class
+        new_instance = Experiment(
+            config=self.config,
+            name=self.name,
+            target_branch=self.target_branch,
+            critical_services=self.critical_services,
+            env=self.env,
+            colocated_workload=self.colocated_workload,
+            autoscaling=self.autoscaling,
+            max_autoscale=self.max_autoscale,
+        )
+        return new_instance
 
     def to_row(self):
         return [self.name, self.target_branch, self.namespace, self.autoscaling, self.env.tags]

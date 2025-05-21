@@ -1,7 +1,11 @@
-/teastore/
 .DS_Store
 __pycache__/
 data*
 .idea
 mock_data/
 agent
+.github
+.vscode
+results/*
+/teastore/
+*.egg-info/

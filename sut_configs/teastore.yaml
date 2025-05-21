@@ -1,7 +1,10 @@
 config:
   namespace: "tea-bench"
   sut_path: "teastore"
-  target_host: "http://teastore-webui/tools.descartes.teastore.webui"
+  helm_chart_path: "teastore/examples/helm"
+  values_yaml_name: "values.yaml"
+  target_service_name: "teastore-webui" # The k8s service name (used for in-cluster communication)
+  application_endpoint_path: "/tools.descartes.teastore.webui" # The specific path
   default_resource_limits:
     cpu: 1000
     memory: 1024

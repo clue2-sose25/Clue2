@@ -28,10 +28,11 @@ class Config:
         self.services_config = ServicesConfig.load_from_yaml(sut_config)
         self.sut_config = SUTConfig.load_from_yaml(sut_config)
 
+
     @classmethod
     def get_instance(cls) -> "Config":
         """
-        Get the singleton instance of the ConfigManager.
+        Get the singleton instance of the Config.
         """
         if cls._instance is None:
             raise RuntimeError("ConfigManager has not been initialized. Call ConfigManager(sut_config, clue_config) first.")
