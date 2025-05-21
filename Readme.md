@@ -59,10 +59,10 @@ kubectl label nodes minikube scaphandre=true
 
 ### 3. 🛠️ CLUE2 setup
 
-Install Python dependencies using [uv](https://docs.astral.sh/uv/) (or use a virtual environment with e.g. pipenv)
+Install Python dependencies using a virtual environment with e.g. pipenv:
 
 ```bash
-uv sync
+pipenv sync
 ```
 
 Clone the system under test, i.e. the teastore.
@@ -113,7 +113,7 @@ TeaStore may run some initial tasks on startup, so make sure to wait a minute if
 To run the main CLUE2, run the task below. Make sure that all required images are present in the specified image registry.
 
 ```bash
-python exv2/main.py --skip-build
+python clue_deployer/main.py
 ```
 
 ![Running the Experiments](readme/running_experiments.png)
