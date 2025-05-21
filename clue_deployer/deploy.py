@@ -209,9 +209,10 @@ class ExperimentDeployer:
         self._ensure_helm_requirements() # Installs Prometheus, Kepler
         #TODO remove the hardcoding here
         self._start_port_forward("prometheus-kps1-kube-prometheus-stack-prometheus-0",9090,9090)
-        with self.helm_wrapper as hw:
-            self._patch_helm_deployment(hw)
-            self._deploy_helm_chart(hw)
+        # Prepare the Helm wrapper
+        self._patch_helm_deployment(self.helm_wrapper)
+        self._deploy_helm_chart(self.helm_wrapper)
+        # Wait for the critical services
         self._wait_until_services_ready()
         
         if self.experiment.autoscaling:
