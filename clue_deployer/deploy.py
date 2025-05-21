@@ -156,8 +156,8 @@ class ExperimentDeployer:
     def _patch_helm_deployment(self, hw: HelmWrapper):
         values = hw.update_helm_chart()
 
-        # create observations directory in the format RUN_CONFIG.clue_config.result_base_path / experiment.name / dd.mm.yyyy_hh:mm
-        observations = path.join(self.config.clue_config.result_base_path, self.experiment.name, time.strftime("%d.%m.%Y_%H:%M"))
+        # create observations directory in the format RUN_CONFIG.clue_config.result_base_path / experiment.name / dd.mm.yyyy_hh-mm
+        observations = path.join(self.config.clue_config.result_base_path, self.experiment.name, time.strftime("%d.%m.%Y_%H-%M"))
         os.makedirs(observations)
 
         # write copy of used values to observations 

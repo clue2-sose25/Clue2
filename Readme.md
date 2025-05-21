@@ -42,7 +42,7 @@ docker compose up -d --build registry
 Make sure that `Minikube` (or your other choosen local kubernets cluster) accepts the registry as well and has enough memory (configure docker before). In case you already have created a minikube cluster before make sure to delete if and recreate it using this command:
 
 ```bash
-minikube start --cni=flannel --insecure-registry "host.docker.internal:6789" --cpus 8 --memory 12000
+minikube start --cni=flannel --insecure-registry "host.minikube.internal:6789" --cpus 8 --memory 12000
 ```
 
 Also add an additional node to allow running the loadgenerator (which can not run on the same node as the experiment itself):
