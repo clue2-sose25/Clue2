@@ -17,7 +17,7 @@ services:
     image: ghcr.io/clue2-sose25/clue2/teastore-builder:latest
     build:
       context: .
-      dockerfile: ./clue-builders/teastore/Dockerfile
+      dockerfile: ./clue_builders/teastore/Dockerfile
     container_name: teastore-builder
     privileged: true
     depends_on:
