@@ -25,6 +25,23 @@ services:
     environment:
       DOCKER_BUILDKIT: 1
       SUT_EXPERIMENT: baseline
+    
+  clue-deployer:
+    image: ghcr.io/clue2-sose25/clue2/clue-deployer:latest
+    build:
+      context: .
+      dockerfile: ./clue_deployer/Dockerfile
+    container_name: clue-deployer
+    privileged: true
+    depends_on:
+      - registry
+    environment:
+      DOCKER_BUILDKIT: 1
+    volumes:
+      - ~/.kube:/root/.kube:ro
+    # needed for linux systems
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 volumes:
   registry-data:
