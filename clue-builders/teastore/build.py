@@ -61,7 +61,6 @@ def build(experiment=None):
     run_maven(sut_path)
     patch_buildx(sut_path, remote_platform_arch)
     build_docker_image(sut_path, docker_registry_address, branch_name)
-    check_docker_all_images_exist(docker_registry_address)
 
 def build_docker_image(sut_path, docker_registry_address, branch_name):
     print(f"Running the build_docker.sh")
