@@ -34,8 +34,10 @@ This Readme describes the process of running CLUE experiments on the selected SU
 The docker image registry used by CLUE can be specified in the `clue-config.yaml` file (`docker_registry_address` parameter). By default, CLUE supports deploying a local image registry listed below. To deploy the local registry, make sure `Docker` (with `Docker Compose` support) is installed and running. For a custom registry, make sure to run `docker login` in case authentication is needed.
 
 ```bash
-docker compose up -d --build
+docker compose up -d --build registry
 ```
+
+### 2. ✨ Setting up the Minikube cluster
 
 Make sure that `Minikube` (or your other choosen local kubernets cluster) accepts the registry as well and has enough memory (configure docker before). In case you already have created a minikube cluster before make sure to delete if and recreate it using this command:
 
@@ -49,7 +51,19 @@ Also add an additional node to allow running the loadgenerator (which can not ru
 minikube node add
 ```
 
-### 2. 🛠️ CLUE2 setup
+In a multi-node setting, not all nodes might have the option to measure using scaphandre, so Clue ensures that only appropiate nodes are assigned with experiment pods. To simulate this for, e.g., the minikube node, apply a label:
+
+```bash
+kubectl label nodes minikube scaphandre=true
+```
+
+### 3. 🛠️ CLUE2 setup
+
+Install Python dependencies using [uv](https://docs.astral.sh/uv/) (or use a virtual environment with e.g. pipenv)
+
+```bash
+uv sync
+```
 
 Clone the system under test, i.e. the teastore.
 
@@ -63,19 +77,7 @@ For local development, clone the PSC tracker into `agent` (uv is configured in t
 git clone https://github.com/ISE-TU-Berlin/PSC.git agent
 ```
 
-Install Python dependencies using [uv](https://docs.astral.sh/uv/) (or use a virtual environment with e.g. pipenv)
-
-```bash
-uv sync
-```
-
-In a multi-node setting, not all nodes might have the option to measure using scaphandre, so Clue ensures that only appropiate nodes are assigned with experiment pods. To simulate this for, e.g., the minikube node, apply a label:
-
-```bash
-kubectl label nodes minikube scaphandre=true
-```
-
-### 3. 🧱 SUT Build
+### 3. 🧱 (Optional) Default SUT Build
 
 Before running CLUE2, all images of the selected SUT have to be built and stored in the specified image registry. The image registry path `docker_registry_address` can be changed in the main config (by default, CLUE uses the registry deployed in previous steps).
 
@@ -92,7 +94,7 @@ To specify a single experiment to be build append the `--exp EXPERIMENT_NAME` fl
 For a test deployment of the SUT (without running the CLUE2, nor the workload generator), run the following command. Make sure that all required images are present in the specified image registry.
 
 ```bash
-python python clue-deployer/run.py --sut teastore --exp-name baseline
+python clue_deployer/run.py --sut teastore --exp-name baseline
 ```
 , where the `--sut` is the name of the SUT config inside of the `sut_configs` directory, and the `--exp-name` is the name of the branch containing the desired experiment.
 
