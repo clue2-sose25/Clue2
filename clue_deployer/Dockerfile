@@ -40,4 +40,4 @@ RUN uv sync
 
 ENV PATH="/app/.venv/bin:$PATH"
 
-ENTRYPOINT [ "tail", "-f", "/dev/null" ]
+ENTRYPOINT ["/app/entrypoint.sh"]
