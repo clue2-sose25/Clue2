@@ -12,6 +12,7 @@ class SUTConfig(BaseSettings):
     Configuration class for the System Under Test (SUT) using pydantic's BaseSettings.
     """
     sut_path: Path
+    sut_git_repo: str
     namespace: str
     target_service_name: str
     application_endpoint_path: str
