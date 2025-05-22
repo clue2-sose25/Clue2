@@ -37,6 +37,8 @@ services:
       - registry
     environment:
       DOCKER_BUILDKIT: 1
+      SUT: teastore
+      EXPERIMENT: baseline
     volumes:
       - ~/.kube:/root/.kube:ro
       # use this line if you want to use minikube - make sure to run the sh script first and commend out the line above

@@ -86,46 +86,34 @@ kind create cluster --config ./localClusterConfig/kind/kind-config.yaml
 
 ### 3. 🛠️ CLUE2 setup
 
-Install Python dependencies using a virtual environment with e.g. pipenv:
+As the PSC tracker repository is private, clone it into `clue_deployer/agent` (uv is configured in the toml to find it there):
 
 ```bash
-pipenv sync
+git clone https://github.com/ISE-TU-Berlin/PSC.git clue_deployer/agent
 ```
 
-Clone the system under test, i.e. the teastore.
-
-```bash
-git clone https://github.com/ISE-TU-Berlin/sustainable_teastore.git teastore
-```
-
-For local development, clone the PSC tracker into `agent` (uv is configured in the toml to find it there):
-
-```bash
-git clone https://github.com/ISE-TU-Berlin/PSC.git agent
-```
-
-### 3. 🧱 (Optional) Default SUT Build
+### 3. 🧱 Build Images for SUT (optional if existing)
 
 Before running CLUE2, all images of the selected SUT have to be built and stored in the specified image registry. The image registry path `docker_registry_address` can be changed in the main config (by default, CLUE uses the registry deployed in previous steps).
 
 To build images for the `TeaStore`, use the command listed below. By default the script builds images for all experiments.
 
 ```bash
-python python clue-builders/teastore/build.py
+docker compose up -d teastore-builder --build
 ```
 
-To specify a single experiment to be build append the `--exp EXPERIMENT_NAME` flag.
+To specify a single experiment you can modify the docker-compoye.yml file.
 
 ### 4. 🧪 SUT Test Deployment
 
 For a test deployment of the SUT (without running the CLUE2, nor the workload generator), run the following command. Make sure that all required images are present in the specified image registry.
 
 ```bash
-python clue_deployer/run.py --sut teastore --exp-name baseline
+docker compose up -d teastore-deployer --build
 ```
-, where the `--sut` is the name of the SUT config inside of the `sut_configs` directory, and the `--exp-name` is the name of the branch containing the desired experiment.
+You can adjust the deployment to your needs via the environment variables inside the docker-compoye.yml where `SUT` is the name of the SUT config inside of the `sut_configs` directory, and the `EXPERIMENT` is the name of the branch containing the desired experiment.
 
-When deploying `Teastore` while using minikube, forward a port so you can test and access the TeaStore:
+If you are deploying the Teastore locally you can forward a port so you to test and access the TeaStore:
 
 ```bash
 kubectl port-forward service/teastore-webui 8080:80 --namespace=tea-bench

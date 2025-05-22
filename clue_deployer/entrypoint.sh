@@ -8,8 +8,5 @@ chmod 600 /app/kubeconfig_patched
 
 export KUBECONFIG=/app/kubeconfig_patched
 
-# keep the container alive
-tail -f >/dev/null
-
-# Invoke your deployer script
-#exec uv run clue_deployer/main.py
+# Invoke the deployer script with the SUT environment variable
+exec uv run clue_deployer/run.py --sut="$SUT" --exp-name="$EXPERIMENT"
