@@ -1,9 +1,19 @@
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
-
+nodes:
+  - role: control-plane
+    # The control-plane node will also get the containerd patches defined below.
+  - role: worker
+    kubeadmConfigPatches:
+      - |
+        kind: JoinConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "scaphandre=true"
+    # The worker node will also get the containerd patches.
 containerdConfigPatches:
-- |-
-  [plugins."io.containerd.grpc.v1.cri".registry.configs."host.internal:6789".tls]
-    insecure_skip_verify = true
-  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."host.internal:6789"]
-    endpoint = ["http://host.internal:6789"]
+  - |-
+    [plugins."io.containerd.grpc.v1.cri".registry.configs."host.internal:6789".tls]
+      insecure_skip_verify = true
+    [plugins."io.containerd.grpc.v1.cri".registry.mirrors."host.internal:6789"]
+      endpoint = ["http://host.internal:6789"]

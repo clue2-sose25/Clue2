@@ -37,12 +37,14 @@ The docker image registry used by CLUE can be specified in the `clue-config.yaml
 docker compose up -d --build registry
 ```
 
-### 2. ✨ Setting up the Minikube cluster
+### 2. ✨ Setting up a local cluster
 
-Make sure that `Minikube` (or your other choosen local kubernets cluster) accepts the registry as well and has enough memory (configure docker before). In case you already have created a minikube cluster before make sure to delete if and recreate it using this command:
+#### 1. ✨ Minikube
+
+Make sure that `Minikube` accepts the registry as well and has enough memory (configure docker before). In case you already have created a minikube cluster before you will have to recreated it in order to allow insecure registries, so delete it before creeating the new one. Use this command to create a new minikube cluster:
 
 ```bash
-minikube start --cni=flannel --insecure-registry "host.minikube.internal:6789" --cpus 8 --memory 12000
+minikube start --cni=flannel --insecure-registry "host.internal:6789" --cpus 8 --memory 12000
 ```
 
 Also add an additional node to allow running the loadgenerator (which can not run on the same node as the experiment itself):
@@ -51,11 +53,36 @@ Also add an additional node to allow running the loadgenerator (which can not ru
 minikube node add
 ```
 
-In a multi-node setting, not all nodes might have the option to measure using scaphandre, so Clue ensures that only appropiate nodes are assigned with experiment pods. To simulate this for, e.g., the minikube node, apply a label:
+In a multi-node setting, not all nodes might have the option to measure using scaphandre, so Clue ensures that only appropiate nodes are assigned with experiment pods. To simulate this for, e.g., the minikube node, you must apply a label:
 
 ```bash
 kubectl label nodes minikube scaphandre=true
 ```
+
+Lastly we need to manually flatten the kube config as minikube uses external files we can read from inside the containers. From clues base folder do the follwing:
+
+```bash
+cd localClusterConfig/minikube
+./exportKubeConfig.sh
+```
+
+Afterwards open the docker-compose.yml and change the moundted volumes to use the just created config for the clue-deployer, so it should change it to this:
+
+```yml
+    volumes:
+      # - ~/.kube:/root/.kube:ro
+      # use this line if you want to use minikube - make sure to run the sh script first and commend out the line above
+      - ./localClusterConfig/minikube/minikube_kube_config:/root/.kube/config:ro
+```
+
+#### 2. ✨ Kind
+
+You can also use kind for running a local cluster, just use the provided config file to allow usage of the local registry and create the required nodes. Create your cluster like this:
+
+```bash
+kind create cluster --config ./localClusterConfig/kind/kind-config.yaml
+```
+
 
 ### 3. 🛠️ CLUE2 setup
 

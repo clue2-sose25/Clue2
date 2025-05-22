@@ -10,3 +10,4 @@ results/*
 /teastore/
 *.egg-info/
 .lh
+localClusterConfig/minikube/minikube_kube_config
