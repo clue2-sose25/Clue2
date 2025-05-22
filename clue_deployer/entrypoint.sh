@@ -7,6 +7,8 @@ set -e
 # Patch the kubeconfig to allow access to clusters running on the host
 python3 /app/patch_kubeconfig.py
 
+chmod 600 /app/kubeconfig_patched
+
 # Wait until the docker daemon is ready
 while ! docker info >/dev/null 2>&1; do
   sleep 0.2

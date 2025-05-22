@@ -41,7 +41,7 @@ services:
       - ~/.kube:/root/.kube:ro
     # needed for linux systems
     extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - "host.internal:host-gateway"
 
 volumes:
   registry-data:

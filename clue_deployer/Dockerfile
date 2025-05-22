@@ -35,6 +35,15 @@ RUN curl -LO https://get.helm.sh/helm-v3.14.4-linux-amd64.tar.gz && \
     mv linux-amd64/helm /usr/local/bin/helm && \
     rm -rf linux-amd64 helm-v3.14.4-linux-amd64.tar.gz
 
+# write insecure registry config into docker daemon config
+RUN mkdir -p /etc/docker && \
+    echo '{ "insecure-registries":["registry:5000"] }' > /etc/docker/daemon.json
+
+#start docker daemon
+RUN mkdir -p /var/run/docker.sock && \
+    chmod 777 /var/run/docker.sock && \
+    dockerd &
+
 # Install Python dependencies
 RUN uv sync
 

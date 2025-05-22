@@ -16,7 +16,7 @@ def patch_kubeconfig():
     for cluster in config.get("clusters", []):
         server = cluster["cluster"].get("server", "")
         if "127.0.0.1" in server or "localhost" in server:
-            cluster["cluster"]["server"] = server.replace("127.0.0.1", "host.docker.internal").replace("localhost", "host.docker.internal")
+            cluster["cluster"]["server"] = server.replace("127.0.0.1", "host.internal").replace("localhost", "host.internal")
             # Remove cert fields and set insecure-skip-tls-verify
             cluster["cluster"].pop("certificate-authority", None)
             cluster["cluster"].pop("certificate-authority-data", None)
@@ -28,7 +28,7 @@ def patch_kubeconfig():
 
     os.environ["KUBECONFIG"] = KUBECONFIG_PATCHED
     if changed:
-        print("Patched kubeconfig to use host.docker.internal and set insecure-skip-tls-verify: true")
+        print("Patched kubeconfig to use host.internal and set insecure-skip-tls-verify: true")
 
 if __name__ == "__main__":
     patch_kubeconfig()
