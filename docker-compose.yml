@@ -39,6 +39,8 @@ services:
       DOCKER_BUILDKIT: 1
     volumes:
       - ~/.kube:/root/.kube:ro
+      # use this line if you want to use minikube - make sure to run the sh script first and commend out the line above
+      # - ./localClusterConfig/minikube/config_for_clue_deployer:/root/.kube/config:ro
     # needed for linux systems
     extra_hosts:
       - "host.internal:host-gateway"
