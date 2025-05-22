@@ -76,9 +76,8 @@ def run_experiment(exp: Experiment, observations_out_path):
     experiment_deployer = ExperimentDeployer(exp, CONFIG)
     experiment_deployer.execute_deployment()
     # Wait for the SUT
-    wait = ExperimentEnvironment.wait_before_workloads
-    print(f"😴 Waiting {wait}s before starting workload")
-    time.sleep(wait)  # wait for 120s before stressing the workload
+    print(f"😴 Waiting {exp.env.wait_before_workloads}s before starting workload")
+    time.sleep(exp.env.wait_before_workloads)  # wait for 120s before stressing the workload
     # Run the experiment
     ExperimentRunner(exp).run(observations_out_path)
     # Clean up
