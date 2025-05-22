@@ -34,7 +34,7 @@ This Readme describes the process of running CLUE experiments on the selected SU
 The docker image registry used by CLUE can be specified in the `clue-config.yaml` file (`docker_registry_address` parameter). By default, CLUE supports deploying a local image registry listed below. To deploy the local registry, make sure `Docker` (with `Docker Compose` support) is installed and running. For a custom registry, make sure to run `docker login` in case authentication is needed.
 
 ```bash
-docker compose up -d --build registry
+docker compose up -d registry
 ```
 
 ### 2. ✨ Setting up the Minikube cluster
@@ -84,10 +84,10 @@ Before running CLUE2, all images of the selected SUT have to be built and stored
 To build images for the `TeaStore`, use the command listed below. By default the script builds images for all experiments.
 
 ```bash
-python python clue-builders/teastore/build.py
+docker compose up -d --build teastore-builder
 ```
 
-To specify a single experiment to be build append the `--exp EXPERIMENT_NAME` flag.
+To specify a single experiment to be build, change the environment variable inside of the `docker-compose.yml` file.
 
 ### 4. 🧪 SUT Test Deployment
 
