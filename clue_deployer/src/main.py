@@ -66,38 +66,26 @@ config.load_kube_config()
 
 
 def run_experiment(exp: Experiment, observations_out_path):
-    # 0. create experiment folder
-
-    # new format: data/timestamp/scale/branch/i/files
-
+    # Create the experiment folder
     try:
-        try:
-            os.makedirs(observations_out_path, exist_ok=DIRTY)
-        except OSError:
-            raise RuntimeError("data for this experiment already exist, skipping")
-
-        # 3. rewrite helm values with <env["docker_user"]> && env details as necessary (namespace ...)
-        print("🏗️ Deploying the SUT...")
-        experiment_deployer = ExperimentDeployer(exp, CONFIG)
-        experiment_deployer.execute_deployment()
-
-        # 4. run collection agent (fetch prometheus )
-        if not DIRTY:
-            wait = ExperimentEnvironment.wait_before_workloads
-            print(f"😴 Waiting {wait}s before starting workload")
-            time.sleep(wait)  # wait for 120s before stressing the workload
-
-        ExperimentRunner(exp).run(observations_out_path)
-            
-    except RuntimeError as e:
-        print("error running experiment!")
-        print(e)
-    finally:
-        ExperimentRunner(exp).cleanup(experiment_deployer.helm_wrapper)
-        if not DIRTY:
-            print(f"waiting {exp.env.wait_after_workloads}s after cleaning the workload")
-            time.sleep(exp.env.wait_after_workloads)
-    print("additional sleep after a run just to be on the safe side")
+        os.makedirs(observations_out_path, exist_ok=DIRTY)
+    except OSError:
+        raise RuntimeError("data for this experiment already exist, skipping")
+    # Rewrite helm values with <env["docker_user"]> && env details as necessary (namespace ...)
+    print("🏗️ Deploying the SUT...")
+    experiment_deployer = ExperimentDeployer(exp, CONFIG)
+    experiment_deployer.execute_deployment()
+    # Wait for the SUT
+    wait = ExperimentEnvironment.wait_before_workloads
+    print(f"😴 Waiting {wait}s before starting workload")
+    time.sleep(wait)  # wait for 120s before stressing the workload
+    # Run the experiment
+    ExperimentRunner(exp).run(observations_out_path)
+    # Clean up
+    ExperimentRunner(exp).cleanup(experiment_deployer.helm_wrapper)
+    print(f"Waiting {exp.env.wait_after_workloads}s after cleaning the workload")
+    time.sleep(exp.env.wait_after_workloads)
+    print("Additional sleep after a run just to be on the safe side")
     time.sleep(60)
 
 

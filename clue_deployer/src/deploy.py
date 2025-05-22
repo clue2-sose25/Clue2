@@ -160,8 +160,8 @@ class ExperimentDeployer:
     def _patch_helm_deployment(self, hw: HelmWrapper):
         values = hw.update_helm_chart()
 
-        # create observations directory in the format RUN_CONFIG.clue_config.result_base_path / experiment.name / dd.mm.yyyy_hh:mm
-        observations = path.join(self.config.clue_config.result_base_path, self.experiment.name, time.strftime("%d.%m.%Y_%H:%M"))
+        # create observations directory in the format RUN_CONFIG.clue_config.result_base_path / experiment.name / dd.mm.yyyy_hh-mm
+        observations = path.join(self.config.clue_config.result_base_path, self.experiment.name, time.strftime("%d.%m.%Y_%H-%M"))
         os.makedirs(observations)
 
         # write copy of used values to observations 
@@ -214,9 +214,11 @@ class ExperimentDeployer:
         #TODO remove the hardcoding here
         self._start_port_forward("prometheus-kps1-kube-prometheus-stack-prometheus-0",9090,9090)
         self.clone_sut() # Clones the SUT repository if it doesn't exist
+        # Prepare the Helm wrapper
         with self.helm_wrapper as hw:
             self._patch_helm_deployment(hw)
             self._deploy_helm_chart(hw)
+        # Wait for the critical services
         self._wait_until_services_ready()
         
         if self.experiment.autoscaling:
