@@ -99,7 +99,7 @@ Before running CLUE2, all images of the selected SUT have to be built and stored
 To build images for the `TeaStore`, use the command listed below. By default the script builds images for all experiments.
 
 ```bash
-docker compose up -d teastore-builder --build
+docker compose up -d --build teastore-builder
 ```
 
 To specify a single experiment you can modify the docker-compoye.yml file.
@@ -109,7 +109,7 @@ To specify a single experiment you can modify the docker-compoye.yml file.
 For a test deployment of the SUT (without running the CLUE2, nor the workload generator), run the following command. Make sure that all required images are present in the specified image registry.
 
 ```bash
-docker compose up -d teastore-deployer --build
+docker compose up -d --build teastore-deployer
 ```
 You can adjust the deployment to your needs via the environment variables inside the docker-compoye.yml where `SUT` is the name of the SUT config inside of the `sut_configs` directory, and the `EXPERIMENT` is the name of the branch containing the desired experiment.
 

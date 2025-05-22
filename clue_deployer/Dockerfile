@@ -14,6 +14,7 @@ RUN apt-get update && \
         lsb-release \
         gnupg \
         docker.io \
+        dos2unix \
     && rm -rf /var/lib/apt/lists/*
 
 # Install kubectl
@@ -35,9 +36,14 @@ COPY sut_configs/ /app/sut_configs
 
 COPY clue-config.yaml /app/clue-config.yaml
 
+COPY agent /app/agent
+
 # Install Python dependencies
 RUN uv sync
 
 ENV PATH="/app/.venv/bin:$PATH"
+
+RUN dos2unix /app/entrypoint.sh \
+     && chmod +x /app/entrypoint.sh
 
 ENTRYPOINT ["/app/entrypoint.sh"]
