@@ -1,8 +1,8 @@
 #! /usr/bin/env python3
 import click
-import deploy
+from clue_deployer.deploy import ExperimentDeployer
 from pathlib import Path
-from experiment_list import ExperimentList
+from clue_deployer.experiment_list import ExperimentList
 from config import Config
 
 #get the root directory of the project
@@ -16,10 +16,19 @@ def cli():
     pass
 
 def available_suts():
-    # TO-DO Refactor to read the sut_configs folder
-    return ["teastore"]
+    """
+    Reads the 'sut_configs' folder and returns a list of available SUT names.
+    """
+    sut_configs_path = BASE_DIR / "sut_configs"
+    if not sut_configs_path.exists():
+        raise FileNotFoundError(f"SUT configs folder not found: {sut_configs_path}")
+
+    # Get all YAML files in the 'sut_configs' folder
+    sut_files = [f.stem for f in sut_configs_path.glob("*.yaml")]
+    return sut_files
 
 
+#TODO make this work for other SUTs
 @click.command("run")
 @click.option("--sut", required=True, type=click.Choice(available_suts()))
 @click.option("--exp-name", required=True, type=click.STRING, help="Name of the experiment to run")
@@ -36,7 +45,8 @@ def run(sut, exp_name):
         experiment = experiments[0]
         
     # Deploy the experiment, without the workload generator
-    deploy.deploy(experiment)
+    deployer = ExperimentDeployer(experiment, RUN_CONFIG)
+    deployer.execute_deployment()
 
 if __name__ == "__main__":
     run()

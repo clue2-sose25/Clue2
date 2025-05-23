@@ -18,5 +18,16 @@
             "console": "integratedTerminal",
             "justMyCode": false
         },
+        {
+            "name": "Clue main",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "./clue_deployer/main.py",
+            "args": [
+                "--dirty"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false,
+        }
     ]
 }

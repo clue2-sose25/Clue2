@@ -1,12 +1,12 @@
 import copy
 
 from dataclasses import dataclass
-from config import Config
+from clue_deployer.config import Config
 
-from experiment import Experiment
-from scaling_experiment_setting import ScalingExperimentSetting
-from experiment_workloads import Workload
-from experiment_environment import ExperimentEnvironment
+from clue_deployer.experiment import Experiment
+from clue_deployer.scaling_experiment_setting import ScalingExperimentSetting
+from clue_deployer.experiment_workloads import Workload
+from clue_deployer.experiment_environment import ExperimentEnvironment
 
 @dataclass
 class ExperimentList():
@@ -18,8 +18,7 @@ class ExperimentList():
         Load experiments from a YAML file and return an ExperimentList instance.
         """
         
-        clue_config = config.clue_config
-        sut_config = config.sut_config
+        
         experiments_config = config.experiments_config
         
         experiments = []
@@ -28,14 +27,11 @@ class ExperimentList():
             experiment = Experiment(
                 name=exp.name,
                 target_branch=exp.target_branch,
-                namespace=sut_config.namespace,
                 colocated_workload=exp.colocated_workload, #TODO default False
-                prometheus_url=clue_config.prometheus_url,
                 env=ExperimentEnvironment(config),
                 autoscaling=ScalingExperimentSetting.CPUBOUND, #TODO customizable,
                 critical_services=exp.critical_services,
-                target_host=sut_config.target_host,
-                infrastructure_namespaces=sut_config.infrastructure_namespaces,
+                config=config,
             )
             experiments.append(experiment)
         return ExperimentList(experiments=experiments)

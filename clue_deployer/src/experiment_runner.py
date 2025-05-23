@@ -4,10 +4,11 @@ from datetime import datetime
 
 from psc.tracker import PodUsage
 
-from experiment import Experiment
-from workload_cancelled_exception import WorkloadCancelled
-from flushing_queue import FlushingQueue
-from workload_runner import WorkloadRunner
+from clue_deployer.experiment import Experiment
+from clue_deployer.workload_cancelled_exception import WorkloadCancelled
+from clue_deployer.flushing_queue import FlushingQueue
+from clue_deployer.workload_runner import WorkloadRunner
+from clue_deployer.helm_wrapper import HelmWrapper
 from psc import ResourceTracker, NodeUsage
 from os import path
 import signal
@@ -19,6 +20,7 @@ class ExperimentRunner:
 
     def __init__(self, experiment: Experiment):
         self.experiment = experiment
+        self.config = experiment.config
 
     def run(self, observations_out_path: str = "data/default"):
         exp = self.experiment
@@ -126,7 +128,7 @@ class ExperimentRunner:
             logging.info("Program terminated")
 
 
-    def cleanup(self):
+    def cleanup(self, helm_wrapper: HelmWrapper):
         """
         Remove sets for autoscaling, remove workload pods,
         """
@@ -149,13 +151,5 @@ class ExperimentRunner:
             except Exception as e:
                 logging.error("Error cleaning up. Probably already deleted: " + str(e))
                 pass
-
-        subprocess.run(["helm", "uninstall", "teastore", "-n", self.experiment.namespace])
-        subprocess.run(
-            ["git", "checkout", "examples/helm/values.yaml"],
-            cwd=path.join(self.experiment.env.sut_path),
-        )
-        subprocess.run(
-            ["git", "checkout", "tools/build_docker.sh"],
-            cwd=path.join(self.experiment.env.sut_path),
-        )
+        
+        helm_wrapper.uninstall()

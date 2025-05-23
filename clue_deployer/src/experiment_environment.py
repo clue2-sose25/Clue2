@@ -1,5 +1,5 @@
 from pathlib import Path
-from config import Config
+from clue_deployer.config import Config
 
 #from experiment_workloads import Workload
 
@@ -21,7 +21,6 @@ class ExperimentEnvironment:
         self.local_public_ip = clue_config.local_public_ip
 
         # Infra
-        self.docker_user = clue_config.docker_user
         self.local_port = clue_config.local_port
         self.docker_registry_address = clue_config.docker_registry_address
         self.remote_platform_arch = clue_config.remote_platform_arch
