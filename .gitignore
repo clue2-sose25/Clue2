@@ -9,3 +9,6 @@ agent
 results/*
 /teastore/
 *.egg-info/
+.lh
+localClusterConfig/minikube/minikube_kube_config
+localClusterConfig/minikube/minikube_kube_config

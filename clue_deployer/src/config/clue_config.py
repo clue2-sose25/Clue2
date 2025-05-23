@@ -9,7 +9,6 @@ class ClueConfig(BaseSettings):
     Configuration class for CLUE using pydantic's BaseSettings.
     """
     prometheus_url: str
-    docker_user: str
     local_public_ip: str
     local_port: int
     remote_platform_arch: str

@@ -37,12 +37,23 @@ The docker image registry used by CLUE can be specified in the `clue-config.yaml
 docker compose up -d registry
 ```
 
-### 2. ✨ Setting up the Minikube cluster
+### 2. ✨ Setting up a local cluster
 
-Make sure that `Minikube` (or your other choosen local kubernets cluster) accepts the registry as well and has enough memory (configure docker before). In case you already have created a minikube cluster before make sure to delete if and recreate it using this command:
+#### 1. ✨ Kind (recommended)
+
+You can use kind for running a local cluster, just use the provided config file to create a cluster which allows usage of the local registry and creates the required nodes. Create your cluster like this:
 
 ```bash
-minikube start --cni=flannel --insecure-registry "host.minikube.internal:6789" --cpus 8 --memory 12000
+kind create cluster --config ./localClusterConfig/kind/kind-config.yaml
+```
+
+
+#### 2. ✨ Minikube
+
+Usage of minikube is also supported but requires a more manual setup. Make sure that `Minikube` accepts the registry as well and has enough memory (configure docker before). In case you already have created a minikube cluster before you will have to recreated it in order to allow insecure registries, so delete it before creeating the new one. Use this command to create a new minikube cluster:
+
+```bash
+minikube start --cni=flannel --insecure-registry "host.internal:6789" --cpus 8 --memory 12000
 ```
 
 Also add an additional node to allow running the loadgenerator (which can not run on the same node as the experiment itself):
@@ -51,33 +62,37 @@ Also add an additional node to allow running the loadgenerator (which can not ru
 minikube node add
 ```
 
-In a multi-node setting, not all nodes might have the option to measure using scaphandre, so Clue ensures that only appropiate nodes are assigned with experiment pods. To simulate this for, e.g., the minikube node, apply a label:
+In a multi-node setting, not all nodes might have the option to measure using scaphandre, so Clue ensures that only appropiate nodes are assigned with experiment pods. To simulate this for, e.g., the minikube node, you must apply a label:
 
 ```bash
 kubectl label nodes minikube scaphandre=true
 ```
 
+Lastly we need to manually flatten the kube config as minikube uses external files we can read from inside the containers. From clues base folder do the follwing:
+
+```bash
+cd localClusterConfig/minikube
+./exportKubeConfig.sh
+```
+
+Afterwards open the docker-compose.yml and change the moundted volumes to use the just created config for the clue-deployer, so it should change it to this:
+
+```yml
+    volumes:
+      # - ~/.kube:/root/.kube:ro
+      # use this line if you want to use minikube - make sure to run the sh script first and commend out the line above
+      - ./localClusterConfig/minikube/minikube_kube_config:/root/.kube/config:ro
+```
+
 ### 3. 🛠️ CLUE2 setup
 
-Install Python dependencies using a virtual environment with e.g. pipenv:
+As the PSC tracker repository is private, clone it into `clue_deployer/agent` (uv is configured in the toml to find it there):
 
 ```bash
-pipenv sync
+git clone https://github.com/ISE-TU-Berlin/PSC.git clue_deployer/agent
 ```
 
-Clone the system under test, i.e. the teastore.
-
-```bash
-git clone https://github.com/ISE-TU-Berlin/sustainable_teastore.git teastore
-```
-
-For local development, clone the PSC tracker into `agent` (uv is configured in the toml to find it there):
-
-```bash
-git clone https://github.com/ISE-TU-Berlin/PSC.git agent
-```
-
-### 3. 🧱 (Optional) Default SUT Build
+### 3. 🧱 Build Images for SUT (optional if existing)
 
 Before running CLUE2, all images of the selected SUT have to be built and stored in the specified image registry. The image registry path `docker_registry_address` can be changed in the main config (by default, CLUE uses the registry deployed in previous steps).
 
@@ -87,18 +102,24 @@ To build images for the `TeaStore`, use the command listed below. By default the
 docker compose up -d --build teastore-builder
 ```
 
-To specify a single experiment to be build, change the environment variable inside of the `docker-compose.yml` file.
+To specify a single experiment you can modify the docker-compoye.yml file.
 
 ### 4. 🧪 SUT Test Deployment
 
 For a test deployment of the SUT (without running the CLUE2, nor the workload generator), run the following command. Make sure that all required images are present in the specified image registry.
 
 ```bash
-python clue_deployer/run.py --sut teastore --exp-name baseline
+docker compose up -d --build teastore-deployer
 ```
-, where the `--sut` is the name of the SUT config inside of the `sut_configs` directory, and the `--exp-name` is the name of the branch containing the desired experiment.
+You can adjust the deployment to your needs via the environment variables inside the docker-compoye.yml where `SUT` is the name of the SUT config inside of the `sut_configs` directory, and the `EXPERIMENT` is the name of the branch containing the desired experiment.
 
-When deploying `Teastore` while using minikube, forward a port so you can test and access the TeaStore:
+As currently the port forwarding is broken, you need to execute this command after the depoyment finished before the waiting period is over on your host machine:
+
+```bash
+kubectl port-forward prometheus-kps1-kube-prometheus-stack-prometheus-0 9090:9090
+```
+
+If you are deploying the Teastore locally you can forward a port so you to test and access the TeaStore:
 
 ```bash
 kubectl port-forward service/teastore-webui 8080:80 --namespace=tea-bench

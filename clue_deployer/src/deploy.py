@@ -80,7 +80,11 @@ class ExperimentDeployer:
         try:
             
             # Check if the prometheus-community repository is added
-            helm_repos = subprocess.check_output(["helm", "repo", "list"], text=True)
+            try:
+                helm_repos = subprocess.check_output(["helm", "repo", "list"], text=True)
+            except subprocess.CalledProcessError:
+                helm_repos = ""  # No repos yet
+
             if "prometheus-community" not in helm_repos:
                 print("Helm repository 'prometheus-community' is not added. Adding it now...")
                 subprocess.check_call(["helm", "repo", "add", "prometheus-community", "https://prometheus-community.github.io/helm-charts"])
@@ -209,6 +213,7 @@ class ExperimentDeployer:
         self._ensure_helm_requirements() # Installs Prometheus, Kepler
         #TODO remove the hardcoding here
         self._start_port_forward("prometheus-kps1-kube-prometheus-stack-prometheus-0",9090,9090)
+        self.clone_sut() # Clones the SUT repository if it doesn't exist
         # Prepare the Helm wrapper
         with self.helm_wrapper as hw:
             self._patch_helm_deployment(hw)
@@ -221,3 +226,13 @@ class ExperimentDeployer:
             AutoscalingDeployer(self.experiment).setup_autoscaling()
     
         print("Deployment complete. You can now run the experiment.")
+        
+    def clone_sut(self):
+        """
+        Clones the SUT repository if it doesn't exist.
+        """
+        if not self.sut_path.exists():
+            print(f"Cloning SUT from {self.config.sut_config.sut_git_repo} to {self.sut_path}")
+            subprocess.check_call(["git", "clone", self.config.sut_config.sut_git_repo, str(self.sut_path)])
+        else:
+            print(f"SUT already exists at {self.sut_path}. Skipping clone.")

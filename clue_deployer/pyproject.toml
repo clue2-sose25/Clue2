@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "clue2"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "click>=8.1.8",
+    "docker>=7.1.0",
+    "kubernetes>=32.0.1",
+    "locust>=2.33.0",
+    "progressbar2>=4.5.0",
+    "pydantic>=2.11.4",
+    "pydantic-settings>=2.9.1",
+    "pydantic-yaml>=1.4.0",
+    "requests>=2.32.3",
+    "ruamel-yaml>=0.17.40",
+    "tabulate>=0.9.0",
+    "yaml-patch>=1.1.0",
+    "psc",
+]
+
+[tool.setuptools]
+packages = ["clue_deployer"]
+
+[tool.uv.sources]
+# Can we make the repo public in order to allow just cloing it here?
+# psc = { git = "https://github.com/clue2-sose25/PSC" }
+psc = { path = "./agent", editable = true }
