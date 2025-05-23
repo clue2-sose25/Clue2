@@ -28,13 +28,11 @@ RUN curl -LO https://get.helm.sh/helm-v3.14.4-linux-amd64.tar.gz && \
     mv linux-amd64/helm /usr/local/bin/helm && \
     rm -rf linux-amd64 helm-v3.14.4-linux-amd64.tar.gz
 
+# Copy necessary files
+
 COPY clue_deployer/ /app
 
 RUN mv /app/src /app/clue_deployer
-
-COPY sut_configs/ /app/sut_configs
-
-COPY clue-config.yaml /app/clue-config.yaml
 
 COPY agent /app/agent
 
@@ -42,6 +40,14 @@ COPY agent /app/agent
 RUN uv sync
 
 ENV PATH="/app/.venv/bin:$PATH"
+
+# Copy the configs
+
+COPY sut_configs/ /app/sut_configs
+
+COPY clue-config.yaml /app/clue-config.yaml
+
+# Fix the line endings
 
 RUN dos2unix /app/entrypoint.sh \
      && chmod +x /app/entrypoint.sh

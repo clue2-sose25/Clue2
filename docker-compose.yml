@@ -39,7 +39,7 @@ services:
       DOCKER_BUILDKIT: 1
       SUT: teastore
       EXPERIMENT: baseline
-      DEPLOY_ONLY: true
+      DEPLOY_ONLY: false
     volumes:
       # - ~/.kube:/root/.kube:ro
       # use this line if you want to use minikube - make sure to run the script in localClusterConfig/minikube first and commend out the line above
