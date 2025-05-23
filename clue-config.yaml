@@ -1,5 +1,5 @@
 config:
-  prometheus_url: "http://localhost:9090"
+  prometheus_url: "http://host.internal:9090"
   docker_user: "host.internal:6789/clue"
   local_public_ip: "host.internal"
   local_port: 8888

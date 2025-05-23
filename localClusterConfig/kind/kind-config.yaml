@@ -2,7 +2,6 @@ kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
   - role: control-plane
-    # The control-plane node will also get the containerd patches defined below.
   - role: worker
     kubeadmConfigPatches:
       - |
@@ -10,7 +9,7 @@ nodes:
         nodeRegistration:
           kubeletExtraArgs:
             node-labels: "scaphandre=true"
-    # The worker node will also get the containerd patches.
+  - role: worker
 containerdConfigPatches:
   - |-
     [plugins."io.containerd.grpc.v1.cri".registry.configs."host.internal:6789".tls]

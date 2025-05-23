@@ -39,9 +39,18 @@ docker compose up -d registry
 
 ### 2. ✨ Setting up a local cluster
 
-#### 1. ✨ Minikube
+#### 1. ✨ Kind (recommended)
 
-Make sure that `Minikube` accepts the registry as well and has enough memory (configure docker before). In case you already have created a minikube cluster before you will have to recreated it in order to allow insecure registries, so delete it before creeating the new one. Use this command to create a new minikube cluster:
+You can use kind for running a local cluster, just use the provided config file to create a cluster which allows usage of the local registry and creates the required nodes. Create your cluster like this:
+
+```bash
+kind create cluster --config ./localClusterConfig/kind/kind-config.yaml
+```
+
+
+#### 2. ✨ Minikube
+
+Usage of minikube is also supported but requires a more manual setup. Make sure that `Minikube` accepts the registry as well and has enough memory (configure docker before). In case you already have created a minikube cluster before you will have to recreated it in order to allow insecure registries, so delete it before creeating the new one. Use this command to create a new minikube cluster:
 
 ```bash
 minikube start --cni=flannel --insecure-registry "host.internal:6789" --cpus 8 --memory 12000
@@ -75,15 +84,6 @@ Afterwards open the docker-compose.yml and change the moundted volumes to use th
       - ./localClusterConfig/minikube/minikube_kube_config:/root/.kube/config:ro
 ```
 
-#### 2. ✨ Kind
-
-You can also use kind for running a local cluster, just use the provided config file to allow usage of the local registry and create the required nodes. Create your cluster like this:
-
-```bash
-kind create cluster --config ./localClusterConfig/kind/kind-config.yaml
-```
-
-
 ### 3. 🛠️ CLUE2 setup
 
 As the PSC tracker repository is private, clone it into `clue_deployer/agent` (uv is configured in the toml to find it there):
@@ -112,6 +112,12 @@ For a test deployment of the SUT (without running the CLUE2, nor the workload ge
 docker compose up -d --build teastore-deployer
 ```
 You can adjust the deployment to your needs via the environment variables inside the docker-compoye.yml where `SUT` is the name of the SUT config inside of the `sut_configs` directory, and the `EXPERIMENT` is the name of the branch containing the desired experiment.
+
+As currently the port forwarding is broken, you need to execute this command after the depoyment finished before the waiting period is over on your host machine:
+
+```bash
+kubectl port-forward prometheus-kps1-kube-prometheus-stack-prometheus-0 9090:9090
+```
 
 If you are deploying the Teastore locally you can forward a port so you to test and access the TeaStore:
 
