@@ -34,8 +34,6 @@ COPY clue_deployer/ /app
 
 RUN mv /app/src /app/clue_deployer
 
-COPY agent /app/agent
-
 # Install Python dependencies
 RUN uv sync
 
