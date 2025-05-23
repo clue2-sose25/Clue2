@@ -1,10 +1,10 @@
 config:
-  prometheus_url: "http://localhost:9090"  # minikube
-  docker_user: "host.minikube.internal:6789/clue"
+  prometheus_url: "http://localhost:9090"
+  docker_user: "host.internal:6789/clue"
   local_public_ip: "host.internal"
   local_port: 8888
   remote_platform_arch: "linux/arm64/v8"
   local_platform_arch: "linux/arm64/v8"
-  docker_registry_address: "host.minikube.internal:6789/clue"
+  docker_registry_address: "host.internal:6789/clue"
   result_base_path: "results/"
   workloads: ["shaped"]
