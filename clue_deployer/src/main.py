@@ -71,7 +71,6 @@ def run_experiment(exp: Experiment, observations_out_path):
         os.makedirs(observations_out_path, exist_ok=DIRTY)
     except OSError:
         raise RuntimeError("data for this experiment already exist, skipping")
-    # Rewrite helm values with <env["docker_user"]> && env details as necessary (namespace ...)
     print("🏗️ Deploying the SUT...")
     experiment_deployer = ExperimentDeployer(exp, CONFIG)
     experiment_deployer.execute_deployment()
