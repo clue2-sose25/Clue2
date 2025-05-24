@@ -16,7 +16,7 @@ def load_configs():
         sys.exit(1)
     
     try:
-        with open("teastore.yaml", "r") as f:
+        with open("sut_configs/teastore.yaml", "r") as f:
             sut_config = yaml.safe_load(f)
     except FileNotFoundError:
         print("Error: teastore.yaml not found")
