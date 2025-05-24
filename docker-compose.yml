@@ -30,7 +30,20 @@ services:
       - ./clue-config.yaml:./clue-config.yaml
       - ./sut_configs:./sut_configs
 
-    
+  ots-builder:
+    image: ghcr.io/clue2-sose25/clue2/ots-builder:latest
+    build:
+      context: .
+      dockerfile: ./clue_builders/ots/Dockerfile
+    container_name: ots-builder
+    privileged: true
+    depends_on:
+      - registry
+    environment:
+      DOCKER_BUILDKIT: 1
+      CLUE_CONFIG: "/app/clue-config.yaml"
+      SUT_CONFIG: "ots.yaml"
+
   clue-deployer:
     image: ghcr.io/clue2-sose25/clue2/clue-deployer:latest
     build:
