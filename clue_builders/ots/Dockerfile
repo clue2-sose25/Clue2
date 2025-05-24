@@ -14,17 +14,12 @@ WORKDIR /app
 COPY clue_builders/ots/ .
 
 # Create a venv, install deps (ignoring PEP668)
-RUN pip install --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --break-system-packages -r requirements.txt
 
 # copy config files and loaders
-COPY clue_deployers/src/config .
-COPY ./clue_config.yaml .
+COPY ./clue_deployer/src/config ./config
+COPY ./clue-config.yaml .
 COPY ./sut_configs/ots.yaml .
-
-# set environment variables
-ENV CLUE_CONFIG="/app/clue_config.yaml" \
-    SUT_CONFIG="ots.yaml"
 
 ENTRYPOINT ["sh" , "entrypoint.sh"]
 

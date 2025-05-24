@@ -7,15 +7,18 @@ from config import Config
 DEMO_VERSION = "clue-ots"
 SUT_CONFIG = os.environ.get("SUT_CONFIG")
 CLUE_CONFIG = os.environ.get("CLUE_CONFIG")
+SUT_PATH = "opentelemetry-demo"
 
 class OTSBuilder:
     def __init__(self, config, minimal: bool = False):
         self.config = config
         self.minimal = minimal
-        self.sut_repo = "https://github.com/JulianLegler/opentelemetry-demo"
-        self.docker_registry_address = "localhost:6789/clue"#config.sut_config.docker_registry_address
+        self.sut_repo = config.sut_config.sut_git_repo
+        self.docker_registry_address = "registry:5000/clue"
         self.image_version = "latest"
         self._set_envs()
+        self._clone_repo()
+        self.sut_path = SUT_PATH
     
     def check_docker_running(self):
         """
@@ -27,13 +30,13 @@ class OTSBuilder:
         except subprocess.CalledProcessError:
             raise RuntimeError("Docker is not running. Please start Docker and try again.")
 
-    def clone_repo(self):
+    def _clone_repo(self):
         """
         Clone the OTS repository if it does not exist.
         """
         if not os.path.exists("opentelemetry-demo"):
             print("Cloning OTS repository...")
-            subprocess.run(["git", "clone", self.sut_repo, "opentelemetry-demo"])
+            subprocess.run(["git", "clone", self.sut_repo, SUT_PATH], check=True)
             print("OTS repository cloned successfully.")
         else:
             print("OTS repository already exists. Skipping clone.")
@@ -104,7 +107,6 @@ def main(minimal: bool = False):
     )
     builder = OTSBuilder(config, minimal=minimal)
     builder.check_docker_running()
-    builder.clone_repo()
     builder.build()
     builder.push()
 
