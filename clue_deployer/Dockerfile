@@ -28,19 +28,20 @@ RUN curl -LO https://get.helm.sh/helm-v3.14.4-linux-amd64.tar.gz && \
     mv linux-amd64/helm /usr/local/bin/helm && \
     rm -rf linux-amd64 helm-v3.14.4-linux-amd64.tar.gz
 
-# Copy necessary files
-
-COPY clue_deployer/ /app
-
-RUN mv /app/src /app/clue_deployer
+# Copy files to run uv (better caching)
+COPY clue_deployer/pyproject.toml /app
+COPY clue_deployer/agent/ /app/agent
+RUN mkdir -p /app/clue_deployer
 
 # Install Python dependencies
 RUN uv sync
-
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Fix the line endings
+# Copy the rest of the necessary files
+COPY clue_deployer/ /app
+RUN mv /app/src/* /app/clue_deployer
 
+# Fix the line endings
 RUN dos2unix /app/entrypoint.sh \
      && chmod +x /app/entrypoint.sh
 

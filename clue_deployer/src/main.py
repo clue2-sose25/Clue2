@@ -17,7 +17,8 @@ from clue_deployer.deploy import ExperimentDeployer
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 CLUE_CONFIG_PATH = BASE_DIR.joinpath("clue-config.yaml")
-SUT_PATH = os.environ.get("SUT_NAME")
+SUT_NAME = os.environ.get("SUT_NAME")
+SUT_PATH = f"/app/sut_configs/{SUT_NAME}.yaml"
 EXP_NAME = os.environ.get("EXPERIMENT_NAME", "all")
 CONFIGS = Config(SUT_PATH, CLUE_CONFIG_PATH)
 
