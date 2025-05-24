@@ -24,11 +24,11 @@ services:
       - registry
     environment:
       DOCKER_BUILDKIT: 1
-      BUILDER_EXPERIMENT_NAME: ${BUILDER_EXPERIMENT_NAME}
+      TEASTORE_EXP_NAME: ${TEASTORE_EXP_NAME}
     volumes:
       # CLUE Configs
-      - ./clue-config.yaml:./clue-config.yaml
-      - ./sut_configs:./sut_configs
+      - ./clue-config.yaml:/app/clue-config.yaml
+      - ./sut_configs:/app/sut_configs
 
   ots-builder:
     image: ghcr.io/clue2-sose25/clue2/ots-builder:latest
@@ -41,8 +41,11 @@ services:
       - registry
     environment:
       DOCKER_BUILDKIT: 1
-      CLUE_CONFIG: "/app/clue-config.yaml"
-      SUT_CONFIG: "ots.yaml"
+      OTS_EXP_NAME: ${OTS_EXP_NAME}
+    volumes:
+      # CLUE Configs
+      - ./clue-config.yaml:/app/clue-config.yaml
+      - ./sut_configs:/app/sut_configs
 
   clue-deployer:
     image: ghcr.io/clue2-sose25/clue2/clue-deployer:latest

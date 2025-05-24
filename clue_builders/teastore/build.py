@@ -174,7 +174,7 @@ def switchBranch(sut_path, branch_name):
 
 def build_main():
     # Read BUILDER_EXPERIMENT_NAME environment variable, use "all" for default
-    exp_name = os.environ.get("BUILDER_EXPERIMENT_NAME", "all")
+    exp_name = os.environ.get("TEASTORE_EXP_NAME", "all")
     print(f"Starting Teastore Builder for experiment: {exp_name}")
     
     # Get the experiments directly from the config
