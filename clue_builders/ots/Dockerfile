@@ -18,8 +18,6 @@ RUN pip install --no-cache-dir --break-system-packages -r requirements.txt
 
 # copy config files and loaders
 COPY ./clue_deployer/src/config ./config
-COPY ./clue-config.yaml .
-COPY ./sut_configs/ots.yaml .
 
 ENTRYPOINT ["sh" , "entrypoint.sh"]
 

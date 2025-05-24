@@ -18,7 +18,7 @@ def load_configs():
         sys.exit(1)
     
     try:
-        with open("teastore.yaml", "r") as f:
+        with open("sut_configs/teastore.yaml", "r") as f:
             sut_config = yaml.safe_load(f)
     except FileNotFoundError:
         print("Error: teastore.yaml not found")
@@ -190,18 +190,8 @@ def switchBranch(sut_path, branch_name):
     return branch_name
 
 def build_main():
-    # Parse command line arguments
-    parser = argparse.ArgumentParser(description="Teastore Builder")
-    parser.add_argument(
-        "--exp", "-e",
-        help="Name of the experiment to build (default: all)",
-        default=None
-    )
-    args = parser.parse_args()
-    # Get the experiment name from command line argument or environment variable
-    # If not provided, default to "all"
-    exp_name = args.exp or os.environ.get("SUT_EXPERIMENT", "all")
-
+    # Read BUILDER_EXPERIMENT_NAME environment variable, use "all" for default
+    exp_name = os.environ.get("TEASTORE_EXP_NAME", "all")
     print(f"Starting Teastore Builder for experiment: {exp_name}")
     
     # Get the experiments directly from the config
