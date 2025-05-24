@@ -24,8 +24,6 @@ RUN python3 -m venv /opt/venv \
 
 # Copy the rest of your code & configs
 COPY clue_builders/teastore/ .  
-COPY clue-config.yaml .  
-COPY sut_configs/teastore.yaml .  
 
 # Ensure python/pip from your venv are first in PATH
 ENV PATH="/opt/venv/bin:${PATH}"

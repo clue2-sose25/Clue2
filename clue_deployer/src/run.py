@@ -1,4 +1,5 @@
 #! /usr/bin/env python3
+import os
 import click
 from clue_deployer.deploy import ExperimentDeployer
 from pathlib import Path
@@ -28,13 +29,12 @@ def available_suts():
     return sut_files
 
 
-#TODO make this work for other SUTs
-@click.command("run")
-@click.option("--sut", required=True, type=click.Choice(available_suts()))
-@click.option("--exp-name", required=True, type=click.STRING, help="Name of the experiment to run")
-def run(sut, exp_name):
+def run():
+    # Read the environment variables
+    sut = os.environ.get("SUT_NAME")
+    exp_name = os.environ.get("EXPERIMENT_NAME")
 
-    # TODO choose the correct sut_config and check if the experiment is available for the selected sut
+    # TODO: choose the correct sut_config and check if the experiment is available for the selected sut
 
     # Get the experiment object
     experiment_list = ExperimentList.load_experiments(RUN_CONFIG)

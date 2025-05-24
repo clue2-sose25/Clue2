@@ -13,27 +13,29 @@ class ExperimentList():
     experiments: list[Experiment]
 
     @staticmethod
-    def load_experiments(config: Config) -> "ExperimentList":
+    def load_experiments(config: Config, exp_name: str) -> "ExperimentList":
         """
         Load experiments from a YAML file and return an ExperimentList instance.
+        If exp_name is 'all', returns all experiments; otherwise, filters by exp_name.
         """
-        
-        
         experiments_config = config.experiments_config
-        
         experiments = []
+        
         for exp in experiments_config.experiments:
             # Create an Experiment instance for each experiment in the YAML file
             experiment = Experiment(
                 name=exp.name,
                 target_branch=exp.target_branch,
-                colocated_workload=exp.colocated_workload, #TODO default False
+                colocated_workload=exp.colocated_workload,  # TODO default False
                 env=ExperimentEnvironment(config),
-                autoscaling=ScalingExperimentSetting.CPUBOUND, #TODO customizable,
+                autoscaling=ScalingExperimentSetting.CPUBOUND,  # TODO customizable
                 critical_services=exp.critical_services,
                 config=config,
             )
-            experiments.append(experiment)
+            # Add experiment to list if exp_name is 'all' or matches experiment name
+            if exp_name == "all" or exp.name == exp_name:
+                experiments.append(experiment)
+        
         return ExperimentList(experiments=experiments)
     
     def __iter__(self):

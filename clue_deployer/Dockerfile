@@ -39,12 +39,6 @@ RUN uv sync
 
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Copy the configs
-
-COPY sut_configs/ /app/sut_configs
-
-COPY clue-config.yaml /app/clue-config.yaml
-
 # Fix the line endings
 
 RUN dos2unix /app/entrypoint.sh \
