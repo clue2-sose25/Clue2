@@ -1,5 +1,5 @@
 #! /usr/bin/env python3
-import click
+import os
 from clue_deployer.deploy import ExperimentDeployer
 from pathlib import Path
 from clue_deployer.experiment_list import ExperimentList
@@ -8,12 +8,11 @@ from config import Config
 #get the root directory of the project
 BASE_DIR = Path(__file__).resolve().parent.parent
 CONFIG_PATH = BASE_DIR.joinpath("clue-config.yaml")
-SUT_CONFIG_PATH = BASE_DIR / "sut_configs" / "teastore.yaml"
+SUT_NAME = os.environ.get("SUT_NAME")
+EXP_NAME = os.environ.get("EXPERIMENT_NAME")
+SUT_CONFIG_PATH = BASE_DIR / "sut_configs" / f"{SUT_NAME}.yaml"
 RUN_CONFIG = Config(SUT_CONFIG_PATH, CONFIG_PATH)
 
-@click.group()
-def cli():
-    pass
 
 def available_suts():
     """
@@ -28,17 +27,12 @@ def available_suts():
     return sut_files
 
 
-#TODO make this work for other SUTs
-@click.command("run")
-@click.option("--sut", required=True, type=click.Choice(available_suts()))
-@click.option("--exp-name", required=True, type=click.STRING, help="Name of the experiment to run")
-def run(sut, exp_name):
-
-    # TODO choose the correct sut_config and check if the experiment is available for the selected sut
+def run():
+    # TODO: choose the correct sut_config and check if the experiment is available for the selected sut
 
     # Get the experiment object
     experiment_list = ExperimentList.load_experiments(RUN_CONFIG)
-    experiments = [e for e in experiment_list if e.name == exp_name]
+    experiments = [e for e in experiment_list if e.name == EXP_NAME]
     if not len(experiments):
         raise ValueError("invalid experiment name- the following are the available experiments for teastore: " + str([e.name for e in experiment_list]))
     else:   

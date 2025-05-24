@@ -5,8 +5,8 @@ import argparse
 from config import Config
 
 DEMO_VERSION = "clue-ots"
-SUT_CONFIG = os.environ.get("SUT_CONFIG")
-CLUE_CONFIG = os.environ.get("CLUE_CONFIG")
+SUT_CONFIG = "/app/sut_configs/ots.yaml"
+CLUE_CONFIG = "/app/clue-config.yaml"
 SUT_PATH = "opentelemetry-demo"
 
 class OTSBuilder:
