@@ -22,6 +22,10 @@ COPY clue_deployers/src/config .
 COPY ./clue_config.yaml .
 COPY ./sut_configs/ots.yaml .
 
+# set environment variables
+ENV CLUE_CONFIG="/app/clue_config.yaml" \
+    SUT_CONFIG="ots.yaml"
+
 ENTRYPOINT ["sh" , "entrypoint.sh"]
 
 

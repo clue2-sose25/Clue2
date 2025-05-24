@@ -2,11 +2,14 @@
 import os
 import subprocess
 import argparse
+from config import Config
 
 DEMO_VERSION = "clue-ots"
+SUT_CONFIG = os.environ.get("SUT_CONFIG")
+CLUE_CONFIG = os.environ.get("CLUE_CONFIG")
 
 class OTSBuilder:
-    def __init__(self, config = "config", minimal: bool = False):
+    def __init__(self, config, minimal: bool = False):
         self.config = config
         self.minimal = minimal
         self.sut_repo = "https://github.com/JulianLegler/opentelemetry-demo"
@@ -91,6 +94,19 @@ class OTSBuilder:
             raise RuntimeError(f"Error pushing OTS image: {e}")
 
 
+def main(minimal: bool = False):
+    """
+    Main function to build and push the OTS image.
+    """
+    config = Config(
+        sut_config=SUT_CONFIG,
+        clue_config=CLUE_CONFIG
+    )
+    builder = OTSBuilder(config, minimal=minimal)
+    builder.check_docker_running()
+    builder.clone_repo()
+    builder.build()
+    builder.push()
 
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser(description="Build OTS images")
@@ -98,9 +114,4 @@ if __name__ == "__main__":
     args = argparser.parse_args()
 
 
-    #config = Config()
-    builder = OTSBuilder(minimal =args.minimal)
-    builder.clone_repo()
-    builder.build()
-    
-    builder.push()
+    main(minimal=args.minimal)
