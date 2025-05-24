@@ -15,6 +15,12 @@ from clue_deployer.experiment_workloads import get_workload_instance
 from clue_deployer.experiment_list import ExperimentList
 from clue_deployer.deploy import ExperimentDeployer
 
+BASE_DIR = Path(__file__).resolve().parent.parent
+CLUE_CONFIG_PATH = BASE_DIR.joinpath("clue-config.yaml")
+SUT_PATH = os.environ.get("SUT_NAME")
+EXP_NAME = os.environ.get("EXPERIMENT_NAME", "all")
+CONFIGS = Config(SUT_PATH, CLUE_CONFIG_PATH)
+
 logging.basicConfig()
 logging.getLogger().setLevel(logging.DEBUG)
 logging.getLogger("docker").setLevel(logging.INFO)
@@ -26,14 +32,14 @@ logging.debug("debug log level")
 config.load_kube_config()
 
 
-def run_experiment(configs: Config, exp: Experiment, observations_out_path):
+def run_experiment(exp: Experiment, observations_out_path):
     # Create the experiment folder
     try:
         os.makedirs(observations_out_path, exist_ok=False)
     except OSError:
         raise RuntimeError("Data for this experiment already exist, skipping")
     print("🏗️ Deploying the SUT...")
-    experiment_deployer = ExperimentDeployer(exp, configs)
+    experiment_deployer = ExperimentDeployer(exp, CONFIGS)
     experiment_deployer.execute_deployment()
     # Wait for the SUT
     print(f"😴 Waiting {exp.env.wait_before_workloads}s before starting workload")
@@ -48,7 +54,7 @@ def run_experiment(configs: Config, exp: Experiment, observations_out_path):
     time.sleep(60)
 
 
-def prepare_experiment(configs: Config, exp: Experiment, timestamp: str, num_iterations: int) -> None:
+def prepare_experiment(exp: Experiment, timestamp: str, num_iterations: int) -> None:
     
     print(f"ℹ️  New experiment: {exp}")
 
@@ -60,27 +66,19 @@ def prepare_experiment(configs: Config, exp: Experiment, timestamp: str, num_ite
 
         out_path = path.join(root, timestamp, tags, name, str(i))
 
-        print(f"▶️ running ({i + 1}/{num_iterations}) to {out_path}...")
-        run_experiment(configs, exp, out_path)
+        print(f"▶️ Running iteration ({i + 1}/{num_iterations}) with output to: {out_path}")
+        run_experiment(exp, out_path)
     
     print(f"Sleeping for 120s to let the system settle after one feature")
     time.sleep(120)
 
 def main():
-    # Read the environment variables
-    sut = os.environ.get("SUT_NAME")
-    exp_name = os.environ.get("EXPERIMENT_NAME", "all")
-    base_dir_path = Path(__file__).resolve().parent.parent
-    clue_config_path = base_dir_path.joinpath("clue-config.yaml")
-    sut_path = f"/app/sut_configs/{sut}.yaml"
-    configs = Config(sut_path, clue_config_path)
-    
     # Load the experiments
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    exps = ExperimentList.load_experiments(configs, exp_name)
+    exps = ExperimentList.load_experiments(CONFIGS, EXP_NAME)
     
     # Get the workloads
-    workloads = [get_workload_instance(w) for w in configs.clue_config.workloads]
+    workloads = [get_workload_instance(w) for w in CONFIGS.clue_config.workloads]
     exps.add_workloads(workloads)
 
     # Sort the experiments
@@ -91,7 +89,7 @@ def main():
     # TODO: Print not working with pg2
     # for exp in progressbar.progressbar(exps, redirect_stdout=True, redirect_stderr=True):
     for exp in exps:
-        prepare_experiment(configs, exp, timestamp, num_iterations=configs.sut_config.num_iterations)
+        prepare_experiment(exp, timestamp, num_iterations=CONFIGS.sut_config.num_iterations)
 
 if __name__ == "__main__":
     main()
