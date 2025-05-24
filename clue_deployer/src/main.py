@@ -8,12 +8,16 @@ import progressbar
 from kubernetes import config
 from tabulate import tabulate
 import logging
+import urllib3
 from clue_deployer.config import Config
 from clue_deployer.experiment import Experiment
 from clue_deployer.experiment_runner import ExperimentRunner
 from clue_deployer.experiment_workloads import get_workload_instance
 from clue_deployer.experiment_list import ExperimentList
 from clue_deployer.deploy import ExperimentDeployer
+
+# TODO: Implement secure connection
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 CLUE_CONFIG_PATH = BASE_DIR.joinpath("clue-config.yaml")
