@@ -9,10 +9,31 @@ class OTSBuilder:
     def __init__(self, config = "config", minimal: bool = False):
         self.config = config
         self.minimal = minimal
-        self.sut_path = "/home/leonardo/Studium/cloud_prototyping/opentelemetry-demo"
+        self.sut_repo = "https://github.com/JulianLegler/opentelemetry-demo"
         self.docker_registry_address = "localhost:6789/clue"#config.sut_config.docker_registry_address
         self.image_version = "latest"
         self._set_envs()
+    
+    def check_docker_running(self):
+        """
+        Check if Docker is running.
+        """
+        try:
+            subprocess.run(["docker", "info"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            print("Docker is running.")
+        except subprocess.CalledProcessError:
+            raise RuntimeError("Docker is not running. Please start Docker and try again.")
+
+    def clone_repo(self):
+        """
+        Clone the OTS repository if it does not exist.
+        """
+        if not os.path.exists("opentelemetry-demo"):
+            print("Cloning OTS repository...")
+            subprocess.run(["git", "clone", self.sut_repo, "opentelemetry-demo"])
+            print("OTS repository cloned successfully.")
+        else:
+            print("OTS repository already exists. Skipping clone.")
 
     def _set_envs(self):
         """
@@ -74,13 +95,12 @@ class OTSBuilder:
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser(description="Build OTS images")
     argparser.add_argument("--minimal", "-m", action="store_true", help="Build minimal OTS image")
-    argparser.add_argument("--skip-build", "-s", action="store_true", help="Skip building the OTS image")
     args = argparser.parse_args()
 
 
     #config = Config()
     builder = OTSBuilder(minimal =args.minimal)
-    if not args.skip_build:
-        builder.build()
+    builder.clone_repo()
+    builder.build()
     
     builder.push()
