@@ -172,7 +172,7 @@ def build_workload(experiment):
                 "-t", tag,
                 ".",
             ],
-            cwd=path.join("workload-generator"),
+            cwd=path.join("workload_generator"),
         )
         if build != 0:
             raise RuntimeError("Failed to build the workload generator")
