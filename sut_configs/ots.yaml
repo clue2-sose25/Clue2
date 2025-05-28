@@ -2,8 +2,8 @@ config:
   namespace: "ots-demo"
   sut_git_repo: "https://github.com/JulianLegler/opentelemetry-demo.git"
   sut_path: "opentelemetry-demo"
-  helm_chart_path: "TODO"
-  values_yaml_name: "TODO"
+  helm_chart_path: "../ots-helmcharts/charts/opentelemetry-demo"
+  values_yaml_name: "values.yaml"
   target_service_name: "otel-demo" # The k8s service name (used for in-cluster communication)
   application_endpoint_path: "/" # The specific path
   default_resource_limits:
@@ -18,19 +18,96 @@ config:
 
 #TODO
 services:
-  - name: "otel-demo"
+  - name: "checkout"
+    resource_limits: # You can override defaults here if needed
+      cpu: 500      # Using default
+      memory: 512   # Using default
+  - name: "product-catalog"
     resource_limits:
-      cpu: 450
+      cpu: 500
+      memory: 512
+  - name: "ad"
+    resource_limits:
+      cpu: 500
+      memory: 512
+  - name: "frontend-proxy" # Often a key entry point
+    resource_limits:
+      cpu: 750      # Example: slightly higher for a proxy
+      memory: 768
+  - name: "fraud-detection"
+    resource_limits:
+      cpu: 500
+      memory: 512
+  - name: "currency"
+    resource_limits:
+      cpu: 500
+      memory: 512
+  - name: "frontend" # This is different from frontend-proxy
+    resource_limits:
+      cpu: 750
+      memory: 768
+  - name: "image-provider"
+    resource_limits:
+      cpu: 500
+      memory: 512
+  - name: "email"
+    resource_limits:
+      cpu: 500
+      memory: 512
+  - name: "accounting"
+    resource_limits:
+      cpu: 500
+      memory: 512
+  - name: "cart"
+    resource_limits:
+      cpu: 500
+      memory: 512
+  - name: "kafka" # Infrastructure component, might need different defaults
+    resource_limits:
+      cpu: 1000
       memory: 1024
+  - name: "recommendation"
+    resource_limits:
+      cpu: 500
+      memory: 512
+  - name: "shipping"
+    resource_limits:
+      cpu: 500
+      memory: 512
+  - name: "quote"
+    resource_limits:
+      cpu: 500
+      memory: 512
+  - name: "payment"
+    resource_limits:
+      cpu: 500
+      memory: 512
+  - name: "flagd-ui" # UI for feature flags, might be less critical for performance
+    resource_limits:
+      cpu: 250
+      memory: 256
 
 #TODO
 experiments:
   - name: "baseline"
-    target_branch: "vanilla"
+    target_branch: "main"
     colocated_workload: true
-    critical_services: ['teastore-auth', 'teastore-registry', 'teastore-webui']
-  # - name: "serverless"
-  #   target_branch: "serverless"
-  #   colocated_workload: true
-  #   critical_services: ["teastore-registry", "teastore-webui"]
+    critical_services: [
+      "checkout",
+      "product-catalog",
+      "ad",
+      "frontend-proxy",
+      "fraud-detection",
+      "currency",
+      "frontend",
+      "image-provider",
+      "email",
+      "accounting",
+      "cart",
+      "kafka",
+      "recommendation",
+      "shipping",
+      "quote",
+      "payment"
+    ]
   
