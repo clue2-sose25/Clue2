@@ -1,5 +1,5 @@
 const BenchmarksPage = () => {
-  return <div>Benchmarks Page</div>;
+  return <div>Previous benchmarks</div>;
 };
 
 export default BenchmarksPage;

@@ -1,5 +1,5 @@
 const ControlsPage = () => {
-  return <div>Controls Page</div>;
+  return <div>Control Panel</div>;
 };
 
 export default ControlsPage;

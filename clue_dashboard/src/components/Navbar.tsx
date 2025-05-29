@@ -2,16 +2,24 @@ import {NavLink} from "react-router";
 
 const Navbar = () => {
   const pages = [
-    {name: "Control Panel", href: "/"},
-    {name: "Results Analysis", href: "/results"},
-    {name: "Previous Benchmarks", href: "/benchmarks"},
+    {name: "CONTROL PANEL", href: "/"},
+    {name: "ANALYSIS", href: "/results"},
+    {name: "ARCHIVE", href: "/benchmarks"},
   ];
 
   return (
-    <div className="flex w-full border-b justify-center">
-      <div className="w-1/2 flex justify-between p-4">
+    <div className="flex w-full border-b justify-between shadow-sm p-4 ">
+      <div className="font-semibold flex flex-col">
+        <div className="text-xl">CLUE</div>
+        <div className="text-xs">DASHBOARD</div>
+      </div>
+      <div className="flex gap-8">
         {pages.map((page) => {
-          return <NavLink to={page.href}>{page.name}</NavLink>;
+          return (
+            <NavLink className="flex items-center text-sm" to={page.href}>
+              {page.name}
+            </NavLink>
+          );
         })}
       </div>
     </div>
