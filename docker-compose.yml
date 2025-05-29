@@ -12,41 +12,22 @@ services:
     volumes:
       - registry-data:/var/lib/registry
 
-  # The optional Teastore builder
-  teastore-builder:
-    image: ghcr.io/clue2-sose25/clue2/teastore-builder:latest
-    build:
-      context: .
-      dockerfile: ./clue_builders/teastore/Dockerfile
-    container_name: teastore-builder
-    privileged: true
-    depends_on:
-      - registry
+  # The CLUE dashboard
+  clue-dashboard:
+    image: ghcr.io/clue2-sose25/clue2/clue-dashboard:latest
+    build: 
+      context: ./clue_dashboard
+      dockerfile: Dockerfile
+    container_name: clue-dashboard
+    ports:
+      - "3000:80"
+    # Uncomment when deployer is transitioned into a service 
+    # depends_on:
+    #   - clue-deployer
     environment:
       DOCKER_BUILDKIT: 1
-      TEASTORE_EXP_NAME: ${TEASTORE_EXP_NAME}
-    volumes:
-      # CLUE Configs
-      - ./clue-config.yaml:/app/clue-config.yaml
-      - ./sut_configs:/app/sut_configs
 
-  ots-builder:
-    image: ghcr.io/clue2-sose25/clue2/ots-builder:latest
-    build:
-      context: .
-      dockerfile: ./clue_builders/ots/Dockerfile
-    container_name: ots-builder
-    privileged: true
-    depends_on:
-      - registry
-    environment:
-      DOCKER_BUILDKIT: 1
-      OTS_EXP_NAME: ${OTS_EXP_NAME}
-    volumes:
-      # CLUE Configs
-      - ./clue-config.yaml:/app/clue-config.yaml
-      - ./sut_configs:/app/sut_configs
-
+  # The main CLUE deployer
   clue-deployer:
     image: ghcr.io/clue2-sose25/clue2/clue-deployer:latest
     build:
@@ -72,6 +53,42 @@ services:
     # needed for linux systems
     extra_hosts:
       - "host.internal:host-gateway"
+    
+  # The optional Teastore builder
+  teastore-builder:
+    image: ghcr.io/clue2-sose25/clue2/teastore-builder:latest
+    build:
+      context: .
+      dockerfile: ./clue_builders/teastore/Dockerfile
+    container_name: teastore-builder
+    privileged: true
+    depends_on:
+      - registry
+    environment:
+      DOCKER_BUILDKIT: 1
+      TEASTORE_EXP_NAME: ${TEASTORE_EXP_NAME}
+    volumes:
+      # CLUE Configs
+      - ./clue-config.yaml:/app/clue-config.yaml
+      - ./sut_configs:/app/sut_configs
+
+  # The optional Open Telemetry Shop builder
+  ots-builder:
+    image: ghcr.io/clue2-sose25/clue2/ots-builder:latest
+    build:
+      context: .
+      dockerfile: ./clue_builders/ots/Dockerfile
+    container_name: ots-builder
+    privileged: true
+    depends_on:
+      - registry
+    environment:
+      DOCKER_BUILDKIT: 1
+      OTS_EXP_NAME: ${OTS_EXP_NAME}
+    volumes:
+      # CLUE Configs
+      - ./clue-config.yaml:/app/clue-config.yaml
+      - ./sut_configs:/app/sut_configs
 
 volumes:
   registry-data:
