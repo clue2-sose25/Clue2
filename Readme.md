@@ -109,6 +109,8 @@ To build images for the selected SUT, use one of the commands listed below.
   docker compose up -d --build ots-builder
   ```
 
+Wait for the selected builder to be finished, indicated by its container showing a status `Exited`. To check if the images have been successfully stored in the registry, visit the `http://localhost:6789/v2/_catalog` page.
+
 ### 4. 🧪 SUT Test Deployment (without running the benchmark)
 
 For a test deployment of the SUT, without running the benchmark itself, open the `.env` file and change the `DEPLOY_ONLY` value to `true`. Make sure that all required images are present in the specified image registry. Next, run the deployer:
@@ -138,7 +140,7 @@ Some SUT may run some initial tasks on the startup, so before accessing the SUT,
 To run the main CLUE2, run the task below. Make sure that all required images are present in the specified image registry.
 
 ```bash
-docker compose up -d --build teastore-deployer
+docker compose up -d --build clue-deployer
 ```
 
 ![Running the Experiments](readme/running_experiments.png)
