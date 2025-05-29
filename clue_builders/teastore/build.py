@@ -191,7 +191,11 @@ def switchBranch(sut_path, branch_name):
 
 def build_main():
     # Read BUILDER_EXPERIMENT_NAME environment variable, use "all" for default
-    exp_name = os.environ.get("TEASTORE_EXP_NAME", "all")
+    exp_name = os.environ.get("TEASTORE_EXP_NAME", "all").lower().strip()
+    
+    # Allow multiple experiments per comma: ‘baseline,serverless’
+    exp_list = [e.strip() for e in exp_name.split(",") if e.strip()]
+
     print(f"Starting Teastore Builder for experiment: {exp_name}")
     
     # Get the experiments directly from the config
@@ -211,14 +215,14 @@ def build_main():
         })()
         experiments.append(exp)
     
-    # If SUT_EXPERIMENT is "all" or unset, build all experiments
-    if not exp_name or exp_name.lower() == "all":
+    # If TEASTORE_EXP_NAME is "all" or unset, build all experiments
+    if "all" in exp_list:
         selected_experiments = experiments
     else:
         # Look for the specified experiment
-        selected_experiments = [e for e in experiments if e.name == exp_name]
+        selected_experiments = [e for e in experiments if e.name.lower() in exp_list]
         if not selected_experiments:
-            print(f"Experiment {exp_name} not found")
+            print(f"No experiment found for: {exp_list}")
             sys.exit(1)  # Exit with error if experiment not found
     
     # Build the teastore images
