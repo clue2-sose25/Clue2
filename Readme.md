@@ -117,7 +117,7 @@ For a test deployment of the SUT, without running the benchmark itself, open the
 docker compose up -d --build teastore-deployer
 ```
 
-You can adjust the deployment to your needs via the environment variables inside the `.env` file, where `SUT` is the name of the SUT config inside of the `sut_configs` directory, and the `EXPERIMENT` is the name of the branch containing the desired experiment.
+You can adjust the deployment to your needs via the environment variables inside the `.env` file, where `SUT_NAME` is the name of the SUT config inside of the `sut_configs` directory, and the `EXPERIMENT_NAME` is the name of the branch containing the desired experiment.
 
 As currently the port forwarding is broken, you need to execute this command after the depoyment finished before the waiting period is over on your host machine:
 
@@ -143,7 +143,7 @@ docker compose up -d --build teastore-deployer
 
 ![Running the Experiments](readme/running_experiments.png)
 
-### 6. 📋 (Optional) CLUE2 Deployment with local
+### 6. 📋 (Optional) CLUE2 Deployment with local changes
 
 If you create your own variants or make changes to the SUT, the images need to be rebuilt and pushed to the image registry specified in the config. Make sure to run `docker login` in case authentication is needed.
 
