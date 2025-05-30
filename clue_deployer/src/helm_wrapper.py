@@ -88,7 +88,7 @@ class HelmWrapper():
             r"nodeSelector: {}", r'nodeSelector: {"scaphandre": "true"}'
         )
         values = values.replace("pullPolicy: IfNotPresent", "pullPolicy: Always")
-        values = values.replace(r'tag: ""', r'tag: "latest"')
+        values = values.replace(r'tag: ""', r'tag: "vanilla"')
         if self.autoscaling:
             values = values.replace(r"enabled: false", "enabled: true")
             # values = values.replace(r"clientside_loadbalancer: false",r"clientside_loadbalancer: true")
