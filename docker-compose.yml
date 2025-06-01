@@ -17,13 +17,13 @@ services:
   # The CLUE dashboard
   clue-dashboard:
     image: ghcr.io/clue2-sose25/clue2/clue-dashboard:latest
-    build: 
+    build:
       context: ./clue_dashboard
       dockerfile: Dockerfile
     container_name: clue-dashboard
     ports:
-      - "5001:80"
-    # Uncomment when deployer is transitioned into a service 
+      - "3000:80"
+    # Uncomment when deployer is transitioned into a service
     # depends_on:
     #   - clue-deployer
     environment:
@@ -46,6 +46,7 @@ services:
       SUT_NAME: ${SUT_NAME}
       EXPERIMENT_NAME: ${EXPERIMENT_NAME}
       DEPLOY_ONLY: ${DEPLOY_ONLY}
+      AS_SERVICE: ${AS_SERVICE}
     volumes:
       # CLUE Configs
       - ./clue-config.yaml:/app/clue-config.yaml
@@ -57,8 +58,8 @@ services:
     # needed for linux systems
     extra_hosts:
       - "host.internal:host-gateway"
-    networks:
-      - clue2
+    ports:
+      - "8000:8000" # Expose the deployer port
 
   # The optional Teastore builder
   teastore-builder:

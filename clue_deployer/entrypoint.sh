@@ -15,6 +15,11 @@ if [ "$DEPLOY_ONLY" = "true" ]; then
     exit 0
 fi
 
+if [ "AS_SERVICE" = "true" ]; then
+    echo "Starting FastAPI service..."
+    exec fastapi dev service.py --host 0.0.0.0 --port 8000
+    exit 0
+fi
 # Deploy the specified SUT and experiment
 echo "Deploying and executing selected SUT experiments"
 exec uv run clue_deployer/main.py

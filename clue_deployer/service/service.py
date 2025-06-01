@@ -7,7 +7,7 @@ from clue_deployer.config import Config, SutConfig, ClueConfig
 app = FastAPI()
 
 SUT_CONFIGS_DIR = os.getenv("SUT_CONFIGS_PATH", "/app/sut_configs")
-RESULTS_DIR = os.getenv("RESULTS_PATH", "/app/results")
+RESULTS_DIR = os.getenv("RESULTS_PATH", "/app/data")
 
 class HealthResponse(BaseModel):
     message: str
@@ -51,15 +51,44 @@ async def list_experiments():
 
 @app.get("list/results", StringListResponse)
 async def list_results():
-    """List all results."""
+    """List all result timestamps."""
     try:
         if not os.path.isdir(RESULTS_DIR):
             raise HTTPException(status_code=404, detail=f"Results directory not found: {RESULTS_DIR}")
-        for subdir in os.listdir(RESULTS_DIR):
-            pass  # Ensure the subdirectory is a directory
+        
+        results = [subdir.strip() for subdir in os.listdir(RESULTS_DIR)]
+
+        return ResultListResponse(results=results)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while listing results: {str(e)}")
 
+@app.get("/result/{timestamp}", response_model=ResultListResponse)
+async def get_result(timestamp: str):
+    """Get results for a specific timestamp."""
+    cleaned_timestamp = timestamp.strip()
+    result_path = os.path.join(RESULTS_DIR, cleaned_timestamp)
+    if not os.path.isdir(result_path):
+        raise HTTPException(status_code=404, detail=f"Results not found for timestamp: {timestamp}")
+    
+    try:
+        results = []
+        for workload in os.listdir(result_path):
+            workload = workload.strip()
+            workload_path = os.path.join(result_path, workload)
+            for branch in os.listdir(workload_path):
+                branch = branch.strip()
+                branch_path = os.path.join(workload_path, branch)
+                for exp_num in os.listdir(branch_path):
+                    exp_num = exp_num.strip()
+                    results.append(Result(
+                        timestamp=cleaned_timestamp,
+                        workload=workload,
+                        branch_name=branch,
+                        experiment_number=int(exp_num)
+                    ))
+        return ResultListResponse(results=results)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving results: {str(e)}")
 
 @app.get("/sut/{sut_name}", response_model=SutConfig)
 async def get_sut(sut_name: str):
