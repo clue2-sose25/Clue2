@@ -116,7 +116,7 @@ Wait for the selected builder to be finished, indicated by its container showing
 For a test deployment of the SUT, without running the benchmark itself, open the `.env` file and change the `DEPLOY_ONLY` value to `true`. Make sure that all required images are present in the specified image registry. Next, run the deployer:
 
 ```bash
-docker compose up -d --build teastore-deployer
+docker compose up -d --build clue-deployer
 ```
 
 You can adjust the deployment to your needs via the environment variables inside the `.env` file, where `SUT_NAME` is the name of the SUT config inside of the `sut_configs` directory, and the `EXPERIMENT_NAME` is the name of the branch containing the desired experiment.
