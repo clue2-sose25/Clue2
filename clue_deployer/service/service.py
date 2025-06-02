@@ -49,7 +49,7 @@ async def list_sut():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while listing SUTs: {str(e)}")
 
-@app.get("list/experiments", response_model=StringListResponse)
+@app.get("/list/experiments", response_model=StringListResponse)
 async def list_experiments():
     """List all experiments."""
     try:
@@ -58,7 +58,7 @@ async def list_experiments():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while listing experiments: {str(e)}")
 
-@app.get("list/results", StringListResponse)
+@app.get("/list/results", response_model=StringListResponse)
 async def list_results():
     """List all result timestamps."""
     try:
