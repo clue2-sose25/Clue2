@@ -1,5 +1,11 @@
 #!/bin/sh
 set -e
+# Environment variable fallbacks
+: "${AS_SERVICE:=false}"
+: "${DEPLOY_ONLY:=false}"
+
+
+echo "Starting with deploy $DEPLOY_ONLY, service_type $AS_SERVICE, and SUT: $SUT_NAME, Experiment: $EXPERIMENT_NAME if defined :/"
 
 # Patch the kubeconfig to allow access to clusters running on the host
 python3 /app/patch_kubeconfig.py
