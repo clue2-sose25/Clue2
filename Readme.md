@@ -43,7 +43,7 @@ docker compose up -d registry
 We recommend using `Kind` cluster for local testing, providing a config file for easier deployment of the cluster. The cluster is configured to allow the usage of the local unsecure registry and to deploy the required number of nodes (at least 2) with designated node labels. Deploy the pre-configured cluster using:
 
 ```bash
-kind create cluster --config ./cluster_configs/kind/kind-config.yaml
+kind create cluster --config ./cluster_configs/kind/kind-config.yaml --network common-net
 ```
 
 #### 2. ✨ Minikube
@@ -51,7 +51,7 @@ kind create cluster --config ./cluster_configs/kind/kind-config.yaml
 We also support `Minikube` cluster, however it requires a more manual setup. In case you already have created a minikube cluster before you will have to recreate it in order to allow insecure registries. Use this command to create a new cluster:
 
 ```bash
-minikube start --cni=flannel --insecure-registry "host.internal:6789" --cpus 8 --memory 12000
+minikube start --cni=flannel --insecure-registry "host.internal:5000" --cpus 8 --memory 12000
 ```
 
 Next, deploy an additional node to allow running the workload generator (which can not run on the same node as the experiment itself to not spoil the final readings):
@@ -109,7 +109,7 @@ To build images for the selected SUT, use one of the commands listed below.
   docker compose up -d --build ots-builder
   ```
 
-Wait for the selected builder to be finished, indicated by its container showing a status `Exited`. To check if the images have been successfully stored in the registry, visit the `http://localhost:6789/v2/_catalog` page.
+Wait for the selected builder to be finished, indicated by its container showing a status `Exited`. To check if the images have been successfully stored in the registry, visit the `http://localhost:5000/v2/_catalog` page.
 
 ### 4. 🧪 SUT Test Deployment (without running the benchmark)
 
