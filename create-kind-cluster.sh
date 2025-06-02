@@ -2,7 +2,7 @@
 set -e
 
 CLUSTER_NAME=clue-cluster
-NETWORK_NAME=common-net
+NETWORK_NAME=clue2
 KIND_CONFIG=./cluster_configs/kind/kind-config.yaml
 
 # Create network if it doesn't exist
