@@ -13,6 +13,7 @@ from clue_deployer.experiment import Experiment
 from clue_deployer.scaling_experiment_setting import ScalingExperimentSetting 
 from config import Config # Assuming this is your main combined config object
 from clue_deployer.autoscaling_deployer import AutoscalingDeployer
+from clue_deployer.status_manager import StatusManager, Phase
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent # Adjust if deploy.py is not 3 levels down from project root
