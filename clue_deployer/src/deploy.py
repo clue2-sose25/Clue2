@@ -207,6 +207,7 @@ class ExperimentDeployer:
         """
         Orchestrates the full deployment process for the experiment.
         """
+        StatusManager.set(Phase.DEPLOYING_SUT, "Deploying SUT...")
         print(f"--- Starting Deployment for Experiment: {self.experiment.name} ---")
         self._create_namespace_if_not_exists()
         self._check_labeled_node_available() # Checks for "scaphandre=true"
@@ -218,13 +219,15 @@ class ExperimentDeployer:
         with self.helm_wrapper as hw:
             self._patch_helm_deployment(hw)
             self._deploy_helm_chart(hw)
+        
+        StatusManager.set(Phase.WAITING, "Waiting for system to stabilize...")
         # Wait for the critical services
         self._wait_until_services_ready()
         
         if self.experiment.autoscaling:
             print("Autoscaling is enabled. Deploying autoscaling...")
             AutoscalingDeployer(self.experiment).setup_autoscaling()
-    
+        StatusManager.set(Phase.WAITING, "Waiting for load generate...")
         print("Deployment complete. You can now run the experiment.")
         
     def clone_sut(self):
