@@ -43,7 +43,7 @@ docker compose up -d registry
 We recommend using `Kind` cluster for local testing, providing a config file for easier deployment of the cluster. The cluster is configured to allow the usage of the local unsecure registry and to deploy the required number of nodes (at least 2) with designated node labels. Deploy the pre-configured cluster using:
 
 ```bash
-kind create cluster --config ./cluster_configs/kind/kind-config.yaml --network common-net
+sh create-kind-cluster.sh
 ```
 
 #### 2. ✨ Minikube
