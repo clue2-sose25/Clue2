@@ -4,7 +4,7 @@ from fastapi import FastAPI, HTTPException
 from clue_deployer import main
 from clue_deployer.config import Config, SutConfig, ClueConfig
 
-app = FastAPI()
+app = FastAPI(title="CLUE Deployer Service")
 
 SUT_CONFIGS_DIR = os.getenv("SUT_CONFIGS_PATH", "/app/sut_configs")
 RESULTS_DIR = os.getenv("RESULTS_PATH", "/app/data")
@@ -23,6 +23,15 @@ class Result(BaseModel):
 
 class ResultListResponse(BaseModel):
     results: list[Result]
+    
+class StatusOut(BaseModel):
+    phase: Phase
+    message: str | None = None
+ 
+@app.get("/status", response_model=StatusOut)
+def read_status():
+    phase, msg = StatusManager.get()
+    return StatusOut(phase=phase, message=msg or None)
 
 @app.get("/health")
 async def root():
