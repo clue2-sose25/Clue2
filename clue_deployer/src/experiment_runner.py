@@ -9,7 +9,7 @@ from clue_deployer.workload_cancelled_exception import WorkloadCancelled
 from clue_deployer.flushing_queue import FlushingQueue
 from clue_deployer.workload_runner import WorkloadRunner
 from clue_deployer.helm_wrapper import HelmWrapper
-from clue_deployer.status_manager import StatusManager, Phase
+from clue_deployer.service.status_manager import StatusManager, Phase
 
 from psc import ResourceTracker, NodeUsage
 from os import path
