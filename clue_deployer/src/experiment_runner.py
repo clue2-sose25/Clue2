@@ -116,7 +116,7 @@ class ExperimentRunner:
                 wlr.run_workload(observations_out_path)
             except WorkloadCancelled:
                 logging.info("Workload stopped due to cancellation")
-
+            StatusManager.set(Phase.DONE, " Expermint Done, flushing channels :)")
             logging.info("finished running workload, stopping trackers and flushing channels")
             # stop resource tracker
             tracker.stop()
