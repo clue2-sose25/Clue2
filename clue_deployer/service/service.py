@@ -1,10 +1,27 @@
 import os
+import logging
+
+
 from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException
 from clue_deployer import main
 from clue_deployer.config import Config, SutConfig, ClueConfig
 
 app = FastAPI(title="CLUE Deployer Service")
+
+# Setup für Logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+# ENV test
+for var in ["SUT_NAME", "EXPERIMENT_NAME"]:
+    if not os.getenv(var):
+        logger.warning(f"⚠️ ENV-Variable {var} is not setted .")
+
+logger.info(f"SUT={os.getenv('SUT_NAME')}, EXPERIMENT={os.getenv('EXPERIMENT_NAME')}")
 
 SUT_CONFIGS_DIR = os.getenv("SUT_CONFIGS_PATH", "/app/sut_configs")
 RESULTS_DIR = os.getenv("RESULTS_PATH", "/app/data")
