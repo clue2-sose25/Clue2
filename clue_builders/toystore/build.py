@@ -9,9 +9,8 @@ CLUE_CONFIG = "/app/clue-config.yaml"
 SUT_PATH = "toystore"
 
 class ToystoreBuilder:
-    def __init__(self, config, minimal: bool = False):
+    def __init__(self, config):
         self.config = config
-        self.minimal = minimal
         self.sut_repo = config.sut_config.sut_git_repo
         self.docker_registry_address = "registry:5000/clue"
         self.image_version = "latest"
@@ -57,18 +56,11 @@ class ToystoreBuilder:
         Build the SUT image using Docker.
         """
         try:
-            if self.minimal:
-                print("Building minimal SUT image...")
-                subprocess.run(
-                    ["docker", "compose", "-f", "docker-compose.minimal.yml", "build", ]
-                    , cwd=self.sut_path
-                )
-            else:
-                print("Building SUT image...")
-                subprocess.run(
-                    ["docker", "compose", "build"]
-                    , cwd=self.sut_path
-                )
+            print("Building SUT image...")
+            subprocess.run(
+                ["docker", "compose", "build"]
+                , cwd=self.sut_path
+            )
             print("SUT image built successfully.")
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Error building SUT image: {e}")
@@ -79,24 +71,17 @@ class ToystoreBuilder:
         Push the SUT image to the Docker registry.
         """
         try:
-            if self.minimal:
-                print("Pushing minimal SUT image to Docker registry...")
-                subprocess.run(
-                    ["docker", "compose", "-f", "docker-compose.minimal.yml", "push"]
-                    , cwd=self.sut_path
-                )
-            else:
-                print("Pushing SUT image to Docker registry...")
-                subprocess.run(
-                    ["docker", "compose", "push"]
-                    , cwd=self.sut_path
-                )
+            print("Pushing SUT image to Docker registry...")
+            subprocess.run(
+                ["docker", "compose", "push"]
+                , cwd=self.sut_path
+            )
             print("SUT images pushed successfully.")
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Error pushing SUT image: {e}")
 
 
-def main(minimal: bool = False):
+def main():
     """
     Main function to build and push the SUT image.
     """
@@ -104,15 +89,14 @@ def main(minimal: bool = False):
         sut_config=SUT_CONFIG,
         clue_config=CLUE_CONFIG
     )
-    builder = ToystoreBuilder(config, minimal=minimal)
+    builder = ToystoreBuilder(config)
     builder.check_docker_running()
     builder.build()
     builder.push()
 
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser(description="Build SUT images")
-    argparser.add_argument("--minimal", "-m", action="store_true", help="Build minimal SUT image")
     args = argparser.parse_args()
 
 
-    main(minimal=args.minimal)
+    main()
