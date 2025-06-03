@@ -23,7 +23,7 @@ fi
 
 if [ "$AS_SERVICE" = "true" ]; then
     echo "Starting FastAPI service..."
-    exec fastapi dev service.py --host 0.0.0.0 --port 8000
+    exec uvicorn clue_deployer.service.service:app --host 0.0.0.0 --port 8000
     exit 0
 fi
 # Deploy the specified SUT and experiment
