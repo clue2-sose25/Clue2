@@ -3,7 +3,7 @@ set -e
 
 CLUSTER_NAME=clue-cluster
 NETWORK_NAME=clue2
-KIND_CONFIG=./cluster_configs/kind/kind-config.yaml
+KIND_CONFIG=./kind-config.yaml
 
 # Create network if it doesn't exist
 docker network inspect $NETWORK_NAME >/dev/null 2>&1 || {
