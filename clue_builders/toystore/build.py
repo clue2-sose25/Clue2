@@ -28,6 +28,16 @@ class ToystoreBuilder:
         except subprocess.CalledProcessError:
             raise RuntimeError("Docker is not running. Please start Docker and try again.")
 
+    def check_buildx_available(self):
+        """
+        Check if Docker Buildx is available (it should be by default in modern Docker).
+        """
+        try:
+            subprocess.run(["docker", "buildx", "version"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            print("Docker Buildx is available.")
+        except subprocess.CalledProcessError:
+            raise RuntimeError("Docker Buildx is not available. Please update Docker to a recent version.")
+
     def _clone_repo(self):
         """
         Clone the SUT repository if it does not exist.
@@ -51,34 +61,17 @@ class ToystoreBuilder:
         print(f"IMAGE_NAME: {os.environ['IMAGE_NAME']}")
         print(f"IMAGE_VERSION: {os.environ['IMAGE_VERSION']}")
     
-    def build(self):
+    def build_and_push(self):
         """
-        Build the SUT image using Docker.
+        Build and push the SUT images using Docker Buildx with docker-compose.
         """
-        try:
-            print("Building SUT image...")
-            subprocess.run(
-                ["docker", "compose", "build"]
-                , cwd=self.sut_path
-            )
-            print("SUT image built successfully.")
-        except subprocess.CalledProcessError as e:
-            raise RuntimeError(f"Error building SUT image: {e}")
-
-        
-    def push(self):
-        """
-        Push the SUT image to the Docker registry.
-        """
-        try:
-            print("Pushing SUT image to Docker registry...")
-            subprocess.run(
-                ["docker", "compose", "push"]
-                , cwd=self.sut_path
-            )
-            print("SUT images pushed successfully.")
-        except subprocess.CalledProcessError as e:
-            raise RuntimeError(f"Error pushing SUT image: {e}")
+        print("Building and pushing SUT images using Buildx...")
+        subprocess.run([
+            "docker", "buildx", "bake",
+            "--push",
+            "--file", "docker-compose.yml"
+        ], cwd=self.sut_path, check=True)
+        print("SUT images built and pushed successfully using Buildx bake.")
 
 
 def main():
@@ -91,12 +84,10 @@ def main():
     )
     builder = ToystoreBuilder(config)
     builder.check_docker_running()
-    builder.build()
-    builder.push()
+    builder.check_buildx_available()
+    builder.build_and_push()
 
 if __name__ == "__main__":
-    argparser = argparse.ArgumentParser(description="Build SUT images")
+    argparser = argparse.ArgumentParser(description="Build SUT images using Docker Buildx")
     args = argparser.parse_args()
-
-
     main()
