@@ -5,6 +5,7 @@ RUN apk update \
     && apk add --no-cache \
     git \
     python3 \
+    dos2unix \
     py3-pip 
 
 WORKDIR /app
@@ -18,6 +19,10 @@ RUN pip install --no-cache-dir --break-system-packages -r requirements.txt
 
 # copy config files and loaders
 COPY ./clue_deployer/src/config ./config
+
+# Convert line endings and make executable
+RUN dos2unix /app/entrypoint.sh \
+     && chmod +x /app/entrypoint.sh
 
 ENTRYPOINT ["sh" , "entrypoint.sh"]
 
