@@ -70,6 +70,11 @@ To build images for the selected SUT, use one of the commands listed below.
   docker compose up -d --build ots-builder
   ```
 
+- Toystore (custom, simple SUT)
+  ```bash
+  docker compose up -d --build toystore-builder
+  ```
+
 Wait for the selected builder to be finished, indicated by its container showing a status `Exited`. To check if the images have been successfully stored in the registry, visit the `http://localhost:9000/v2/_catalog` page.
 
 ### 4. 🧪 SUT Test Deployment (without running the benchmark)
