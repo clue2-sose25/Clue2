@@ -6,11 +6,13 @@ services:
     image: registry:2
     container_name: registry
     ports:
-      - "6789:5000"
+      - "9000:5000"
     environment:
       DOCKER_BUILDKIT: 1
     volumes:
       - registry-data:/var/lib/registry
+    networks:
+      - clue2
 
   # The CLUE dashboard
   clue-dashboard:
@@ -20,12 +22,14 @@ services:
       dockerfile: Dockerfile
     container_name: clue-dashboard
     ports:
-      - "3000:80"
+      - "5001:80"
     # Uncomment when deployer is transitioned into a service 
     # depends_on:
     #   - clue-deployer
     environment:
       DOCKER_BUILDKIT: 1
+    networks:
+      - clue2
 
   # The main CLUE deployer
   clue-deployer:
@@ -53,7 +57,9 @@ services:
     # needed for linux systems
     extra_hosts:
       - "host.internal:host-gateway"
-    
+    networks:
+      - clue2
+
   # The optional Teastore builder
   teastore-builder:
     image: ghcr.io/clue2-sose25/clue2/teastore-builder:latest
@@ -71,6 +77,8 @@ services:
       # CLUE Configs
       - ./clue-config.yaml:/app/clue-config.yaml
       - ./sut_configs:/app/sut_configs
+    networks:
+      - clue2
 
   # The optional Open Telemetry Shop builder
   ots-builder:
@@ -89,6 +97,14 @@ services:
       # CLUE Configs
       - ./clue-config.yaml:/app/clue-config.yaml
       - ./sut_configs:/app/sut_configs
+    networks:
+      - clue2
 
 volumes:
   registry-data:
+
+networks:
+  clue2:
+    name: clue2
+    external: false
+    driver: bridge
