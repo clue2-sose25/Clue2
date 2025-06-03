@@ -9,12 +9,12 @@ from kubernetes import config
 from tabulate import tabulate
 import logging
 import urllib3
-from clue_deployer.config import Config
-from clue_deployer.experiment import Experiment
-from clue_deployer.experiment_runner import ExperimentRunner
-from clue_deployer.experiment_workloads import get_workload_instance
-from clue_deployer.experiment_list import ExperimentList
-from clue_deployer.deploy import ExperimentDeployer
+from config import Config
+from clue_deployer.src.experiment import Experiment
+from clue_deployer.src.experiment_runner import ExperimentRunner
+from clue_deployer.src.experiment_workloads import get_workload_instance
+from clue_deployer.src.experiment_list import ExperimentList
+from clue_deployer.src.deploy import ExperimentDeployer
 
 # TODO: Implement secure connection
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)

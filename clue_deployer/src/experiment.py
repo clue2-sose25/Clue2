@@ -2,9 +2,9 @@ from typing import List
 import json
 from pathlib import Path
 
-from clue_deployer.config import Config
-from clue_deployer.scaling_experiment_setting import ScalingExperimentSetting
-from clue_deployer.experiment_environment import ExperimentEnvironment
+from config import Config
+from clue_deployer.src.scaling_experiment_setting import ScalingExperimentSetting
+from clue_deployer.src.experiment_environment import ExperimentEnvironment
 
 
 class Experiment:

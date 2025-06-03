@@ -3,7 +3,7 @@ import sys
 import yaml
 
 KUBECONFIG_ORIG = "/root/.kube/config"
-KUBECONFIG_PATCHED = "/app/kubeconfig_patched"
+KUBECONFIG_PATCHED = "/app/clue_deployer/kubeconfig_patched"
 
 def patch_kubeconfig():
     if not os.path.exists(KUBECONFIG_ORIG):

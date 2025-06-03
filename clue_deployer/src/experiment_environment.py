@@ -1,5 +1,5 @@
 from pathlib import Path
-from clue_deployer.config import Config
+from config import Config
 
 #from experiment_workloads import Workload
 

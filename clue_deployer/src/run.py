@@ -1,8 +1,8 @@
 #! /usr/bin/env python3
 import os
-from clue_deployer.deploy import ExperimentDeployer
+from clue_deployer.src.deploy import ExperimentDeployer
 from pathlib import Path
-from clue_deployer.experiment_list import ExperimentList
+from clue_deployer.src.experiment_list import ExperimentList
 from config import Config
 from clue_deployer.service.status_manager import StatusManager, Phase
 

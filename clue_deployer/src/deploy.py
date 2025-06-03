@@ -9,10 +9,9 @@ from kubernetes import config as k_config
 
 # Assuming these are correctly imported from your project structure
 from helm_wrapper import HelmWrapper
-from clue_deployer.experiment import Experiment
-from clue_deployer.scaling_experiment_setting import ScalingExperimentSetting 
-from config import Config # Assuming this is your main combined config object
-from clue_deployer.autoscaling_deployer import AutoscalingDeployer
+from clue_deployer.src.experiment import Experiment
+from config import Config
+from clue_deployer.src.autoscaling_deployer import AutoscalingDeployer
 from clue_deployer.service.status_manager import StatusManager, Phase
 
 

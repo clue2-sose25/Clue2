@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from clue_deployer.experiment_environment import ExperimentEnvironment
+from clue_deployer.src.experiment_environment import ExperimentEnvironment
 from enum import StrEnum
 
 
