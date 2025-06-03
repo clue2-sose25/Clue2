@@ -4,7 +4,7 @@ import logging
 from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException
 from clue_deployer.src import main
-from clue_deployer.config import SutConfig
+from clue_deployer.src.config import SutConfig
 from clue_deployer.service.status_manager import StatusManager, Phase
 
 app = FastAPI(title="CLUE Deployer Service")

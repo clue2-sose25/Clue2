@@ -9,7 +9,7 @@ from kubernetes import config
 from tabulate import tabulate
 import logging
 import urllib3
-from config import Config
+from clue_deployer.src.config import Config
 from clue_deployer.src.experiment import Experiment
 from clue_deployer.src.experiment_runner import ExperimentRunner
 from clue_deployer.src.experiment_workloads import get_workload_instance
@@ -20,7 +20,7 @@ from clue_deployer.src.deploy import ExperimentDeployer
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-CLUE_CONFIG_PATH = BASE_DIR.joinpath("clue-config.yaml")
+CLUE_CONFIG_PATH ="/app/clue-config.yaml"
 SUT_NAME = os.environ.get("SUT_NAME")
 SUT_PATH = f"/app/sut_configs/{SUT_NAME}.yaml"
 EXP_NAME = os.environ.get("EXPERIMENT_NAME", "all")

@@ -8,9 +8,9 @@ import subprocess
 from kubernetes import config as k_config
 
 # Assuming these are correctly imported from your project structure
-from helm_wrapper import HelmWrapper
+from clue_deployer.src.helm_wrapper import HelmWrapper
 from clue_deployer.src.experiment import Experiment
-from config import Config
+from clue_deployer.src.config import Config
 from clue_deployer.src.autoscaling_deployer import AutoscalingDeployer
 from clue_deployer.service.status_manager import StatusManager, Phase
 

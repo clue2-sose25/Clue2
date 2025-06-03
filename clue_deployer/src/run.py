@@ -1,9 +1,8 @@
-#! /usr/bin/env python3
 import os
 from clue_deployer.src.deploy import ExperimentDeployer
 from pathlib import Path
 from clue_deployer.src.experiment_list import ExperimentList
-from config import Config
+from clue_deployer.src.config import Config
 from clue_deployer.service.status_manager import StatusManager, Phase
 
 #get the root directory of the project

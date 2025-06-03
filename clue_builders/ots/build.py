@@ -1,8 +1,8 @@
-#from config import Config
+#from from clue_deployer.src.config import Config
 import os
 import subprocess
 import argparse
-from config import Config
+from from clue_deployer.src.config import Config
 
 DEMO_VERSION = "clue-ots"
 SUT_CONFIG = "/app/sut_configs/ots.yaml"

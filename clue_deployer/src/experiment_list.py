@@ -1,7 +1,7 @@
 import copy
 
 from dataclasses import dataclass
-from config import Config
+from clue_deployer.src.config import Config
 from clue_deployer.src.experiment import Experiment
 from clue_deployer.src.scaling_experiment_setting import ScalingExperimentSetting
 from clue_deployer.src.experiment_workloads import Workload

@@ -12,7 +12,7 @@ python3 /app/clue_deployer/patch_kubeconfig.py
 
 chmod 600 /app/clue_deployer/kubeconfig_patched
 
-export KUBECONFIG=/app/kubeconfig_patched
+export KUBECONFIG=/app/clue_deployer/kubeconfig_patched
 
 # If DEPLOY_ONLY env. variable is true, call the deployer script without running the experiments
 if [ "$DEPLOY_ONLY" = "true" ]; then
