@@ -12,7 +12,7 @@ WORKDIR /app
 
 
 # Copy just requirements.txt first to benefit from cache
-COPY clue_builders/ots/ .
+COPY clue_builders/toystore/ .
 
 # Create a venv, install deps (ignoring PEP668)
 RUN pip install --no-cache-dir --break-system-packages -r requirements.txt

@@ -1,4 +1,3 @@
-#from config import Config
 import os
 import subprocess
 import argparse
@@ -7,7 +6,7 @@ from config import Config
 DEMO_VERSION = "clue-toystore"
 SUT_CONFIG = "/app/sut_configs/toystore.yaml"
 CLUE_CONFIG = "/app/clue-config.yaml"
-SUT_PATH = "opentelemetry-demo"
+SUT_PATH = "toystore"
 
 class ToystoreBuilder:
     def __init__(self, config, minimal: bool = False):
@@ -32,14 +31,14 @@ class ToystoreBuilder:
 
     def _clone_repo(self):
         """
-        Clone the OTS repository if it does not exist.
+        Clone the SUT repository if it does not exist.
         """
-        if not os.path.exists("opentelemetry-demo"):
-            print("Cloning OTS repository...")
+        if not os.path.exists(SUT_PATH):
+            print("Cloning SUT repository...")
             subprocess.run(["git", "clone", self.sut_repo, SUT_PATH], check=True)
-            print("OTS repository cloned successfully.")
+            print("SUT repository cloned successfully.")
         else:
-            print("OTS repository already exists. Skipping clone.")
+            print("SUT repository already exists. Skipping clone.")
 
     def _set_envs(self):
         """
@@ -55,51 +54,51 @@ class ToystoreBuilder:
     
     def build(self):
         """
-        Build the OTS image using Docker.
+        Build the SUT image using Docker.
         """
         try:
             if self.minimal:
-                print("Building minimal OTS image...")
+                print("Building minimal SUT image...")
                 subprocess.run(
                     ["docker", "compose", "-f", "docker-compose.minimal.yml", "build", ]
                     , cwd=self.sut_path
                 )
             else:
-                print("Building OTS image...")
+                print("Building SUT image...")
                 subprocess.run(
                     ["docker", "compose", "build"]
                     , cwd=self.sut_path
                 )
-            print("OTS image built successfully.")
+            print("SUT image built successfully.")
         except subprocess.CalledProcessError as e:
-            raise RuntimeError(f"Error building OTS image: {e}")
+            raise RuntimeError(f"Error building SUT image: {e}")
 
         
     def push(self):
         """
-        Push the OTS image to the Docker registry.
+        Push the SUT image to the Docker registry.
         """
         try:
             if self.minimal:
-                print("Pushing minimal OTS image to Docker registry...")
+                print("Pushing minimal SUT image to Docker registry...")
                 subprocess.run(
                     ["docker", "compose", "-f", "docker-compose.minimal.yml", "push"]
                     , cwd=self.sut_path
                 )
             else:
-                print("Pushing OTS image to Docker registry...")
+                print("Pushing SUT image to Docker registry...")
                 subprocess.run(
                     ["docker", "compose", "push"]
                     , cwd=self.sut_path
                 )
-            print("OTS images pushed successfully.")
+            print("SUT images pushed successfully.")
         except subprocess.CalledProcessError as e:
-            raise RuntimeError(f"Error pushing OTS image: {e}")
+            raise RuntimeError(f"Error pushing SUT image: {e}")
 
 
 def main(minimal: bool = False):
     """
-    Main function to build and push the OTS image.
+    Main function to build and push the SUT image.
     """
     config = Config(
         sut_config=SUT_CONFIG,
@@ -111,8 +110,8 @@ def main(minimal: bool = False):
     builder.push()
 
 if __name__ == "__main__":
-    argparser = argparse.ArgumentParser(description="Build OTS images")
-    argparser.add_argument("--minimal", "-m", action="store_true", help="Build minimal OTS image")
+    argparser = argparse.ArgumentParser(description="Build SUT images")
+    argparser.add_argument("--minimal", "-m", action="store_true", help="Build minimal SUT image")
     args = argparser.parse_args()
 
 
