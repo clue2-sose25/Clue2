@@ -6,7 +6,7 @@ services:
     image: registry:2
     container_name: registry
     ports:
-      - "5000:5000"
+      - "9000:5000"
     environment:
       DOCKER_BUILDKIT: 1
     volumes:
@@ -126,5 +126,5 @@ volumes:
 networks:
   clue2:
     name: clue2
-    external: true
+    external: false
     driver: bridge
