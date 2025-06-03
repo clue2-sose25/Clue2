@@ -4,7 +4,7 @@ import logging
 from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException
 from clue_deployer.src import main
-from clue_deployer.src.config import SutConfig
+from clue_deployer.src.config import SUTConfig
 from clue_deployer.service.status_manager import StatusManager, Phase
 
 app = FastAPI(title="CLUE Deployer Service")
@@ -116,7 +116,7 @@ async def get_result(timestamp: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving results: {str(e)}")
 
-@app.get("/sut/{sut_name}", response_model=SutConfig)
+@app.get("/sut/{sut_name}", response_model=SUTConfig)
 async def get_sut(sut_name: str):
     """Get a specific SUT configuration."""
     cleaned_sut_name = sut_name.strip().lower()
@@ -125,7 +125,7 @@ async def get_sut(sut_name: str):
     if not os.path.isfile(sut_path):
         raise HTTPException(status_code=404, detail=f"SUT configuration not found: {sut_name}")
     try: 
-        sut_config = SutConfig.load_from_yaml(sut_path)
+        sut_config = SUTConfig.load_from_yaml(sut_path)
         return sut_config
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving SUT configuration: {str(e)}")
