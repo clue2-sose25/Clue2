@@ -108,26 +108,6 @@ class ToystoreBuilder:
         ], cwd=self.sut_path, check=True)
         print("SUT images built and pushed successfully using Buildx bake.")
 
-    def build(self):
-        """
-        Build the SUT image using Docker Buildx.
-        """
-        print("Building SUT images using Buildx...")
-        subprocess.run([
-            "docker", "buildx", "bake",
-            "--file", "docker-compose.yml"
-        ], cwd=self.sut_path, check=True)
-        print("SUT images built successfully using Buildx.")
-
-    def push(self):
-        """
-        Push the SUT images to the Docker registry using Buildx.
-        Note: When using buildx, it's more efficient to build and push in one step.
-        This method is kept for compatibility but will use the combined approach.
-        """
-        print("Note: Using Buildx build and push in one step for efficiency...")
-        self.build_and_push()
-
 
 def main():
     """
@@ -140,10 +120,9 @@ def main():
     builder = ToystoreBuilder(config)
     builder.check_docker_running()
     builder.check_buildx_available()
-    builder.build_and_push()  # Combined build and push for efficiency
+    builder.build_and_push()
 
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser(description="Build SUT images using Docker Buildx")
     args = argparser.parse_args()
-
     main()
