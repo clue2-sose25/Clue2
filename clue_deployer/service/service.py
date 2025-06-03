@@ -69,6 +69,7 @@ async def list_sut():
             raise HTTPException(status_code=404, detail=f"SUT configurations directory not found: {SUT_CONFIGS_DIR}")
         suts = os.listdir(SUT_CONFIGS_DIR)
         suts = [s for s in suts if s.endswith(('.yaml', '.yml')) and os.path.isfile(os.path.join(SUT_CONFIGS_DIR, s))]
+        suts = [os.path.splitext(s)[0] for s in suts]
         return SutListResponse(suts=suts)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while listing SUTs: {str(e)}")
