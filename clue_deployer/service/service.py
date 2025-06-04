@@ -3,8 +3,8 @@ import logging
 
 from fastapi import FastAPI, HTTPException
 from pathlib import Path
-from clue_deployer.src import main
-from clue_deployer.src.config import SUTConfig, Config
+from clue_deployer.src.main import main
+from clue_deployer.src.config import SUTConfig, Config, EnvConfig
 from clue_deployer.service.status_manager import StatusManager, Phase
 from clue_deployer.service.models import (
     HealthResponse,
@@ -14,6 +14,7 @@ from clue_deployer.service.models import (
     Iteration,
     ResultTimestampResponse,
     ResultListResponse,
+    DeployRequest,
     StatusOut
 )
 
@@ -33,8 +34,10 @@ for var in ["SUT_NAME", "EXPERIMENT_NAME"]:
 
 logger.info(f"SUT={os.getenv('SUT_NAME')}, EXPERIMENT={os.getenv('EXPERIMENT_NAME')}")
 
-SUT_CONFIGS_DIR = os.getenv("SUT_CONFIGS_PATH", "/app/sut_configs")
-RESULTS_DIR = os.getenv("RESULTS_PATH", "/app/data")
+ENV_CONFIG = EnvConfig.get_env_config()
+SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
+RESULTS_DIR = ENV_CONFIG.RESULTS_PATH
+CLUE_CONFIG_PATH = ENV_CONFIG.CLUE_CONFIG_PATH
 
 
  
@@ -162,9 +165,24 @@ async def get_sut_config(sut_name: str):
 
 
 
-@app.post("/deploy/sut/{sut_name}")
-def deploy_sut(sut_name: str, experiment_name: str):
+@app.post("/deploy/sut")
+def deploy_sut(request: DeployRequest):
     """Deploy a specific SUT."""
-    pass
+    cleaned_sut_name = request.sut_name.strip().lower()
+    sut_filename = f"{cleaned_sut_name}.yaml"
+    sut_path = os.path.join(SUT_CONFIGS_DIR, sut_filename)
+    
+    if not os.path.isfile(sut_path):
+        raise HTTPException(status_code=404, detail=f"SUT configuration not found: {request.sut_name}")
+    
+    config = Config(sut_config=sut_path, clue_config=CLUE_CONFIG_PATH)
+    try:
+        main(config, request.experiment_name)
+        return {"message": f"SUT {request.sut_name} has been deployed successfully."}
+    except Exception as e:
+        logger.error(f"Failed to deploy SUT {request.sut_name}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to deploy SUT: {str(e)}")
+
+    
     
 

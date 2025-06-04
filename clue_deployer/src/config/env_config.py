@@ -1,15 +1,17 @@
+from __future__ import annotations
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field, computed_field
 from pathlib import Path
+from functools import lru_cache
 
 
 class EnvConfig(BaseSettings):
     """
     Environment configuration for the Clue Deployer application.
     """
-    _instance: "EnvConfig" | None = None
 
     SUT_CONFIGS_PATH: Path = Path("/app/sut_configs")
+    CLUE_CONFIG_PATH: Path = Path("/app/clue-config.yaml")
     RESULTS_PATH: Path = Path("/app/data")
     LOG_LEVEL: str = "INFO"
 
@@ -24,14 +26,12 @@ class EnvConfig(BaseSettings):
         case_sensitive=False 
     )
 
-    @classmethod
-    def get_instance(cls) -> "EnvConfig":
-        """
-        Get the singleton instance of the EnvConfig.
-        """
-        if cls._instance is None:
-            cls._instance = cls()
-        return cls._instance
+    #Workaround since pydantic does not support singleton pattern directly
+
+    @lru_cache(maxsize=1)
+    @staticmethod
+    def get_env_config():
+        return EnvConfig()
 
     @computed_field
     @property
@@ -43,3 +43,5 @@ class EnvConfig(BaseSettings):
             return self.SUT_CONFIGS_PATH / f"{self.SUT_NAME}.yaml"
         else:
             raise ValueError("SUT_NAME must be set to construct SUT_CONFIG_PATH.")
+
+

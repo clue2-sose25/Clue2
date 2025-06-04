@@ -51,6 +51,7 @@ class ExperimentDeployer:
 
     def _create_namespace_if_not_exists(self):
         namespace = self.experiment.namespace
+        print(f"Checking if namespace '{namespace}' exists...")
         try:
             self.core_v1_api.read_namespace(name=namespace)
             print(f"Namespace '{namespace}' already exists.")

@@ -31,3 +31,7 @@ class ResultListResponse(BaseModel):
 class StatusOut(BaseModel):
     phase: Phase
     message: str | None = None
+
+class DeployRequest(BaseModel):
+    experiment_name: str
+    sut_name: str
