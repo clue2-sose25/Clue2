@@ -1,11 +1,19 @@
 import os
 import logging
 
-from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException
 from clue_deployer.src import main
 from clue_deployer.src.config import SUTConfig
 from clue_deployer.service.status_manager import StatusManager, Phase
+from clue_deployer.service.models import (
+    HealthResponse,
+    SutListResponse,
+    ExperimentListResponse,
+    Result,
+    ResultsResponse,
+    ResultListResponse,
+    StatusOut
+)
 
 app = FastAPI(title="CLUE Deployer Service")
 
@@ -26,30 +34,7 @@ logger.info(f"SUT={os.getenv('SUT_NAME')}, EXPERIMENT={os.getenv('EXPERIMENT_NAM
 SUT_CONFIGS_DIR = os.getenv("SUT_CONFIGS_PATH", "/app/sut_configs")
 RESULTS_DIR = os.getenv("RESULTS_PATH", "/app/data")
 
-class HealthResponse(BaseModel):
-    message: str
 
-class StringListResponse(BaseModel):
-    strings: list[str]
-
-class SutListResponse(BaseModel):
-    suts: list[str]
-
-class ExperimentListResponse(BaseModel):
-    experiments: list[str]
-
-
-class Result(BaseModel):
-    timestamp: str
-    workload: str
-    branch_name: str
-    experiment_number: int
-
-class ResultListResponse(BaseModel):
-    results: list[str]    
-class StatusOut(BaseModel):
-    phase: Phase
-    message: str | None = None
  
 @app.get("/status", response_model=StatusOut)
 def read_status():
@@ -97,7 +82,7 @@ async def list_results():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while listing results: {str(e)}")
 
-@app.get("/result/{timestamp}", response_model=ResultListResponse)
+@app.get("/result/{timestamp}", response_model=ResultsResponse)
 async def get_result(timestamp: str):
     """Get results for a specific timestamp."""
     cleaned_timestamp = timestamp.strip()
@@ -121,7 +106,7 @@ async def get_result(timestamp: str):
                         branch_name=branch,
                         experiment_number=int(exp_num)
                     ))
-        return ResultListResponse(results=results)
+        return ResultsResponse(results=results)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving results: {str(e)}")
 
