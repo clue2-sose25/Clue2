@@ -97,5 +97,4 @@ def main(configs: Config = CONFIGS, exp_name: str = EXP_NAME) -> None:
         prepare_experiment(exp, timestamp, num_iterations=CONFIGS.sut_config.num_iterations)
 
 if __name__ == "__main__":
-
     main()

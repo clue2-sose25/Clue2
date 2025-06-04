@@ -4,6 +4,7 @@ from .clue_config import ClueConfig
 from .experiment_configs import ExperimentsConfig
 from .services import ServicesConfig
 from .sut_config import SUTConfig
+from .env_config import EnvConfig
 
 
 
@@ -13,7 +14,12 @@ class Config:
     """
     _instance: Config | None = None
 
-    def __new__(cls, sut_config: Path, clue_config: Path):
+    def __new__(cls, sut_config: Path = None, clue_config: Path = None):
+        env_config = EnvConfig.get_instance()
+        if sut_config is None:
+            sut_config = env_config.SUT_CONFIG_PATH
+        if clue_config is None:
+            clue_config = env_config.CLUE_CONFIG_PATH
         if cls._instance is None:
             cls._instance = super(Config, cls).__new__(cls)
             cls._instance._initialize(sut_config, clue_config)

@@ -2,8 +2,9 @@ import os
 import logging
 
 from fastapi import FastAPI, HTTPException
+from pathlib import Path
 from clue_deployer.src import main
-from clue_deployer.src.config import SUTConfig
+from clue_deployer.src.config import SUTConfig, Config
 from clue_deployer.service.status_manager import StatusManager, Phase
 from clue_deployer.service.models import (
     HealthResponse,
@@ -83,32 +84,66 @@ async def list_experiments():
 #     except Exception as e:
 #         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while listing results: {str(e)}")
 
-@app.get("/list/results", response_model=ResultTimestampResponse)
-async def get_result():
-    """Get results for a specific timestamp."""
-    result_path = RESULTS_DIR
-    if not os.path.isdir(result_path):
-        raise HTTPException(status_code=404, detail=f"Results not found for timestamp: {timestamp}")
+@app.get("/list/results", response_model=ResultTimestampResponse) # Path suggests listing all
+async def list_all_results(): # Renamed function for clarity
+    """List all results, structured by timestamp, workload, branch, and experiment number."""
+    results_base_path = Path(RESULTS_DIR) # Use pathlib
+
+    if not results_base_path.is_dir():
+        logger.error(f"Results directory not found: {results_base_path}")
+        raise HTTPException(status_code=404, detail=f"Results directory not found: {results_base_path}")
     
     try:
-        results = []
-        for timestamp in os.listdir(result_path):
-            timestamp_dir_path = os.path.join(result_path,timestamp)
-            timestamp = Timestamp(timestamp=timestamp.strip(), iterations=[])
-            for workload in os.listdir(timestamp_dir_path):
-                workload = workload.strip()
-                workload_path = os.path.join(timestamp_dir_path, workload)
-                for branch in os.listdir(workload_path):
-                    branch = branch.strip()
-                    branch_path = os.path.join(workload_path, branch)
-                    for exp_num in os.listdir(branch_path):
-                        exp_num = exp_num.strip()
-                        timestamp.iterations.append(Iteration(workload=workload,
-                                                                branch_name=branch,
-                                                                experiment_number=int(exp_num)))
-            results.append(timestamp)
-        return ResultTimestampResponse(results=results)
+        processed_timestamps = [] # Renamed from 'results' to avoid confusion with response model field
+        
+        for timestamp_dir in results_base_path.iterdir(): # pathlib's way to list entries
+            if not timestamp_dir.is_dir(): # Skip if not a directory
+                logger.debug(f"Skipping non-directory entry in results: {timestamp_dir.name}")
+                continue
+
+            timestamp_data_obj = Timestamp(timestamp=timestamp_dir.name.strip(), iterations=[])
+            
+            for workload_dir in timestamp_dir.iterdir():
+                if not workload_dir.is_dir():
+                    logger.debug(f"Skipping non-directory entry in timestamp '{timestamp_dir.name}': {workload_dir.name}")
+                    continue
+                
+                workload_name = workload_dir.name.strip()
+                
+                for branch_dir in workload_dir.iterdir():
+                    if not branch_dir.is_dir():
+                        logger.debug(f"Skipping non-directory entry in workload '{workload_name}': {branch_dir.name}")
+                        continue
+                    
+                    branch_name_str = branch_dir.name.strip()
+                    
+                    for exp_num_dir in branch_dir.iterdir():
+                        if not exp_num_dir.is_dir(): 
+                            logger.debug(f"Skipping non-directory entry in branch '{branch_name_str}': {exp_num_dir.name}")
+                            continue
+                        
+                        exp_num_str = exp_num_dir.name.strip()
+                        try:
+                            experiment_number_int = int(exp_num_str)
+                            timestamp_data_obj.iterations.append(
+                                Iteration(
+                                    workload=workload_name,
+                                    branch_name=branch_name_str,
+                                    experiment_number=experiment_number_int
+                                )
+                            )
+                        except ValueError:
+                            logger.warning(f"Could not convert experiment number '{exp_num_str}' to int for {timestamp_dir.name}/{workload_name}/{branch_name_str}. Skipping.")
+                            raise ValueError(f"experiment_number{experiment_number_int} cannot be casted into an integer.")
+            
+            processed_timestamps.append(timestamp_data_obj)
+            
+        return ResultTimestampResponse(results=processed_timestamps)
+    except PermissionError:
+        logger.exception("Permission error while accessing results directory.")
+        raise HTTPException(status_code=500, detail="Permission denied when accessing results.")
     except Exception as e:
+        logger.exception("Unexpected error while retrieving results.")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving results: {str(e)}")
 
 @app.get("/config/sut/{sut_name}", response_model=SUTConfig)
@@ -124,6 +159,7 @@ async def get_sut_config(sut_name: str):
         return sut_config
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving SUT configuration: {str(e)}")
+
 
 
 @app.post("/deploy/sut/{sut_name}")
