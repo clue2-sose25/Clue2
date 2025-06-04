@@ -52,11 +52,6 @@ services:
       - ./sut_configs:/app/sut_configs
       # Cluster configs
       - ~/.kube:/root/.kube:ro
-      # use this line if you want to use minikube - make sure to run the script in localClusterConfig/minikube first and commend out the line above
-      # - ./localClusterConfig/minikube/minikube_kube_config:/root/.kube/config:ro
-    # needed for linux systems
-    extra_hosts:
-      - "host.internal:host-gateway"
     networks:
       - clue2
 
