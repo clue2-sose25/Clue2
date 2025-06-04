@@ -1,5 +1,6 @@
-
 from pydantic import BaseModel
+
+from clue_deployer.service.status import Phase
 
 class HealthResponse(BaseModel):
     message: str
@@ -13,15 +14,17 @@ class SutListResponse(BaseModel):
 class ExperimentListResponse(BaseModel):
     experiments: list[str]
 
-
-class Result(BaseModel):
-    timestamp: str
+class Iteration(BaseModel):
     workload: str
     branch_name: str
     experiment_number: int
 
-class ResultsResponse(BaseModel):
-    results: list[Result]
+class Timestamp(BaseModel):
+    timestamp: str
+    iterations: list[Iteration]
+
+class ResultTimestampResponse(BaseModel):
+    results: list[Timestamp]
 
 class ResultListResponse(BaseModel):
     results: list[str]    

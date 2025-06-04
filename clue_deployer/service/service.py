@@ -9,8 +9,9 @@ from clue_deployer.service.models import (
     HealthResponse,
     SutListResponse,
     ExperimentListResponse,
-    Result,
-    ResultsResponse,
+    Timestamp,
+    Iteration,
+    ResultTimestampResponse,
     ResultListResponse,
     StatusOut
 )
@@ -67,46 +68,46 @@ async def list_experiments():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while listing experiments: {str(e)}")
 
-@app.get("/list/results", response_model=ResultListResponse)
-async def list_results():
-    """List all result timestamps."""
-    try:
-        # if not os.path.isdir(RESULTS_DIR):
-        #     raise HTTPException(status_code=404, detail=f"Results directory not found: {RESULTS_DIR}")
-        if not os.path.exists(RESULTS_DIR):
-            return ResultListResponse(results=[])
+# @app.get("/list/results", response_model=ResultListResponse)
+# async def list_results():
+#     """List all result timestamps."""
+#     try:
+#         # if not os.path.isdir(RESULTS_DIR):
+#         #     raise HTTPException(status_code=404, detail=f"Results directory not found: {RESULTS_DIR}")
+#         if not os.path.exists(RESULTS_DIR):
+#             return ResultListResponse(results=[])
         
-        results = [subdir.strip() for subdir in os.listdir(RESULTS_DIR)]
+#         results = [subdir.strip() for subdir in os.listdir(RESULTS_DIR)]
 
-        return ResultListResponse(results=results)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred while listing results: {str(e)}")
+#         return ResultListResponse(results=results)
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while listing results: {str(e)}")
 
-@app.get("/result/{timestamp}", response_model=ResultsResponse)
-async def get_result(timestamp: str):
+@app.get("/list/results", response_model=ResultTimestampResponse)
+async def get_result():
     """Get results for a specific timestamp."""
-    cleaned_timestamp = timestamp.strip()
-    result_path = os.path.join(RESULTS_DIR, cleaned_timestamp)
+    result_path = RESULTS_DIR
     if not os.path.isdir(result_path):
         raise HTTPException(status_code=404, detail=f"Results not found for timestamp: {timestamp}")
     
     try:
         results = []
-        for workload in os.listdir(result_path):
-            workload = workload.strip()
-            workload_path = os.path.join(result_path, workload)
-            for branch in os.listdir(workload_path):
-                branch = branch.strip()
-                branch_path = os.path.join(workload_path, branch)
-                for exp_num in os.listdir(branch_path):
-                    exp_num = exp_num.strip()
-                    results.append(Result(
-                        timestamp=cleaned_timestamp,
-                        workload=workload,
-                        branch_name=branch,
-                        experiment_number=int(exp_num)
-                    ))
-        return ResultsResponse(results=results)
+        for timestamp in os.listdir(result_path):
+            timestamp_dir_path = os.path.join(result_path,timestamp)
+            timestamp = Timestamp(timestamp=timestamp.strip(), iterations=[])
+            for workload in os.listdir(timestamp_dir_path):
+                workload = workload.strip()
+                workload_path = os.path.join(timestamp_dir_path, workload)
+                for branch in os.listdir(workload_path):
+                    branch = branch.strip()
+                    branch_path = os.path.join(workload_path, branch)
+                    for exp_num in os.listdir(branch_path):
+                        exp_num = exp_num.strip()
+                        timestamp.iterations.append(Iteration(workload=workload,
+                                                                branch_name=branch,
+                                                                experiment_number=int(exp_num)))
+            results.append(timestamp)
+        return ResultTimestampResponse(results=results)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving results: {str(e)}")
 
@@ -125,5 +126,9 @@ async def get_sut_config(sut_name: str):
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving SUT configuration: {str(e)}")
 
 
-
+@app.post("/deploy/sut/{sut_name}")
+def deploy_sut(sut_name: str, experiment_name: str):
+    """Deploy a specific SUT."""
+    pass
+    
 

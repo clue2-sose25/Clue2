@@ -77,10 +77,10 @@ def prepare_experiment(exp: Experiment, timestamp: str, num_iterations: int) -> 
     print(f"Sleeping for 120s to let the system settle after one feature")
     time.sleep(120)
 
-def main():
+def main(configs: Config = CONFIGS, exp_name: str = EXP_NAME) -> None:
     # Load the experiments
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    exps = ExperimentList.load_experiments(CONFIGS, EXP_NAME)
+    exps = ExperimentList.load_experiments(configs, exp_name)
     
     # Get the workloads
     workloads = [get_workload_instance(w) for w in CONFIGS.clue_config.workloads]
@@ -97,4 +97,5 @@ def main():
         prepare_experiment(exp, timestamp, num_iterations=CONFIGS.sut_config.num_iterations)
 
 if __name__ == "__main__":
+
     main()
