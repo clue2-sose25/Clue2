@@ -46,8 +46,7 @@ class Result(BaseModel):
     experiment_number: int
 
 class ResultListResponse(BaseModel):
-    results: list[Result]
-    
+    results: list[str]    
 class StatusOut(BaseModel):
     phase: Phase
     message: str | None = None
@@ -74,21 +73,23 @@ async def list_sut():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while listing SUTs: {str(e)}")
 
-@app.get("/list/experiments", response_model=SutListResponse)
+@app.get("/list/experiments", response_model=ExperimentListResponse)
 async def list_experiments():
-    """List all experiments."""
+    """List all experiemnt names"""
     try:
         experiments = [experiment.name for experiment in main.CONFIGS.experiments_config.experiments]
         return ExperimentListResponse(experiments=experiments)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while listing experiments: {str(e)}")
 
-@app.get("/list/results", response_model=StringListResponse)
+@app.get("/list/results", response_model=ResultListResponse)
 async def list_results():
     """List all result timestamps."""
     try:
-        if not os.path.isdir(RESULTS_DIR):
-            raise HTTPException(status_code=404, detail=f"Results directory not found: {RESULTS_DIR}")
+        # if not os.path.isdir(RESULTS_DIR):
+        #     raise HTTPException(status_code=404, detail=f"Results directory not found: {RESULTS_DIR}")
+        if not os.path.exists(RESULTS_DIR):
+            return ResultListResponse(results=[])
         
         results = [subdir.strip() for subdir in os.listdir(RESULTS_DIR)]
 
@@ -124,8 +125,8 @@ async def get_result(timestamp: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving results: {str(e)}")
 
-@app.get("/sut/{sut_name}", response_model=SUTConfig)
-async def get_sut(sut_name: str):
+@app.get("/config/sut/{sut_name}", response_model=SUTConfig)
+async def get_sut_config(sut_name: str):
     """Get a specific SUT configuration."""
     cleaned_sut_name = sut_name.strip().lower()
     sut_filename = f"{cleaned_sut_name}.yaml"
