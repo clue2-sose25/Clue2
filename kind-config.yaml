@@ -14,8 +14,8 @@ containerdConfigPatches:
   - |-
     [plugins."io.containerd.grpc.v1.cri".registry.configs."registry:5000".tls]
       insecure_skip_verify = true
-    [plugins."io.containerd.grpc.v1.cri".registry.mirrors."host.internal:6789"]
-      endpoint = ["http://host.internal:6789"]
+    [plugins."io.containerd.grpc.v1.cri".registry.mirrors."registry:5000"]
+      endpoint = ["http://registry:5000"]
 apiServer:
   extraArgs:
     "advertise-address": "0.0.0.0"
