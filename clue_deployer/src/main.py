@@ -1,4 +1,3 @@
-#! /usr/bin/env python3
 from pathlib import Path
 from datetime import datetime
 import os
@@ -9,36 +8,31 @@ from kubernetes import config
 from tabulate import tabulate
 import logging
 import urllib3
-from clue_deployer.src.config import Config, EnvConfig
+from clue_deployer.service.status import Phase
+from clue_deployer.service.status_manager import StatusManager
+from clue_deployer.src.config import Config
+from clue_deployer.src.config.env_config import EnvConfig
 from clue_deployer.src.experiment import Experiment
 from clue_deployer.src.experiment_runner import ExperimentRunner
 from clue_deployer.src.experiment_workloads import get_workload_instance
 from clue_deployer.src.experiment_list import ExperimentList
 from clue_deployer.src.deploy import ExperimentDeployer
 
-# TODO: Implement secure connection
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-BASE_DIR = Path(__file__).resolve().parent.parent
+# Configs
 ENV_CONFIG = EnvConfig.get_env_config()
-CLUE_CONFIG_PATH = ENV_CONFIG.CLUE_CONFIG_PATH
-SUT_NAME = ENV_CONFIG.SUT_NAME
-SUT_PATH = ENV_CONFIG.SUT_CONFIG_PATH
-EXP_NAME = ENV_CONFIG.EXPERIMENT_NAME
-CONFIG = Config()
+CONFIGS = Config()
+# Setup clients
+config.load_kube_config()
 
+# Logging
 logging.basicConfig()
 logging.getLogger().setLevel(logging.DEBUG)
 logging.getLogger("docker").setLevel(logging.INFO)
 logging.getLogger("kubernetes").setLevel(logging.INFO)
-
 logging.debug("debug log level")
 
-# setup clients
-config.load_kube_config()
 
-
-def run_experiment(exp: Experiment, observations_out_path: Path, config: Config = CONFIG) -> None:
+def run_experiment(exp: Experiment, observations_out_path: Path, config: Config = CONFIGS) -> None:
     # Create the experiment folder
     try:
         os.makedirs(observations_out_path, exist_ok=False)
@@ -60,7 +54,7 @@ def run_experiment(exp: Experiment, observations_out_path: Path, config: Config 
     time.sleep(60)
 
 
-def prepare_experiment(exp: Experiment, timestamp: str, num_iterations: int, config: Config = CONFIG) -> None:
+def prepare_experiment(exp: Experiment, timestamp: str, num_iterations: int, config: Config = CONFIGS) -> None:
     
     print(f"ℹ️  New experiment: {exp}")
 
@@ -78,13 +72,13 @@ def prepare_experiment(exp: Experiment, timestamp: str, num_iterations: int, con
     print(f"Sleeping for 120s to let the system settle after one feature")
     time.sleep(120)
 
-def main(config: Config = CONFIG, exp_name: str = EXP_NAME) -> None:
+def main() -> None:
     # Load the experiments
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    exps = ExperimentList.load_experiments(config, exp_name)
+    exps = ExperimentList.load_experiments(config, ENV_CONFIG.EXPERIMENT_NAME)
     
     # Get the workloads
-    workloads = [get_workload_instance(w) for w in CONFIG.clue_config.workloads]
+    workloads = [get_workload_instance(w) for w in CONFIGS.clue_config.workloads]
     exps.add_workloads(workloads)
 
     # Sort the experiments
@@ -95,7 +89,53 @@ def main(config: Config = CONFIG, exp_name: str = EXP_NAME) -> None:
     # TODO: Print not working with pg2
     # for exp in progressbar.progressbar(exps, redirect_stdout=True, redirect_stderr=True):
     for exp in exps:
-        prepare_experiment(exp, timestamp, num_iterations=config.sut_config.num_iterations, config=config)
+        prepare_experiment(exp, timestamp, num_iterations=config.sut_config.num_iterations, config=CONFIGS)
+
+
+def available_suts():
+    """
+    Reads the 'sut_configs' folder and returns a list of available SUT names.
+    """
+    if not ENV_CONFIG.SUT_CONFIGS_PATH.exists():
+        raise FileNotFoundError(f"SUT configs folder not found: {ENV_CONFIG.SUT_CONFIGS_PATH}")
+    # Get all YAML files in the 'sut_configs' folder
+    sut_files = [f.stem for f in ENV_CONFIG.SUT_CONFIGS_PATH.glob("*.yaml")]
+    return sut_files
+
+
+def run():
+    """
+    Runs the CLUE script without deploying workload generator
+    """
+    # Check if SUT_NAME is valid
+    available_suts_list = available_suts()
+    if ENV_CONFIG.SUT_NAME not in available_suts_list:
+        print(f"Invalid SUT name: '{ENV_CONFIG.SUT_NAME}'")
+        print(f"Available SUTs: {available_suts_list}")
+        return
+    
+    # Set the status to preparing
+    StatusManager.set(Phase.PREPARING_CLUSTER, "Preparing the cluster...")
+    # Get the experiment object
+    experiment_list = ExperimentList.load_experiments(CONFIGS, ENV_CONFIG.EXPERIMENT_NAME)
+    experiments = [e for e in experiment_list if e.name == ENV_CONFIG.EXPERIMENT_NAME]
+    if not len(experiments):
+        raise ValueError(f"Invalid experiment name for {ENV_CONFIG.SUT_NAME}. Available experiments " + str([e.name for e in experiment_list]))
+    else:   
+        experiment = experiments[0]
+    # Deploy the experiment, without the workload generator
+    deployer = ExperimentDeployer(experiment, CONFIGS)
+    deployer.execute_deployment()
+
 
 if __name__ == "__main__":
-    main(CONFIG, EXP_NAME)
+    # Disable SSL verification
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    print("Disabled SLL verification for urllib3...")
+    # Deploy CLUE
+    if ENV_CONFIG.DEPLOY_ONLY:
+        # Without benchmarking
+        run()
+    else:
+        # Full deployment
+        main()

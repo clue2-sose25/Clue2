@@ -6,7 +6,6 @@ import time
 import os
 import subprocess
 from kubernetes import config as k_config
-import urllib3
 from clue_deployer.src.helm_wrapper import HelmWrapper
 from clue_deployer.src.experiment import Experiment
 from clue_deployer.src.config import Config
@@ -21,10 +20,6 @@ class ExperimentDeployer:
         self.experiment = experiment
         # This object should hold clue_config, sut_config, etc.
         self.config = config 
-
-        # Disable SSL verification
-        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-        print("Disabled SLL verification for urllib3...")
 
         # Extract paths and addresses from the config object
         # Ensure your Config class structure provides these attributes

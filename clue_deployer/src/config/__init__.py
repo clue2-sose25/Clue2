@@ -6,8 +6,6 @@ from .services import ServicesConfig
 from .sut_config import SUTConfig
 from .env_config import EnvConfig
 
-
-
 class Config:
     """
     manage and provide access to all configurations.
