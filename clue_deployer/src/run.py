@@ -1,9 +1,9 @@
-#! /usr/bin/env python3
 import os
-from clue_deployer.deploy import ExperimentDeployer
+from clue_deployer.src.deploy import ExperimentDeployer
 from pathlib import Path
-from clue_deployer.experiment_list import ExperimentList
-from config import Config
+from clue_deployer.src.experiment_list import ExperimentList
+from clue_deployer.src.config import Config
+from clue_deployer.service.status_manager import StatusManager, Phase
 
 #get the root directory of the project
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -29,7 +29,9 @@ def available_suts():
 
 def run():
     # TODO: choose the correct sut_config and check if the experiment is available for the selected sut
-
+    
+    # set status to preparing
+    StatusManager.set(Phase.PREPARING_CLUSTER, "Preparing the cluster...")
     # Get the experiment object
     experiment_list = ExperimentList.load_experiments(RUN_CONFIG)
     experiments = [e for e in experiment_list if e.name == EXP_NAME]

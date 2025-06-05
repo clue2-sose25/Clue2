@@ -8,11 +8,11 @@ import subprocess
 from kubernetes import config as k_config
 
 # Assuming these are correctly imported from your project structure
-from helm_wrapper import HelmWrapper
-from clue_deployer.experiment import Experiment
-from clue_deployer.scaling_experiment_setting import ScalingExperimentSetting 
-from config import Config # Assuming this is your main combined config object
-from clue_deployer.autoscaling_deployer import AutoscalingDeployer
+from clue_deployer.src.helm_wrapper import HelmWrapper
+from clue_deployer.src.experiment import Experiment
+from clue_deployer.src.config import Config
+from clue_deployer.src.autoscaling_deployer import AutoscalingDeployer
+from clue_deployer.service.status_manager import StatusManager, Phase
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent # Adjust if deploy.py is not 3 levels down from project root
@@ -51,6 +51,7 @@ class ExperimentDeployer:
 
     def _create_namespace_if_not_exists(self):
         namespace = self.experiment.namespace
+        print(f"Checking if namespace '{namespace}' exists...")
         try:
             self.core_v1_api.read_namespace(name=namespace)
             print(f"Namespace '{namespace}' already exists.")
@@ -207,6 +208,7 @@ class ExperimentDeployer:
         """
         Orchestrates the full deployment process for the experiment.
         """
+        StatusManager.set(Phase.DEPLOYING_SUT, "Deploying SUT...")
         print(f"--- Starting Deployment for Experiment: {self.experiment.name} ---")
         self._create_namespace_if_not_exists()
         self._check_labeled_node_available() # Checks for "scaphandre=true"
@@ -218,13 +220,15 @@ class ExperimentDeployer:
         with self.helm_wrapper as hw:
             self._patch_helm_deployment(hw)
             self._deploy_helm_chart(hw)
+        
+        StatusManager.set(Phase.WAITING, "Waiting for system to stabilize...")
         # Wait for the critical services
         self._wait_until_services_ready()
         
         if self.experiment.autoscaling:
             print("Autoscaling is enabled. Deploying autoscaling...")
             AutoscalingDeployer(self.experiment).setup_autoscaling()
-    
+        StatusManager.set(Phase.WAITING, "Waiting for load generate...")
         print("Deployment complete. You can now run the experiment.")
         
     def clone_sut(self):

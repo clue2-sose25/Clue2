@@ -3,11 +3,9 @@ import subprocess
 from pathlib import Path
 import tempfile
 import shutil
-import time # For unique observation directory names
 
-
-from clue_deployer.config import Config
-from clue_deployer.scaling_experiment_setting import ScalingExperimentSetting
+from clue_deployer.src.config import Config
+from clue_deployer.src.scaling_experiment_setting import ScalingExperimentSetting
 
 
 class HelmWrapper():

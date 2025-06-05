@@ -2,8 +2,8 @@ import math
 
 import kubernetes
 
-from clue_deployer.experiment import Experiment
-from clue_deployer.scaling_experiment_setting import ScalingExperimentSetting
+from clue_deployer.src.experiment import Experiment
+from clue_deployer.src.scaling_experiment_setting import ScalingExperimentSetting
 import logging
 
 class AutoscalingDeployer:
