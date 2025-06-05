@@ -2,10 +2,11 @@ import os
 import logging
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import RedirectResponse
 from pathlib import Path
 from clue_deployer.src.main import main
 from clue_deployer.src.config import SUTConfig, Config, EnvConfig
-from clue_deployer.service.status_manager import StatusManager, Phase
+from clue_deployer.service.status_manager import StatusManager
 from clue_deployer.service.models import (
     HealthResponse,
     SutListResponse,
@@ -13,7 +14,6 @@ from clue_deployer.service.models import (
     Timestamp,
     Iteration,
     ResultTimestampResponse,
-    ResultListResponse,
     DeployRequest,
     StatusOut
 )
@@ -46,9 +46,13 @@ def read_status():
     phase, msg = StatusManager.get()
     return StatusOut(phase=phase, message=msg or None)
 
-@app.get("/health")
+@app.get("/health", response_model=HealthResponse)
+def health():
+    return HealthResponse(message="true")
+
+@app.get("/", response_model=None)
 async def root():
-    return HealthResponse(message="Hello I am the Clue Deployer Service!")
+    return RedirectResponse(url="/docs")  # Redirect to /docs
 
 @app.get("/list/sut", response_model=SutListResponse)
 async def list_sut():
