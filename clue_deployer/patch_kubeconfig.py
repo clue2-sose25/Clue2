@@ -7,7 +7,7 @@ KUBECONFIG_PATCHED = "/app/clue_deployer/kubeconfig_patched"
 
 def patch_kubeconfig():
     if not os.path.exists(KUBECONFIG_ORIG):
-        print(f"No kubeconfig found at {KUBECONFIG_ORIG}")
+        print(f"[PATCH_KUBECONFIG.SH] No kubeconfig found at {KUBECONFIG_ORIG}")
         sys.exit(1)
     with open(KUBECONFIG_ORIG) as f:
         config = yaml.safe_load(f)
@@ -28,7 +28,7 @@ def patch_kubeconfig():
 
     os.environ["KUBECONFIG"] = KUBECONFIG_PATCHED
     if changed:
-        print("Patched kubeconfig to use clue-cluster-control-plane and set insecure-skip-tls-verify: true")
+        print("[PATCH_KUBECONFIG.SH] Patched kubeconfig to use clue-cluster-control-plane and insecure-skip-tls-verify: true")
 
 if __name__ == "__main__":
     patch_kubeconfig()

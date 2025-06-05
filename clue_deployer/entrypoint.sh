@@ -5,10 +5,10 @@ set -e
 : "${DEPLOY_ONLY:=false}"
 
 # Print configs
-echo "Starting CLUE Deployer..."
-echo "Deploying as a service: $DEPLOY_AS_SERVICE"
-echo "Deploy without benchmarking: $DEPLOY_ONLY"
-echo "Bechmark config: SUT: $SUT_NAME, experiment: $EXPERIMENT_NAME"
+echo "[ENTRYPOINT.SH] Starting CLUE Deployer..."
+echo "[ENTRYPOINT.SH] Deploying as a service: $DEPLOY_AS_SERVICE"
+echo "[ENTRYPOINT.SH] Deploy without benchmarking: $DEPLOY_ONLY"
+echo "[ENTRYPOINT.SH] Bechmark config: SUT: $SUT_NAME, experiment: $EXPERIMENT_NAME"
 
 # Patch the kubeconfig to allow access to clusters running on the host
 python3 /app/clue_deployer/patch_kubeconfig.py
@@ -17,7 +17,7 @@ export KUBECONFIG=/app/clue_deployer/kubeconfig_patched
 
 # If DEPLOY_AS_SERVICE = True, deploy CLUE as a service
 if [ "$DEPLOY_AS_SERVICE" = "true" ]; then
-    echo "Starting FastAPI service..."
+    echo "[ENTRYPOINT.SH] Starting FastAPI service..."
     exec uvicorn clue_deployer.service.service:app --host 0.0.0.0 --port 8000
     exit 0
 fi
