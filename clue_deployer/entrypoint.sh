@@ -23,5 +23,4 @@ if [ "$DEPLOY_AS_SERVICE" = "true" ]; then
 fi
 
 # Deploy CLUE
-echo "Starting CLUE Deployer..."
 exec uv run clue_deployer/src/main.py

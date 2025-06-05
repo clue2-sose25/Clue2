@@ -6,7 +6,8 @@ from os import path
 import progressbar
 from kubernetes import config
 from tabulate import tabulate
-import logging
+from logger import logger
+
 import urllib3
 from clue_deployer.service.status import Phase
 from clue_deployer.service.status_manager import StatusManager
@@ -21,16 +22,7 @@ from clue_deployer.src.deploy import ExperimentDeployer
 # Configs
 ENV_CONFIG = EnvConfig.get_env_config()
 CONFIGS = Config()
-# Setup clients
 config.load_kube_config()
-
-# Logging
-logging.basicConfig()
-logging.getLogger().setLevel(logging.DEBUG)
-logging.getLogger("docker").setLevel(logging.INFO)
-logging.getLogger("kubernetes").setLevel(logging.INFO)
-logging.debug("debug log level")
-
 
 def run_experiment(exp: Experiment, observations_out_path: Path, config: Config = CONFIGS) -> None:
     # Create the experiment folder
@@ -129,9 +121,10 @@ def run():
 
 
 if __name__ == "__main__":
+    logger.info("Starting CLUE as a script...")
     # Disable SSL verification
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-    print("Disabled SLL verification for urllib3...")
+    logger.info("Disabled SLL verification for urllib3...")
     # Deploy CLUE
     if ENV_CONFIG.DEPLOY_ONLY:
         # Without benchmarking
