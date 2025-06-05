@@ -23,9 +23,8 @@ services:
     container_name: clue-dashboard
     ports:
       - "5001:80"
-    # Uncomment when deployer is transitioned into a service
-    # depends_on:
-    #   - clue-deployer
+    depends_on:
+      - clue-deployer
     environment:
       DOCKER_BUILDKIT: 1
     networks:
@@ -46,6 +45,7 @@ services:
       SUT_NAME: ${SUT_NAME}
       EXPERIMENT_NAME: ${EXPERIMENT_NAME}
       DEPLOY_ONLY: ${DEPLOY_ONLY}
+      DEPLOY_AS_SERVICE: ${DEPLOY_AS_SERVICE}
     volumes:
       # CLUE Configs
       - ./clue-config.yaml:/app/clue-config.yaml
