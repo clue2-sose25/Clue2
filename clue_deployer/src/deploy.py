@@ -222,5 +222,7 @@ class ExperimentDeployer:
         if self.experiment.autoscaling:
             logger.info("Autoscaling is enabled. Deploying autoscaling...")
             AutoscalingDeployer(self.experiment).setup_autoscaling()
-        StatusManager.set(Phase.WAITING, "Waiting for load generate...")
+        else:
+            logger.info("Autoscaling disabled. Skipping its deployment.")
+        StatusManager.set(Phase.WAITING, "Waiting for load generator...")
         logger.info("Deployment complete. You can now run the experiment.")
