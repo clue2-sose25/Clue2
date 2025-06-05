@@ -53,7 +53,6 @@ class ExperimentDeployer:
         Checks if the given namespace exists in the cluster
         """
         namespace = self.experiment.namespace
-        logger.info(f"Checking if namespace '{namespace}' exists")
         try:
             self.core_v1_api.read_namespace(name=namespace)
             logger.info(f"Namespace '{namespace}' already exists.")
@@ -71,7 +70,6 @@ class ExperimentDeployer:
         """
         Checks if the cluster contains nodes with a label: scaphandre=true
         """
-        logger.info(f"Checking for nodes with label scaphandre=true")
         label_selector = "scaphandre=true"
         try:
             nodes = self.core_v1_api.list_node(label_selector=label_selector)
@@ -86,7 +84,6 @@ class ExperimentDeployer:
         """
         Checks if the cluster has deployed necessary observability tools, such as: Prometheus, Kepler
         """
-        logger.info("Ensuring cluster observability requirements")
         try:
             # Check if the prometheus-community repository is added
             try:
@@ -113,6 +110,8 @@ class ExperimentDeployer:
             if prometheus_status.returncode != 0:
                 logger.info("Helm chart 'kube-prometheus-stack' is not installed. Installing it now...")
                 subprocess.check_call(["helm", "install", "kps1", "prometheus-community/kube-prometheus-stack"])
+            else:
+                logger.info("Prometheus stack found")
             # Check if kepler is installed
             logger.info("Checking for Kepler stack")
             kepler_status = subprocess.run(
@@ -130,51 +129,23 @@ class ExperimentDeployer:
                     "--set", "serviceMonitor.enabled=true",
                     "--set", "serviceMonitor.labels.release=kps1"
                 ])
+            else:
+                logger.info("Kepler stack found")
             logger.info("All cluster requirements fulfilled")
         except subprocess.CalledProcessError as e:
             logger.error(f"Error while fulfilling Helm requirements: {e}")
             raise RuntimeError("Failed to fulfill Helm requirements. Please check the error above.")
-    
+        
 
-
-    def _start_port_forward(self, pod_name_selector: str, local_port: int, remote_port: int):
-        pod_name = pod_name_selector 
-        namespace = self.experiment.namespace 
-
-        if self.port_forward_process and self.port_forward_process.poll() is None:
-            print(f"Port-forward process already running for {pod_name}.")
-            return
-
-        try:
-            print(f"Starting port-forward: {local_port} -> {pod_name}:{remote_port} in namespace '{namespace}'")
-            self.port_forward_process = subprocess.Popen(
-                [
-                    "kubectl", "--namespace", namespace, "port-forward",
-                    pod_name, f"{local_port}:{remote_port}"
-                ],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
-            )
-            print(f"Port-forward started successfully. PID: {self.port_forward_process.pid}")
-            return self.port_forward_process
-        except Exception as e:
-            print(f"Failed to start port-forward: {e}")
-            raise RuntimeError("Failed to start port-forward. Please check the error above.")
-    
-    def _patch_helm_deployment(self, hw: HelmWrapper):
-        values = hw.update_helm_chart()
-
-        # create observations directory in the format RUN_CONFIG.clue_config.result_base_path / experiment.name / dd.mm.yyyy_hh-mm
+    def _creates_results_directory(self, values: dict):
+        # Create observations directory in the format RUN_CONFIG.clue_config.result_base_path / experiment.name / dd.mm.yyyy_hh-mm
         observations = path.join(self.config.clue_config.result_base_path, self.experiment.name, time.strftime("%d.%m.%Y_%H-%M"))
         os.makedirs(observations)
-
-        # write copy of used values to observations 
+        # Write copy of used values to observations 
         with open(path.join(observations, "values.yaml"), "w") as f:
             f.write(values)
+            logger.info("Copying values file to results")
 
-
-    def _deploy_helm_chart(self, hw):
-        hw.deploy()
 
     def _wait_until_services_ready(self, timeout: int = 180):
         v1_apps = self.apps_v1_api
@@ -207,39 +178,48 @@ class ExperimentDeployer:
         raise RuntimeError("Timeout reached. The following services are not ready: " + str(list(services - ready_services)))
 
 
-    def execute_deployment(self):
-        """
-        Orchestrates the full deployment process for the experiment.
-        """
-        StatusManager.set(Phase.DEPLOYING_SUT, "Deploying SUT...")
-        # Check cluster preparation
-        self._create_namespace_if_not_exists()
-        self._check_labeled_node_available()
-        self._ensure_helm_requirements() # Installs Prometheus, Kepler
-        #TODO remove the hardcoding here
-        self._start_port_forward("prometheus-kps1-kube-prometheus-stack-prometheus-0",9090,9090)
-        self.clone_sut() # Clones the SUT repository if it doesn't exist
-        # Prepare the Helm wrapper
-        with self.helm_wrapper as hw:
-            self._patch_helm_deployment(hw)
-            self._deploy_helm_chart(hw)
-        
-        StatusManager.set(Phase.WAITING, "Waiting for system to stabilize...")
-        # Wait for the critical services
-        self._wait_until_services_ready()
-        
-        if self.experiment.autoscaling:
-            print("Autoscaling is enabled. Deploying autoscaling...")
-            AutoscalingDeployer(self.experiment).setup_autoscaling()
-        StatusManager.set(Phase.WAITING, "Waiting for load generate...")
-        print("Deployment complete. You can now run the experiment.")
-        
     def clone_sut(self):
         """
         Clones the SUT repository if it doesn't exist.
         """
         if not self.sut_path.exists():
-            print(f"Cloning SUT from {self.config.sut_config.sut_git_repo} to {self.sut_path}")
+            logger.info(f"Cloning SUT from {self.config.sut_config.sut_git_repo} to {self.sut_path}")
             subprocess.check_call(["git", "clone", self.config.sut_config.sut_git_repo, str(self.sut_path)])
         else:
-            print(f"SUT already exists at {self.sut_path}. Skipping clone.")
+            logger.info(f"SUT already exists at {self.sut_path}. Skipping cloning.")
+
+
+    def execute_deployment(self):
+        """
+        Orchestrates the full deployment process for the experiment.
+        """
+        StatusManager.set(Phase.DEPLOYING_SUT, "Deploying SUT...")
+        # Check for namespace
+        logger.info(f"Checking if namespace '{self.experiment.namespace}' exists")
+        self._create_namespace_if_not_exists()
+        # Check for nodes labels
+        logger.info(f"Checking for nodes with label scaphandre=true")
+        self._check_labeled_node_available()
+        # Installs Prometheus, Kepler
+        logger.info("Ensuring cluster observability requirements")
+        self._ensure_helm_requirements() 
+        # Clones the SUT repository if it doesn't exist
+        self.clone_sut() 
+        # Prepare the Helm wrapper
+        logger.info("Patching the helm chart")
+        values = self.helm_wrapper.update_helm_chart()
+        # Create results folder
+        logger.info("Creating results directory")
+        self._creates_results_directory(values)
+        # Deploy the SUT
+        self.helm_wrapper.deploy()
+        # Set the status
+        StatusManager.set(Phase.WAITING, "Waiting for system to stabilize...")
+        # Wait for the critical services
+        logger.info("Waiting for critical services")
+        self._wait_until_services_ready()
+        if self.experiment.autoscaling:
+            logger.info("Autoscaling is enabled. Deploying autoscaling...")
+            AutoscalingDeployer(self.experiment).setup_autoscaling()
+        StatusManager.set(Phase.WAITING, "Waiting for load generate...")
+        logger.info("Deployment complete. You can now run the experiment.")
