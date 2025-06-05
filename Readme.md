@@ -35,7 +35,11 @@ The docker image registry used by CLUE can be specified in the `clue-config.yaml
 docker compose up -d registry
 ```
 
-### 2. ✨ (Optional) Setting up a local `Kind` cluster
+### 2. ✨ Cluster preparation
+
+When deploying a CLUE container, it mounts the current kube config of the host machine. Therefore, to specify a specific k8s cluster for CLUE, be sure that your current `.kube` config is set to the cluster of choice.
+
+1. Setting up a local `Kind` cluster
 
 For local testing, we recommend using a `Kind` cluster, simply deployable by providing a config file. The cluster is configured to allow the usage of the local unsecure registry and to deploy the required number of nodes (at least 2) with designated node labels. Additionally, all created containers will be added to a custom `clue2` docker network. Deploy the pre-configured cluster using:
 
