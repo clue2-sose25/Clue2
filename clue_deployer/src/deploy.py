@@ -1,7 +1,8 @@
 from pathlib import Path
 from os import path
 from kubernetes.client import CoreV1Api, V1Namespace, V1ObjectMeta, AppsV1Api
-from kubernetes.client.exceptions import ApiException
+from kubernetes.client.exceptions import ApiException   
+from logger import logger
 import time
 import os
 import subprocess
@@ -48,67 +49,72 @@ class ExperimentDeployer:
 
 
     def _create_namespace_if_not_exists(self):
+        """
+        Checks if the given namespace exists in the cluster
+        """
         namespace = self.experiment.namespace
-        print(f"Checking if namespace '{namespace}' exists...")
+        logger.info(f"Checking if namespace '{namespace}' exists")
         try:
             self.core_v1_api.read_namespace(name=namespace)
-            print(f"Namespace '{namespace}' already exists.")
+            logger.info(f"Namespace '{namespace}' already exists.")
         except ApiException as e:
             if e.status == 404:  # Namespace not found
-                print(f"Namespace '{namespace}' does not exist. Creating it...")
+                logger.info(f"Namespace '{namespace}' does not exist. Creating it...")
                 namespace_body = V1Namespace(metadata=V1ObjectMeta(name=namespace))
                 self.core_v1_api.create_namespace(body=namespace_body)
-                print(f"Namespace '{namespace}' created successfully.")
+                logger.info(f"Namespace '{namespace}' created successfully.")
             else:
-                print(f"Error checking/creating namespace '{namespace}': {e}")
+                logger.error(f"Error checking/creating namespace '{namespace}': {e}")
                 raise
 
     def _check_labeled_node_available(self):
+        """
+        Checks if the cluster contains nodes with a label: scaphandre=true
+        """
+        logger.info(f"Checking for nodes with label scaphandre=true")
         label_selector = "scaphandre=true"
         try:
             nodes = self.core_v1_api.list_node(label_selector=label_selector)
             if not nodes.items:
                 raise RuntimeError(f"No nodes with label '{label_selector}' found. Please label a node and try again.")
-            print(f"Found {len(nodes.items)} nodes with label '{label_selector}'.")
+            logger.info(f"Found {len(nodes.items)} nodes with label '{label_selector}'.")
         except ApiException as e:
-            print(f"Error listing nodes with label '{label_selector}': {e}")
-            raise
+            logger.error(f"Error listing nodes with label '{label_selector}': {e}")
+            raise 
 
     def _ensure_helm_requirements(self):
-        print("Ensuring Helm requirements (Prometheus, Kepler)...")
+        """
+        Checks if the cluster has deployed necessary observability tools, such as: Prometheus, Kepler
+        """
+        logger.info("Ensuring cluster observability requirements")
         try:
-            
             # Check if the prometheus-community repository is added
             try:
                 helm_repos = subprocess.check_output(["helm", "repo", "list"], text=True)
             except subprocess.CalledProcessError:
                 helm_repos = ""  # No repos yet
-
             if "prometheus-community" not in helm_repos:
-                print("Helm repository 'prometheus-community' is not added. Adding it now...")
+                logger.info("Helm repository 'prometheus-community' is not added. Adding it now...")
                 subprocess.check_call(["helm", "repo", "add", "prometheus-community", "https://prometheus-community.github.io/helm-charts"])
             if "kepler" not in helm_repos:
-                print("Helm repository 'kepler' is not added. Adding it now...")
+                logger.info("Helm repository 'kepler' is not added. Adding it now...")
                 subprocess.check_call(["helm", "repo", "add", "kepler", "https://sustainable-computing-io.github.io/kepler-helm-chart"])
-
             # Update Helm repos
+            logger.info("Updating helm repos")
             subprocess.check_call(["helm", "repo", "update"])
-
-
-           
             # Check if kube-prometheus-stack is installed
+            logger.info("Checking for Prometheus stack")
             prometheus_status = subprocess.run(
                 ["helm", "status", "kps1"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True
                 )
-            
             if prometheus_status.returncode != 0:
-                print("Helm chart 'kube-prometheus-stack' is not installed. Installing it now...")
+                logger.info("Helm chart 'kube-prometheus-stack' is not installed. Installing it now...")
                 subprocess.check_call(["helm", "install", "kps1", "prometheus-community/kube-prometheus-stack"])
-
             # Check if kepler is installed
+            logger.info("Checking for Kepler stack")
             kepler_status = subprocess.run(
                 ["helm", "status", "kepler", "--namespace", "kepler"],
                 stdout=subprocess.PIPE,
@@ -116,7 +122,7 @@ class ExperimentDeployer:
                 text=True
             )
             if kepler_status.returncode != 0:
-                print("Helm chart 'kepler' is not installed. Installing it now...")
+                logger.info("Helm chart 'Kepler' is not installed. Installing it now...")
                 subprocess.check_call([
                     "helm", "install", "kepler", "kepler/kepler",
                     "--namespace", "kepler",
@@ -124,10 +130,9 @@ class ExperimentDeployer:
                     "--set", "serviceMonitor.enabled=true",
                     "--set", "serviceMonitor.labels.release=kps1"
                 ])
-            print("All Helm requirements are fulfilled.")
-        
+            logger.info("All cluster requirements fulfilled")
         except subprocess.CalledProcessError as e:
-            print(f"Error while fulfilling Helm requirements: {e}")
+            logger.error(f"Error while fulfilling Helm requirements: {e}")
             raise RuntimeError("Failed to fulfill Helm requirements. Please check the error above.")
     
 
@@ -207,9 +212,9 @@ class ExperimentDeployer:
         Orchestrates the full deployment process for the experiment.
         """
         StatusManager.set(Phase.DEPLOYING_SUT, "Deploying SUT...")
-        print(f"--- Starting Deployment for Experiment: {self.experiment.name} ---")
+        # Check cluster preparation
         self._create_namespace_if_not_exists()
-        self._check_labeled_node_available() # Checks for "scaphandre=true"
+        self._check_labeled_node_available()
         self._ensure_helm_requirements() # Installs Prometheus, Kepler
         #TODO remove the hardcoding here
         self._start_port_forward("prometheus-kps1-kube-prometheus-stack-prometheus-0",9090,9090)

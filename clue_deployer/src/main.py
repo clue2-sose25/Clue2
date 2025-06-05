@@ -102,33 +102,38 @@ def run():
     # Check if SUT_NAME is valid
     available_suts_list = available_suts()
     if ENV_CONFIG.SUT_NAME not in available_suts_list:
-        print(f"Invalid SUT name: '{ENV_CONFIG.SUT_NAME}'")
-        print(f"Available SUTs: {available_suts_list}")
+        logger.error(f"Invalid SUT name: '{ENV_CONFIG.SUT_NAME}'")
+        logger.info(f"Available SUTs: {available_suts_list}")
         return
-    
     # Set the status to preparing
     StatusManager.set(Phase.PREPARING_CLUSTER, "Preparing the cluster...")
-    # Get the experiment object
+    logger.info("Preparing the cluster")
+    # Get the experiment objects
     experiment_list = ExperimentList.load_experiments(CONFIGS, ENV_CONFIG.EXPERIMENT_NAME)
     experiments = [e for e in experiment_list if e.name == ENV_CONFIG.EXPERIMENT_NAME]
+    logger.info(f"Loaded {len(experiments)} experiments to execute")
+    # Check if the list is not empty
     if not len(experiments):
         raise ValueError(f"Invalid experiment name for {ENV_CONFIG.SUT_NAME}. Available experiments " + str([e.name for e in experiment_list]))
-    else:   
-        experiment = experiments[0]
-    # Deploy the experiment, without the workload generator
-    deployer = ExperimentDeployer(experiment, CONFIGS)
-    deployer.execute_deployment()
+    # Deploy each experiment
+    for experiment in experiments:
+        # Deploy the experiment, without the workload generator
+        logger.info(f"Starting experiment: {experiment}")
+        deployer = ExperimentDeployer(experiment, CONFIGS)
+        deployer.execute_deployment()
 
 
 if __name__ == "__main__":
-    logger.info("Starting CLUE as a script...")
+    logger.info("Starting CLUE as a script")
     # Disable SSL verification
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-    logger.info("Disabled SLL verification for urllib3...")
+    logger.info("Disabled SLL verification for urllib3")
     # Deploy CLUE
     if ENV_CONFIG.DEPLOY_ONLY:
         # Without benchmarking
+        logger.info("Running CLUE as deploy only")
         run()
     else:
         # Full deployment
+        logger.info("Running full CLUE benchmark")
         main()
