@@ -7,7 +7,7 @@ set -e
 echo "Starting CLUE Deployer..."
 echo "Deploying as a service: $DEPLOY_AS_SERVICE"
 echo "Deploy without benchmarking: $DEPLOY_ONLY"
-echo "Bechmark config: SUT: `$SUT_NAME`, experiment: `$EXPERIMENT_NAME`"
+echo "Bechmark config: SUT: $SUT_NAME, experiment: $EXPERIMENT_NAME"
 
 # Patch the kubeconfig to allow access to clusters running on the host
 python3 /app/clue_deployer/patch_kubeconfig.py

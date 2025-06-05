@@ -37,6 +37,8 @@ services:
       context: .
       dockerfile: ./clue_deployer/Dockerfile
     container_name: clue-deployer
+    ports:
+      - "9001:8000"
     privileged: true
     depends_on:
       - registry
