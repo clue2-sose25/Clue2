@@ -12,9 +12,11 @@ from clue_deployer.src.experiment import Experiment
 from clue_deployer.src.config import Config
 from clue_deployer.src.autoscaling_deployer import AutoscalingDeployer
 from clue_deployer.service.status_manager import StatusManager, Phase
+from clue_deployer.src.config.env_config import EnvConfig
 
 # Adjust if deploy.py is not 3 levels down from project root
 BASE_DIR = Path(__file__).resolve().parent.parent.parent 
+ENV_CONFIG = EnvConfig.get_env_config()
 
 class ExperimentDeployer:
     def __init__(self, experiment: Experiment, config: Config):
@@ -213,7 +215,8 @@ class ExperimentDeployer:
             logger.info("Creating results directory")
             self._creates_results_directory(values)
             # Deploy the SUT
-            wrapper.deploy()
+            logger.info(f"Deploying the SUT: {ENV_CONFIG.SUT_NAME}")
+            wrapper.deploy_sut()
         # Set the status
         StatusManager.set(Phase.WAITING, "Waiting for system to stabilize...")
         # Wait for all critical services

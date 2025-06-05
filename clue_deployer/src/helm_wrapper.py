@@ -111,14 +111,13 @@ class HelmWrapper():
         
         return values
         
-    def deploy(self) -> None:
+    def deploy_sut(self) -> None:
         """
         Deploys the SUT's helm chart
         """
         if self.active_chart_path is None:
             raise RuntimeError("Temporary chart path not set. Did you call _create_temp_chart_copy()?")
         try:
-            logger.info(f"Deploying the SUT's helm chart in {self.active_chart_path}")
             helm_deploy = subprocess.check_output(
                 ["helm", "install", self.name, "-n", self.sut_config.namespace, "."],
                 cwd=self.active_chart_path,
@@ -130,6 +129,7 @@ class HelmWrapper():
                 raise RuntimeError("Failed to deploy helm chart. Run helm install manually and see why it fails")
         except subprocess.CalledProcessError as cpe:
             logger.error(f"Error deploying the SUT {cpe}")
+            raise cpe
     
     def uninstall(self) -> None:
         """
