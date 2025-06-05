@@ -10,7 +10,6 @@ RUN apk update \
 
 WORKDIR /app
 
-
 # Copy just requirements.txt first to benefit from cache
 COPY clue_builders/toystore/ .
 
@@ -25,5 +24,3 @@ RUN dos2unix /app/entrypoint.sh \
      && chmod +x /app/entrypoint.sh
 
 ENTRYPOINT ["sh" , "entrypoint.sh"]
-
-
