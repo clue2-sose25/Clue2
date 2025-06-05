@@ -107,6 +107,31 @@ class ToystoreBuilder:
             "--file", "docker-compose.yml"
         ], cwd=self.sut_path, check=True)
         print("SUT images built and pushed successfully using Buildx bake.")
+    
+    def build_push_loadgenerator(self):
+        platform = (
+            self.config.clue_config.remote_platform_arch
+        )
+        registry = self.docker_registry_address
+
+        print(f"Building Toystore workload generator for platform {platform}")
+        tag = f"{registry}/toystore-loadgenerator"
+        build = subprocess.check_call(
+            [
+                "docker",
+                "buildx",
+                "build",
+                "--platform", platform,
+                "--push",
+                "-t", tag,
+                ".",
+            ],
+            cwd=os.path.join("workload_generator"),
+        )
+        if build != 0:
+            raise RuntimeError("Failed to build the workload generator")
+
+        print(f"Built workload generator for platform {platform} and pushed to {tag}")
 
 
 def main():
@@ -121,6 +146,7 @@ def main():
     builder.check_docker_running()
     builder.check_buildx_available()
     builder.build_and_push()
+    builder.build_push_loadgenerator()
 
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser(description="Build SUT images using Docker Buildx")
