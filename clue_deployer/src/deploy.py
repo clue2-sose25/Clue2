@@ -6,22 +6,25 @@ import time
 import os
 import subprocess
 from kubernetes import config as k_config
-
-# Assuming these are correctly imported from your project structure
+import urllib3
 from clue_deployer.src.helm_wrapper import HelmWrapper
 from clue_deployer.src.experiment import Experiment
 from clue_deployer.src.config import Config
 from clue_deployer.src.autoscaling_deployer import AutoscalingDeployer
 from clue_deployer.service.status_manager import StatusManager, Phase
 
-
-BASE_DIR = Path(__file__).resolve().parent.parent.parent # Adjust if deploy.py is not 3 levels down from project root
-
+# Adjust if deploy.py is not 3 levels down from project root
+BASE_DIR = Path(__file__).resolve().parent.parent.parent 
 
 class ExperimentDeployer:
     def __init__(self, experiment: Experiment, config: Config):
         self.experiment = experiment
-        self.config = config # This object should hold clue_config, sut_config, etc.
+        # This object should hold clue_config, sut_config, etc.
+        self.config = config 
+
+        # Disable SSL verification
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+        print("Disabled SLL verification for urllib3...")
 
         # Extract paths and addresses from the config object
         # Ensure your Config class structure provides these attributes
