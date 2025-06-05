@@ -1,18 +1,17 @@
 import platform
 import threading
+
 from datetime import datetime
-
 from psc.tracker import PodUsage
-
-from clue_deployer.experiment import Experiment
-from clue_deployer.workload_cancelled_exception import WorkloadCancelled
-from clue_deployer.flushing_queue import FlushingQueue
-from clue_deployer.workload_runner import WorkloadRunner
-from clue_deployer.helm_wrapper import HelmWrapper
+from clue_deployer.src.experiment import Experiment
+from clue_deployer.src.workload_cancelled_exception import WorkloadCancelled
+from clue_deployer.src.flushing_queue import FlushingQueue
+from clue_deployer.src.workload_runner import WorkloadRunner
+from clue_deployer.src.helm_wrapper import HelmWrapper
+from clue_deployer.service.status_manager import StatusManager, Phase
 from psc import ResourceTracker, NodeUsage
 from os import path
 import signal
-import subprocess
 import kubernetes
 import logging
 
@@ -78,6 +77,7 @@ class ExperimentRunner:
             else:
                 raise WorkloadCancelled("Workload cancelled")  # raise custom exception on Windows
             logging.warning(f"workload timeout ({timeout})s reached.")
+            StatusManager.set(Phase.DONE, " workload timeout reached, Done :)")
             raise SystemExit(0)  # Exit gracefully
 
         # Set up SIGINT handler (Ctrl+C) for all platforms
@@ -102,6 +102,7 @@ class ExperimentRunner:
         # Example usage
         try:
             logging.info(f"starting workload with timeout {timeout}")
+            StatusManager.set(Phase.IN_PROGRESS, "starting workload with time out, Experiment in progress...")
             # Set up the timeout
             timer = set_timeout(timeout)
 
@@ -112,7 +113,7 @@ class ExperimentRunner:
                 wlr.run_workload(observations_out_path)
             except WorkloadCancelled:
                 logging.info("Workload stopped due to cancellation")
-
+            StatusManager.set(Phase.DONE, " Expermint Done, flushing channels :)")
             logging.info("finished running workload, stopping trackers and flushing channels")
             # stop resource tracker
             tracker.stop()

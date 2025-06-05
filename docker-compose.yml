@@ -17,15 +17,14 @@ services:
   # The CLUE dashboard
   clue-dashboard:
     image: ghcr.io/clue2-sose25/clue2/clue-dashboard:latest
-    build: 
+    build:
       context: ./clue_dashboard
       dockerfile: Dockerfile
     container_name: clue-dashboard
     ports:
       - "5001:80"
-    # Uncomment when deployer is transitioned into a service 
-    # depends_on:
-    #   - clue-deployer
+    depends_on:
+      - clue-deployer
     environment:
       DOCKER_BUILDKIT: 1
     networks:
@@ -38,6 +37,8 @@ services:
       context: .
       dockerfile: ./clue_deployer/Dockerfile
     container_name: clue-deployer
+    ports:
+      - "9001:8000"
     privileged: true
     depends_on:
       - registry
@@ -46,6 +47,7 @@ services:
       SUT_NAME: ${SUT_NAME}
       EXPERIMENT_NAME: ${EXPERIMENT_NAME}
       DEPLOY_ONLY: ${DEPLOY_ONLY}
+      DEPLOY_AS_SERVICE: ${DEPLOY_AS_SERVICE}
     volumes:
       # CLUE Configs
       - ./clue-config.yaml:/app/clue-config.yaml

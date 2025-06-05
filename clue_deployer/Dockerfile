@@ -5,16 +5,16 @@ WORKDIR /app
 # Install system dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        curl \
-        ca-certificates \
-        git \
-        tar \
-        iproute2 \
-        iputils-ping \
-        lsb-release \
-        gnupg \
-        docker.io \
-        dos2unix \
+    curl \
+    ca-certificates \
+    git \
+    tar \
+    iproute2 \
+    iputils-ping \
+    lsb-release \
+    gnupg \
+    docker.io \
+    dos2unix \
     && rm -rf /var/lib/apt/lists/*
 
 # Install kubectl
@@ -38,11 +38,11 @@ RUN uv sync
 ENV PATH="/app/.venv/bin:$PATH"
 
 # Copy the rest of the necessary files
-COPY clue_deployer/ /app
-RUN mv /app/src/* /app/clue_deployer
+COPY clue_deployer /app/clue_deployer
+
 
 # Fix the line endings
-RUN dos2unix /app/entrypoint.sh \
-     && chmod +x /app/entrypoint.sh
+RUN dos2unix /app/clue_deployer/entrypoint.sh \
+    && chmod +x /app/clue_deployer/entrypoint.sh
 
-ENTRYPOINT ["/app/entrypoint.sh"]
+ENTRYPOINT ["/app/clue_deployer/entrypoint.sh"]
