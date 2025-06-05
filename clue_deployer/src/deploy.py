@@ -203,20 +203,21 @@ class ExperimentDeployer:
         # Installs Prometheus, Kepler
         logger.info("Ensuring cluster observability requirements")
         self._ensure_helm_requirements() 
-        # Clones the SUT repository if it doesn't exist
+        # Clones the SUT repository
         self.clone_sut() 
-        # Prepare the Helm wrapper
-        logger.info("Patching the helm chart")
-        values = self.helm_wrapper.update_helm_chart()
-        # Create results folder
-        logger.info("Creating results directory")
-        self._creates_results_directory(values)
-        # Deploy the SUT
-        self.helm_wrapper.deploy()
+        # Prepare the Helm wrapper as a context manager
+        with self.helm_wrapper as wrapper:
+            logger.info("Patching the helm chart")
+            values = wrapper.update_helm_chart()
+            # Create results folder
+            logger.info("Creating results directory")
+            self._creates_results_directory(values)
+            # Deploy the SUT
+            wrapper.deploy()
         # Set the status
         StatusManager.set(Phase.WAITING, "Waiting for system to stabilize...")
-        # Wait for the critical services
-        logger.info("Waiting for critical services")
+        # Wait for all critical services
+        logger.info("Waiting for all critical services")
         self._wait_until_services_ready()
         if self.experiment.autoscaling:
             logger.info("Autoscaling is enabled. Deploying autoscaling...")

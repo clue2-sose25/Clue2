@@ -74,12 +74,13 @@ class HelmWrapper():
 
     def update_helm_chart(self) -> dict:
         """Loads the values.yaml file."""
+        logger.info(f"Using values file from path: {self.active_values_file_path}")
         if not self.active_values_file_path.exists():
             raise FileNotFoundError(f"Values file not found at {self.active_values_file_path}")
         
         with open(self.active_values_file_path, "r") as f:
             values = f.read()
-        
+        logger.info("Replacing descartesresearch repository inside helm file")
         values = values.replace("descartesresearch", self.clue_config.docker_registry_address)
         # ensure we only run on nodes that we can observe - set nodeSelector to scaphandre
         values = values.replace(
