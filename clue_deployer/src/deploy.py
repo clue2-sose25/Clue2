@@ -199,7 +199,7 @@ class ExperimentDeployer:
             logger.info(f"SUT already exists at {self.sut_path}. Skipping cloning.")
 
 
-    def execute_deployment(self):
+    def deploy_SUT(self):
         """
         Orchestrates the full deployment process for the experiment.
         """
@@ -236,4 +236,4 @@ class ExperimentDeployer:
         else:
             logger.info("Autoscaling disabled. Skipping its deployment.")
         StatusManager.set(Phase.WAITING, "Waiting for load generator...")
-        logger.info("Deployment tested successfully. You can now run the experiment.")
+        logger.info("SUT deployment successful.")
