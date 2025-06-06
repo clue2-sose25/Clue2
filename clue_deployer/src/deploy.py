@@ -222,7 +222,7 @@ class ExperimentDeployer:
         # Set the status
         StatusManager.set(Phase.WAITING, "Waiting for system to stabilize...")
         # Wait for all critical services
-        logger.info("Waiting for all critical services")
+        logger.info(f"Waiting for all critical services: [{set(self.experiment.critical_services)}]")
         self._wait_until_services_ready()
         if self.experiment.autoscaling:
             logger.info("Autoscaling is enabled. Deploying autoscaling...")
