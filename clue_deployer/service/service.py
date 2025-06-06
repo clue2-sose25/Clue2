@@ -4,8 +4,9 @@ import logging
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import RedirectResponse
 from pathlib import Path
+from clue_deployer.src.config.config import ENV_CONFIG
 from clue_deployer.src.main import main
-from clue_deployer.src.config import SUTConfig, Config, EnvConfig
+from clue_deployer.src.config import SUTConfig, Config
 from clue_deployer.service.status_manager import StatusManager
 from clue_deployer.service.models import (
     HealthResponse,
@@ -34,7 +35,6 @@ for var in ["SUT_NAME", "EXPERIMENT_NAME"]:
 
 logger.info(f"SUT={os.getenv('SUT_NAME')}, EXPERIMENT={os.getenv('EXPERIMENT_NAME')}")
 
-ENV_CONFIG = EnvConfig.get_env_config()
 SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
 RESULTS_DIR = ENV_CONFIG.RESULTS_PATH
 CLUE_CONFIG_PATH = ENV_CONFIG.CLUE_CONFIG_PATH

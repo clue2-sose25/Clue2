@@ -1,11 +1,9 @@
 import math
 import kubernetes
-from clue_deployer.src.config import Config
+from clue_deployer.src.config.config import CONFIGS
 from clue_deployer.src.experiment import Experiment
 from clue_deployer.src.scaling_experiment_setting import ScalingExperimentSetting
 from logger import logger
-
-CONFIGS = Config()
 
 class AutoscalingDeployer:
     # Read the target utilization of autoscaling

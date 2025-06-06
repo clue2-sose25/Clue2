@@ -2,6 +2,7 @@ from pathlib import Path
 from os import path
 from kubernetes.client import CoreV1Api, V1Namespace, V1ObjectMeta, AppsV1Api
 from kubernetes.client.exceptions import ApiException   
+from clue_deployer.src.config.config import ENV_CONFIG
 from logger import logger
 import time
 import os
@@ -12,11 +13,9 @@ from clue_deployer.src.experiment import Experiment
 from clue_deployer.src.config import Config
 from clue_deployer.src.autoscaling_deployer import AutoscalingDeployer
 from clue_deployer.service.status_manager import StatusManager, Phase
-from clue_deployer.src.config.env_config import EnvConfig
 
 # Adjust if deploy.py is not 3 levels down from project root
 BASE_DIR = Path(__file__).resolve().parent.parent.parent 
-ENV_CONFIG = EnvConfig.get_env_config()
 
 class ExperimentDeployer:
     def __init__(self, experiment: Experiment, config: Config):

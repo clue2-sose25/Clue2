@@ -6,12 +6,12 @@ from os import path
 import progressbar
 from kubernetes import config
 from tabulate import tabulate
+from clue_deployer.src.config.config import CONFIGS, ENV_CONFIG, Config
 from logger import logger
 
 import urllib3
 from clue_deployer.service.status import Phase
 from clue_deployer.service.status_manager import StatusManager
-from clue_deployer.src.config import Config
 from clue_deployer.src.config.env_config import EnvConfig
 from clue_deployer.src.experiment import Experiment
 from clue_deployer.src.experiment_runner import ExperimentRunner
@@ -20,8 +20,6 @@ from clue_deployer.src.experiment_list import ExperimentList
 from clue_deployer.src.deploy import ExperimentDeployer
 
 # Configs
-ENV_CONFIG = EnvConfig.get_env_config()
-CONFIGS = Config()
 config.load_kube_config()
 
 def run_experiment(exp: Experiment, observations_out_path: Path, config: Config = CONFIGS) -> None:
@@ -88,6 +86,7 @@ def available_suts():
     Reads the 'sut_configs' folder and returns a list of available SUT names.
     """
     if not ENV_CONFIG.SUT_CONFIGS_PATH.exists():
+        logger.error(f"SUT configs folder not found: {ENV_CONFIG.SUT_CONFIGS_PATH}")
         raise FileNotFoundError(f"SUT configs folder not found: {ENV_CONFIG.SUT_CONFIGS_PATH}")
     # Get all YAML files in the 'sut_configs' folder
     sut_files = [f.stem for f in ENV_CONFIG.SUT_CONFIGS_PATH.glob("*.yaml")]
