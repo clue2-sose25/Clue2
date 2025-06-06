@@ -123,8 +123,8 @@ class AutoscalingDeployer:
                     )
                 )
             )
+        logger.info("Created a MEM autoscaler")
         self._setup_autoscaling(_mem_hpa_creator)
-        logger.info("Successfully setup MEM autoscaling")
 
     def _setup_cpu_autoscaleing(self):
         hpas = kubernetes.client.AutoscalingV1Api()
@@ -182,8 +182,9 @@ class AutoscalingDeployer:
                     )
                 )
             )
+        logger.info("Created a CPU autoscaler")
         self._setup_autoscaling(_cpu_hap_creator)
-        logger.info("Successfully setup CPU autoscaling")
+        
 
     def _setup_full_autoscaling(self):
         hpas = kubernetes.client.AutoscalingV1Api()
@@ -251,5 +252,5 @@ class AutoscalingDeployer:
                     )
                 )
             )
+        logger.info("Created a FULL autoscaler")
         self._setup_autoscaling(_full_hpa_creator)
-        logger.info("Successfully setup FULL autoscaling")

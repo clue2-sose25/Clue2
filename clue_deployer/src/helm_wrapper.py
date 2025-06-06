@@ -108,7 +108,7 @@ class HelmWrapper():
             raise RuntimeError("Temporary chart path not set. Did you call _create_temp_chart_copy()?")
         try:
             helm_deploy = subprocess.check_output(
-                ["helm", "install", self.name, "-n", self.sut_config.namespace, "."],
+                ["helm", "upgrade", "--install", self.name, "-n", self.sut_config.namespace, "."],
                 cwd=self.active_chart_path,
             )
             helm_deploy = helm_deploy.decode("utf-8")

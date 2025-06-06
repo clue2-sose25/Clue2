@@ -160,19 +160,25 @@ class ExperimentDeployer:
 
         while len(ready_services) < len(services) and time.time() - start_time < timeout:
             for service in services.difference(ready_services):
+                # Check StatefulSet status
                 try:
-                    # Check StatefulSet status
                     statefulset_status = v1_apps.read_namespaced_stateful_set_status(service, namespace)
                     if statefulset_status.status.ready_replicas and statefulset_status.status.ready_replicas > 0:
                         ready_services.add(service)
                         continue
-
-                    # Check Deployment status
+                except ApiException as e:
+                    # Ignore not found errors
+                    if e.status != 404:  
+                        logger.error(f"Error checking status for service '{service}': {e}")
+                # Check Deployment status
+                try:
                     deployment_status = v1_apps.read_namespaced_deployment_status(service, namespace)
                     if deployment_status.status.ready_replicas and deployment_status.status.ready_replicas > 0:
                         ready_services.add(service)
+                        continue
                 except ApiException as e:
-                    if e.status != 404:  # Ignore not found errors
+                    # Ignore not found errors
+                    if e.status != 404:  
                         logger.error(f"Error checking status for service '{service}': {e}")
             if services == ready_services:
                 logger.info("All services are up!")

@@ -46,5 +46,5 @@ experiments:
   - name: "baseline"
     target_branch: "main"
     colocated_workload: true
-    critical_services: ["toystore-frontend", "toystore-backend"]
+    critical_services: ['toystore-frontend', 'toystore-backend']
     autoscaling: "cpu"
