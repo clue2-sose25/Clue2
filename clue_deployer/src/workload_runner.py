@@ -168,9 +168,7 @@ class WorkloadRunner:
                             command=[
                                 "sh",
                                 "-c",
-#                                "echo 'meep' && locust --csv teastore --csv-full-history --headless --only-summary 1>/dev/null 2>errors.log || tar zcf - teastore_stats.csv teastore_failures.csv teastore_stats_history.csv errors.log | base64 -w 0",
-                                f"locust --csv {self.sut_name} --csv-full-history --headless --only-summary 1>/dev/null 2>errors.log || tar zcf - \
-                                    {self.result_filenames.stats_csv} {self.result_filenames.failures_csv} {self.result_filenames.stats_history_csv} errors.log | base64 -w 0",
+                                f"locust --csv {self.sut_name} --csv-full-history --headless --only-summary 1>/dev/null 2>errors.log; tar zcf - {self.result_filenames.stats_csv} {self.result_filenames.failures_csv} {self.result_filenames.stats_history_csv} errors.log | base64 -w 0",
                             ],
                             working_dir="/loadgenerator",
                         )
