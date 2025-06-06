@@ -22,7 +22,7 @@ from clue_deployer.src.deploy import ExperimentDeployer
 # Configs
 config.load_kube_config()
 
-def run_experiment(exp: Experiment, observations_out_path: Path, config: Config = CONFIGS) -> None:
+def run_single_experiment(exp: Experiment, observations_out_path: Path, config: Config = CONFIGS) -> None:
     # Create the experiment folder
     logger.info("Creating a results folder")
     try:
@@ -59,7 +59,7 @@ def iterate_experiment(exp: Experiment, timestamp: str, num_iterations: int, con
         tags = "_".join(["exp"] + exp.env.tags)
         out_path = path.join(root, timestamp, tags, name, str(i))
         logger.info(f"Running iteration ({i + 1}/{num_iterations}) with output to: {out_path}")
-        run_experiment(exp, out_path, config)
+        run_single_experiment(exp, out_path, config)
     # Wait
     logger.info(f"Sleeping for 120s to let the system settle after one experiment")
     time.sleep(120)
@@ -67,19 +67,24 @@ def iterate_experiment(exp: Experiment, timestamp: str, num_iterations: int, con
 def main() -> None:
     # Load the experiments
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    exps = ExperimentList.load_experiments(config, ENV_CONFIG.EXPERIMENT_NAME)
-    logger.info(f"Loaded {len(exps)} experiments to run: {set(exps.experiments)}")
+    exps = ExperimentList.load_experiments(CONFIGS, ENV_CONFIG.EXPERIMENT_NAME)
+    logger.info(f"Loaded {len(exps.experiments)} experiments to run")
     # Get the workloads
     logger.info("Appending workloads to the experiments")
     workloads = [get_workload_instance(w) for w in CONFIGS.clue_config.workloads]
     exps.add_workloads(workloads)
-    # Sort the experiments
+    # Sort and log the experiments
     exps.sort()
-    logger.info(tabulate([n.to_row() for n in exps], tablefmt="rounded_outline", headers=Experiment.headers()))
+    logger.info("Running the following experiments:")
+    i = 0
+    for exp in exps.experiments:
+        logger.info(f"Experiment {i}: {exp}")
+        i = i + 1
+    # TODO: Fix or delete the progress bar
     progressbar.streams.wrap_stderr()
     # Run over all iterations of each of the experiments
     for exp in exps:
-        iterate_experiment(exp, timestamp, num_iterations=config.sut_config.num_iterations, config=CONFIGS)
+        iterate_experiment(exp, timestamp, num_iterations=CONFIGS.sut_config.num_iterations, config=CONFIGS)
 
 
 def available_suts():
