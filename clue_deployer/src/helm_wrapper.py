@@ -3,7 +3,7 @@ import subprocess
 from pathlib import Path
 import tempfile
 import shutil
-
+from logger import logger
 from clue_deployer.src.config import Config
 from clue_deployer.src.scaling_experiment_setting import ScalingExperimentSetting
 
@@ -16,13 +16,9 @@ class HelmWrapper():
         self.autoscaling = autoscaling
         self.values_file_full_path = self.sut_config.helm_chart_path / self.sut_config.values_yaml_name
         self.name = self.sut_config.sut_path.name
-
         # Path to the ORIGINAL Helm chart in the SUT directory
         self.original_helm_chart_path = Path(self.sut_config.helm_chart_path) # Ensure this is a Path
-        
         self.original_values_file_name = self.sut_config.values_yaml_name
-
-
         # This will be set when a temporary chart copy is active
         self.active_chart_path: Path | None = None
         self.active_values_file_path: Path | None = None
@@ -54,32 +50,38 @@ class HelmWrapper():
             raise FileNotFoundError(f"Values file not found in copied chart at {self.active_values_file_path}")
         return copied_chart_root_path
     
-    def _cleanup_temp_chart_copy(self):
-        """Cleans up the temporary chart directory."""
+
+    def __enter__(self):
+        """
+        Support using HelmWrapper as a context manager for temp dir handling.
+        """
+        logger.info("Creating temp directory for helm chart")
+        self._create_temp_chart_copy()
+        return self
+
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """
+        Ensures the temp folder cleanup when exiting context.
+        """
+        logger.info("Cleaning up temp directory")
         if self._temp_dir_context:
-            print(f"Cleaning up temporary chart directory: {self._temp_dir_context.name}")
             self._temp_dir_context.cleanup()
             self._temp_dir_context = None
         self.active_chart_path = None
         self.active_values_file_path = None
 
-    def __enter__(self):
-        """Support using HelmWrapper as a context manager for temp dir handling."""
-        self._create_temp_chart_copy()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Ensure cleanup when exiting context."""
-        self._cleanup_temp_chart_copy()
-
     def update_helm_chart(self) -> dict:
-        """Loads the values.yaml file."""
+        """
+        Loads the values.yaml file.
+        """
+        logger.info(f"Using values file from path: {self.active_values_file_path}")
         if not self.active_values_file_path.exists():
             raise FileNotFoundError(f"Values file not found at {self.active_values_file_path}")
         
         with open(self.active_values_file_path, "r") as f:
             values = f.read()
-        
+        logger.info("Replacing descartesresearch repository inside helm file")
         values = values.replace("descartesresearch", self.clue_config.docker_registry_address)
         # ensure we only run on nodes that we can observe - set nodeSelector to scaphandre
         values = values.replace(
@@ -109,25 +111,29 @@ class HelmWrapper():
         
         return values
         
-    def deploy(self) -> None:
-        """deploys the helm chart"""
+    def deploy_sut(self) -> None:
+        """
+        Deploys the SUT's helm chart
+        """
         if self.active_chart_path is None:
             raise RuntimeError("Temporary chart path not set. Did you call _create_temp_chart_copy()?")
         try:
-            print(f"deploying helm chart in {self.active_chart_path}")
             helm_deploy = subprocess.check_output(
                 ["helm", "install", self.name, "-n", self.sut_config.namespace, "."],
                 cwd=self.active_chart_path,
             )
             helm_deploy = helm_deploy.decode("utf-8")
-            print(helm_deploy)
+            logger.info(helm_deploy)
             if not "STATUS: deployed" in helm_deploy:
-                print(helm_deploy)
-                raise RuntimeError("failed to deploy helm chart. Run helm install manually and see why it fails")
+                logger.error(helm_deploy)
+                raise RuntimeError("Failed to deploy helm chart. Run helm install manually and see why it fails")
         except subprocess.CalledProcessError as cpe:
-            print(cpe)
+            logger.error(f"Error deploying the SUT {cpe}")
+            raise cpe
     
     def uninstall(self) -> None:
-        """uninstalls the helm chart"""
-        print(f"uninstalling helm chart {self.name}")
+        """
+        Uninstalls the helm chart
+        """
+        logger.info(f"Uninstalling the SUT's helm chart {self.name}")
         subprocess.run(["helm", "uninstall", self.name, "-n", self.sut_config.namespace])

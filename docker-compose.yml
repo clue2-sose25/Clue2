@@ -98,6 +98,26 @@ services:
     networks:
       - clue2
 
+  # The optional Toystore builder
+  toystore-builder:
+    image: ghcr.io/clue2-sose25/clue2/toystore-builder:latest
+    build:
+      context: .
+      dockerfile: ./clue_builders/toystore/Dockerfile
+    container_name: toystore-builder
+    privileged: true
+    depends_on:
+      - registry
+    environment:
+      DOCKER_BUILDKIT: 1
+      OTS_EXP_NAME: ${OTS_EXP_NAME}
+    volumes:
+      # CLUE Configs
+      - ./clue-config.yaml:/app/clue-config.yaml
+      - ./sut_configs:/app/sut_configs
+    networks:
+      - clue2
+
 volumes:
   registry-data:
 
