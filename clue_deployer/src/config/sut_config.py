@@ -3,6 +3,8 @@ from pydantic_settings import BaseSettings
 from pathlib import Path
 import yaml
 
+from clue_deployer.src.config.helm_replacement import HelmReplacement
+
 # Global constant for the YAML configuration file path
   
 
@@ -27,6 +29,7 @@ class SUTConfig(BaseSettings):
     infrastructure_namespaces: list[str] = Field(default_factory=list)  
     num_iterations: int = Field(default=1)
     sut_name: str = Field(default="")
+    helm_replacements: list[HelmReplacement] = Field(default=[])
 
     class Config:
         # Allow environment variable overrides
