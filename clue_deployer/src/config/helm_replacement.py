@@ -6,8 +6,8 @@ class Condition(BaseModel):
     """
     An object for a single replacement condition
     """
-    autoscaling: str
-    autoscaling_type: str
+    autoscaling: bool = False
+    autoscaling_type: str = ""
 
     def __str__(self) -> str:
         return f"autoscaling {self.autoscaling} (type {self.autoscaling_type})"

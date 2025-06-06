@@ -17,9 +17,8 @@ config:
   num_iterations: 1
 
 helm_replacements:
-  - path: .
-    old_value: 'ghcr.io/clue2-sose25/sustainable_toystore'
-    new_value: 'repository:5000'
+  - old_value: 'ghcr.io/clue2-sose25/sustainable_toystore'
+    new_value: 'registry:5000/clue'
 
 services:
   - name: "teastore-auth"
@@ -47,4 +46,5 @@ experiments:
   - name: "baseline"
     target_branch: "main"
     colocated_workload: true
-    critical_services: ["teastore-auth", "teastore-registry", "teastore-webui"]
+    critical_services: ["toystore-frontend", "toystore-backend"]
+    autoscaling: "cpu"
