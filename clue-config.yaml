@@ -1,7 +1,7 @@
 # The main config for CLUE
 config:
   # The URL of the prometheus deployed on the host machine
-  prometheus_url: "http://host.internal:9090"
+  prometheus_url: "http://clue-cluster-control-plane:30090"
   # The docker image registry address for the CLUE deployer. This address should be accessable from inside of the clue_deployer container.
   docker_registry_address: "registry:5000/clue"
   # The public IP for the workload generator
