@@ -1,4 +1,7 @@
-class HelmReplacement():
+from pydantic import BaseModel, Field
+
+
+class HelmReplacement(BaseModel):
     """
     A single object representing a helm replacement. Used to replace strings in SUT's values.yaml files.
     """
@@ -7,7 +10,7 @@ class HelmReplacement():
     # The new value to use
     new_value: str
     # Sub-path for replacement
-    path: str = "."
+    path: str = Field(default=".")
 
     def __str__(self) -> str:
         pathString = "in whole file" if self.path == "." else f"for subpaths {self.path}"

@@ -16,6 +16,11 @@ config:
   tags: []
   num_iterations: 1
 
+helm_replacements:
+  - path: .
+    old_value: 'ghcr.io/clue2-sose25/sustainable_toystore'
+    new_value: 'repository:5000'
+
 services:
   - name: "teastore-auth"
     resource_limits:
