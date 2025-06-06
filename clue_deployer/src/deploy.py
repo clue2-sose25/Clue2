@@ -231,4 +231,4 @@ class ExperimentDeployer:
         else:
             logger.info("Autoscaling disabled. Skipping its deployment.")
         StatusManager.set(Phase.WAITING, "Waiting for load generator...")
-        logger.info("Deployment complete. You can now run the experiment.")
+        logger.info("Deployment tested successfully. You can now run the experiment.")

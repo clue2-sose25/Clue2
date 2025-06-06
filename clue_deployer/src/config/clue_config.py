@@ -16,6 +16,7 @@ class ClueConfig(BaseSettings):
     docker_registry_address: str
     result_base_path: Path
     workloads: list[str] 
+    target_utilization: str
 
     class Config:
         # Allow environment variable overrides

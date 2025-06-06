@@ -15,3 +15,5 @@ config:
   result_base_path: "results/"
   # Type of the workloads
   workloads: ["shaped"]
+  ### AUTOSCALING ###
+  target_utilization: 70
