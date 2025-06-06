@@ -13,6 +13,7 @@ class ToystoreBuilder:
         self.sut_repo = "https://github.com/clue2-sose25/sustainable_toystore"
         self.docker_registry_address = "registry:5000/clue"
         self.image_version = "latest"
+        self.remote_platform_arch = "linux/arm64/v8"
         self._set_envs()
         self._clone_repo()
         self.sut_path = SUT_PATH
@@ -108,7 +109,7 @@ class ToystoreBuilder:
     
     def build_push_loadgenerator(self):
         platform = (
-            self.config.clue_config.remote_platform_arch
+            self.remote_platform_arch
         )
         registry = self.docker_registry_address
 
