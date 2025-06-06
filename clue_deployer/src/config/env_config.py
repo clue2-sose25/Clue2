@@ -9,14 +9,16 @@ class EnvConfig(BaseSettings):
     """
     Environment configuration for the Clue Deployer application.
     """
-
+    # CLUE Configs
     SUT_CONFIGS_PATH: Path = Path("/app/sut_configs")
     CLUE_CONFIG_PATH: Path = Path("/app/clue-config.yaml")
     RESULTS_PATH: Path = Path("/app/data")
     LOG_LEVEL: str = "INFO"
 
-    SUT_NAME: str|None = Field(default=None, env="SUT_NAME")  # Environment variable for SUT name
-    EXPERIMENT_NAME: str|None = Field(default=None, env="EXPERIMENT_NAME")  
+    # Environment variables
+    SUT_NAME: str|None = Field(default=None, env="SUT_NAME")  
+    EXPERIMENT_NAME: str|None = Field(default=None, env="EXPERIMENT_NAME")
+    DEPLOY_ONLY: str|None = Field(default=False, env="DEPLOY_ONLY")  
 
 
     model_config = SettingsConfigDict(
@@ -27,7 +29,6 @@ class EnvConfig(BaseSettings):
     )
 
     #Workaround since pydantic does not support singleton pattern directly
-
     @lru_cache(maxsize=1)
     @staticmethod
     def get_env_config():

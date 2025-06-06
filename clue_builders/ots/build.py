@@ -34,7 +34,7 @@ class OTSBuilder:
         """
         Clone the OTS repository if it does not exist.
         """
-        if not os.path.exists("opentelemetry-demo"):
+        if not os.path.exists(SUT_PATH):
             print("Cloning OTS repository...")
             subprocess.run(["git", "clone", self.sut_repo, SUT_PATH], check=True)
             print("OTS repository cloned successfully.")
