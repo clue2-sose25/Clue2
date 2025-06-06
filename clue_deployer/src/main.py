@@ -30,38 +30,37 @@ def run_experiment(exp: Experiment, observations_out_path: Path, config: Config 
         os.makedirs(observations_out_path, exist_ok=False)
     except OSError:
         raise RuntimeError("Data for this experiment already exist, skipping")
-    print("🏗️ Deploying the SUT...")
+    logger.info("🏗️ Deploying the SUT...")
     experiment_deployer = ExperimentDeployer(exp, config)
     experiment_deployer.execute_deployment()
     # Wait for the SUT
-    print(f"😴 Waiting {exp.env.wait_before_workloads}s before starting workload")
+    logger.info(f"😴 Waiting {exp.env.wait_before_workloads}s before starting workload")
     time.sleep(exp.env.wait_before_workloads)  # wait for 120s before stressing the workload
     # Run the experiment
     ExperimentRunner(exp).run(observations_out_path)
     # Clean up
     ExperimentRunner(exp).cleanup(experiment_deployer.helm_wrapper)
-    print(f"Waiting {exp.env.wait_after_workloads}s after cleaning the workload")
+    logger.info(f"Waiting {exp.env.wait_after_workloads}s after cleaning the workload")
     time.sleep(exp.env.wait_after_workloads)
-    print("Additional sleep after a run just to be on the safe side")
+    logger.info("Additional sleep after a run just to be on the safe side")
     time.sleep(60)
 
 
-def prepare_experiment(exp: Experiment, timestamp: str, num_iterations: int, config: Config = CONFIGS) -> None:
-    
-    print(f"ℹ️  New experiment: {exp}")
-
+def iterate_experiment(exp: Experiment, timestamp: str, num_iterations: int, config: Config = CONFIGS) -> None:
+    """
+    Iterates over the experiment
+    """
+    logger.info(f"Running a new experiment: {exp}")
+    # Run all iterations
     for i in range(num_iterations):
-
         root = "data"
         name = exp.__str__()
         tags = "_".join(["exp"] + exp.env.tags)
-
         out_path = path.join(root, timestamp, tags, name, str(i))
-
-        print(f"▶️ Running iteration ({i + 1}/{num_iterations}) with output to: {out_path}")
+        logger.info(f"Running iteration ({i + 1}/{num_iterations}) with output to: {out_path}")
         run_experiment(exp, out_path, config)
-    
-    print(f"Sleeping for 120s to let the system settle after one feature")
+    # Wait
+    logger.info(f"Sleeping for 120s to let the system settle after one feature")
     time.sleep(120)
 
 def main() -> None:
@@ -75,13 +74,13 @@ def main() -> None:
 
     # Sort the experiments
     exps.sort()
-    print(tabulate([n.to_row() for n in exps], tablefmt="rounded_outline", headers=Experiment.headers()))
+    logger.info(tabulate([n.to_row() for n in exps], tablefmt="rounded_outline", headers=Experiment.headers()))
     progressbar.streams.wrap_stderr()
 
     # TODO: Print not working with pg2
     # for exp in progressbar.progressbar(exps, redirect_stdout=True, redirect_stderr=True):
     for exp in exps:
-        prepare_experiment(exp, timestamp, num_iterations=config.sut_config.num_iterations, config=CONFIGS)
+        iterate_experiment(exp, timestamp, num_iterations=config.sut_config.num_iterations, config=CONFIGS)
 
 
 def available_suts():
