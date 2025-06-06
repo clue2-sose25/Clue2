@@ -91,12 +91,6 @@ docker compose up -d --build clue-deployer
 
 You can adjust the deployment to your needs via the environment variables inside the `.env` file, where `SUT_NAME` is the name of the SUT config inside of the `sut_configs` directory, and the `EXPERIMENT_NAME` is the name of the branch containing the desired experiment.
 
-As currently the port forwarding is broken, you need to execute this command after the depoyment finished before the waiting period is over on your host machine:
-
-```bash
-kubectl port-forward prometheus-kps1-kube-prometheus-stack-prometheus-0 9090:9090
-```
-
 If you are deploying the Teastore locally you can forward a port so you to test and access the TeaStore:
 
 ```bash
