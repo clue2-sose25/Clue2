@@ -10,7 +10,7 @@ from clue_deployer.src.scaling_experiment_setting import ScalingExperimentSettin
 
 class HelmWrapper():
     
-    def __init__(self, config: Config, autoscaling: bool = True):
+    def __init__(self, config: Config, autoscaling: ScalingExperimentSetting):
         self.clue_config = config.clue_config
         self.sut_config = config.sut_config
         self.autoscaling = autoscaling
@@ -73,7 +73,7 @@ class HelmWrapper():
 
     def update_helm_chart(self) -> dict:
         """
-        Loads the values.yaml file.
+        Updates the values.yaml file with replacements specified in the SUT config
         """
         logger.info(f"Using values file from path: {self.active_values_file_path}")
         if not self.active_values_file_path.exists():
@@ -95,26 +95,9 @@ class HelmWrapper():
                     logger.warning(f"No instances found for replacement: {replacement}")
             else:
                 logger.info(f"Skipping replacement due to unmet conditions: {replacement}")
-        if self.autoscaling:
-            values = values.replace(r"enabled: false", "enabled: true")
-            # values = values.replace(r"clientside_loadbalancer: false",r"clientside_loadbalancer: true")
-            if self.autoscaling == ScalingExperimentSetting.MEMORYBOUND:
-                values = values.replace(
-                    r"targetCPUUtilizationPercentage: 80",
-                    r"# targetCPUUtilizationPercentage: 80",
-                )
-                values = values.replace(
-                    r"# targetMemoryUtilizationPercentage: 80",
-                    r"targetMemoryUtilizationPercentage: 80",
-                )
-            elif self.autoscaling == ScalingExperimentSetting.BOTH:
-                values = values.replace(
-                    r"targetMemoryUtilizationPercentage: 80",
-                    r"targetMemoryUtilizationPercentage: 80",
-                )
+        # Save the changes
         with open(self.active_values_file_path, "w") as f:
             f.write(values)
-        
         return values
         
     def deploy_sut(self) -> None:

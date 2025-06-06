@@ -27,10 +27,23 @@ helm_replacements:
     new_value: 'tag: "vanilla"'
   - old_value: 'enabled: false'
     new_value: 'enabled: true'
+    conditions:
+      autoscaling: true
   - old_value: 'targetCPUUtilizationPercentage: 80'
     new_value: '# targetCPUUtilizationPercentage: 80'
     conditions:
-      autoscaling: scale
+      autoscaling: true
+      autoscaling_type: mem
+  - old_value: '# targetMemoryUtilizationPercentage: 80'
+    new_value: 'targetMemoryUtilizationPercentage: 80'
+    conditions:
+      autoscaling: true
+      autoscaling_type: mem
+  - old_value: '# targetMemoryUtilizationPercentage: 80'
+    new_value: 'targetMemoryUtilizationPercentage: 80'
+    conditions:
+      autoscaling: true
+      autoscaling_type: full
 
 services:
   - name: "teastore-auth"
@@ -60,7 +73,7 @@ experiments:
     target_branch: "vanilla"
     colocated_workload: true
     critical_services: ['teastore-auth', 'teastore-registry', 'teastore-webui']
-    autoscaling: "scale"
+    autoscaling: "cpu"
   # - name: "serverless"
   #   target_branch: "serverless"
   #   colocated_workload: true
