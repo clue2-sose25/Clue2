@@ -20,8 +20,7 @@ This Readme describes the process of running CLUE experiments on the selected SU
   - at least one Kubernetes node running Scaphandra/[Kepler](https://sustainable-computing.io/installation/kepler-helm/), and a [NodeExporter](https://observability.thomasriley.co.uk/monitoring-kubernetes/metrics/node-exporter/). If the tracker does not find any energy data, the experiment will start, but the script will stop due to lack of usable insights
   - for the serverless variant, knative installed
   - for external power meters, connect e.g. a Tapo device (out of scope of this Readme)
-- [Helm](https://helm.sh/), e.g. v3.16
-- Python, e.g. 3.11, using uv in this Readme
+- [Kind](https://kind.sigs.k8s.io/), e.g. 0.29.0
 
 ## 🚀 System setup
 
@@ -36,50 +35,16 @@ The docker image registry used by CLUE can be specified in the `clue-config.yaml
 docker compose up -d registry
 ```
 
-### 2. ✨ Setting up a local cluster
+### 2. ✨ Cluster preparation
 
-#### 1. ✨ Kind (recommended)
+When deploying a CLUE container, it mounts the current kube config of the host machine. Therefore, to specify a specific k8s cluster for CLUE, be sure that your current `.kube` config is set to the cluster of choice.
 
-We recommend using `Kind` cluster for local testing, providing a config file for easier deployment of the cluster. The cluster is configured to allow the usage of the local unsecure registry and to deploy the required number of nodes (at least 2) with designated node labels. Deploy the pre-configured cluster using:
+1. Setting up a local `Kind` cluster
 
-```bash
-kind create cluster --config ./cluster_configs/kind/kind-config.yaml
-```
-
-#### 2. ✨ Minikube
-
-We also support `Minikube` cluster, however it requires a more manual setup. In case you already have created a minikube cluster before you will have to recreate it in order to allow insecure registries. Use this command to create a new cluster:
+For local testing, we recommend using a `Kind` cluster, simply deployable by providing a config file. The cluster is configured to allow the usage of the local unsecure registry and to deploy the required number of nodes (at least 2) with designated node labels. Additionally, all created containers will be added to a custom `clue2` docker network. Deploy the pre-configured cluster using:
 
 ```bash
-minikube start --cni=flannel --insecure-registry "host.internal:6789" --cpus 8 --memory 12000
-```
-
-Next, deploy an additional node to allow running the workload generator (which can not run on the same node as the experiment itself to not spoil the final readings):
-
-```bash
-minikube node add
-```
-
-In a multi-node setting, not all nodes might have the option to measure using scaphandre, so Clue ensures that only appropiate nodes are assigned with experiment pods. To simulate this for, e.g., the minikube node, you must apply a label:
-
-```bash
-kubectl label nodes minikube scaphandre=true
-```
-
-Lastly, we need to manually flatten the kube config as `minikube`:
-
-```bash
-cd localClusterConfig/minikube
-./exportKubeConfig.sh
-```
-
-and mount it inside of the CLUE deployer. Open the `docker-compose.yml` file and change the mounted volumes to use the recently created flattened config:
-
-```yml
-volumes:
-  # - ~/.kube:/root/.kube:ro
-  # use this line if you want to use minikube - make sure to run the sh script first and commend out the line above
-  - ./localClusterConfig/minikube/minikube_kube_config:/root/.kube/config:ro
+sh create-kind-cluster.sh
 ```
 
 ### 3. 🛠️ CLUE2 setup
@@ -109,15 +74,22 @@ To build images for the selected SUT, use one of the commands listed below.
   docker compose up -d --build ots-builder
   ```
 
+- Toystore (custom, simple SUT)
+  ```bash
+  docker compose up -d --build toystore-builder
+  ```
+
+Wait for the selected builder to be finished, indicated by its container showing a status `Exited`. To check if the images have been successfully stored in the registry, visit the `http://localhost:9000/v2/_catalog` page.
+
 ### 4. 🧪 SUT Test Deployment (without running the benchmark)
 
 For a test deployment of the SUT, without running the benchmark itself, open the `.env` file and change the `DEPLOY_ONLY` value to `true`. Make sure that all required images are present in the specified image registry. Next, run the deployer:
 
 ```bash
-docker compose up -d --build teastore-deployer
+docker compose up -d --build clue-deployer
 ```
 
-You can adjust the deployment to your needs via the environment variables inside the `.env` file, where `SUT` is the name of the SUT config inside of the `sut_configs` directory, and the `EXPERIMENT` is the name of the branch containing the desired experiment.
+You can adjust the deployment to your needs via the environment variables inside the `.env` file, where `SUT_NAME` is the name of the SUT config inside of the `sut_configs` directory, and the `EXPERIMENT_NAME` is the name of the branch containing the desired experiment.
 
 As currently the port forwarding is broken, you need to execute this command after the depoyment finished before the waiting period is over on your host machine:
 
@@ -138,12 +110,12 @@ Some SUT may run some initial tasks on the startup, so before accessing the SUT,
 To run the main CLUE2, run the task below. Make sure that all required images are present in the specified image registry.
 
 ```bash
-docker compose up -d --build teastore-deployer
+docker compose up -d --build clue-deployer
 ```
 
 ![Running the Experiments](readme/running_experiments.png)
 
-### 6. 📋 (Optional) CLUE2 Deployment with local
+### 6. 📋 (Optional) CLUE2 Deployment with local changes
 
 If you create your own variants or make changes to the SUT, the images need to be rebuilt and pushed to the image registry specified in the config. Make sure to run `docker login` in case authentication is needed.
 

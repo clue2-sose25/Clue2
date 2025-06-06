@@ -1,9 +1,17 @@
+# The main config for CLUE
 config:
+  # The URL of the prometheus deployed on the host machine
   prometheus_url: "http://host.internal:9090"
-  local_public_ip: "host.internal"
-  local_port: 8888
+  # The docker image registry address for the CLUE deployer. This address should be accessable from inside of the clue_deployer container.
+  docker_registry_address: "registry:5000/clue"
+  # The public IP for the workload generator
+  local_public_ip: "registry"
+  # The public port for the workload generator
+  local_port: 5000
+  # The Platform specification
   remote_platform_arch: "linux/arm64/v8"
   local_platform_arch: "linux/arm64/v8"
-  docker_registry_address: "host.internal:6789/clue"
+  # The base path for storing the results files
   result_base_path: "results/"
+  # Type of the workloads
   workloads: ["shaped"]

@@ -4,25 +4,24 @@ from .clue_config import ClueConfig
 from .experiment_configs import ExperimentsConfig
 from .services import ServicesConfig
 from .sut_config import SUTConfig
-
-
+from .env_config import EnvConfig
 
 class Config:
     """
-    Singleton class to manage and provide access to all configurations.
+    manage and provide access to all configurations.
     """
-    _instance: Config | None = None
 
-    def __new__(cls, sut_config: Path, clue_config: Path):
-        if cls._instance is None:
-            cls._instance = super(Config, cls).__new__(cls)
-            cls._instance._initialize(sut_config, clue_config)
-        return cls._instance
-
-    def _initialize(self, sut_config: Path, clue_config: Path):
+    def __init__(self, sut_config: Path = None, clue_config: Path = None):
         """
         Load all configurations from the given paths.
+
         """
+        env_config = EnvConfig.get_env_config()
+        if sut_config is None:
+            sut_config = env_config.SUT_CONFIG_PATH
+        if clue_config is None:
+            clue_config = env_config.CLUE_CONFIG_PATH
+
         self.clue_config = ClueConfig.load_from_yaml(clue_config)
         self.experiments_config = ExperimentsConfig.load_from_yaml(sut_config)
         self.services_config = ServicesConfig.load_from_yaml(sut_config)
@@ -37,3 +36,4 @@ class Config:
         if cls._instance is None:
             raise RuntimeError("ConfigManager has not been initialized. Call ConfigManager(sut_config, clue_config) first.")
         return cls._instance
+    

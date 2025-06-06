@@ -10,11 +10,9 @@ import docker
 import logging
 from kubernetes import client, watch
 from kubernetes.client.rest import ApiException
-from clue_deployer.experiment import Experiment
-from clue_deployer.result_files import ResultFiles
-
-
-from clue_deployer.workload_cancelled_exception import WorkloadCancelled
+from clue_deployer.src.experiment import Experiment
+from clue_deployer.src.result_files import ResultFiles
+from clue_deployer.src.workload_cancelled_exception import WorkloadCancelled
 
 
 class WorkloadRunner:
@@ -165,7 +163,7 @@ class WorkloadRunner:
                     containers=[
                         client.V1Container(
                             name="loadgenerator",
-                            image=f"{exp.env.docker_registry_address}/loadgenerator",
+                            image=f"{exp.env.docker_registry_address}/loadgenerator:vanilla",
                             env=container_env,
                             command=[
                                 "sh",
