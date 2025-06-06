@@ -39,6 +39,7 @@ services:
     container_name: clue-deployer
     ports:
       - "9001:8000"
+      - "5678:5678" 
     privileged: true
     depends_on:
       - registry

@@ -29,6 +29,21 @@
             ],
             "console": "integratedTerminal",
             "justMyCode": false,
-        }
+        },
+        {
+            "name": "Attach to Docker Python",
+            "type": "debugpy",
+            "request": "attach",
+            "connect": {
+                "host": "localhost",
+                "port": 5678
+            },
+            "pathMappings": [
+                {
+                "localRoot": "${workspaceFolder}/clue_deployer",
+                "remoteRoot": "/app/clue_deployer"
+                }
+            ]
+            }
     ]
 }

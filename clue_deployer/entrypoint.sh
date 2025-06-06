@@ -31,6 +31,8 @@ if [ "$DEPLOY_ONLY" = "true" ]; then
 else
     # Deploy CLUE as a script with benchmarking
     echo "Deploying and executing selected SUT experiments"
+    # Uncomment the line below to enable debugging with debugpy
+    #exec uv run -m debugpy --listen 0.0.0.0:5678 --wait-for-client clue_deployer/src/main.py
     exec uv run clue_deployer/src/main.py
     exit 0
 fi
