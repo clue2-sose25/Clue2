@@ -17,18 +17,20 @@ config:
   num_iterations: 1
 
 helm_replacements:
-  - path: .
-    old_value: 'descartesresearch'
+  - old_value: 'descartesresearch'
     new_value: 'repository:5000'
-  - path: .
-    old_value: 'nodeSelector: {}'
+  - old_value: 'nodeSelector: {}'
     new_value: 'nodeSelector: {"scaphandre": "true"}'
-  - path: .
-    old_value: 'pullPolicy: IfNotPresent'
+  - old_value: 'pullPolicy: IfNotPresent'
     new_value: 'pullPolicy: Always'
-  - path: .
-    old_value: 'tag: ""'
+  - old_value: 'tag: ""'
     new_value: 'tag: "vanilla"'
+  - old_value: 'enabled: false'
+    new_value: 'enabled: true'
+  - old_value: 'targetCPUUtilizationPercentage: 80'
+    new_value: '# targetCPUUtilizationPercentage: 80'
+    conditions:
+      autoscaling: scale
 
 services:
   - name: "teastore-auth"
@@ -58,6 +60,7 @@ experiments:
     target_branch: "vanilla"
     colocated_workload: true
     critical_services: ['teastore-auth', 'teastore-registry', 'teastore-webui']
+    autoscaling: "scale"
   # - name: "serverless"
   #   target_branch: "serverless"
   #   colocated_workload: true

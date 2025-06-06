@@ -81,18 +81,20 @@ class HelmWrapper():
         # Open the values file
         with open(self.active_values_file_path, "r") as f:
             values = f.read()
-        # Loop through replacements
+        # Apply all replacements
         helm_replacements = self.sut_config.helm_replacements
         logger.info(f"Applying {len(helm_replacements)} helm replacements from the SUT config")
+        # Loop through replacements
         for replacement in helm_replacements:
-            logger.info(replacement)
-        values = values.replace("descartesresearch", self.clue_config.docker_registry_address)
-        # ensure we only run on nodes that we can observe - set nodeSelector to scaphandre
-        values = values.replace(
-            r"nodeSelector: {}", r'nodeSelector: {"scaphandre": "true"}'
-        )
-        values = values.replace("pullPolicy: IfNotPresent", "pullPolicy: Always")
-        values = values.replace(r'tag: ""', r'tag: "vanilla"')
+            if replacement.should_apply(autoscaling=self.autoscaling):
+                no_instances = values.count(replacement.old_value)
+                if no_instances > 0:
+                    logger.info(f"Replacing {no_instances} instances of: {replacement}")
+                    values = values.replace(replacement.old_value, replacement.new_value)
+                else:
+                    logger.warning(f"No instances found for replacement: {replacement}")
+            else:
+                logger.info(f"Skipping replacement due to unmet conditions: {replacement}")
         if self.autoscaling:
             values = values.replace(r"enabled: false", "enabled: true")
             # values = values.replace(r"clientside_loadbalancer: false",r"clientside_loadbalancer: true")

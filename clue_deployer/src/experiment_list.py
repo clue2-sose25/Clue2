@@ -27,7 +27,7 @@ class ExperimentList():
                 target_branch=exp.target_branch,
                 colocated_workload=exp.colocated_workload,  # TODO default False
                 env=ExperimentEnvironment(config),
-                autoscaling=ScalingExperimentSetting.CPUBOUND,  # TODO customizable
+                autoscaling=exp.autoscaling,
                 critical_services=exp.critical_services,
                 config=config,
             )
