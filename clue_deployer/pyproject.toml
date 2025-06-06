@@ -23,6 +23,7 @@ dependencies = [
     "uvicorn>=0.34.3", 
     "fastapi>=0.111",
     "psc",
+    "debugpy"
 ]
 
 [tool.setuptools]
