@@ -42,7 +42,7 @@ class ExperimentDeployer:
             self.core_v1_api = CoreV1Api()
             self.apps_v1_api = AppsV1Api()
         except Exception as e:
-            print(f"Failed to load kube config: {e}. Make sure you have a cluster available via kubectl.")
+            logger.error(f"Failed to load kube config: {e}. Make sure you have a cluster available via kubectl.")
             raise
 
         self.port_forward_process = None # To keep track of the port-forwarding process
@@ -150,12 +150,14 @@ class ExperimentDeployer:
 
 
     def _wait_until_services_ready(self, timeout: int = 180):
+        """
+        Wait a specified amount of time for the critical services
+        """
         v1_apps = self.apps_v1_api
         ready_services = set()
         start_time = time.time()
         services = set(self.experiment.critical_services)
         namespace = self.experiment.namespace
-        print("Waiting for deployment to be ready...")
 
         while len(ready_services) < len(services) and time.time() - start_time < timeout:
             for service in services.difference(ready_services):
@@ -172,11 +174,12 @@ class ExperimentDeployer:
                         ready_services.add(service)
                 except ApiException as e:
                     if e.status != 404:  # Ignore not found errors
-                        print(f"Error checking status for service '{service}': {e}")
+                        logger.error(f"Error checking status for service '{service}': {e}")
             if services == ready_services:
-                print("All services are up!")
+                logger.info("All services are up!")
                 return True
             time.sleep(1)
+        logger.error("Timeout reached. The following services are not ready: " + str(list(services - ready_services)))
         raise RuntimeError("Timeout reached. The following services are not ready: " + str(list(services - ready_services)))
 
 

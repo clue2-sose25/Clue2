@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field
 
 from clue_deployer.src.scaling_experiment_setting import ScalingExperimentSetting
 
-class Condition(BaseModel):
+class Conditions(BaseModel):
     """
     An object for a single replacement condition
     """
@@ -22,7 +22,7 @@ class HelmReplacement(BaseModel):
     # The new value to use
     new_value: str
     # Conditions
-    conditions: list[Condition] = Field(default_factory=list)
+    conditions: Conditions = None
     
     def should_apply(self, autoscaling: ScalingExperimentSetting) -> bool:
         """
@@ -32,13 +32,11 @@ class HelmReplacement(BaseModel):
             # No conditions means always apply
             return True
         
-        # Check if all conditions are met
-        for condition in self.conditions:
-            # Check for autoscaling condition without type
-            if condition.autoscaling and (not condition.autoscaling_type) and autoscaling:
-                return True
-            elif condition.autoscaling and (condition.autoscaling_type == autoscaling):
-                return True
+        # Check for autoscaling condition without type
+        if self.conditions.autoscaling and (not self.conditions.autoscaling_type) and autoscaling:
+            return True
+        elif self.conditions.autoscaling and (self.conditions.autoscaling_type == autoscaling):
+            return True
         # All conditions failed
         return False
     

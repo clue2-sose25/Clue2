@@ -18,7 +18,7 @@ config:
 
 helm_replacements:
   - old_value: 'descartesresearch'
-    new_value: 'repository:5000'
+    new_value: 'registry:5000/clue'
   - old_value: 'nodeSelector: {}'
     new_value: 'nodeSelector: {"scaphandre": "true"}'
   - old_value: 'pullPolicy: IfNotPresent'
