@@ -2,8 +2,6 @@ from pydantic_settings import BaseSettings
 from pathlib import Path
 import yaml
 
-
-
 class ClueConfig(BaseSettings):
     """
     Configuration class for CLUE using pydantic's BaseSettings.
@@ -16,6 +14,7 @@ class ClueConfig(BaseSettings):
     docker_registry_address: str
     result_base_path: Path
     workloads: list[str] 
+    target_utilization: int
 
     class Config:
         # Allow environment variable overrides

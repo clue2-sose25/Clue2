@@ -1,27 +1,25 @@
 import math
-
 import kubernetes
-
+from clue_deployer.src.config.config import CONFIGS
 from clue_deployer.src.experiment import Experiment
 from clue_deployer.src.scaling_experiment_setting import ScalingExperimentSetting
-import logging
+from logger import logger
 
 class AutoscalingDeployer:
-
-    target_utilization = 75
+    # Read the target utilization of autoscaling
+    target_utilization = CONFIGS.clue_config.target_utilization
 
     def __init__(self, experiment: Experiment):
         self.experiment = experiment
 
     def setup_autoscaling(self):
         """
-        create a list of statefulsets to scale;
+        Create a list of statefulsets to scale;
         for each statefulset: set memory and cpu limites/requests per service
         then create hpa for each statefulset with the given target based on the experiment setting
         """
-
         exp = self.experiment
-        print(f"🚀 Setting up HPA scaling...")
+        logger.info(f"Setting up HPA scaling with setting {exp.autoscaling}...")
         if (exp.autoscaling == ScalingExperimentSetting.MEMORYBOUND):
             self._setup_mem_autoscaling()
         elif exp.autoscaling == ScalingExperimentSetting.CPUBOUND:
@@ -29,13 +27,12 @@ class AutoscalingDeployer:
         elif exp.autoscaling == ScalingExperimentSetting.BOTH:
             self._setup_full_autoscaling()
         else:
-            raise ValueError("unknown autoscaling setting")
+            logger.error(f"Unknown autoscaling setting {exp.autoscaling}")
+            raise ValueError(f"Unknown autoscaling setting {exp.autoscaling}")
 
     def _setup_autoscaling(self, hpa_creator):
         exp = self.experiment
-
         apps = kubernetes.client.AppsV1Api()
-        
         sets: kubernetes.client.V1StatefulSetList = apps.list_namespaced_stateful_set(
             exp.namespace
         )
@@ -64,9 +61,10 @@ class AutoscalingDeployer:
                     hpa_creator(stateful_set.metadata.name, exp.namespace)
             except kubernetes.client.rest.ApiException as e:
                 if e.status == 409:
-                    logging.error(f"HPA for {stateful_set.metadata.name} already exists")
+                    logger.error(f"HPA for {stateful_set.metadata.name} already exists")
                 else:
                     raise e
+        logger.info("Successfully setup autoscaling")
 
     def _setup_mem_autoscaling(self):
         exp = self.experiment
@@ -125,7 +123,7 @@ class AutoscalingDeployer:
                     )
                 )
             )
-
+        logger.info("Created a MEM autoscaler")
         self._setup_autoscaling(_mem_hpa_creator)
 
     def _setup_cpu_autoscaleing(self):
@@ -184,8 +182,9 @@ class AutoscalingDeployer:
                     )
                 )
             )
-
+        logger.info("Created a CPU autoscaler")
         self._setup_autoscaling(_cpu_hap_creator)
+        
 
     def _setup_full_autoscaling(self):
         hpas = kubernetes.client.AutoscalingV1Api()
@@ -253,5 +252,5 @@ class AutoscalingDeployer:
                     )
                 )
             )
-
+        logger.info("Created a FULL autoscaler")
         self._setup_autoscaling(_full_hpa_creator)

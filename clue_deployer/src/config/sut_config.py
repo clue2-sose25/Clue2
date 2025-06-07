@@ -3,10 +3,9 @@ from pydantic_settings import BaseSettings
 from pathlib import Path
 import yaml
 
-# Global constant for the YAML configuration file path
+from clue_deployer.src.config.helm_replacement import HelmReplacement
+
   
-
-
 class SUTConfig(BaseSettings):
     """
     Configuration class for the System Under Test (SUT) using pydantic's BaseSettings.
@@ -27,6 +26,7 @@ class SUTConfig(BaseSettings):
     infrastructure_namespaces: list[str] = Field(default_factory=list)  
     num_iterations: int = Field(default=1)
     sut_name: str = Field(default="")
+    helm_replacements: list[HelmReplacement] = Field(default_factory=list)
 
     class Config:
         # Allow environment variable overrides
@@ -62,5 +62,13 @@ class SUTConfig(BaseSettings):
         Load configuration from the YAML file specified by the global SUT_CONFIG_PATH.
         """
         with open(sut_config_path, 'r') as file:
-            data = yaml.safe_load(file).get('config', {})
-            return cls(**data)
+            full_data = yaml.safe_load(file)
+            
+            # Extract config section
+            config_data = full_data.get('config', {})
+            
+            # Add helm_replacements from the root level if they exist
+            if 'helm_replacements' in full_data:
+                config_data['helm_replacements'] = full_data['helm_replacements']
+            
+            return cls(**config_data)

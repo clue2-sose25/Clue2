@@ -29,6 +29,7 @@ experiments:
     target_branch: "vanilla"
     colocated_workload: true
     critical_services: ['teastore-auth', 'teastore-registry', 'teastore-webui']
+    autoscaling: "cpu"
   # - name: "serverless"
   #   target_branch: "serverless"
   #   colocated_workload: true

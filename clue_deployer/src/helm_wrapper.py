@@ -10,7 +10,7 @@ from clue_deployer.src.scaling_experiment_setting import ScalingExperimentSettin
 
 class HelmWrapper():
     
-    def __init__(self, config: Config, autoscaling: bool = True):
+    def __init__(self, config: Config, autoscaling: ScalingExperimentSetting):
         self.clue_config = config.clue_config
         self.sut_config = config.sut_config
         self.autoscaling = autoscaling
@@ -73,42 +73,31 @@ class HelmWrapper():
 
     def update_helm_chart(self) -> dict:
         """
-        Loads the values.yaml file.
+        Updates the values.yaml file with replacements specified in the SUT config
         """
         logger.info(f"Using values file from path: {self.active_values_file_path}")
         if not self.active_values_file_path.exists():
             raise FileNotFoundError(f"Values file not found at {self.active_values_file_path}")
-        
+        # Open the values file
         with open(self.active_values_file_path, "r") as f:
             values = f.read()
-        logger.info("Replacing descartesresearch repository inside helm file")
-        values = values.replace("descartesresearch", self.clue_config.docker_registry_address)
-        # ensure we only run on nodes that we can observe - set nodeSelector to scaphandre
-        values = values.replace(
-            r"nodeSelector: {}", r'nodeSelector: {"scaphandre": "true"}'
-        )
-        values = values.replace("pullPolicy: IfNotPresent", "pullPolicy: Always")
-        values = values.replace(r'tag: ""', r'tag: "vanilla"')
-        if self.autoscaling:
-            values = values.replace(r"enabled: false", "enabled: true")
-            # values = values.replace(r"clientside_loadbalancer: false",r"clientside_loadbalancer: true")
-            if self.autoscaling == ScalingExperimentSetting.MEMORYBOUND:
-                values = values.replace(
-                    r"targetCPUUtilizationPercentage: 80",
-                    r"# targetCPUUtilizationPercentage: 80",
-                )
-                values = values.replace(
-                    r"# targetMemoryUtilizationPercentage: 80",
-                    r"targetMemoryUtilizationPercentage: 80",
-                )
-            elif self.autoscaling == ScalingExperimentSetting.BOTH:
-                values = values.replace(
-                    r"targetMemoryUtilizationPercentage: 80",
-                    r"targetMemoryUtilizationPercentage: 80",
-                )
+        # Apply all replacements
+        helm_replacements = self.sut_config.helm_replacements
+        logger.info(f"Applying {len(helm_replacements)} helm replacements from the SUT config")
+        # Loop through replacements
+        for replacement in helm_replacements:
+            if replacement.should_apply(autoscaling=self.autoscaling):
+                no_instances = values.count(replacement.old_value)
+                if no_instances > 0:
+                    logger.info(f"Replacing {no_instances} instances of: {replacement}")
+                    values = values.replace(replacement.old_value, replacement.new_value)
+                else:
+                    logger.warning(f"No instances found for replacement: {replacement}")
+            else:
+                logger.info(f"Skipping replacement due to unmet conditions: {replacement}")
+        # Save the changes
         with open(self.active_values_file_path, "w") as f:
             f.write(values)
-        
         return values
         
     def deploy_sut(self) -> None:
@@ -119,7 +108,7 @@ class HelmWrapper():
             raise RuntimeError("Temporary chart path not set. Did you call _create_temp_chart_copy()?")
         try:
             helm_deploy = subprocess.check_output(
-                ["helm", "install", self.name, "-n", self.sut_config.namespace, "."],
+                ["helm", "upgrade", "--install", self.name, "-n", self.sut_config.namespace, "."],
                 cwd=self.active_chart_path,
             )
             helm_deploy = helm_deploy.decode("utf-8")
