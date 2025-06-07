@@ -81,6 +81,7 @@ class ExperimentDeployer:
             logger.error(f"Error listing nodes with label '{label_selector}': {e}")
             raise 
 
+    
     def _ensure_helm_requirements(self):
         """
         Checks if the cluster has deployed necessary observability tools, such as: Prometheus, Kepler
@@ -110,9 +111,32 @@ class ExperimentDeployer:
                 )
             if prometheus_status.returncode != 0:
                 logger.info("Helm chart 'kube-prometheus-stack' is not installed. Installing it now...")
-                subprocess.check_call(["helm", "install", "kps1", "prometheus-community/kube-prometheus-stack"])
+                # Install with NodePort service type for Prometheus
+                subprocess.check_call([
+                    "helm", "install", "kps1", "prometheus-community/kube-prometheus-stack",
+                    "--set", "prometheus.service.type=NodePort",
+                    "--set", "prometheus.service.nodePort=30090"
+                ])
             else:
                 logger.info("Prometheus stack found")
+                # Check if service is already NodePort, if not patch it
+                try:
+                    service_info = subprocess.check_output([
+                        "kubectl", "get", "svc", "kps1-kube-prometheus-stack-prometheus", 
+                        "-o", "jsonpath={.spec.type}"
+                    ], text=True)
+                    
+                    if service_info.strip() != "NodePort":
+                        logger.info("Converting Prometheus service to NodePort...")
+                        subprocess.check_call([
+                            "kubectl", "patch", "svc", "kps1-kube-prometheus-stack-prometheus",
+                            "-p", '{"spec":{"type":"NodePort","ports":[{"port":9090,"targetPort":9090,"nodePort":30090}]}}'
+                        ])
+                    else:
+                        logger.info("Prometheus service is already NodePort")
+                except subprocess.CalledProcessError as e:
+                    logger.warning(f"Could not check/patch Prometheus service: {e}")
+
             # Check if kepler is installed
             logger.info("Checking for Kepler stack")
             kepler_status = subprocess.run(
@@ -136,7 +160,7 @@ class ExperimentDeployer:
         except subprocess.CalledProcessError as e:
             logger.error(f"Error while fulfilling Helm requirements: {e}")
             raise RuntimeError("Failed to fulfill Helm requirements. Please check the error above.")
-        
+            
 
     def _creates_results_directory(self, values: dict):
         # Create observations directory in the format RUN_CONFIG.clue_config.result_base_path / experiment.name / dd.mm.yyyy_hh-mm
