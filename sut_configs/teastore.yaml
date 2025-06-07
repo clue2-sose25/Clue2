@@ -23,8 +23,6 @@ helm_replacements:
     new_value: 'nodeSelector: {"scaphandre": "true"}'
   - old_value: 'pullPolicy: IfNotPresent'
     new_value: 'pullPolicy: Always'
-  - old_value: 'tag: ""'
-    new_value: 'tag: "vanilla"'
   - old_value: 'enabled: false'
     new_value: 'enabled: true'
     conditions:
