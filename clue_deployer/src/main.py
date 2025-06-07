@@ -1,15 +1,14 @@
-from pathlib import Path
-from datetime import datetime
 import os
 import time
+import urllib3
+import progressbar
+from pathlib import Path
+from datetime import datetime
 from os import path
 from typing import Optional
-import progressbar
 from kubernetes import config
 from clue_deployer.src.config.config import CONFIGS, ENV_CONFIG, Config
-from logger import logger
-
-import urllib3
+from clue_deployer.src.logger import logger
 from clue_deployer.service.status import Phase
 from clue_deployer.service.status_manager import StatusManager
 from clue_deployer.src.experiment import Experiment

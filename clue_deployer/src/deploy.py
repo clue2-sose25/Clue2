@@ -3,7 +3,7 @@ from os import path
 from kubernetes.client import CoreV1Api, V1Namespace, V1ObjectMeta, AppsV1Api
 from kubernetes.client.exceptions import ApiException   
 from clue_deployer.src.config.config import ENV_CONFIG
-from logger import logger
+from clue_deployer.src.logger import logger
 import time
 import os
 import subprocess
