@@ -6,7 +6,7 @@ from os import path
 import progressbar
 from kubernetes import config as kube_config
 from clue_deployer.src.config.config import CONFIGS, ENV_CONFIG, Config
-from logger import logger
+
 
 import urllib3
 from clue_deployer.service.status import Phase
@@ -16,6 +16,7 @@ from clue_deployer.src.experiment_runner import ExperimentRunner
 from clue_deployer.src.experiment_workloads import get_workload_instance
 from clue_deployer.src.experiment_list import ExperimentList
 from clue_deployer.src.deploy import ExperimentDeployer
+from clue_deployer.src.logger import logger
 
 # Disable SSL verification
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)

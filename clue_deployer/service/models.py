@@ -35,3 +35,4 @@ class StatusOut(BaseModel):
 class DeployRequest(BaseModel):
     experiment_name: str
     sut_name: str
+    deploy_only: bool = False

@@ -5,7 +5,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import RedirectResponse
 from pathlib import Path
 from clue_deployer.src.config.config import ENV_CONFIG
-from clue_deployer.src.main import main
+from clue_deployer.src.main import ClueRunner
 from clue_deployer.src.config import SUTConfig, Config
 from clue_deployer.service.status_manager import StatusManager
 from clue_deployer.service.models import (
@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 # ENV test
 for var in ["SUT_NAME", "EXPERIMENT_NAME"]:
     if not os.getenv(var):
-        logger.warning(f"⚠️ ENV-Variable {var} is not setted .")
+        logger.warning(f"⚠️ ENV-Variable {var} is not set .")
 
 logger.info(f"SUT={os.getenv('SUT_NAME')}, EXPERIMENT={os.getenv('EXPERIMENT_NAME')}")
 
@@ -172,8 +172,10 @@ async def get_sut_config(sut_name: str):
 @app.post("/deploy/sut")
 def deploy_sut(request: DeployRequest):
     """Deploy a specific SUT."""
-    cleaned_sut_name = request.sut_name.strip().lower()
-    sut_filename = f"{cleaned_sut_name}.yaml"
+    sut_name = request.sut_name
+    deploy_only = request.deploy_only
+    experiment_name = request.experiment_name
+    sut_filename = f"{sut_name}.yaml"
     sut_path = os.path.join(SUT_CONFIGS_DIR, sut_filename)
     
     if not os.path.isfile(sut_path):
@@ -181,7 +183,9 @@ def deploy_sut(request: DeployRequest):
     
     config = Config(sut_config=sut_path, clue_config=CLUE_CONFIG_PATH)
     try:
-        main(config, request.experiment_name)
+        # run the clue main method
+        runner = ClueRunner(config, experiment_name=experiment_name, sut_name=sut_name, deploy_only=deploy_only)
+        runner.main()
         return {"message": f"SUT {request.sut_name} has been deployed successfully."}
     except Exception as e:
         logger.error(f"Failed to deploy SUT {request.sut_name}: {str(e)}")
