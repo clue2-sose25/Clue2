@@ -1,8 +1,10 @@
 import os
 import logging
+import zipfile
+import io
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, StreamingResponse
 from pathlib import Path
 from clue_deployer.src.config.config import ENV_CONFIG
 from clue_deployer.src.main import ClueRunner
@@ -152,6 +154,31 @@ async def list_all_results(): # Renamed function for clarity
     except Exception as e:
         logger.exception("Unexpected error while retrieving results.")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving results: {str(e)}")
+
+@app.get("/download/results")
+def download_results():
+    """Download all results as a zip file."""
+    results_path = Path(RESULTS_DIR)
+    if not results_path.exists():
+        raise HTTPException(status_code=404, detail=f"Results directory {results_path} does not exist.\
+                             Did you run any experiments?")
+    
+    # Create an in-memory zip file
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+        for file_path in results_path.rglob("*"):  # Recursively add all files
+            if file_path.is_file():
+                zip_file.write(file_path, file_path.relative_to(results_path))
+    
+    # Prepare the buffer for reading
+    zip_buffer.seek(0)
+
+    # Return the zip file as a streaming response
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename=results_{results_path.name}.zip"}
+    )
 
 @app.get("/config/sut/{sut_name}", response_model=SUTConfig)
 async def get_sut_config(sut_name: str):
