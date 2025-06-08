@@ -85,7 +85,7 @@ class OTSBuilder:
         
     def build_push_loadgenerator(self):
         platform = (
-            self.config.clue_config.remote_platform_arch
+            self.platform
         )
         registry = self.docker_registry_address
 
