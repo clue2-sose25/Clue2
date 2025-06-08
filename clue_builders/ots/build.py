@@ -1,24 +1,32 @@
 import os
 import subprocess
 import argparse
-from clue_deployer.src.config import Config
+import yaml
 from os import path
 
 DEMO_VERSION = "clue-ots"
-SUT_CONFIG = "/app/sut_configs/ots.yaml"
+SUT_CONFIG = "/app/sut_configs/otel-demo.yaml"
 CLUE_CONFIG = "/app/clue-config.yaml"
 SUT_PATH = "opentelemetry-demo"
 
 class OTSBuilder:
-    def __init__(self, config, minimal: bool = False):
-        self.config = config
+    def __init__(self, minimal: bool = False, ):
+        with open(SUT_CONFIG, 'r') as sut_file:
+            self.sut_config = yaml.safe_load(sut_file)["config"]
+        
+        with open(CLUE_CONFIG, 'r') as clue_file:
+            self.clue_config = yaml.safe_load(clue_file)["config"]
+
+        self.sut_repo = self.sut_config.get('sut_git_repo', '')
+        self.docker_registry_address = self.clue_config.get('docker_registry_address', 'registry:5000/clue')
+        self.platform = self.clue_config.get('remote_platform_arch', 'linux/amd64')
         self.minimal = minimal
-        self.sut_repo = config.sut_config.sut_git_repo
-        self.docker_registry_address = "registry:5000/clue"
         self.image_version = "latest"
         self._set_envs()
         self._clone_repo()
         self.sut_path = SUT_PATH
+    
+    
     
     def check_docker_running(self):
         """
@@ -126,11 +134,7 @@ def main(minimal: bool = False):
     """
     Main function to build and push the OTS image.
     """
-    config = Config(
-        sut_config=SUT_CONFIG,
-        clue_config=CLUE_CONFIG
-    )
-    builder = OTSBuilder(config, minimal=minimal)
+    builder = OTSBuilder(minimal=minimal)
     builder.check_docker_running()
     builder.build()
     builder.push()
