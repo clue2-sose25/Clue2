@@ -144,7 +144,7 @@ class HelmWrapper():
                 logger.error(f"STDERR: {helm_deploy.stderr}")
                 raise RuntimeError(f"Failed to deploy helm chart. Run helm install manually and see why it fails")
             logger.info(helm_deploy.stdout)
-            if not "STATUS: deployed" in helm_deploy:
+            if not "STATUS: deployed" in helm_deploy.stdout:
                 logger.error(helm_deploy)
                 raise RuntimeError("Failed to deploy helm chart. Run helm install manually and see why it fails")
         except subprocess.CalledProcessError as cpe:
