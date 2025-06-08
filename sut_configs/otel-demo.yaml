@@ -19,7 +19,7 @@ config:
 
 helm_replacements:
   - old_value: 'ghcr.io/open-telemetry/demo'
-    new_value: 'registry:5000/clue'
+    new_value: 'registry:5000/clue/otel-demo'
 
 
 services:

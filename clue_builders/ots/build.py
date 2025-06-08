@@ -53,7 +53,7 @@ class OTSBuilder:
         """
         overwrite the environment variables 
         """
-        os.environ["IMAGE_NAME"] = self.docker_registry_address + "/ots-demo"
+        os.environ["IMAGE_NAME"] = self.docker_registry_address + "/otel-demo"
         os.environ["IMAGE_VERSION"] = self.image_version
         os.environ["DEMO_VERSION"] = DEMO_VERSION
 
