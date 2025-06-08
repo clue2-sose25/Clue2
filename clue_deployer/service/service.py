@@ -202,6 +202,7 @@ def deploy_sut(request: DeployRequest):
     sut_name = request.sut_name
     deploy_only = request.deploy_only
     experiment_name = request.experiment_name
+    n_iterations = request.n_iterations
     sut_filename = f"{sut_name}.yaml"
     sut_path = os.path.join(SUT_CONFIGS_DIR, sut_filename)
     
@@ -211,7 +212,7 @@ def deploy_sut(request: DeployRequest):
     config = Config(sut_config=sut_path, clue_config=CLUE_CONFIG_PATH)
     try:
         # run the clue main method
-        runner = ClueRunner(config, experiment_name=experiment_name, sut_name=sut_name, deploy_only=deploy_only)
+        runner = ClueRunner(config, experiment_name=experiment_name, sut_name=sut_name, deploy_only=deploy_only, n_iterations=n_iterations)
         runner.main()
         return {"message": f"SUT {request.sut_name} has been deployed successfully."}
     except Exception as e:
