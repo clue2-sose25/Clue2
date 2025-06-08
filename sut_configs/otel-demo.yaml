@@ -2,7 +2,8 @@ config:
   namespace: "otel-demo"
   sut_git_repo: "https://github.com/JulianLegler/opentelemetry-demo.git"
   sut_path: "opentelemetry-demo"
-  helm_chart_path: "../ots-helmcharts/charts/opentelemetry-demo"
+  helm_chart_repo: "https://github.com/open-telemetry/opentelemetry-helm-charts"
+  helm_chart_path: "opentelemetry-demo/charts/opentelemetry-demo"
   values_yaml_name: "values.yaml"
   target_service_name: "frontend"  # The k8s service name (used for in-cluster communication)
   application_endpoint_path: "/" # The specific path
@@ -17,33 +18,8 @@ config:
   num_iterations: 1
 
 helm_replacements:
-  - old_value: 'descartesresearch'
+  - old_value: 'ghcr.io/open-telemetry/demo'
     new_value: 'registry:5000/clue'
-  - old_value: 'nodeSelector: {}'
-    new_value: 'nodeSelector: {"scaphandre": "true"}'
-  - old_value: 'pullPolicy: IfNotPresent'
-    new_value: 'pullPolicy: Always'
-  - old_value: 'tag: ""'
-    new_value: 'tag: "vanilla"'
-  - old_value: 'enabled: false'
-    new_value: 'enabled: true'
-    conditions:
-      autoscaling: true
-  - old_value: 'targetCPUUtilizationPercentage: 80'
-    new_value: '# targetCPUUtilizationPercentage: 80'
-    conditions:
-      autoscaling: true
-      autoscaling_type: mem
-  - old_value: '# targetMemoryUtilizationPercentage: 80'
-    new_value: 'targetMemoryUtilizationPercentage: 80'
-    conditions:
-      autoscaling: true
-      autoscaling_type: mem
-  - old_value: '# targetMemoryUtilizationPercentage: 80'
-    new_value: 'targetMemoryUtilizationPercentage: 80'
-    conditions:
-      autoscaling: true
-      autoscaling_type: full
 
 
 services:
@@ -139,3 +115,4 @@ experiments:
       "quote",
       "payment"
     ]
+    autoscaling: "cpu"

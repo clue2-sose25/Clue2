@@ -99,20 +99,51 @@ class HelmWrapper():
         with open(self.active_values_file_path, "w") as f:
             f.write(values)
         return values
-        
+    
+    def _build_dependencies(self) -> None:
+        """
+        Builds Helm chart dependencies.
+        """
+        try:
+            logger.info(f"Building Helm dependencies for chart at {self.active_chart_path}")
+            helm_dependency_build = subprocess.run(
+                ["helm", "dependency", "build", self.active_chart_path],
+                capture_output=True,
+                text=True
+            )
+            if helm_dependency_build.returncode != 0:
+                logger.error(f"Failed to build Helm dependencies. Exit code: {helm_dependency_build.returncode}")
+                logger.error(f"STDOUT: {helm_dependency_build.stdout}")
+                logger.error(f"STDERR: {helm_dependency_build.stderr}")
+                raise RuntimeError("Failed to build Helm dependencies. Check the logs for details.")
+            logger.info(f"Helm dependency build output:\n{helm_dependency_build.stdout}")
+        except subprocess.CalledProcessError as cpe:
+            logger.error(f"Error building Helm dependencies: {cpe}")
+            raise cpe
+
     def deploy_sut(self) -> None:
         """
         Deploys the SUT's helm chart
         """
         if self.active_chart_path is None:
             raise RuntimeError("Temporary chart path not set. Did you call _create_temp_chart_copy()?")
+        #building helm dependencies
+        self._build_dependencies()
         try:
-            helm_deploy = subprocess.check_output(
+            
+            logger.info(f"Deploying helm chart for {self.name} in namespace {self.sut_config.namespace}")
+            helm_deploy = subprocess.run(
                 ["helm", "upgrade", "--install", self.name, "-n", self.sut_config.namespace, "."],
                 cwd=self.active_chart_path,
+                capture_output=True,  # Capture both stdout and stderr
+                text=True  # Decode output to string automatically
             )
-            helm_deploy = helm_deploy.decode("utf-8")
-            logger.info(helm_deploy)
+            if helm_deploy.returncode != 0:
+                logger.error(f"Helm command failed with exit code {helm_deploy.returncode}")
+                logger.error(f"STDOUT: {helm_deploy.stdout}")
+                logger.error(f"STDERR: {helm_deploy.stderr}")
+                raise RuntimeError(f"Failed to deploy helm chart. Run helm install manually and see why it fails")
+            logger.info(helm_deploy.stdout)
             if not "STATUS: deployed" in helm_deploy:
                 logger.error(helm_deploy)
                 raise RuntimeError("Failed to deploy helm chart. Run helm install manually and see why it fails")

@@ -216,7 +216,13 @@ class ExperimentDeployer:
         """
         Clones the SUT repository if it doesn't exist.
         """
-        if not self.sut_path.exists():
+        if self.config.sut_config.helm_chart_repo:
+            # If a helm chart repo is provided, clone it
+            logger.info(f"Cloning Helm chart repository from {self.config.sut_config.helm_chart_repo} to {self.sut_path}")
+            subprocess.check_call(["git", "clone", self.config.sut_config.helm_chart_repo, str(self.sut_path)])
+        elif not self.sut_path.exists():
+            if not self.config.sut_config.sut_git_repo:
+                raise ValueError("SUT Git repository URL is not provided in the configuration")
             logger.info(f"Cloning SUT from {self.config.sut_config.sut_git_repo} to {self.sut_path}")
             subprocess.check_call(["git", "clone", self.config.sut_config.sut_git_repo, str(self.sut_path)])
         else:
