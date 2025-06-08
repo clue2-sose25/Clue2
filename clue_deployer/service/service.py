@@ -1,11 +1,13 @@
 import os
 import logging
+import zipfile
+import io
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, StreamingResponse
 from pathlib import Path
 from clue_deployer.src.config.config import ENV_CONFIG
-from clue_deployer.src.main import main
+from clue_deployer.src.main import ClueRunner
 from clue_deployer.src.config import SUTConfig, Config
 from clue_deployer.service.status_manager import StatusManager
 from clue_deployer.service.models import (
@@ -31,7 +33,7 @@ logger = logging.getLogger(__name__)
 # ENV test
 for var in ["SUT_NAME", "EXPERIMENT_NAME"]:
     if not os.getenv(var):
-        logger.warning(f"⚠️ ENV-Variable {var} is not setted .")
+        logger.warning(f"⚠️ ENV-Variable {var} is not set .")
 
 logger.info(f"SUT={os.getenv('SUT_NAME')}, EXPERIMENT={os.getenv('EXPERIMENT_NAME')}")
 
@@ -153,6 +155,31 @@ async def list_all_results(): # Renamed function for clarity
         logger.exception("Unexpected error while retrieving results.")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving results: {str(e)}")
 
+@app.get("/download/results")
+def download_results():
+    """Download all results as a zip file."""
+    results_path = Path(RESULTS_DIR)
+    if not results_path.exists():
+        raise HTTPException(status_code=404, detail=f"Results directory {results_path} does not exist.\
+                             Did you run any experiments?")
+    
+    # Create an in-memory zip file
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+        for file_path in results_path.rglob("*"):  # Recursively add all files
+            if file_path.is_file():
+                zip_file.write(file_path, file_path.relative_to(results_path))
+    
+    # Prepare the buffer for reading
+    zip_buffer.seek(0)
+
+    # Return the zip file as a streaming response
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename=results_{results_path.name}.zip"}
+    )
+
 @app.get("/config/sut/{sut_name}", response_model=SUTConfig)
 async def get_sut_config(sut_name: str):
     """Get a specific SUT configuration."""
@@ -172,8 +199,10 @@ async def get_sut_config(sut_name: str):
 @app.post("/deploy/sut")
 def deploy_sut(request: DeployRequest):
     """Deploy a specific SUT."""
-    cleaned_sut_name = request.sut_name.strip().lower()
-    sut_filename = f"{cleaned_sut_name}.yaml"
+    sut_name = request.sut_name
+    deploy_only = request.deploy_only
+    experiment_name = request.experiment_name
+    sut_filename = f"{sut_name}.yaml"
     sut_path = os.path.join(SUT_CONFIGS_DIR, sut_filename)
     
     if not os.path.isfile(sut_path):
@@ -181,7 +210,9 @@ def deploy_sut(request: DeployRequest):
     
     config = Config(sut_config=sut_path, clue_config=CLUE_CONFIG_PATH)
     try:
-        main(config, request.experiment_name)
+        # run the clue main method
+        runner = ClueRunner(config, experiment_name=experiment_name, sut_name=sut_name, deploy_only=deploy_only)
+        runner.main()
         return {"message": f"SUT {request.sut_name} has been deployed successfully."}
     except Exception as e:
         logger.error(f"Failed to deploy SUT {request.sut_name}: {str(e)}")
