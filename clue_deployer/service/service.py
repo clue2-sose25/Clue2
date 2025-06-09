@@ -18,7 +18,8 @@ from clue_deployer.service.models import (
     Iteration,
     ResultTimestampResponse,
     DeployRequest,
-    StatusOut
+    StatusOut,
+    LogsResponse
 )
 
 app = FastAPI(title="CLUE Deployer Service")
@@ -40,7 +41,8 @@ logger.info(f"SUT={os.getenv('SUT_NAME')}, EXPERIMENT={os.getenv('EXPERIMENT_NAM
 SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
 RESULTS_DIR = ENV_CONFIG.RESULTS_PATH
 CLUE_CONFIG_PATH = ENV_CONFIG.CLUE_CONFIG_PATH
-
+# Use a relative path so it aligns with the logger configuration
+LOG_FILE_PATH = Path("logs/app.log")
 
  
 @app.get("/status", response_model=StatusOut)
@@ -55,6 +57,20 @@ def health():
 @app.get("/", response_model=None)
 async def root():
     return RedirectResponse(url="/docs")  # Redirect to /docs
+
+@app.get("/logs", response_model=LogsResponse)
+def read_logs():
+    """Return contents of the deployer log file."""
+    try:
+        if LOG_FILE_PATH.exists():
+            content = LOG_FILE_PATH.read_text()
+        else:
+            content = ""
+        return LogsResponse(logs=content)
+    except Exception as e:
+        logger.exception("Failed to read log file")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/list/sut", response_model=SutListResponse)
 async def list_sut():
