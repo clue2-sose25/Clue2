@@ -1,6 +1,7 @@
 import {useEffect, useState} from "react";
 
 const workloadOptions = ["shaped", "rampup", "pausing", "fixed"];
+const MAX_LOG_LINES = 200;
 
 const ControlsPage = () => {
   const [suts, setSuts] = useState<string[]>([]);
@@ -24,7 +25,7 @@ const ControlsPage = () => {
   }, []);
 
  useEffect(() => {
-    let es: EventSource | null = null;
+   let es: EventSource | null = null;
     let isMounted = true;
 
     const init = async () => {
@@ -35,14 +36,21 @@ const ControlsPage = () => {
           setLogs(data.logs ?? "");
         }
       } catch {
-        if (isMounted) setLogs("");
+        if (isMounted) setLogs(" no logs yet!");
       }
       es = new EventSource("/api/logs/stream");
-      es.onmessage = (e) => {
-        if (isMounted) {
-          setLogs((prev) => prev + e.data);
-        }
-      };
+        es.onmessage = (e) => {
+          if (isMounted) {
+            setLogs((prev) => {
+              const updated = prev + e.data;
+              const lines = updated.split("\n");
+              if (lines.length > MAX_LOG_LINES) {
+                return lines.slice(-MAX_LOG_LINES).join("\n");
+              }
+              return updated;
+            });
+          }
+        };
       es.onerror = () => {
         if (es) es.close();
       };
