@@ -3,6 +3,7 @@ import subprocess
 from pathlib import Path
 import tempfile
 import shutil
+import re
 from clue_deployer.src.logger import logger
 from clue_deployer.src.config import Config
 from clue_deployer.src.experiment import Experiment
@@ -96,12 +97,16 @@ class HelmWrapper():
                     logger.warning(f"No instances found for replacement: {replacement}")
             else:
                 logger.info(f"Skipping replacement due to unmet conditions: {replacement}")
-        logger.info(f"Replacing experiment tag for deployment: {self.experiment.target_branch}")
-        values = values.replace("tag: \"\"", f"tag: \"{self.experiment.target_branch}\"")
+
+        new_tag = self.experiment.target_branch
+        logger.info(f"Replacing experiment tag for deployment: {new_tag}")
+        pattern = r'(tag:\s*["\']?)[^"\'\s#]+'
+        replacement = rf'\1"{new_tag}"'
+        updated_values = re.sub(pattern, replacement, values)
         
         # Save the changes
         with open(self.active_values_file_path, "w") as f:
-            f.write(values)
+            f.write(updated_values)
         return values
         
     def deploy_sut(self) -> None:
