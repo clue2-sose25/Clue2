@@ -5,6 +5,7 @@ const Navbar = () => {
     {name: "CONTROL PANEL", href: "/"},
     {name: "ANALYSIS", href: "/results"},
     {name: "ARCHIVE", href: "/benchmarks"},
+    { name: "LOGS", href: "/logs" } 
   ];
 
   return (
