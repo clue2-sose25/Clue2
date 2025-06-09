@@ -23,7 +23,12 @@ dependencies = [
     "uvicorn>=0.34.3", 
     "fastapi>=0.111",
     "psc",
-    "debugpy"
+    "debugpy",
+    "numpy>=1.26.4",
+    "pandas>=2.2.2",
+    "matplotlib>=3.8.4",
+    "seaborn>=0.13.2",
+    "glasbey>=0.2.0"
 ]
 
 [tool.setuptools]
