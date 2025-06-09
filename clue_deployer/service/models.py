@@ -36,3 +36,6 @@ class DeployRequest(BaseModel):
     experiment_name: str
     sut_name: str
     deploy_only: bool = False
+    
+class LogsResponse(BaseModel):
+    logs: str
