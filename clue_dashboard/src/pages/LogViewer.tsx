@@ -14,9 +14,9 @@ const LogViewer = ({ refreshIntervalMs = 3000, heightClass = "h-64" }: LogViewer
     const fetchLogs = async () => {
       try {
         const res = await fetch("/api/logs");
-        const text = await res.text();
+        const data = await res.json();
         if (isMounted) {
-          setLogs(text);
+          setLogs(data.logs ?? "");
         }
       } catch (err) {
         console.error("Error fetching logs:", err);
