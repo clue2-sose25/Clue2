@@ -1,5 +1,4 @@
 import {useEffect, useState} from "react";
-import LogViewer from "../components/LogViewer";
 
 const workloadOptions = ["shaped", "rampup", "pausing", "fixed"];
 
