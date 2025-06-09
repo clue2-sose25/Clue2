@@ -71,6 +71,23 @@ def read_logs():
         logger.exception("Failed to read log file")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/logs/stream")
+async def stream_logs():
+    """Stream log file updates using Server-Sent Events."""
+    async def event_generator():
+        # Wait until log file exists
+        while not LOG_FILE_PATH.exists():
+            await asyncio.sleep(1)
+        with LOG_FILE_PATH.open("r") as f:
+            f.seek(0, os.SEEK_END)
+            while True:
+                line = f.readline()
+                if line:
+                    yield f"data: {line}\n\n"
+                else:
+                    await asyncio.sleep(1)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 @app.get("/list/sut", response_model=SutListResponse)
 async def list_sut():
