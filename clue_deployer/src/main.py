@@ -16,6 +16,7 @@ from clue_deployer.src.experiment_workloads import get_workload_instance
 from clue_deployer.src.experiment_list import ExperimentList
 from clue_deployer.src.deploy import ExperimentDeployer
 from clue_deployer.src.logger import logger
+from clue_deployer.src.plotter import generate_plots
 
 # Disable SSL verification
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -99,6 +100,12 @@ class ClueRunner:
             out_path = path.join(root, timestamp, tags, name, str(i))
             logger.info(f"Running iteration ({i + 1}/{num_iterations}) with output to: {out_path}")
             self.run_single_experiment(exp, out_path)
+        logger.info("Generating plots after experiment completion...")
+        try:
+            generate_plots()
+            logger.info("Plot generation completed successfully.")
+        except Exception as e:
+            logger.error(f"Plot generation failed: {e}")
         # Wait
         logger.info(f"Sleeping for 120s to let the system settle after one experiment")
         time.sleep(120)
