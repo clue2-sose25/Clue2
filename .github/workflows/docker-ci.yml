@@ -94,14 +94,19 @@ jobs:
           cache-from: type=gha,scope=clue_deployer
           cache-to: type=gha,scope=clue_deployer,mode=max
 
-      - name: Smoke test clue_deployer container
         # Run the container (detached), check it runs, then stop it
         # shell make it better !!!!!! TBD!!!!!
+      - name: Smoke test clue_deployer container
         run: |
-          docker run --rm -d --name=test_clue_deployer ghcr.io/clue2-sose25/clue2-${IMAGE_NAME}:pr-test /bin/sh -c "echo Clue Deployer OK"
+          docker run --rm -d --name=test_clue_deployer \
+             -e DEPLOY_AS_SERVICE=true \
+             ghcr.io/issafadel/clue2-deployer:pr-test
           sleep 5
-          docker logs test_clue_deployer  || true
+          docker logs test_clue_deployer || true
           docker stop test_clue_deployer
+
+
+
   # 3. Job to build and push the clue_dashboard image (if changed)
   build_clue_dashboard:
     runs-on: ubuntu-latest
