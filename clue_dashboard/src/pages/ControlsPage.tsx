@@ -24,16 +24,37 @@ const ControlsPage = () => {
       .catch(() => setExperiments([]));
   }, []);
 
-  useEffect(() => {
-    const loadLogs = () => {
-      fetch("/api/logs")
-        .then((r) => r.json())
-        .then((d) => setLogs(d.logs ?? ""))
-        .catch(() => setLogs(""));
+ useEffect(() => {
+    let es: EventSource | null = null;
+    let isMounted = true;
+
+    const init = async () => {
+      try {
+        const res = await fetch("/api/logs");
+        const data = await res.json();
+        if (isMounted) {
+          setLogs(data.logs ?? "");
+        }
+      } catch {
+        if (isMounted) setLogs("");
+      }
+      es = new EventSource("/api/logs/stream");
+      es.onmessage = (e) => {
+        if (isMounted) {
+          setLogs((prev) => prev + e.data);
+        }
+      };
+      es.onerror = () => {
+        if (es) es.close();
+      };
     };
-    loadLogs();
-    const id = setInterval(loadLogs, 2000);
-    return () => clearInterval(id);
+
+    init();
+
+    return () => {
+      isMounted = false;
+      if (es) es.close();
+    };
   }, []);
 
   const deploy = async () => {
