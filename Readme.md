@@ -52,7 +52,7 @@ sh create-kind-cluster.sh
 As the PSC tracker repository is private, clone it into `clue_deployer/agent`:
 
 ```bash
-git clone https://github.com/ISE-TU-Berlin/PSC.git clue_deployer/agent
+git clone https://github.com/clue2-sose25/PSC clue_deployer/agent
 ```
 
 ### 3. 🧱 (Optional) Build Images for the selected SUT
