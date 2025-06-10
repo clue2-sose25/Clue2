@@ -1,5 +1,6 @@
 import {Fragment, useEffect, useState} from "react";
 import type {Metric} from "../models/Metric";
+import {DownloadSimpleIcon, RepeatIcon} from "@phosphor-icons/react";
 
 const ResultsPage = () => {
   const [metrics, setMetrics] = useState<Metric[]>([]);
@@ -57,18 +58,20 @@ const ResultsPage = () => {
           </a>
           <div className="flex gap-4">
             <button className="flex items-center gap-2 border px-4 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
-              🔁 REPEAT BENCHMARK
+              <RepeatIcon size={20} /> REPEAT BENCHMARK
             </button>
             <button className="flex items-center gap-2 border px-4 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
-              ⬇️ DOWNLOAD RESULTS
+              <DownloadSimpleIcon size={20} /> DOWNLOAD RESULTS
             </button>
           </div>
         </div>
 
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-sm font-semibold">Analysis of experiment:</h1>
-          <h2 className="text-lg text-gray-700">{experimentPath}</h2>
+          <h2 className="text-sm font-semibold">Analysis of experiment:</h2>
+          <p className="text-lg text-gray-700">
+            {experimentPath || "No path specified"}
+          </p>
         </div>
 
         {/* Config Info */}
@@ -83,7 +86,7 @@ const ResultsPage = () => {
 
         {/* Summary Cards */}
         <div className="flex flex-col gap-6 mt-8">
-          <h1 className="text-sm font-semibold">Results Summary</h1>
+          <h3 className="text-sm font-semibold">Results Summary</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {metrics.length > 0 ? (
               metrics.map((m) => (

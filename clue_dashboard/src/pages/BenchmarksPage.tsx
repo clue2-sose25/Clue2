@@ -1,3 +1,4 @@
+import {TrashIcon} from "@phosphor-icons/react";
 import {useEffect, useState} from "react";
 
 interface Iteration {
@@ -48,7 +49,7 @@ const ExperimentsPage = () => {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-semibold mb-4">Experiment Results</h1>
+      <h3 className="text-2xl font-semibold mb-4">Experiment Results</h3>
 
       <table className="min-w-full border border-gray-300 rounded shadow">
         <thead className="bg-gray-100">
@@ -67,6 +68,9 @@ const ExperimentsPage = () => {
                 <td className="px-4 py-2 border-b">{iter.workload}</td>
                 <td className="px-4 py-2 border-b">{iter.branch_name}</td>
                 <td className="px-4 py-2 border-b">{iter.experiment_number}</td>
+                <td className="px-4 py-2 border-b">
+                  <TrashIcon size={20} />
+                </td>
               </tr>
             ))
           )}
