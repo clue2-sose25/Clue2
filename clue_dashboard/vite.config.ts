@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": {
-        target: "http://clue-deployer:8000",
+        target: "http://localhost:9001",
         changeOrigin: true,
       },
     },
