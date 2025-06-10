@@ -4,8 +4,10 @@ const LogsPage = () => {
   const [logs, setLogs] = useState<string>("Fetching logs...");
   
   useEffect(() => {
+    let es: EventSource | null = null;
     let isMounted = true;
-    const fetchLogs = async () => {
+
+    const init = async () => {
       try {
         const res = await fetch("/api/logs");
         const data = await res.json();
@@ -18,16 +20,22 @@ const LogsPage = () => {
           setLogs("Failed to load logs.");
         }
       }
+      es = new EventSource("/api/logs/stream");
+      es.onmessage = (e) => {
+        if (isMounted) {
+          setLogs((prev) => prev + e.data);
+        }
+      };
+      es.onerror = () => {
+        if (es) es.close();
+      };
     };
 
-    // Initial fetch and then interval
-    fetchLogs();
-    const intervalId = setInterval(fetchLogs, 3000);  // poll every 3 seconds
+    init();
 
-    // Cleanup on unmount
     return () => {
       isMounted = false;
-      clearInterval(intervalId);
+      if (es) es.close();
     };
   }, []);
 
