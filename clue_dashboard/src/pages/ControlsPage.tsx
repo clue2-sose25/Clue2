@@ -3,6 +3,7 @@ import type {Deployment as DeploymentForm} from "../models/Deployment";
 import LogsPanel from "../components/LogsPanel";
 import {InfoIcon} from "@phosphor-icons/react";
 import type {SUT} from "../models/SUT";
+import {Tooltip} from "@mui/material";
 
 const workloadOptions = ["shaped", "rampup", "pausing", "fixed"];
 
@@ -83,7 +84,14 @@ const ControlsPage = () => {
             htmlFor="sut-select"
             className="flex gap-2 items-center text-sm font-medium"
           >
-            SUT <InfoIcon size={18} />
+            SUT
+            <Tooltip
+              title="The selected System Under Test to deploy"
+              placement="right"
+              arrow
+            >
+              <InfoIcon size={18} />
+            </Tooltip>
           </label>
           <select
             id="sut-select"
@@ -107,7 +115,14 @@ const ControlsPage = () => {
             htmlFor="experiment-select"
             className="flex gap-2 items-center text-sm font-medium"
           >
-            Experiment <InfoIcon size={18} />
+            Experiment
+            <Tooltip
+              title="The SUT experiment to deploy"
+              placement="right"
+              arrow
+            >
+              <InfoIcon size={18} />
+            </Tooltip>
           </label>
           <select
             id="experiment-select"
@@ -137,7 +152,14 @@ const ControlsPage = () => {
             htmlFor="workload-select"
             className="flex gap-2 items-center text-sm font-medium text-nowrap"
           >
-            Workload Type <InfoIcon size={18} />
+            Workload Type
+            <Tooltip
+              title="The type of the workload which will be used during the experiment"
+              placement="right"
+              arrow
+            >
+              <InfoIcon size={18} />
+            </Tooltip>
           </label>
           <select
             id="workload-select"
@@ -163,7 +185,14 @@ const ControlsPage = () => {
             htmlFor="iterations-input"
             className="flex gap-2 items-center text-sm font-medium text-nowrap"
           >
-            Iterations <InfoIcon size={18} />
+            Iterations
+            <Tooltip
+              title="The number of iterations for the experiment"
+              placement="right"
+              arrow
+            >
+              <InfoIcon size={18} />
+            </Tooltip>
           </label>
           <input
             id="iterations-input"
@@ -185,7 +214,14 @@ const ControlsPage = () => {
             htmlFor="deploy-only-checkbox"
             className="flex gap-2 items-center text-sm font-medium"
           >
-            Deploy only <InfoIcon size={18} />
+            Deploy only
+            <Tooltip
+              title="If selected the SUT will be deployed without running the actual benchmark. For testing purposes."
+              placement="right"
+              arrow
+            >
+              <InfoIcon size={18} />
+            </Tooltip>
           </label>
           <input
             id="deploy-only-checkbox"
