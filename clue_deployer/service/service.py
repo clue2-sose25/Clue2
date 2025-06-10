@@ -21,7 +21,8 @@ from clue_deployer.service.models import (
     Iteration,
     ResultTimestampResponse,
     DeployRequest,
-    StatusOut
+    StatusOut,
+    SingleIteration
 )
 
 app = FastAPI(title="CLUE Deployer Service")
@@ -226,6 +227,7 @@ def deploy_sut(request: DeployRequest):
     sut_name = request.sut_name
     deploy_only = request.deploy_only
     experiment_name = request.experiment_name
+    n_iterations = request.n_iterations
     sut_filename = f"{sut_name}.yaml"
     sut_path = os.path.join(SUT_CONFIGS_DIR, sut_filename)
     
@@ -235,12 +237,50 @@ def deploy_sut(request: DeployRequest):
     config = Config(sut_config=sut_path, clue_config=CLUE_CONFIG_PATH)
     try:
         # run the clue main method
-        runner = ClueRunner(config, experiment_name=experiment_name, sut_name=sut_name, deploy_only=deploy_only)
+        runner = ClueRunner(config, experiment_name=experiment_name, sut_name=sut_name, deploy_only=deploy_only, n_iterations=n_iterations)
         runner.main()
         return {"message": f"SUT {request.sut_name} has been deployed successfully."}
     except Exception as e:
         logger.error(f"Failed to deploy SUT {request.sut_name}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to deploy SUT: {str(e)}")
+
+@app.get("/plot/list")
+def list_plots(request: SingleIteration):
+    """List all available plots for a specific iteration."""
+    workload = request.workload
+    branch_name = request.branch_name
+    experiment_number = request.experiment_number
+    timestamp = request.timestamp
+
+    results_path = Path(RESULTS_DIR) / timestamp / workload / branch_name / str(experiment_number)
+    
+    if not results_path.exists():
+        raise HTTPException(status_code=404, detail=f"No results found for the specified iteration: {results_path}")
+
+    supported_formats = ["*.png", "*.jpg", "*.jpeg", "*.svg"]
+    plots = []
+    for file_format in supported_formats:
+        plots.extend([file.name for file in results_path.glob(file_format)])
+    return {"plots": plots}
+
+@app.get("/plot/download")
+def download_plot(request: SingleIteration):
+    """Download a specific plot for a given iteration."""
+    workload = request.workload
+    branch_name = request.branch_name
+    experiment_number = request.experiment_number
+    timestamp = request.timestamp
+    plot_filename = request.plot_filename
+    results_path = Path(RESULTS_DIR) / timestamp / workload / branch_name / str(experiment_number)
+    plot_path = results_path / plot_filename
+    if not plot_path.exists():
+        raise HTTPException(status_code=404, detail=f"Plot file not found: {plot_path}")
+    return StreamingResponse(
+        open(plot_path, "rb"),
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f"attachment; filename={plot_filename}"}
+    )
+    
 
     
     

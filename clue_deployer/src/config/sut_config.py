@@ -22,6 +22,8 @@ class SUTConfig(BaseSettings):
     wait_after_workloads: int
     tags: list[str]
     helm_chart_path: Path
+    # The path to the Helm chart directory if the chart is not in the SUT directory
+    helm_chart_repo: str = Field(default="")
     values_yaml_name: str = Field(default="values.yaml")
     infrastructure_namespaces: list[str] = Field(default_factory=list)  
     num_iterations: int = Field(default=1)
