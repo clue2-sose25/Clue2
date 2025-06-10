@@ -55,6 +55,8 @@ services:
       - ./sut_configs:/app/sut_configs
       # Cluster configs
       - ~/.kube:/root/.kube:ro
+      # Results
+      - results-deployer-data:/app/clue_deployer/results
     networks:
       - clue2
 
@@ -120,6 +122,7 @@ services:
 
 volumes:
   registry-data:
+  results-deployer-data:
 
 networks:
   clue2:
