@@ -2,6 +2,8 @@
 
 Prometheus-Agent is a simple Prometheus agent that periodically queries Prometheus to fetch measurement data for the namespace in which the agent is deployed.
 
+Credits: Sebastian Werner (GitHub: @tawalaya) and Karl Wolf (GitHub @wolfkarl)
+
 ## API
 
 The agent supports two endpoints:
