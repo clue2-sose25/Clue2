@@ -2,11 +2,10 @@ import os
 import logging
 import zipfile
 import io
-
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import RedirectResponse, StreamingResponse
+from fastapi.responses import StreamingResponse, RedirectResponse
 from pathlib import Path
-
 import yaml
 from clue_deployer.src.config.config import ENV_CONFIG
 from clue_deployer.src.main import ClueRunner
@@ -16,7 +15,6 @@ from clue_deployer.service.models import (
     HealthResponse,
     Sut,
     SutListResponse,
-    ExperimentListResponse,
     Timestamp,
     Iteration,
     ResultTimestampResponse,
@@ -25,7 +23,17 @@ from clue_deployer.service.models import (
     SingleIteration
 )
 
-app = FastAPI(title="CLUE Deployer Service")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup logic: Add redirect from / to /docs
+    from starlette.routing import Route
+    async def redirect_to_docs(request):
+        return RedirectResponse(url="/docs")
+    app.router.routes.insert(0, Route("/", endpoint=redirect_to_docs, methods=["GET"]))
+    yield  # Yield control to the application
+    # Shutdown logic (if any) would go here
+
+app = FastAPI(title="CLUE Deployer Service", lifespan=lifespan)
 
 # Setup für Logging
 logging.basicConfig(
@@ -45,8 +53,6 @@ SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
 RESULTS_DIR = ENV_CONFIG.RESULTS_PATH
 CLUE_CONFIG_PATH = ENV_CONFIG.CLUE_CONFIG_PATH
 
-
- 
 @app.get("/api/status", response_model=StatusOut)
 def read_status():
     phase, msg = StatusManager.get()
@@ -103,35 +109,20 @@ async def list_sut():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while listing SUTs: {str(e)}")
 
-# @app.get("/list/results", response_model=ResultListResponse)
-# async def list_results():
-#     """List all result timestamps."""
-#     try:
-#         # if not os.path.isdir(RESULTS_DIR):
-#         #     raise HTTPException(status_code=404, detail=f"Results directory not found: {RESULTS_DIR}")
-#         if not os.path.exists(RESULTS_DIR):
-#             return ResultListResponse(results=[])
-        
-#         results = [subdir.strip() for subdir in os.listdir(RESULTS_DIR)]
-
-#         return ResultListResponse(results=results)
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while listing results: {str(e)}")
-
-@app.get("/api/list/results", response_model=ResultTimestampResponse) # Path suggests listing all
-async def list_all_results(): # Renamed function for clarity
+@app.get("/api/list/results", response_model=ResultTimestampResponse)
+async def list_all_results():
     """List all results, structured by timestamp, workload, branch, and experiment number."""
-    results_base_path = Path(RESULTS_DIR) # Use pathlib
+    results_base_path = Path(RESULTS_DIR)
 
     if not results_base_path.is_dir():
         logger.error(f"Results directory not found: {results_base_path}")
         raise HTTPException(status_code=404, detail=f"Results directory not found: {results_base_path}")
     
     try:
-        processed_timestamps = [] # Renamed from 'results' to avoid confusion with response model field
+        processed_timestamps = []
         
-        for timestamp_dir in results_base_path.iterdir(): # pathlib's way to list entries
-            if not timestamp_dir.is_dir(): # Skip if not a directory
+        for timestamp_dir in results_base_path.iterdir():
+            if not timestamp_dir.is_dir():
                 logger.debug(f"Skipping non-directory entry in results: {timestamp_dir.name}")
                 continue
 
@@ -152,7 +143,7 @@ async def list_all_results(): # Renamed function for clarity
                     branch_name_str = branch_dir.name.strip()
                     
                     for exp_num_dir in branch_dir.iterdir():
-                        if not exp_num_dir.is_dir(): 
+                        if not exp_num_dir.is_dir():
                             logger.debug(f"Skipping non-directory entry in branch '{branch_name_str}': {exp_num_dir.name}")
                             continue
                         
@@ -168,7 +159,7 @@ async def list_all_results(): # Renamed function for clarity
                             )
                         except ValueError:
                             logger.warning(f"Could not convert experiment number '{exp_num_str}' to int for {timestamp_dir.name}/{workload_name}/{branch_name_str}. Skipping.")
-                            raise ValueError(f"experiment_number{experiment_number_int} cannot be casted into an integer.")
+                            raise ValueError(f"experiment_number {exp_num_str} cannot be casted into an integer.")
             
             processed_timestamps.append(timestamp_data_obj)
             
@@ -191,7 +182,7 @@ def download_results():
     # Create an in-memory zip file
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-        for file_path in results_path.rglob("*"):  # Recursively add all files
+        for file_path in results_path.rglob("*"):
             if file_path.is_file():
                 zip_file.write(file_path, file_path.relative_to(results_path))
     
@@ -218,8 +209,6 @@ async def get_sut_config(sut_name: str):
         return sut_config
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving SUT configuration: {str(e)}")
-
-
 
 @app.post("/api/deploy/sut")
 def deploy_sut(request: DeployRequest):
@@ -280,8 +269,3 @@ def download_plot(request: SingleIteration):
         media_type="application/octet-stream",
         headers={"Content-Disposition": f"attachment; filename={plot_filename}"}
     )
-    
-
-    
-    
-
