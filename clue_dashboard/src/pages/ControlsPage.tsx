@@ -13,6 +13,7 @@ const ControlsPage = () => {
     experimentName: null,
     workload: "shaped",
     iterations: 1,
+    deploy_only: false,
   };
 
   const [currentDeployment, setCurrentDeployment] = useState<DeploymentForm>(
@@ -20,7 +21,6 @@ const ControlsPage = () => {
   );
   const [ifDeploying, setIfDeploying] = useState<boolean>(false);
   const [availableSUTs, setAvailableSUTs] = useState<SUT[]>([]);
-  const [deployOnly, setDeployOnly] = useState(false);
 
   /**
    * Fetches the list of available SUTs
@@ -33,32 +33,9 @@ const ControlsPage = () => {
   }, []);
 
   /**
-   * Handles the change of the SUT
-   * @param e Change event
-   */
-  const handleSutSelection = (e: ChangeEvent<HTMLSelectElement>) => {
-    setCurrentDeployment({
-      ...currentDeployment,
-      SutName: e.target.value,
-      experimentName: null,
-    });
-  };
-
-  /**
-   * Handles the change in the experiment
-   * @param e Change event
-   */
-  const handleExperimentSelection = (e: ChangeEvent<HTMLSelectElement>) => {
-    setCurrentDeployment({
-      ...currentDeployment,
-      experimentName: e.target.value,
-    });
-  };
-
-  /**
    * Deploys a SUT
    */
-  const deploy = async () => {
+  const deploySUT = async () => {
     if (!currentDeployment.SutName || !currentDeployment.experimentName) return;
     await fetch("/api/deploy/sut", {
       method: "POST",
@@ -66,6 +43,8 @@ const ControlsPage = () => {
       body: JSON.stringify({
         sut_name: currentDeployment.SutName,
         experiment_name: currentDeployment.experimentName,
+        n_iterations: currentDeployment.iterations,
+        deploy_only: currentDeployment.deploy_only,
       }),
     });
     setIfDeploying(true);
@@ -97,7 +76,13 @@ const ControlsPage = () => {
             id="sut-select"
             className="border p-2 w-full"
             value={currentDeployment.SutName || ""}
-            onChange={(e) => handleSutSelection(e)}
+            onChange={(e) => {
+              setCurrentDeployment({
+                ...currentDeployment,
+                SutName: e.target.value,
+                experimentName: null,
+              });
+            }}
           >
             <option value="" disabled>
               {availableSUTs.length > 0 ? "Select SUT" : "Loading SUTs..."}
@@ -130,7 +115,12 @@ const ControlsPage = () => {
               !currentDeployment.SutName ? "opacity-50" : ""
             }`}
             value={currentDeployment.experimentName || ""}
-            onChange={(e) => handleExperimentSelection(e)}
+            onChange={(e) => {
+              setCurrentDeployment({
+                ...currentDeployment,
+                experimentName: e.target.value,
+              });
+            }}
             disabled={!currentDeployment.SutName}
           >
             <option value="" disabled>
@@ -165,12 +155,12 @@ const ControlsPage = () => {
             id="workload-select"
             className="border p-2 w-full"
             value={currentDeployment.workload || ""}
-            onChange={(e) =>
+            onChange={(e) => {
               setCurrentDeployment({
                 ...currentDeployment,
                 workload: e.target.value,
-              })
-            }
+              });
+            }}
           >
             {workloadOptions.map((w) => (
               <option key={w} value={w}>
@@ -227,14 +217,19 @@ const ControlsPage = () => {
             id="deploy-only-checkbox"
             type="checkbox"
             className="border w-5 h-5"
-            checked={deployOnly}
-            onChange={(e) => setDeployOnly(e.target.checked)}
+            checked={currentDeployment.deploy_only}
+            onChange={(e) => {
+              setCurrentDeployment({
+                ...currentDeployment,
+                deploy_only: e.target.checked,
+              });
+            }}
           />
         </div>
         {/* Deploy Button */}
         <button
           className="rounded p-2 bg-blue-500 text-white hover:bg-blue-700"
-          onClick={deploy}
+          onClick={deploySUT}
           disabled={
             !currentDeployment.SutName || !currentDeployment.experimentName
           }

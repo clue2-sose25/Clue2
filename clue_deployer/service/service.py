@@ -3,14 +3,14 @@ import logging
 import zipfile
 import io
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, status
 from fastapi.responses import StreamingResponse, RedirectResponse
 from pathlib import Path
 import yaml
+import multiprocessing
 from clue_deployer.src.config.config import ENV_CONFIG
 from clue_deployer.src.main import ClueRunner
 from clue_deployer.src.config import SUTConfig, Config
-from clue_deployer.service.status_manager import StatusManager
 from clue_deployer.service.models import (
     HealthResponse,
     Sut,
@@ -23,6 +23,10 @@ from clue_deployer.service.models import (
     SingleIteration
 )
 
+# Initialize multiprocessing lock and value for deployment synchronization
+state_lock = multiprocessing.Lock()
+is_deploying = multiprocessing.Value('i', 0)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup logic: Add redirect from / to /docs
@@ -31,11 +35,10 @@ async def lifespan(app: FastAPI):
         return RedirectResponse(url="/docs")
     app.router.routes.insert(0, Route("/", endpoint=redirect_to_docs, methods=["GET"]))
     yield  # Yield control to the application
-    # Shutdown logic (if any) would go here
 
 app = FastAPI(title="CLUE Deployer Service", lifespan=lifespan)
 
-# Setup für Logging
+# Setup for Logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s"
@@ -45,13 +48,24 @@ logger = logging.getLogger(__name__)
 # ENV test
 for var in ["SUT_NAME", "EXPERIMENT_NAME"]:
     if not os.getenv(var):
-        logger.warning(f"⚠️ ENV-Variable {var} is not set .")
+        logger.warning(f"⚠️ ENV-Variable {var} is not set.")
 
 logger.info(f"SUT={os.getenv('SUT_NAME')}, EXPERIMENT={os.getenv('EXPERIMENT_NAME')}")
 
 SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
 RESULTS_DIR = ENV_CONFIG.RESULTS_PATH
 CLUE_CONFIG_PATH = ENV_CONFIG.CLUE_CONFIG_PATH
+
+def run_deployment(config, experiment_name, sut_name, deploy_only, n_iterations, state_lock, is_deploying):
+    """Function to run the deployment in a separate process."""
+    try:
+        runner = ClueRunner(config, experiment_name=experiment_name, sut_name=sut_name, deploy_only=deploy_only, n_iterations=n_iterations)
+        runner.main()
+    except Exception as e:
+        logger.error(f"Deployment process failed for SUT {sut_name}: {str(e)}")
+    finally:
+        with state_lock:
+            is_deploying.value = 0
 
 @app.get("/api/status", response_model=StatusOut)
 def read_status():
@@ -176,10 +190,8 @@ def download_results():
     """Download all results as a zip file."""
     results_path = Path(RESULTS_DIR)
     if not results_path.exists():
-        raise HTTPException(status_code=404, detail=f"Results directory {results_path} does not exist.\
-                             Did you run any experiments?")
+        raise HTTPException(status_code=404, detail=f"Results directory {results_path} does not exist. Did you run any experiments?")
     
-    # Create an in-memory zip file
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
         for file_path in results_path.rglob("*"):
@@ -210,9 +222,17 @@ async def get_sut_config(sut_name: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving SUT configuration: {str(e)}")
 
-@app.post("/api/deploy/sut")
+@app.post("/api/deploy/sut", status_code=status.HTTP_202_ACCEPTED)
 def deploy_sut(request: DeployRequest):
-    """Deploy a specific SUT."""
+    """Deploy a specific SUT in a separate process, ensuring only one deployment runs at a time."""
+    with state_lock:
+        if is_deploying.value == 1:
+            raise HTTPException(
+                status_code=409,
+                detail="A deployment is already running."
+            )
+        is_deploying.value = 1
+
     sut_name = request.sut_name
     deploy_only = request.deploy_only
     experiment_name = request.experiment_name
@@ -221,17 +241,25 @@ def deploy_sut(request: DeployRequest):
     sut_path = os.path.join(SUT_CONFIGS_DIR, sut_filename)
     
     if not os.path.isfile(sut_path):
+        with state_lock:
+            is_deploying.value = 0
         raise HTTPException(status_code=404, detail=f"SUT configuration not found: {request.sut_name}")
     
     config = Config(sut_config=sut_path, clue_config=CLUE_CONFIG_PATH)
+    
     try:
-        # run the clue main method
-        runner = ClueRunner(config, experiment_name=experiment_name, sut_name=sut_name, deploy_only=deploy_only, n_iterations=n_iterations)
-        runner.main()
-        return {"message": f"SUT {request.sut_name} has been deployed successfully."}
+        process = multiprocessing.Process(
+            target=run_deployment,
+            args=(config, experiment_name, sut_name, deploy_only, n_iterations, state_lock, is_deploying)
+        )
+        process.start()
     except Exception as e:
-        logger.error(f"Failed to deploy SUT {request.sut_name}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to deploy SUT: {str(e)}")
+        with state_lock:
+            is_deploying.value = 0
+        logger.error(f"Failed to start deployment process: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to start deployment: {str(e)}")
+    
+    return {"message": f"Deployment of SUT {sut_name} has been started."}
 
 @app.get("/plot/list")
 def list_plots(request: SingleIteration):

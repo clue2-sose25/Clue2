@@ -5,7 +5,7 @@ from .status import Phase
 class StatusManager:
     _lock   = threading.Lock()
     _phase  = Phase.PREPARING_CLUSTER
-    _detail = ""                   # optionale Zusatzinfo (→ UI)
+    _detail = ""
 
     @classmethod
     def get(cls) -> Tuple[Phase, str]:

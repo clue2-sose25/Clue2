@@ -3,4 +3,5 @@ export interface Deployment {
   experimentName: string | null;
   workload: string | null;
   iterations: number;
+  deploy_only: boolean;
 }
