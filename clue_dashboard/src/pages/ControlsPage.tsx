@@ -47,7 +47,13 @@ const ControlsPage = () => {
   };
 
   return (
-    <div className="flex gap-8">
+    <div className="w-full h-full flex flex-col items-center gap-8 p-8">
+      {/* Header texts */}
+      <div className="flex flex-col items-center">
+        <p className="text-xl font-medium">Deploy CLUE</p>
+        <p className="">Choose your parameters for the benchmark</p>
+      </div>
+      {/* Parameters selection */}
       <div className="flex flex-col gap-4 max-w-md">
         {/* SUT Dropdown */}
         <div className="flex items-center gap-4">
@@ -69,7 +75,6 @@ const ControlsPage = () => {
             ))}
           </select>
         </div>
-
         {/* Experiment Dropdown */}
         <div className="flex items-center gap-4">
           <label className="block text-sm font-medium mb-1">Experiment</label>
@@ -93,7 +98,6 @@ const ControlsPage = () => {
             ))}
           </select>
         </div>
-
         {/* Workload Type Dropdown */}
         <div className="flex items-center gap-4">
           <label className="block text-sm font-medium mb-1 text-nowrap">
@@ -156,9 +160,7 @@ const ControlsPage = () => {
           Deploy experiment
         </button>
       </div>
-      <div>
-        <LogsPanel ifDeploying={ifDeploying} />
-      </div>
+      <div>{ifDeploying && <LogsPanel ifDeploying={ifDeploying} />}</div>
     </div>
   );
 };
