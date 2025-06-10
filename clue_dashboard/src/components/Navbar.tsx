@@ -16,7 +16,7 @@ const Navbar = () => {
       <div className="flex gap-8">
         {pages.map((page) => {
           return (
-            <NavLink className="flex items-center text-sm" to={page.href}>
+            <NavLink className="flex items-center text-sm" to={page.href} key={page.name}>
               {page.name}
             </NavLink>
           );
