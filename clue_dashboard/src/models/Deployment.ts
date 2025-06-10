@@ -1,6 +1,6 @@
 export interface Deployment {
-  SUT: string | null;
-  experiment: string | null;
+  SutName: string | null;
+  experimentName: string | null;
   workload: string | null;
   iterations: number;
 }

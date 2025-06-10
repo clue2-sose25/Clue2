@@ -1,44 +1,70 @@
-import {useEffect, useState} from "react";
-import type {Deployment} from "../models/Deployment";
+import {useEffect, useState, type ChangeEvent} from "react";
+import type {Deployment as DeploymentForm} from "../models/Deployment";
 import LogsPanel from "../components/LogsPanel";
 import {InfoIcon} from "@phosphor-icons/react";
+import type {SUT} from "../models/SUT";
 
 const workloadOptions = ["shaped", "rampup", "pausing", "fixed"];
 
 const ControlsPage = () => {
-  const defaultDeployment: Deployment = {
-    SUT: null,
-    experiment: null,
+  const defaultDeploymentForm: DeploymentForm = {
+    SutName: null,
+    experimentName: null,
     workload: "shaped",
     iterations: 1,
   };
 
-  const [currentDeployment, setCurrentDeployment] =
-    useState<Deployment>(defaultDeployment);
+  const [currentDeployment, setCurrentDeployment] = useState<DeploymentForm>(
+    defaultDeploymentForm
+  );
   const [ifDeploying, setIfDeploying] = useState<boolean>(false);
-  const [availableSUTs, setAvailableSUTs] = useState<string[]>([]);
-  const [experiments, setExperiments] = useState<string[]>([]);
+  const [availableSUTs, setAvailableSUTs] = useState<SUT[]>([]);
   const [deployOnly, setDeployOnly] = useState(false);
 
+  /**
+   * Fetches the list of available SUTs
+   */
   useEffect(() => {
     fetch("/api/list/sut")
       .then((r) => r.json())
       .then((d) => setAvailableSUTs(d.suts ?? []))
       .catch(() => setAvailableSUTs([]));
-    fetch("/api/list/experiments")
-      .then((r) => r.json())
-      .then((d) => setExperiments(d.experiments ?? []))
-      .catch(() => setExperiments([]));
   }, []);
 
+  /**
+   * Handles the change of the SUT
+   * @param e Change event
+   */
+  const handleSutSelection = (e: ChangeEvent<HTMLSelectElement>) => {
+    setCurrentDeployment({
+      ...currentDeployment,
+      SutName: e.target.value,
+      experimentName: null,
+    });
+  };
+
+  /**
+   * Handles the change in the experiment
+   * @param e Change event
+   */
+  const handleExperimentSelection = (e: ChangeEvent<HTMLSelectElement>) => {
+    setCurrentDeployment({
+      ...currentDeployment,
+      experimentName: e.target.value,
+    });
+  };
+
+  /**
+   * Deploys a SUT
+   */
   const deploy = async () => {
-    if (!currentDeployment.SUT || !currentDeployment.experiment) return;
+    if (!currentDeployment.SutName || !currentDeployment.experimentName) return;
     await fetch("/api/deploy/sut", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({
-        sut_name: currentDeployment.SUT,
-        experiment_name: currentDeployment.experiment,
+        sut_name: currentDeployment.SutName,
+        experiment_name: currentDeployment.experimentName,
       }),
     });
     setIfDeploying(true);
@@ -62,17 +88,15 @@ const ControlsPage = () => {
           <select
             id="sut-select"
             className="border p-2 w-full"
-            value={currentDeployment.SUT || ""}
-            onChange={(e) =>
-              setCurrentDeployment({...currentDeployment, SUT: e.target.value})
-            }
+            value={currentDeployment.SutName || ""}
+            onChange={(e) => handleSutSelection(e)}
           >
             <option value="" disabled>
               {availableSUTs.length > 0 ? "Select SUT" : "Loading SUTs..."}
             </option>
-            {availableSUTs.map((s) => (
-              <option key={s} value={s}>
-                {s}
+            {availableSUTs.map((sut) => (
+              <option key={sut.name} value={sut.name}>
+                {sut.name}
               </option>
             ))}
           </select>
@@ -88,25 +112,23 @@ const ControlsPage = () => {
           <select
             id="experiment-select"
             className={`border py-2 px-4 w-full ${
-              !currentDeployment.SUT ? "opacity-50" : ""
+              !currentDeployment.SutName ? "opacity-50" : ""
             }`}
-            value={currentDeployment.experiment || ""}
-            onChange={(e) =>
-              setCurrentDeployment({
-                ...currentDeployment,
-                experiment: e.target.value,
-              })
-            }
-            disabled={!currentDeployment.SUT}
+            value={currentDeployment.experimentName || ""}
+            onChange={(e) => handleExperimentSelection(e)}
+            disabled={!currentDeployment.SutName}
           >
             <option value="" disabled>
               Select Experiment
             </option>
-            {experiments.map((exp) => (
-              <option key={exp} value={exp}>
-                {exp}
-              </option>
-            ))}
+            {availableSUTs
+              .filter((sut) => sut.name === currentDeployment.SutName)
+              .flatMap((sut) => sut.experiments)
+              .map((exp) => (
+                <option key={exp} value={exp}>
+                  {exp}
+                </option>
+              ))}
           </select>
         </div>
         {/* Workload Type Dropdown */}
@@ -177,7 +199,9 @@ const ControlsPage = () => {
         <button
           className="rounded p-2 bg-blue-500 text-white hover:bg-blue-700"
           onClick={deploy}
-          disabled={!currentDeployment.SUT || !currentDeployment.experiment}
+          disabled={
+            !currentDeployment.SutName || !currentDeployment.experimentName
+          }
         >
           Deploy experiment
         </button>
