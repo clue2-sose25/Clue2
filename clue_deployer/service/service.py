@@ -1,5 +1,4 @@
 import os
-import logging
 import zipfile
 import io
 from contextlib import asynccontextmanager
@@ -8,6 +7,8 @@ from fastapi.responses import StreamingResponse, RedirectResponse
 from pathlib import Path
 import yaml
 import multiprocessing
+from clue_deployer.service.status_manager import StatusManager
+from clue_deployer.src.logger import logger
 from clue_deployer.src.config.config import ENV_CONFIG
 from clue_deployer.src.main import ClueRunner
 from clue_deployer.src.config import SUTConfig, Config
@@ -23,10 +24,11 @@ from clue_deployer.service.models import (
     SingleIteration
 )
 
-# Initialize multiprocessing lock and value for deployment synchronization
+# Initialize multiprocessing lock and value for deployment synchronization. Used for deployments.
 state_lock = multiprocessing.Lock()
 is_deploying = multiprocessing.Value('i', 0)
 
+# Root page redirect to swagger /docs
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup logic: Add redirect from / to /docs
@@ -36,21 +38,8 @@ async def lifespan(app: FastAPI):
     app.router.routes.insert(0, Route("/", endpoint=redirect_to_docs, methods=["GET"]))
     yield  # Yield control to the application
 
+# Start the FastAPI server
 app = FastAPI(title="CLUE Deployer Service", lifespan=lifespan)
-
-# Setup for Logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s"
-)
-logger = logging.getLogger(__name__)
-
-# ENV test
-for var in ["SUT_NAME", "EXPERIMENT_NAME"]:
-    if not os.getenv(var):
-        logger.warning(f"⚠️ ENV-Variable {var} is not set.")
-
-logger.info(f"SUT={os.getenv('SUT_NAME')}, EXPERIMENT={os.getenv('EXPERIMENT_NAME')}")
 
 SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
 RESULTS_DIR = ENV_CONFIG.RESULTS_PATH

@@ -13,10 +13,10 @@ const LogsPanel: React.FC<LogsPanelProps> = ({ifDeploying}) => {
   useEffect(() => {
     if (ifDeploying) {
       const loadLogs = () => {
-        fetch("/api/logs")
-          .then((r) => r.json())
-          .then((d) => setLogs(d.logs ?? ""))
-          .catch(() => setLogs(""));
+        // fetch("/api/logs")
+        //   .then((r) => r.json())
+        //   .then((d) => setLogs(d.logs ?? ""))
+        //   .catch(() => setLogs(""));
       };
       loadLogs();
       const id = setInterval(loadLogs, 2000);
