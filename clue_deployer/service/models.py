@@ -8,8 +8,19 @@ class HealthResponse(BaseModel):
 class StringListResponse(BaseModel):
     strings: list[str]
 
+class Sut(BaseModel):
+    '''
+    A single SUT object, correlated to one SUT config file. 
+    Contains the name and the experiments list of the SUT.
+    '''
+    name: str
+    experiments: list[str]
+
 class SutListResponse(BaseModel):
-    suts: list[str]
+    """
+    A list of all available SUTs
+    """
+    suts: list[Sut]
 
 class ExperimentListResponse(BaseModel):
     experiments: list[str]

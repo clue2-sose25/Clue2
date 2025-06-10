@@ -6,12 +6,15 @@ import io
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import RedirectResponse, StreamingResponse
 from pathlib import Path
+
+import yaml
 from clue_deployer.src.config.config import ENV_CONFIG
 from clue_deployer.src.main import ClueRunner
 from clue_deployer.src.config import SUTConfig, Config
 from clue_deployer.service.status_manager import StatusManager
 from clue_deployer.service.models import (
     HealthResponse,
+    Sut,
     SutListResponse,
     ExperimentListResponse,
     Timestamp,
@@ -52,31 +55,52 @@ def read_status():
 def health():
     return HealthResponse(message="true")
 
-@app.get("/", response_model=None)
-async def root():
-    return RedirectResponse(url="/docs")  # Redirect to /docs
-
 @app.get("/api/list/sut", response_model=SutListResponse)
 async def list_sut():
-    """List all SUTs."""
+    """
+    List all SUTs with their experiments.
+    """
     try:
         if not os.path.isdir(SUT_CONFIGS_DIR):
             raise HTTPException(status_code=404, detail=f"SUT configurations directory not found: {SUT_CONFIGS_DIR}")
-        suts = os.listdir(SUT_CONFIGS_DIR)
-        suts = [s for s in suts if s.endswith(('.yaml', '.yml')) and os.path.isfile(os.path.join(SUT_CONFIGS_DIR, s))]
-        suts = [os.path.splitext(s)[0] for s in suts]
+
+        # Get list of YAML files in the SUT configurations directory
+        files = [f for f in os.listdir(SUT_CONFIGS_DIR) if f.endswith(('.yaml', '.yml')) and os.path.isfile(os.path.join(SUT_CONFIGS_DIR, f))]
+
+        suts = []
+        for filename in files:
+            # Extract SUT name from filename (without extension)
+            sut_name = os.path.splitext(filename)[0]
+            file_path = os.path.join(SUT_CONFIGS_DIR, filename)
+
+            # Read and parse the YAML file
+            with open(file_path, 'r') as f:
+                data = yaml.safe_load(f)
+
+            # Validate that the YAML content is a dictionary
+            if not isinstance(data, dict):
+                raise HTTPException(status_code=500, detail=f"Invalid SUT configuration file: {filename} is not a valid YAML dictionary")
+
+            # Get experiments section, default to empty list if missing
+            experiments = data.get('experiments', [])
+            if not isinstance(experiments, list):
+                raise HTTPException(status_code=500, detail=f"Invalid SUT configuration file: {filename} has 'experiments' that is not a list")
+
+            # Extract experiment names
+            experiment_names = []
+            for exp in experiments:
+                if not isinstance(exp, dict) or 'name' not in exp:
+                    raise HTTPException(status_code=500, detail=f"Invalid experiment in SUT configuration file: {filename}")
+                experiment_names.append(exp['name'])
+
+            # Create Sut object and add to list
+            sut = Sut(name=sut_name, experiments=experiment_names)
+            suts.append(sut)
+
         return SutListResponse(suts=suts)
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while listing SUTs: {str(e)}")
-
-@app.get("/api/list/experiments", response_model=ExperimentListResponse)
-async def list_experiments():
-    """List all experiemnt names"""
-    try:
-        experiments = [experiment.name for experiment in main.CONFIGS.experiments_config.experiments]
-        return ExperimentListResponse(experiments=experiments)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred while listing experiments: {str(e)}")
 
 # @app.get("/list/results", response_model=ResultListResponse)
 # async def list_results():
