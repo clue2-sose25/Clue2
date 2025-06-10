@@ -3,17 +3,19 @@ import subprocess
 from pathlib import Path
 import tempfile
 import shutil
+import re
 from clue_deployer.src.logger import logger
 from clue_deployer.src.config import Config
+from clue_deployer.src.experiment import Experiment
 from clue_deployer.src.scaling_experiment_setting import ScalingExperimentSetting
 
 
 class HelmWrapper():
     
-    def __init__(self, config: Config, autoscaling: ScalingExperimentSetting):
+    def __init__(self, config: Config, experiment: Experiment):
         self.clue_config = config.clue_config
+        self.experiment = experiment
         self.sut_config = config.sut_config
-        self.autoscaling = autoscaling
         self.values_file_full_path = self.sut_config.helm_chart_path / self.sut_config.values_yaml_name
         self.name = self.sut_config.sut_path.name
         # Path to the ORIGINAL Helm chart in the SUT directory
@@ -86,7 +88,7 @@ class HelmWrapper():
         logger.info(f"Applying {len(helm_replacements)} helm replacements from the SUT config")
         # Loop through replacements
         for replacement in helm_replacements:
-            if replacement.should_apply(autoscaling=self.autoscaling):
+            if replacement.should_apply(autoscaling=self.experiment.autoscaling):
                 no_instances = values.count(replacement.old_value)
                 if no_instances > 0:
                     logger.info(f"Replacing {no_instances} instances of: {replacement}")
@@ -95,9 +97,18 @@ class HelmWrapper():
                     logger.warning(f"No instances found for replacement: {replacement}")
             else:
                 logger.info(f"Skipping replacement due to unmet conditions: {replacement}")
+
+        new_tag = self.experiment.target_branch
+        logger.info(f"Replacing experiment tag for deployment: {new_tag}")
+        # regex catches the tag line in values.yaml (tag: "<any string>") and replaces it with the new tag
+        pattern = r'(tag:\s*)("[^"]*"|\'[^\']*\'|[^#\s]+)'
+        replacement = rf'\1"{new_tag}"'
+        updated_values = re.sub(pattern, replacement, values)
+        
         # Save the changes
         with open(self.active_values_file_path, "w") as f:
-            f.write(values)
+            f.write(updated_values)
+        logger.info(f"Wrote patched values.yml: {self.active_values_file_path}")
         return values
         
     def deploy_sut(self) -> None:
