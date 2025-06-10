@@ -1,6 +1,7 @@
 import {useEffect, useState} from "react";
 import type {Deployment} from "../models/Deployment";
 import LogsPanel from "../components/LogsPanel";
+import {InfoIcon} from "@phosphor-icons/react";
 
 const workloadOptions = ["shaped", "rampup", "pausing", "fixed"];
 
@@ -54,19 +55,24 @@ const ControlsPage = () => {
         <p className="">Choose your parameters for the benchmark</p>
       </div>
       {/* Parameters selection */}
-      <div className="flex flex-col gap-4 max-w-md">
+      <div className="flex flex-col gap-4 w-1/3">
         {/* SUT Dropdown */}
-        <div className="flex items-center gap-4">
-          <label className="block text-sm font-medium mb-1">SUT</label>
+        <div className="flex items-center justify-between gap-4">
+          <label className="flex gap-2 items-center text-sm font-medium mb-1 ">
+            SUT <InfoIcon size={18} />
+          </label>
           <select
             className="border p-2 w-full"
             value={currentDeployment.SUT || ""}
             onChange={(e) =>
-              setCurrentDeployment({...currentDeployment, SUT: e.target.value})
+              setCurrentDeployment({
+                ...currentDeployment,
+                SUT: e.target.value,
+              })
             }
           >
             <option value="" disabled>
-              Select SUT
+              {availableSUTs.length > 0 ? "Select SUT" : "Loading SUTs..."}
             </option>
             {availableSUTs.map((s) => (
               <option key={s} value={s}>
@@ -76,10 +82,14 @@ const ControlsPage = () => {
           </select>
         </div>
         {/* Experiment Dropdown */}
-        <div className="flex items-center gap-4">
-          <label className="block text-sm font-medium mb-1">Experiment</label>
+        <div className="flex items-center justify-between gap-4">
+          <label className="flex gap-2 items-center text-sm font-medium mb-1">
+            Experiment <InfoIcon size={18} />
+          </label>
           <select
-            className="border py-2 px-4 w-full"
+            className={`border py-2 px-4 w-full ${
+              !currentDeployment.SUT ? "opacity-50" : ""
+            }`}
             value={currentDeployment.experiment || ""}
             onChange={(e) =>
               setCurrentDeployment({
@@ -87,6 +97,7 @@ const ControlsPage = () => {
                 experiment: e.target.value,
               })
             }
+            disabled={!currentDeployment.SUT}
           >
             <option value="" disabled>
               Select Experiment
@@ -99,9 +110,9 @@ const ControlsPage = () => {
           </select>
         </div>
         {/* Workload Type Dropdown */}
-        <div className="flex items-center gap-4">
-          <label className="block text-sm font-medium mb-1 text-nowrap">
-            Workload Type
+        <div className="flex items-center justify-between gap-4">
+          <label className="flex gap-2 items-center text-sm font-medium mb-1 text-nowrap">
+            Workload Type <InfoIcon size={18} />
           </label>
           <select
             className="border p-2 w-full"
@@ -122,9 +133,9 @@ const ControlsPage = () => {
         </div>
 
         {/* Iterations Input */}
-        <div className="flex items-center gap-4">
-          <label className="block text-sm font-medium mb-1">
-            Number of Iterations
+        <div className="flex items-center justify-between gap-4">
+          <label className="flex gap-2 items-center text-sm font-medium mb-1 text-nowrap">
+            Iterations <InfoIcon size={18} />
           </label>
           <input
             type="number"
@@ -141,15 +152,19 @@ const ControlsPage = () => {
         </div>
 
         {/* Deploy Only Checkbox */}
-        <label className="inline-flex items-center gap-2">
-          <input
-            type="checkbox"
-            className="border"
-            checked={deployOnly}
-            onChange={(e) => setDeployOnly(e.target.checked)}
-          />
-          Deploy only
-        </label>
+        <div className="flex justify-between">
+          <label className="inline-flex items-center gap-2">
+            <p className="flex gap-2 items-center text-sm font-medium">
+              Deploy only <InfoIcon size={18} />
+            </p>
+            <input
+              type="checkbox"
+              className="border w-4 h-4"
+              checked={deployOnly}
+              onChange={(e) => setDeployOnly(e.target.checked)}
+            />
+          </label>
+        </div>
 
         {/* Deploy Button */}
         <button
