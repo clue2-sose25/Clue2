@@ -1,11 +1,11 @@
-import {useEffect, useState} from "react";
+import {useEffect} from "react";
 
 interface LogsPanelProps {
   ifDeploying: boolean;
 }
 
 const LogsPanel: React.FC<LogsPanelProps> = ({ifDeploying}) => {
-  const [logs, setLogs] = useState<string>("");
+  // const [logs, setLogs] = useState<string>("");
 
   /**
    * Fetch the logs of the CLUE deployer
@@ -19,14 +19,14 @@ const LogsPanel: React.FC<LogsPanelProps> = ({ifDeploying}) => {
         //   .catch(() => setLogs(""));
       };
       loadLogs();
-      const id = setInterval(loadLogs, 2000);
-      return () => clearInterval(id);
+      // const id = setInterval(loadLogs, 2000);
+      return () => {}; // () => clearInterval(id);
     }
   }, [ifDeploying]);
 
   return (
     <div className="flex-1 border p-2 overflow-y-auto h-96 bg-black text-white whitespace-pre-wrap">
-      {logs || "No logs"}
+      {"No logs"}
     </div>
   );
 };

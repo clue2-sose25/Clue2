@@ -56,7 +56,7 @@ services:
       # Cluster configs
       - ~/.kube:/root/.kube:ro
       # Results
-      - results-deployer-data:/app/clue_deployer/results
+      - results-deployer-data:/app/data
     networks:
       - clue2
 
