@@ -100,13 +100,15 @@ class HelmWrapper():
 
         new_tag = self.experiment.target_branch
         logger.info(f"Replacing experiment tag for deployment: {new_tag}")
-        pattern = r'(tag:\s*["\']?)[^"\'\s#]+'
+        # regex catches the tag line in values.yaml (tag: "<any string>") and replaces it with the new tag
+        pattern = r'(tag:\s*)("[^"]*"|\'[^\']*\'|[^#\s]+)'
         replacement = rf'\1"{new_tag}"'
         updated_values = re.sub(pattern, replacement, values)
         
         # Save the changes
         with open(self.active_values_file_path, "w") as f:
             f.write(updated_values)
+        logger.info(f"Wrote patched values.yml: {self.active_values_file_path}")
         return values
         
     def deploy_sut(self) -> None:
