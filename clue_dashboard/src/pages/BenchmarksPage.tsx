@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import {useEffect, useState} from "react";
 
 interface Iteration {
   workload: string;
@@ -17,7 +17,7 @@ const ExperimentsPage = () => {
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    fetch("/api/list/experiments")
+    fetch("/api/list/results")
       .then((res) => {
         if (!res.ok) throw new Error("Request failed");
         return res.json();

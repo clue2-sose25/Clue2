@@ -43,12 +43,12 @@ CLUE_CONFIG_PATH = ENV_CONFIG.CLUE_CONFIG_PATH
 
 
  
-@app.get("/status", response_model=StatusOut)
+@app.get("/api/status", response_model=StatusOut)
 def read_status():
     phase, msg = StatusManager.get()
     return StatusOut(phase=phase, message=msg or None)
 
-@app.get("/health", response_model=HealthResponse)
+@app.get("/api/health", response_model=HealthResponse)
 def health():
     return HealthResponse(message="true")
 
@@ -56,7 +56,7 @@ def health():
 async def root():
     return RedirectResponse(url="/docs")  # Redirect to /docs
 
-@app.get("/list/sut", response_model=SutListResponse)
+@app.get("/api/list/sut", response_model=SutListResponse)
 async def list_sut():
     """List all SUTs."""
     try:
@@ -69,7 +69,7 @@ async def list_sut():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while listing SUTs: {str(e)}")
 
-@app.get("/list/experiments", response_model=ExperimentListResponse)
+@app.get("/api/list/experiments", response_model=ExperimentListResponse)
 async def list_experiments():
     """List all experiemnt names"""
     try:
@@ -93,7 +93,7 @@ async def list_experiments():
 #     except Exception as e:
 #         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while listing results: {str(e)}")
 
-@app.get("/list/results", response_model=ResultTimestampResponse) # Path suggests listing all
+@app.get("/api/list/results", response_model=ResultTimestampResponse) # Path suggests listing all
 async def list_all_results(): # Renamed function for clarity
     """List all results, structured by timestamp, workload, branch, and experiment number."""
     results_base_path = Path(RESULTS_DIR) # Use pathlib
@@ -155,7 +155,7 @@ async def list_all_results(): # Renamed function for clarity
         logger.exception("Unexpected error while retrieving results.")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving results: {str(e)}")
 
-@app.get("/download/results")
+@app.get("/api/download/results")
 def download_results():
     """Download all results as a zip file."""
     results_path = Path(RESULTS_DIR)
@@ -180,7 +180,7 @@ def download_results():
         headers={"Content-Disposition": f"attachment; filename=results_{results_path.name}.zip"}
     )
 
-@app.get("/config/sut/{sut_name}", response_model=SUTConfig)
+@app.get("/api/config/sut/{sut_name}", response_model=SUTConfig)
 async def get_sut_config(sut_name: str):
     """Get a specific SUT configuration."""
     cleaned_sut_name = sut_name.strip().lower()
@@ -196,7 +196,7 @@ async def get_sut_config(sut_name: str):
 
 
 
-@app.post("/deploy/sut")
+@app.post("/api/deploy/sut")
 def deploy_sut(request: DeployRequest):
     """Deploy a specific SUT."""
     sut_name = request.sut_name

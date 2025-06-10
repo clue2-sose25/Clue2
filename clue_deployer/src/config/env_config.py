@@ -12,7 +12,7 @@ class EnvConfig(BaseSettings):
     # CLUE Configs
     SUT_CONFIGS_PATH: Path = Path("/app/sut_configs")
     CLUE_CONFIG_PATH: Path = Path("/app/clue-config.yaml")
-    RESULTS_PATH: Path = Path("/app/data")
+    RESULTS_PATH: Path = Path("/app/clue_deployer/results")
     LOG_LEVEL: str = "INFO"
 
     # Environment variables
