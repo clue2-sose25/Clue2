@@ -3,7 +3,6 @@ __pycache__/
 data*
 .idea
 mock_data/
-agent
 .github
 .vscode
 results/*

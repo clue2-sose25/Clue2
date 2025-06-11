@@ -1,80 +1,78 @@
 import os
-import logging
 import zipfile
 import io
 import asyncio
-
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import RedirectResponse, StreamingResponse
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, HTTPException, status
+from fastapi.responses import StreamingResponse, RedirectResponse
 from pathlib import Path
+import yaml
+import multiprocessing
+from clue_deployer.service.status_manager import StatusManager
+from clue_deployer.src.logger import logger
 from clue_deployer.src.config.config import ENV_CONFIG
 from clue_deployer.src.logger import LOG_BUFFER
 from clue_deployer.src.main import ClueRunner
 from clue_deployer.src.config import SUTConfig, Config
-from clue_deployer.service.status_manager import StatusManager
 from clue_deployer.service.models import (
     HealthResponse,
+    LogsResponse,
+    Sut,
     SutListResponse,
-    ExperimentListResponse,
     Timestamp,
     Iteration,
     ResultTimestampResponse,
     DeployRequest,
     StatusOut,
-    LogsResponse
+    SingleIteration
 )
 
-app = FastAPI(title="CLUE Deployer Service")
+# Initialize multiprocessing lock and value for deployment synchronization. Used for deployments.
+state_lock = multiprocessing.Lock()
+is_deploying = multiprocessing.Value('i', 0)
 
-# Setup für Logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s"
-)
-logger = logging.getLogger(__name__)
+# Root page redirect to swagger /docs
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup logic: Add redirect from / to /docs
+    from starlette.routing import Route
+    async def redirect_to_docs(request):
+        return RedirectResponse(url="/docs")
+    app.router.routes.insert(0, Route("/", endpoint=redirect_to_docs, methods=["GET"]))
+    yield  # Yield control to the application
 
-# ENV test
-for var in ["SUT_NAME", "EXPERIMENT_NAME"]:
-    if not os.getenv(var):
-        logger.warning(f"⚠️ ENV-Variable {var} is not set .")
-
-logger.info(f"SUT={os.getenv('SUT_NAME')}, EXPERIMENT={os.getenv('EXPERIMENT_NAME')}")
+# Start the FastAPI server
+app = FastAPI(title="CLUE Deployer Service", lifespan=lifespan)
 
 SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
 RESULTS_DIR = ENV_CONFIG.RESULTS_PATH
 CLUE_CONFIG_PATH = ENV_CONFIG.CLUE_CONFIG_PATH
-# Use a relative path so it aligns with the logger configuration
-LOG_FILE_PATH = Path("logs/app.log")
 
- 
-@app.get("/status", response_model=StatusOut)
+def run_deployment(config, experiment_name, sut_name, deploy_only, n_iterations, state_lock, is_deploying):
+    """Function to run the deployment in a separate process."""
+    try:
+        runner = ClueRunner(config, experiment_name=experiment_name, sut_name=sut_name, deploy_only=deploy_only, n_iterations=n_iterations)
+        runner.main()
+    except Exception as e:
+        logger.error(f"Deployment process failed for SUT {sut_name}: {str(e)}")
+    finally:
+        with state_lock:
+            is_deploying.value = 0
+
+@app.get("/api/status", response_model=StatusOut)
 def read_status():
     phase, msg = StatusManager.get()
     return StatusOut(phase=phase, message=msg or None)
 
-@app.get("/health", response_model=HealthResponse)
+@app.get("/api/health", response_model=HealthResponse)
 def health():
     return HealthResponse(message="true")
-
-@app.get("/", response_model=None)
-async def root():
-    return RedirectResponse(url="/docs")  # Redirect to /docs
 
 @app.get("/api/logs", response_model=LogsResponse)
 def read_logs():
 
     """Return buffered log lines."""
     return LogsResponse(logs="\n".join(LOG_BUFFER))
-#    """Return contents of the deployer log file."""
-#    try:
-#        if LOG_FILE_PATH.exists():
-#            content = LOG_FILE_PATH.read_text()
-#        else:
-#            content = ""
-#        return LogsResponse(logs=content)
-#    except Exception as e:
-#        logger.exception("Failed to read log file")
-#        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/logs/stream")
 async def stream_logs():
@@ -88,73 +86,69 @@ async def stream_logs():
                 last_idx = len(LOG_BUFFER)
             else:
                 await asyncio.sleep(1)
-#    """Stream log file updates using Server-Sent Events."""
-#    async def event_generator():
-#        # Wait until log file exists
-#        while not LOG_FILE_PATH.exists():
-#            await asyncio.sleep(1)
-#        with LOG_FILE_PATH.open("r") as f:
-#            f.seek(0, os.SEEK_END)
-#            while True:
-#                line = f.readline()
-#                if line:
-#                    yield f"data: {line}\n\n"
-#                else:
-#                    await asyncio.sleep(1)
-#
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
-@app.get("/list/sut", response_model=SutListResponse)
+@app.get("/api/list/sut", response_model=SutListResponse)
 async def list_sut():
-    """List all SUTs."""
+    """
+    List all SUTs with their experiments.
+    """
     try:
         if not os.path.isdir(SUT_CONFIGS_DIR):
             raise HTTPException(status_code=404, detail=f"SUT configurations directory not found: {SUT_CONFIGS_DIR}")
-        suts = os.listdir(SUT_CONFIGS_DIR)
-        suts = [s for s in suts if s.endswith(('.yaml', '.yml')) and os.path.isfile(os.path.join(SUT_CONFIGS_DIR, s))]
-        suts = [os.path.splitext(s)[0] for s in suts]
+
+        # Get list of YAML files in the SUT configurations directory
+        files = [f for f in os.listdir(SUT_CONFIGS_DIR) if f.endswith(('.yaml', '.yml')) and os.path.isfile(os.path.join(SUT_CONFIGS_DIR, f))]
+
+        suts = []
+        for filename in files:
+            # Extract SUT name from filename (without extension)
+            sut_name = os.path.splitext(filename)[0]
+            file_path = os.path.join(SUT_CONFIGS_DIR, filename)
+
+            # Read and parse the YAML file
+            with open(file_path, 'r') as f:
+                data = yaml.safe_load(f)
+
+            # Validate that the YAML content is a dictionary
+            if not isinstance(data, dict):
+                raise HTTPException(status_code=500, detail=f"Invalid SUT configuration file: {filename} is not a valid YAML dictionary")
+
+            # Get experiments section, default to empty list if missing
+            experiments = data.get('experiments', [])
+            if not isinstance(experiments, list):
+                raise HTTPException(status_code=500, detail=f"Invalid SUT configuration file: {filename} has 'experiments' that is not a list")
+
+            # Extract experiment names
+            experiment_names = []
+            for exp in experiments:
+                if not isinstance(exp, dict) or 'name' not in exp:
+                    raise HTTPException(status_code=500, detail=f"Invalid experiment in SUT configuration file: {filename}")
+                experiment_names.append(exp['name'])
+
+            # Create Sut object and add to list
+            sut = Sut(name=sut_name, experiments=experiment_names)
+            suts.append(sut)
+
         return SutListResponse(suts=suts)
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while listing SUTs: {str(e)}")
 
-@app.get("/list/experiments", response_model=ExperimentListResponse)
-async def list_experiments():
-    """List all experiemnt names"""
-    try:
-        experiments = [experiment.name for experiment in main.CONFIGS.experiments_config.experiments]
-        return ExperimentListResponse(experiments=experiments)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred while listing experiments: {str(e)}")
-
-# @app.get("/list/results", response_model=ResultListResponse)
-# async def list_results():
-#     """List all result timestamps."""
-#     try:
-#         # if not os.path.isdir(RESULTS_DIR):
-#         #     raise HTTPException(status_code=404, detail=f"Results directory not found: {RESULTS_DIR}")
-#         if not os.path.exists(RESULTS_DIR):
-#             return ResultListResponse(results=[])
-        
-#         results = [subdir.strip() for subdir in os.listdir(RESULTS_DIR)]
-
-#         return ResultListResponse(results=results)
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while listing results: {str(e)}")
-
-@app.get("/list/results", response_model=ResultTimestampResponse) # Path suggests listing all
-async def list_all_results(): # Renamed function for clarity
+@app.get("/api/list/results", response_model=ResultTimestampResponse)
+async def list_all_results():
     """List all results, structured by timestamp, workload, branch, and experiment number."""
-    results_base_path = Path(RESULTS_DIR) # Use pathlib
+    results_base_path = Path(RESULTS_DIR)
 
     if not results_base_path.is_dir():
         logger.error(f"Results directory not found: {results_base_path}")
         raise HTTPException(status_code=404, detail=f"Results directory not found: {results_base_path}")
     
     try:
-        processed_timestamps = [] # Renamed from 'results' to avoid confusion with response model field
+        processed_timestamps = []
         
-        for timestamp_dir in results_base_path.iterdir(): # pathlib's way to list entries
-            if not timestamp_dir.is_dir(): # Skip if not a directory
+        for timestamp_dir in results_base_path.iterdir():
+            if not timestamp_dir.is_dir():
                 logger.debug(f"Skipping non-directory entry in results: {timestamp_dir.name}")
                 continue
 
@@ -175,7 +169,7 @@ async def list_all_results(): # Renamed function for clarity
                     branch_name_str = branch_dir.name.strip()
                     
                     for exp_num_dir in branch_dir.iterdir():
-                        if not exp_num_dir.is_dir(): 
+                        if not exp_num_dir.is_dir():
                             logger.debug(f"Skipping non-directory entry in branch '{branch_name_str}': {exp_num_dir.name}")
                             continue
                         
@@ -191,7 +185,7 @@ async def list_all_results(): # Renamed function for clarity
                             )
                         except ValueError:
                             logger.warning(f"Could not convert experiment number '{exp_num_str}' to int for {timestamp_dir.name}/{workload_name}/{branch_name_str}. Skipping.")
-                            raise ValueError(f"experiment_number{experiment_number_int} cannot be casted into an integer.")
+                            raise ValueError(f"experiment_number {exp_num_str} cannot be casted into an integer.")
             
             processed_timestamps.append(timestamp_data_obj)
             
@@ -203,18 +197,16 @@ async def list_all_results(): # Renamed function for clarity
         logger.exception("Unexpected error while retrieving results.")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving results: {str(e)}")
 
-@app.get("/download/results")
+@app.get("/api/download/results")
 def download_results():
     """Download all results as a zip file."""
     results_path = Path(RESULTS_DIR)
     if not results_path.exists():
-        raise HTTPException(status_code=404, detail=f"Results directory {results_path} does not exist.\
-                             Did you run any experiments?")
+        raise HTTPException(status_code=404, detail=f"Results directory {results_path} does not exist. Did you run any experiments?")
     
-    # Create an in-memory zip file
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-        for file_path in results_path.rglob("*"):  # Recursively add all files
+        for file_path in results_path.rglob("*"):
             if file_path.is_file():
                 zip_file.write(file_path, file_path.relative_to(results_path))
     
@@ -228,7 +220,7 @@ def download_results():
         headers={"Content-Disposition": f"attachment; filename=results_{results_path.name}.zip"}
     )
 
-@app.get("/config/sut/{sut_name}", response_model=SUTConfig)
+@app.get("/api/config/sut/{sut_name}", response_model=SUTConfig)
 async def get_sut_config(sut_name: str):
     """Get a specific SUT configuration."""
     cleaned_sut_name = sut_name.strip().lower()
@@ -242,30 +234,78 @@ async def get_sut_config(sut_name: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving SUT configuration: {str(e)}")
 
-
-
-@app.post("/deploy/sut")
+@app.post("/api/deploy/sut", status_code=status.HTTP_202_ACCEPTED)
 def deploy_sut(request: DeployRequest):
-    """Deploy a specific SUT."""
+    """Deploy a specific SUT in a separate process, ensuring only one deployment runs at a time."""
+    with state_lock:
+        if is_deploying.value == 1:
+            raise HTTPException(
+                status_code=409,
+                detail="A deployment is already running."
+            )
+        is_deploying.value = 1
+
     sut_name = request.sut_name
     deploy_only = request.deploy_only
     experiment_name = request.experiment_name
+    n_iterations = request.n_iterations
     sut_filename = f"{sut_name}.yaml"
     sut_path = os.path.join(SUT_CONFIGS_DIR, sut_filename)
     
     if not os.path.isfile(sut_path):
+        with state_lock:
+            is_deploying.value = 0
         raise HTTPException(status_code=404, detail=f"SUT configuration not found: {request.sut_name}")
     
     config = Config(sut_config=sut_path, clue_config=CLUE_CONFIG_PATH)
+    
     try:
-        # run the clue main method
-        runner = ClueRunner(config, experiment_name=experiment_name, sut_name=sut_name, deploy_only=deploy_only)
-        runner.main()
-        return {"message": f"SUT {request.sut_name} has been deployed successfully."}
+        process = multiprocessing.Process(
+            target=run_deployment,
+            args=(config, experiment_name, sut_name, deploy_only, n_iterations, state_lock, is_deploying)
+        )
+        process.start()
     except Exception as e:
-        logger.error(f"Failed to deploy SUT {request.sut_name}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to deploy SUT: {str(e)}")
-
+        with state_lock:
+            is_deploying.value = 0
+        logger.error(f"Failed to start deployment process: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to start deployment: {str(e)}")
     
-    
+    return {"message": f"Deployment of SUT {sut_name} has been started."}
 
+@app.get("/plot/list")
+def list_plots(request: SingleIteration):
+    """List all available plots for a specific iteration."""
+    workload = request.workload
+    branch_name = request.branch_name
+    experiment_number = request.experiment_number
+    timestamp = request.timestamp
+
+    results_path = Path(RESULTS_DIR) / timestamp / workload / branch_name / str(experiment_number)
+    
+    if not results_path.exists():
+        raise HTTPException(status_code=404, detail=f"No results found for the specified iteration: {results_path}")
+
+    supported_formats = ["*.png", "*.jpg", "*.jpeg", "*.svg"]
+    plots = []
+    for file_format in supported_formats:
+        plots.extend([file.name for file in results_path.glob(file_format)])
+    return {"plots": plots}
+
+@app.get("/plot/download")
+def download_plot(request: SingleIteration):
+    """Download a specific plot for a given iteration."""
+    workload = request.workload
+    branch_name = request.branch_name
+    experiment_number = request.experiment_number
+    timestamp = request.timestamp
+    plot_filename = request.plot_filename
+    results_path = Path(RESULTS_DIR) / timestamp / workload / branch_name / str(experiment_number)
+    plot_path = results_path / plot_filename
+    if not plot_path.exists():
+        raise HTTPException(status_code=404, detail=f"Plot file not found: {plot_path}")
+    return StreamingResponse(
+        open(plot_path, "rb"),
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f"attachment; filename={plot_filename}"}
+    )

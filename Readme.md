@@ -47,14 +47,6 @@ For local testing, we recommend using a `Kind` cluster, simply deployable by pro
 sh create-kind-cluster.sh
 ```
 
-### 3. 🛠️ CLUE2 setup
-
-As the PSC tracker repository is private, clone it into `clue_deployer/agent`:
-
-```bash
-git clone https://github.com/clue2-sose25/PSC clue_deployer/agent
-```
-
 ### 3. 🧱 (Optional) Build Images for the selected SUT
 
 This step will differ based on the selected SUT. We provide a support for several SUTs listed in the `sut_configs` folder. Before running the CLUE deployer, all images of the selected SUT have to be built and stored in the specified image registry. The image registry path `docker_registry_address` can be changed in the main config (by default, CLUE uses the registry deployed in previous steps).
@@ -70,6 +62,7 @@ To build images for the selected SUT, use one of the commands listed below.
   By default the script builds images for all experiments. To specify a single experiment you can modify the `.env` file and change the `TEASTORE_EXP_NAME` environment variable to contain the name of one of the experiments listed in the `sut_configs/teastore.yaml` file.
 
 - Open Telemetry Shop
+
   ```bash
   docker compose up -d --build ots-builder
   ```

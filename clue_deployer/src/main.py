@@ -28,11 +28,13 @@ class ClueRunner:
     def __init__(self, config: Config = CONFIGS, 
                 experiment_name: str = ENV_CONFIG.EXPERIMENT_NAME,
                 deploy_only = ENV_CONFIG.DEPLOY_ONLY,
-                sut_name: str = ENV_CONFIG.SUT_NAME) -> None:
+                sut_name: str = ENV_CONFIG.SUT_NAME,
+                n_iterations: int = CONFIGS.clue_config.n_iterations) -> None:
         self.config = config
         self.experiment_name = experiment_name
         self.deploy_only = deploy_only
         self.sut_name = sut_name
+        self.n_iterations = n_iterations
 
     @staticmethod
     def available_suts():
@@ -89,7 +91,7 @@ class ClueRunner:
         """
         Iterates over the experiment
         """
-        num_iterations = self.config.sut_config.num_iterations
+        num_iterations = self.n_iterations
         logger.info(f"Starting {exp} experiment")
         # Run all iterations
         for i in range(num_iterations):

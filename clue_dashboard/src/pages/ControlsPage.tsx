@@ -1,158 +1,243 @@
 import {useEffect, useState} from "react";
+import type {Deployment as DeploymentForm} from "../models/Deployment";
+import LogsPanel from "../components/LogsPanel";
+import {InfoIcon} from "@phosphor-icons/react";
+import type {SUT} from "../models/SUT";
+import {Tooltip} from "@mui/material";
 
 const workloadOptions = ["shaped", "rampup", "pausing", "fixed"];
-const MAX_LOG_LINES = 200;
 
 const ControlsPage = () => {
-  const [suts, setSuts] = useState<string[]>([]);
-  const [experiments, setExperiments] = useState<string[]>([]);
-  const [selectedSut, setSelectedSut] = useState("");
-  const [selectedExperiment, setSelectedExperiment] = useState("");
-  const [selectedWorkload, setSelectedWorkload] = useState(workloadOptions[0]);
-  const [logs, setLogs] = useState("");
-  const [iterations, setIterations] = useState(1);
-  const [deployOnly, setDeployOnly] = useState(false);
+  const defaultDeploymentForm: DeploymentForm = {
+    SutName: null,
+    experimentName: null,
+    workload: "shaped",
+    iterations: 1,
+    deploy_only: false,
+  };
 
+  const [currentDeployment, setCurrentDeployment] = useState<DeploymentForm>(
+    defaultDeploymentForm
+  );
+  const [ifDeploying, setIfDeploying] = useState<boolean>(false);
+  const [availableSUTs, setAvailableSUTs] = useState<SUT[]>([]);
+
+  /**
+   * Fetches the list of available SUTs
+   */
   useEffect(() => {
     fetch("/api/list/sut")
       .then((r) => r.json())
-      .then((d) => setSuts(d.suts ?? []))
-      .catch(() => setSuts([]));
-    fetch("/api/list/experiments")
-      .then((r) => r.json())
-      .then((d) => setExperiments(d.experiments ?? []))
-      .catch(() => setExperiments([]));
+      .then((d) => setAvailableSUTs(d.suts ?? []))
+      .catch(() => setAvailableSUTs([]));
   }, []);
 
- useEffect(() => {
-   let es: EventSource | null = null;
-    let isMounted = true;
-
-    const init = async () => {
-      try {
-        const res = await fetch("/api/logs");
-        const data = await res.json();
-        if (isMounted) {
-          setLogs(data.logs ?? "");
-        }
-      } catch {
-        if (isMounted) setLogs(" no logs yet!");
-      }
-      es = new EventSource("/api/logs/stream");
-        es.onmessage = (e) => {
-          if (isMounted) {
-            setLogs((prev) => {
-              const updated = prev + e.data;
-              const lines = updated.split("\n");
-              if (lines.length > MAX_LOG_LINES) {
-                return lines.slice(-MAX_LOG_LINES).join("\n");
-              }
-              return updated;
-            });
-          }
-        };
-      es.onerror = () => {
-        if (es) es.close();
-      };
-    };
-
-    init();
-
-    return () => {
-      isMounted = false;
-      if (es) es.close();
-    };
-  }, []);
-
-  const deploy = async () => {
-    if (!selectedSut || !selectedExperiment) return;
+  /**
+   * Deploys a SUT
+   */
+  const deploySUT = async () => {
+    if (!currentDeployment.SutName || !currentDeployment.experimentName) return;
     await fetch("/api/deploy/sut", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({sut_name: selectedSut, experiment_name: selectedExperiment}),
+      body: JSON.stringify({
+        sut_name: currentDeployment.SutName,
+        experiment_name: currentDeployment.experimentName,
+        n_iterations: currentDeployment.iterations,
+        deploy_only: currentDeployment.deploy_only,
+      }),
     });
+    setIfDeploying(true);
   };
 
   return (
-    <div className="flex gap-8">
-      <div className="flex flex-col gap-4 max-w-md">
-        <div>
-          <label className="block text-sm font-medium mb-1">SUT</label>
-        <select
-          className="border p-2 w-full"
-          value={selectedSut}
-          onChange={(e) => setSelectedSut(e.target.value)}
-        >
-          <option value="" disabled>
-            Select SUT
-          </option>
-          {suts.map((s) => (
-            <option key={s} value={s}>
-              {s}
+    <div className="w-full h-full flex flex-col items-center gap-6 pt-4">
+      <div className="flex flex-col items-center">
+        <p className="text-xl font-medium">Deploy CLUE</p>
+        <p>Choose your parameters for the benchmark</p>
+      </div>
+      <div className="flex flex-col gap-4 w-1/3">
+        {/* SUT Dropdown */}
+        <div className="flex flex-col gap-2">
+          <label
+            htmlFor="sut-select"
+            className="flex gap-2 items-center text-sm font-medium"
+          >
+            SUT
+            <Tooltip
+              title="The selected System Under Test to deploy"
+              placement="right"
+              arrow
+            >
+              <InfoIcon size={18} />
+            </Tooltip>
+          </label>
+          <select
+            id="sut-select"
+            className="border p-2 w-full"
+            value={currentDeployment.SutName || ""}
+            onChange={(e) => {
+              setCurrentDeployment({
+                ...currentDeployment,
+                SutName: e.target.value,
+                experimentName: null,
+              });
+            }}
+          >
+            <option value="" disabled>
+              {availableSUTs.length > 0 ? "Select SUT" : "Loading SUTs..."}
             </option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label className="block text-sm font-medium mb-1">Experiment</label>
-        <select
-          className="border p-2 w-full"
-          value={selectedExperiment}
-          onChange={(e) => setSelectedExperiment(e.target.value)}
-        >
-          <option value="" disabled>
-            Select Experiment
-          </option>
-          {experiments.map((exp) => (
-            <option key={exp} value={exp}>
-              {exp}
+            {availableSUTs.map((sut) => (
+              <option key={sut.name} value={sut.name}>
+                {sut.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        {/* Experiment Dropdown */}
+        <div className="flex flex-col gap-2">
+          <label
+            htmlFor="experiment-select"
+            className="flex gap-2 items-center text-sm font-medium"
+          >
+            Experiment
+            <Tooltip
+              title="The SUT experiment to deploy"
+              placement="right"
+              arrow
+            >
+              <InfoIcon size={18} />
+            </Tooltip>
+          </label>
+          <select
+            id="experiment-select"
+            className={`border py-2 px-4 w-full ${
+              !currentDeployment.SutName ? "opacity-50" : ""
+            }`}
+            value={currentDeployment.experimentName || ""}
+            onChange={(e) => {
+              setCurrentDeployment({
+                ...currentDeployment,
+                experimentName: e.target.value,
+              });
+            }}
+            disabled={!currentDeployment.SutName}
+          >
+            <option value="" disabled>
+              Select Experiment
             </option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label className="block text-sm font-medium mb-1">Workload Type</label>
-        <select
-          className="border p-2 w-full"
-          value={selectedWorkload}
-          onChange={(e) => setSelectedWorkload(e.target.value)}
+            {availableSUTs
+              .filter((sut) => sut.name === currentDeployment.SutName)
+              .flatMap((sut) => sut.experiments)
+              .map((exp) => (
+                <option key={exp} value={exp}>
+                  {exp}
+                </option>
+              ))}
+          </select>
+        </div>
+        {/* Workload Type Dropdown */}
+        <div className="flex flex-col gap-2">
+          <label
+            htmlFor="workload-select"
+            className="flex gap-2 items-center text-sm font-medium text-nowrap"
+          >
+            Workload Type
+            <Tooltip
+              title="The type of the workload which will be used during the experiment"
+              placement="right"
+              arrow
+            >
+              <InfoIcon size={18} />
+            </Tooltip>
+          </label>
+          <select
+            id="workload-select"
+            className="border p-2 w-full"
+            value={currentDeployment.workload || ""}
+            onChange={(e) => {
+              setCurrentDeployment({
+                ...currentDeployment,
+                workload: e.target.value,
+              });
+            }}
+          >
+            {workloadOptions.map((w) => (
+              <option key={w} value={w}>
+                {w}
+              </option>
+            ))}
+          </select>
+        </div>
+        {/* Iterations Input */}
+        <div className="flex flex-col gap-2">
+          <label
+            htmlFor="iterations-input"
+            className="flex gap-2 items-center text-sm font-medium text-nowrap"
+          >
+            Iterations
+            <Tooltip
+              title="The number of iterations for the experiment"
+              placement="right"
+              arrow
+            >
+              <InfoIcon size={18} />
+            </Tooltip>
+          </label>
+          <input
+            id="iterations-input"
+            type="number"
+            min="1"
+            className="border p-2 w-full"
+            value={currentDeployment.iterations}
+            onChange={(e) =>
+              setCurrentDeployment({
+                ...currentDeployment,
+                iterations: parseInt(e.target.value) || 1,
+              })
+            }
+          />
+        </div>
+        {/* Deploy Only Checkbox */}
+        <div className="flex items-center py-2 justify-between gap-2">
+          <label
+            htmlFor="deploy-only-checkbox"
+            className="flex gap-2 items-center text-sm font-medium"
+          >
+            Deploy only
+            <Tooltip
+              title="If selected the SUT will be deployed without running the actual benchmark. For testing purposes."
+              placement="right"
+              arrow
+            >
+              <InfoIcon size={18} />
+            </Tooltip>
+          </label>
+          <input
+            id="deploy-only-checkbox"
+            type="checkbox"
+            className="border w-5 h-5"
+            checked={currentDeployment.deploy_only}
+            onChange={(e) => {
+              setCurrentDeployment({
+                ...currentDeployment,
+                deploy_only: e.target.checked,
+              });
+            }}
+          />
+        </div>
+        {/* Deploy Button */}
+        <button
+          className="rounded p-2 bg-blue-500 text-white hover:bg-blue-700"
+          onClick={deploySUT}
+          disabled={
+            !currentDeployment.SutName || !currentDeployment.experimentName
+          }
         >
-          {workloadOptions.map((w) => (
-            <option key={w} value={w}>
-              {w}
-            </option>
-          ))}
-        </select>
+          Deploy experiment
+        </button>
       </div>
-      <div>
-        <label className="block text-sm font-medium mb-1">Number of Iterations</label>
-        <input
-          type="number"
-          min="1"
-          className="border p-2 w-full"
-          value={iterations}
-          onChange={(e) => setIterations(parseInt(e.target.value) || 1)}
-        />
-      </div>
-      <label className="inline-flex items-center gap-2">
-        <input
-          type="checkbox"
-          className="border"
-          checked={deployOnly}
-          onChange={(e) => setDeployOnly(e.target.checked)}
-        />
-        Deploy only
-      </label>
-      <button
-        className="border rounded p-2 bg-green-600 text-white hover:bg-green-700"
-        onClick={deploy}
-      >
-        Deploy
-      </button>
-      </div>
-      <div className="flex-1 border p-2 overflow-y-auto h-96 bg-black text-white whitespace-pre-wrap">
-        {logs || "No logs"}
-      </div>
+      <div>{ifDeploying && <LogsPanel ifDeploying={ifDeploying} />}</div>
     </div>
   );
 };

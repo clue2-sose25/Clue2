@@ -3,9 +3,9 @@ import {NavLink} from "react-router";
 const Navbar = () => {
   const pages = [
     {name: "CONTROL PANEL", href: "/"},
-    {name: "ANALYSIS", href: "/results"},
-    {name: "ARCHIVE", href: "/benchmarks"},
-    { name: "LOGS", href: "/logs" } 
+    {name: "BENCHMARKS", href: "/benchmarks"},
+    {name: "RESULTS ANALYSIS", href: "/results"},
+    {name: "LOGS", href: "/logs"},
   ];
 
   return (
@@ -17,7 +17,11 @@ const Navbar = () => {
       <div className="flex gap-8">
         {pages.map((page) => {
           return (
-            <NavLink className="flex items-center text-sm" to={page.href}>
+            <NavLink
+              className="flex items-center text-sm"
+              to={page.href}
+              key={page.name}
+            >
               {page.name}
             </NavLink>
           );

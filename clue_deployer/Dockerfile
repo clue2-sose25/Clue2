@@ -32,6 +32,7 @@ RUN curl -LO https://get.helm.sh/helm-v3.14.4-linux-amd64.tar.gz && \
 COPY clue_deployer/pyproject.toml /app
 COPY clue_deployer/agent/ /app/agent
 RUN mkdir -p /app/clue_deployer
+RUN mkdir -p /app/data
 
 # Install Python dependencies
 RUN uv sync

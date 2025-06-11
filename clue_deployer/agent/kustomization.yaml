@@ -1,0 +1,28 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: st-cnae-g5
+
+resources:
+  - k8s.yml
+
+images:
+  - name: prometeus-agent-image
+    newName: tawalaya/pa
+    newTag: latest
+
+configMapGenerator:
+- name: agent-config
+  files:
+  - application.properties
+
+# patches:
+#   - patch: |-
+#       - op: replace
+#         path: "/spec/containers/0/env/0"
+#         value:
+#           name: PROMETHEUSSERVER
+#           value: "http://metrics-prometheus-server.prometeus.svc"
+#     target:
+#       kind: Pod
+#       name: prometheus-agent

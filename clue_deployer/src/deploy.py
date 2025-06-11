@@ -111,11 +111,15 @@ class ExperimentDeployer:
                 )
             if prometheus_status.returncode != 0:
                 logger.info("Helm chart 'kube-prometheus-stack' is not installed. Installing it now...")
+                logger.info("Note: You may see some 'memcache.go' warnings during installation - these are harmless.")
+                
                 # Install with NodePort service type for Prometheus
                 subprocess.check_call([
                     "helm", "install", "kps1", "prometheus-community/kube-prometheus-stack",
                     "--set", "prometheus.service.type=NodePort",
-                    "--set", "prometheus.service.nodePort=30090"
+                    "--set", "prometheus.service.nodePort=30090",
+                    "--wait",
+                    "--timeout", "15m"
                 ])
             else:
                 logger.info("Prometheus stack found")
@@ -152,7 +156,9 @@ class ExperimentDeployer:
                     "--namespace", "kepler",
                     "--create-namespace",
                     "--set", "serviceMonitor.enabled=true",
-                    "--set", "serviceMonitor.labels.release=kps1"
+                    "--set", "serviceMonitor.labels.release=kps1",
+                    "--wait",
+                    "--timeout", "10m"
                 ])
             else:
                 logger.info("Kepler stack found")
@@ -216,7 +222,13 @@ class ExperimentDeployer:
         """
         Clones the SUT repository if it doesn't exist.
         """
-        if not self.sut_path.exists():
+        if self.config.sut_config.helm_chart_repo:
+            # If a helm chart repo is provided, clone it
+            logger.info(f"Cloning Helm chart repository from {self.config.sut_config.helm_chart_repo} to {self.sut_path}")
+            subprocess.check_call(["git", "clone", self.config.sut_config.helm_chart_repo, str(self.sut_path)])
+        elif not self.sut_path.exists():
+            if not self.config.sut_config.sut_git_repo:
+                raise ValueError("SUT Git repository URL is not provided in the configuration")
             logger.info(f"Cloning SUT from {self.config.sut_config.sut_git_repo} to {self.sut_path}")
             subprocess.check_call(["git", "clone", self.config.sut_config.sut_git_repo, str(self.sut_path)])
         else:
