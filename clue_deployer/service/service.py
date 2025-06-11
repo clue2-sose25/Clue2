@@ -8,6 +8,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import RedirectResponse, StreamingResponse
 from pathlib import Path
 from clue_deployer.src.config.config import ENV_CONFIG
+from clue_deployer.src.logger import LOG_BUFFER
 from clue_deployer.src.main import ClueRunner
 from clue_deployer.src.config import SUTConfig, Config
 from clue_deployer.service.status_manager import StatusManager
