@@ -36,27 +36,12 @@ if not logger.handlers:
         '%(asctime)s [%(levelname)s] %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
     )
-    
-#    file_formatter = logging.Formatter(
-#        '%(asctime)s [%(levelname)s] %(filename)s:%(lineno)d - %(message)s',
-#        datefmt='%Y-%m-%d %H:%M:%S'
-#    )
-
 
     # Console handler
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(logging.INFO)
     console_handler.setFormatter(console_formatter)
     logger.addHandler(console_handler)
-    
-#    # File handler
-#    log_file = "logs/app.log"
-#    Path(log_file).parent.mkdir(parents=True, exist_ok=True)
-#    
-#    file_handler = logging.FileHandler(log_file)
-#    file_handler.setLevel(logging.INFO)
-#    file_handler.setFormatter(file_formatter)
-#    logger.addHandler(file_handler)
 
     # In-memory buffer for API access
     LOG_BUFFER = deque(maxlen=1000)
