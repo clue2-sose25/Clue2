@@ -59,35 +59,48 @@ def health():
 async def root():
     return RedirectResponse(url="/docs")  # Redirect to /docs
 
-@app.get("/logs", response_model=LogsResponse)
+@app.get("/api/logs", response_model=LogsResponse)
 def read_logs():
-    """Return contents of the deployer log file."""
-    try:
-        if LOG_FILE_PATH.exists():
-            content = LOG_FILE_PATH.read_text()
-        else:
-            content = ""
-        return LogsResponse(logs=content)
-    except Exception as e:
-        logger.exception("Failed to read log file")
-        raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/logs/stream")
+    """Return buffered log lines."""
+    return LogsResponse(logs="\n".join(LOG_BUFFER))
+#    """Return contents of the deployer log file."""
+#    try:
+#        if LOG_FILE_PATH.exists():
+#            content = LOG_FILE_PATH.read_text()
+#        else:
+#            content = ""
+#        return LogsResponse(logs=content)
+#    except Exception as e:
+#        logger.exception("Failed to read log file")
+#        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/logs/stream")
 async def stream_logs():
-    """Stream log file updates using Server-Sent Events."""
+    """Stream log buffer updates using Server-Sent Events."""
     async def event_generator():
-        # Wait until log file exists
-        while not LOG_FILE_PATH.exists():
-            await asyncio.sleep(1)
-        with LOG_FILE_PATH.open("r") as f:
-            f.seek(0, os.SEEK_END)
-            while True:
-                line = f.readline()
-                if line:
+        last_idx = len(LOG_BUFFER)
+        while True:
+            if len(LOG_BUFFER) > last_idx:
+                for line in list(LOG_BUFFER)[last_idx:]:
                     yield f"data: {line}\n\n"
-                else:
-                    await asyncio.sleep(1)
-
+                last_idx = len(LOG_BUFFER)
+            else:
+                await asyncio.sleep(1)
+#    """Stream log file updates using Server-Sent Events."""
+#    async def event_generator():
+#        # Wait until log file exists
+#        while not LOG_FILE_PATH.exists():
+#            await asyncio.sleep(1)
+#        with LOG_FILE_PATH.open("r") as f:
+#            f.seek(0, os.SEEK_END)
+#            while True:
+#                line = f.readline()
+#                if line:
+#                    yield f"data: {line}\n\n"
+#                else:
+#                    await asyncio.sleep(1)
+#
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 @app.get("/list/sut", response_model=SutListResponse)

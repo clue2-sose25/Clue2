@@ -1,5 +1,6 @@
 name: "clue2"
 
+
 services:
   # The main image registry
   registry:
@@ -124,5 +125,5 @@ volumes:
 networks:
   clue2:
     name: clue2
-    external: false
+    external: true
     driver: bridge
