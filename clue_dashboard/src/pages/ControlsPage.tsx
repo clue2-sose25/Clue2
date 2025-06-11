@@ -237,7 +237,7 @@ const ControlsPage = () => {
           Deploy experiment
         </button>
       </div>
-      <div>{ifDeploying && <LogsPanel ifDeploying={ifDeploying} />}</div>
+      <div className="w-full">{<LogsPanel ifDeploying={ifDeploying} />}</div>
     </div>
   );
 };
