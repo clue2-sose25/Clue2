@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from clue_deployer.models.Sut import Sut
+from clue_deployer.src.models.Sut import Sut
 
 
 class SutListResponse(BaseModel):

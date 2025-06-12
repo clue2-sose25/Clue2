@@ -7,13 +7,13 @@ from fastapi.responses import StreamingResponse, RedirectResponse
 from pathlib import Path
 import yaml
 import multiprocessing
-from clue_deployer.models.ResultEntry import ResultEntry
-from clue_deployer.models.DeployRequest import DeployRequest
-from clue_deployer.models.HealthResponse import HealthResponse
-from clue_deployer.models.ResultsResponse import ResultsResponse
-from clue_deployer.models.StatusOut import StatusOut
-from clue_deployer.models.Sut import Sut
-from clue_deployer.models.SutListResponse import SutListResponse
+from clue_deployer.src.models.ResultEntry import ResultEntry
+from clue_deployer.src.models.DeployRequest import DeployRequest
+from clue_deployer.src.models.HealthResponse import HealthResponse
+from clue_deployer.src.models.ResultsResponse import ResultsResponse
+from clue_deployer.src.models.StatusOut import StatusOut
+from clue_deployer.src.models.Sut import Sut
+from clue_deployer.src.models.SutListResponse import SutListResponse
 from clue_deployer.service.status_manager import StatusManager
 from clue_deployer.src.logger import logger
 from clue_deployer.src.config.config import ENV_CONFIG
@@ -108,7 +108,7 @@ async def list_sut():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while listing SUTs: {str(e)}")
 
-@app.get("/api/list/results", response_model=ResultsResponse)
+@app.get("/api/results", response_model=ResultsResponse)
 async def list_all_results():
     """List all results, structured by timestamp, workload, branch, and experiment number."""
     results_base_path = Path(RESULTS_DIR)
@@ -177,6 +177,84 @@ async def list_all_results():
     except Exception as e:
         logger.exception("Unexpected error while retrieving results.")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving results: {str(e)}")
+
+@app.get("/api/results/{result_id}", response_model=ResultEntry)
+async def get_single_result(result_id: str):
+    """Get a single result by ID."""
+    results_base_path = Path(RESULTS_DIR)
+    
+    # Check for results directory
+    if not results_base_path.is_dir():
+        logger.error(f"Results directory not found: {results_base_path}")
+        raise HTTPException(status_code=404, detail=f"Results directory not found: {results_base_path}")
+    
+    try:
+        # Parse the result ID to extract components
+        # Expected format: timestamp_workload_branch_experiment_number
+        id_parts = result_id.split('_')
+        if len(id_parts) < 4:
+            raise HTTPException(status_code=400, detail="Invalid result ID format")
+        
+        # The last part should be the experiment number
+        try:
+            experiment_number = int(id_parts[-1])
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid experiment number in result ID")
+        
+        # Join the remaining parts back (in case workload or branch names contain underscores)
+        remaining_parts = id_parts[:-1]
+        
+        # Find the result by searching through the directory structure
+        for results_dir in results_base_path.iterdir():
+            if not results_dir.is_dir():
+                continue
+                
+            timestamp = results_dir.name.strip()
+            
+            for workload_dir in results_dir.iterdir():
+                if not workload_dir.is_dir():
+                    continue
+                    
+                workload_name = workload_dir.name.strip()
+                
+                for branch_dir in workload_dir.iterdir():
+                    if not branch_dir.is_dir():
+                        continue
+                        
+                    branch_name = branch_dir.name.strip()
+                    
+                    # Check if this combination matches our ID
+                    expected_id = f"{timestamp}_{workload_name}_{branch_name}_{experiment_number}"
+                    if expected_id == result_id:
+                        # Verify the experiment directory exists
+                        exp_dir = branch_dir / str(experiment_number)
+                        if not exp_dir.is_dir():
+                            continue
+                            
+                        # Count iterations
+                        iterations_count = sum(1 for item in exp_dir.iterdir() if item.is_dir())
+                        
+                        return ResultEntry(
+                            id=result_id,
+                            workload=workload_name,
+                            branch_name=branch_name,
+                            experiment_number=experiment_number,
+                            timestamp=timestamp,
+                            iterations=iterations_count
+                        )
+        
+        # If we get here, the result wasn't found
+        raise HTTPException(status_code=404, detail=f"Result with ID '{result_id}' not found")
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except PermissionError:
+        logger.exception("Permission error while accessing results directory.")
+        raise HTTPException(status_code=500, detail="Permission denied when accessing results.")
+    except Exception as e:
+        logger.exception(f"Unexpected error while retrieving result '{result_id}'.")
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving result: {str(e)}")
 
 @app.get("/api/download/results")
 def download_results():

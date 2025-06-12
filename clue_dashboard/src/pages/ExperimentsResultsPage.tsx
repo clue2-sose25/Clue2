@@ -20,7 +20,7 @@ const ExperimentsResultsPage = () => {
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    fetch("/api/list/results")
+    fetch("/api/results")
       .then((res) => {
         if (!res.ok) throw new Error("Request failed");
         return res.json();
