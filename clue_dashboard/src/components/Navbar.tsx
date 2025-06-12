@@ -1,9 +1,14 @@
-import {CommandIcon, FilesIcon} from "@phosphor-icons/react/dist/ssr";
+import {
+  CommandIcon,
+  FilesIcon,
+  GaugeIcon,
+} from "@phosphor-icons/react/dist/ssr";
 import {NavLink} from "react-router"; // Assuming you're really using this
 
 const Navbar = () => {
   const pages = [
     {name: "CONTROL PANEL", href: "/", icon: <CommandIcon size={20} />},
+    {name: "DASHBOARD", href: "/dashboard", icon: <GaugeIcon size={20} />},
     {name: "RESULTS", href: "/results", icon: <FilesIcon size={20} />},
   ];
 
