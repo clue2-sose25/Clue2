@@ -1,3 +1,4 @@
+import json
 import os
 import zipfile
 import io
@@ -103,16 +104,48 @@ def clear_logs():
 @app.get("/api/logs/stream")
 async def stream_logs():
     """Stream log buffer updates using Server-Sent Events."""
+    
     async def event_generator():
-        last_idx = LEN_LOG_BUFFER
+        last_count = 0
+        
+        # Send initial logs
+        try:
+            current_logs = shared_log_buffer.get_logs()
+            if current_logs:
+                for log in current_logs:
+                    yield f"data: {json.dumps({'log': log})}\n\n"
+                last_count = len(current_logs)
+        except Exception as e:
+            yield f"data: {json.dumps({'error': f'Failed to get initial logs: {str(e)}'})}\n\n"
+        
+        # Stream new logs
         while True:
-            if LEN_LOG_BUFFER > last_idx:
-                for line in list(LOG_BUFFER)[last_idx:]:
-                    yield f"data: {line}\n\n"
-                last_idx = LEN_LOG_BUFFER
-            else:
-                await asyncio.sleep(1)
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+            try:
+                await asyncio.sleep(0.5)  # Check every 500ms
+                current_logs = shared_log_buffer.get_logs()
+                current_count = len(current_logs)
+                
+                # If we have new logs, send only the new ones
+                if current_count > last_count:
+                    new_logs = current_logs[last_count:]
+                    for log in new_logs:
+                        yield f"data: {json.dumps({'log': log})}\n\n"
+                    last_count = current_count
+                    
+            except Exception as e:
+                yield f"data: {json.dumps({'error': f'Stream error: {str(e)}'})}\n\n"
+                await asyncio.sleep(1)  # Wait longer on error
+    
+    return StreamingResponse(
+        event_generator(), 
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "Cache-Control"
+        }
+    )
 
 @app.get("/api/list/sut", response_model=SutsResponse)
 async def list_sut():
