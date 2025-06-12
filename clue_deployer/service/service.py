@@ -256,29 +256,80 @@ async def get_single_result(result_id: str):
         logger.exception(f"Unexpected error while retrieving result '{result_id}'.")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving result: {str(e)}")
 
-@app.get("/api/download/results")
-def download_results():
-    """Download all results as a zip file."""
-    results_path = Path(RESULTS_DIR)
-    if not results_path.exists():
-        raise HTTPException(status_code=404, detail=f"Results directory {results_path} does not exist. Did you run any experiments?")
+@app.get("/api/results/{result_id}/download")
+def download_results(result_id: str):
+    """Download a specific result as a zip file."""
+    results_base_path = Path(RESULTS_DIR)
     
-    zip_buffer = io.BytesIO()
-    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-        for file_path in results_path.rglob("*"):
-            if file_path.is_file():
-                zip_file.write(file_path, file_path.relative_to(results_path))
+    # Check for results directory
+    if not results_base_path.exists():
+        raise HTTPException(status_code=404, detail=f"Results directory {results_base_path} does not exist. Did you run any experiments?")
     
-    # Prepare the buffer for reading
-    zip_buffer.seek(0)
-
-    # Return the zip file as a streaming response
-    return StreamingResponse(
-        zip_buffer,
-        media_type="application/zip",
-        headers={"Content-Disposition": f"attachment; filename=results_{results_path.name}.zip"}
-    )
-
+    try:
+        # Parse the result ID to extract components
+        # Expected format: timestamp_workload_branch_experiment_number
+        id_parts = result_id.split('_')
+        if len(id_parts) < 4:
+            raise HTTPException(status_code=400, detail="Invalid result ID format")
+        
+        # The last part should be the experiment number
+        try:
+            experiment_number = int(id_parts[-1])
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid experiment number in result ID")
+        
+        # Extract timestamp from result_id 
+        # Format: timestamp_workload_branch_experiment, where timestamp includes date and time
+        # We need to find where the timestamp part ends and workload begins
+        # Timestamp format appears to be: YYYY-MM-DD_HH-MM-SS
+        
+        # Split the ID and reconstruct the timestamp (first two parts joined by _)
+        id_parts = result_id.split('_')
+        if len(id_parts) < 4:
+            raise HTTPException(status_code=400, detail="Invalid result ID format")
+        
+        # Timestamp should be the first two parts: date_time
+        timestamp = f"{id_parts[0]}_{id_parts[1]}"
+        timestamp_folder = results_base_path / timestamp
+        
+        # Check if timestamp folder exists
+        if not timestamp_folder.is_dir():
+            raise HTTPException(status_code=404, detail=f"Timestamp folder '{timestamp}' not found")
+        
+        # Create zip file with the entire timestamp folder
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            # Include the entire timestamp folder and all its contents
+            for file_path in timestamp_folder.rglob("*"):
+                if file_path.is_file():
+                    # Preserve the full directory structure starting from timestamp folder
+                    # This creates: timestamp/workload/branch/experiment/files
+                    relative_path = file_path.relative_to(timestamp_folder.parent)
+                    zip_file.write(file_path, relative_path)
+        
+        # Prepare the buffer for reading
+        zip_buffer.seek(0)
+        
+        # Create a descriptive filename using the timestamp
+        safe_filename = f"{timestamp}.zip"
+        
+        # Return the zip file as a streaming response
+        return StreamingResponse(
+            io.BytesIO(zip_buffer.read()),
+            media_type="application/zip",
+            headers={"Content-Disposition": f"attachment; filename={safe_filename}"}
+        )
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except PermissionError:
+        logger.exception("Permission error while accessing results directory.")
+        raise HTTPException(status_code=500, detail="Permission denied when accessing results.")
+    except Exception as e:
+        logger.exception(f"Unexpected error while downloading result '{result_id}'.")
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred while downloading result: {str(e)}")
+    
 @app.get("/api/config/sut/{sut_name}", response_model=SUTConfig)
 async def get_sut_config(sut_name: str):
     """Get a specific SUT configuration."""
