@@ -1,8 +1,12 @@
 import {Fragment, useEffect, useState} from "react";
 import type {Metric} from "../models/Metric";
 import {DownloadSimpleIcon, RepeatIcon} from "@phosphor-icons/react";
+import {Link, useParams} from "react-router";
 
-const ResultsPage = () => {
+const ResultPage = () => {
+  // The ID of the results
+  const {id} = useParams();
+
   const [metrics, setMetrics] = useState<Metric[]>([]);
   const [experimentInfo, setExperimentInfo] = useState<{
     experimentPath: string;
@@ -53,9 +57,9 @@ const ResultsPage = () => {
       <div className="flex flex-col gap-4">
         {/* Top Bar mit Back-Link und Buttons */}
         <div className="flex justify-between items-center">
-          <a href="#" className="text-sm text-gray-600 hover:underline">
+          <Link to="/results" className="text-sm text-gray-600 hover:underline">
             ← Back
-          </a>
+          </Link>
           <div className="flex gap-4">
             <button className="flex items-center gap-2 border px-4 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
               <RepeatIcon size={20} /> REPEAT BENCHMARK
@@ -70,6 +74,7 @@ const ResultsPage = () => {
         <div className="mb-8">
           <h2 className="text-sm font-semibold">Analysis of experiment:</h2>
           <p className="text-lg text-gray-700">
+            {"ID: " + id}
             {experimentPath || "No path specified"}
           </p>
         </div>
@@ -128,4 +133,4 @@ const ResultsPage = () => {
   );
 };
 
-export default ResultsPage;
+export default ResultPage;
