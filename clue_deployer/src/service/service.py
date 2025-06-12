@@ -17,7 +17,7 @@ from clue_deployer.src.models.status_response import StatusResponse
 from clue_deployer.src.models.sut import Sut
 from clue_deployer.src.models.suts_response import SutsResponse
 from clue_deployer.src.service.status_manager import StatusManager
-from clue_deployer.src.logger import get_child_process_logger, logger, shared_log_buffer
+from clue_deployer.src.logger import LEN_LOG_BUFFER, get_child_process_logger, logger, shared_log_buffer
 from clue_deployer.src.config.config import ENV_CONFIG
 from clue_deployer.src.logger import LOG_BUFFER
 from clue_deployer.src.main import ClueRunner
@@ -104,12 +104,12 @@ def clear_logs():
 async def stream_logs():
     """Stream log buffer updates using Server-Sent Events."""
     async def event_generator():
-        last_idx = len(LOG_BUFFER)
+        last_idx = LEN_LOG_BUFFER
         while True:
-            if len(LOG_BUFFER) > last_idx:
+            if LEN_LOG_BUFFER > last_idx:
                 for line in list(LOG_BUFFER)[last_idx:]:
                     yield f"data: {line}\n\n"
-                last_idx = len(LOG_BUFFER)
+                last_idx = LEN_LOG_BUFFER
             else:
                 await asyncio.sleep(1)
     return StreamingResponse(event_generator(), media_type="text/event-stream")

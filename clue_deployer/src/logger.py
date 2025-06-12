@@ -86,7 +86,8 @@ class ThreadSafeLogBuffer:
             self.worker_thread.join(timeout=1.0)
 
 # Global log buffer instance
-LOG_BUFFER = ThreadSafeLogBuffer(maxlen=1000)
+LEN_LOG_BUFFER=1000
+LOG_BUFFER = ThreadSafeLogBuffer(maxlen=LEN_LOG_BUFFER)
 
 # Custom handler for the thread-safe buffer
 class ThreadSafeBufferHandler(logging.Handler):
