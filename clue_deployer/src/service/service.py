@@ -5,7 +5,7 @@ import io
 import shutil
 import asyncio
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, Request
 from fastapi.responses import JSONResponse, StreamingResponse, RedirectResponse
 from pathlib import Path
 import yaml
@@ -76,10 +76,14 @@ def read_status():
     """Endpoint to check if a deployment is currently in progress."""
     with state_lock:
         deploying = bool(is_deploying.value)
-    return StatusResponse(is_deploying=deploying, phase=None, message=None)
-    # TO-DO: Add multi-threaded status 
+
     phase, msg = StatusManager.get()
-    return StatusResponse(phase=phase, message=msg or None)
+    return StatusResponse(is_deploying=deploying, phase=phase, message=msg or None)
+
+@app.get("/status")
+def simple_status():
+    """Simple readiness probe used for container health checks."""
+    return {"status": "ok"}
 
 @app.get("/api/health", response_model=HealthResponse)
 def health():
@@ -108,7 +112,7 @@ def clear_logs():
 
 
 @app.get("/api/logs/stream")
-async def stream_logs():
+async def stream_logs(request: Request):
     """Stream log buffer updates using Server-Sent Events."""
 
     async def event_generator():
@@ -127,6 +131,8 @@ async def stream_logs():
 
         # Stream new logs
         while True:
+            if await request.is_disconnected():
+                break
             try:
                 await asyncio.sleep(0.5)
 
