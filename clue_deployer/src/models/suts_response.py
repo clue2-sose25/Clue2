@@ -1,8 +1,8 @@
 from pydantic import BaseModel
-from clue_deployer.src.models.Sut import Sut
+from clue_deployer.src.models.sut import Sut
 
 
-class SutListResponse(BaseModel):
+class SutsResponse(BaseModel):
     """
     A list of all available SUTs
     """

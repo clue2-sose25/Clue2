@@ -8,8 +8,8 @@ from os import path
 import progressbar
 from kubernetes import config as kube_config
 from clue_deployer.src.config.config import CONFIGS, ENV_CONFIG, Config
-from clue_deployer.service.status import Phase
-from clue_deployer.service.status_manager import StatusManager
+from clue_deployer.src.models.status_phase import StatusPhase
+from clue_deployer.src.service.status_manager import StatusManager
 from clue_deployer.src.experiment import Experiment
 from clue_deployer.src.experiment_runner import ExperimentRunner
 from clue_deployer.src.experiment_workloads import get_workload_instance
@@ -122,7 +122,7 @@ class ClueRunner:
         if not len(exps.experiments):
             raise ValueError(f"Invalid experiment name for {self.sut_name}")
         # Set the status to preparing
-        StatusManager.set(Phase.PREPARING_CLUSTER, "Preparing the cluster...")
+        StatusManager.set(StatusPhase.PREPARING_CLUSTER, "Preparing the cluster...")
         # Deploy a single experiment if deploy only
         if self.deploy_only:
             logger.info(f"Starting experiment: {exps.experiments[0]}")

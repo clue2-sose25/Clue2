@@ -7,14 +7,14 @@ from fastapi.responses import StreamingResponse, RedirectResponse
 from pathlib import Path
 import yaml
 import multiprocessing
-from clue_deployer.src.models.ResultEntry import ResultEntry
-from clue_deployer.src.models.DeployRequest import DeployRequest
-from clue_deployer.src.models.HealthResponse import HealthResponse
-from clue_deployer.src.models.ResultsResponse import ResultsResponse
-from clue_deployer.src.models.StatusOut import StatusOut
-from clue_deployer.src.models.Sut import Sut
-from clue_deployer.src.models.SutListResponse import SutListResponse
-from clue_deployer.service.status_manager import StatusManager
+from clue_deployer.src.models.result_entry import ResultEntry
+from clue_deployer.src.models.deploy_request import DeployRequest
+from clue_deployer.src.models.health_response import HealthResponse
+from clue_deployer.src.models.results_response import ResultsResponse
+from clue_deployer.src.models.status_response import StatusResponse
+from clue_deployer.src.models.sut import Sut
+from clue_deployer.src.models.suts_response import SutsResponse
+from clue_deployer.src.service.status_manager import StatusManager
 from clue_deployer.src.logger import logger
 from clue_deployer.src.config.config import ENV_CONFIG
 from clue_deployer.src.main import ClueRunner
@@ -52,16 +52,16 @@ def run_deployment(config, experiment_name, sut_name, deploy_only, n_iterations,
         with state_lock:
             is_deploying.value = 0
 
-@app.get("/api/status", response_model=StatusOut)
+@app.get("/api/status", response_model=StatusResponse)
 def read_status():
     phase, msg = StatusManager.get()
-    return StatusOut(phase=phase, message=msg or None)
+    return StatusResponse(phase=phase, message=msg or None)
 
 @app.get("/api/health", response_model=HealthResponse)
 def health():
     return HealthResponse(message="true")
 
-@app.get("/api/list/sut", response_model=SutListResponse)
+@app.get("/api/list/sut", response_model=SutsResponse)
 async def list_sut():
     """
     List all SUTs with their experiments.
@@ -103,7 +103,7 @@ async def list_sut():
             sut = Sut(name=sut_name, experiments=experiment_names)
             suts.append(sut)
 
-        return SutListResponse(suts=suts)
+        return SutsResponse(suts=suts)
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while listing SUTs: {str(e)}")

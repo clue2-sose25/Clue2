@@ -12,7 +12,7 @@ from clue_deployer.src.helm_wrapper import HelmWrapper
 from clue_deployer.src.experiment import Experiment
 from clue_deployer.src.config import Config
 from clue_deployer.src.autoscaling_deployer import AutoscalingDeployer
-from clue_deployer.service.status_manager import StatusManager, Phase
+from clue_deployer.src.service.status_manager import StatusManager, StatusPhase
 
 # Adjust if deploy.py is not 3 levels down from project root
 BASE_DIR = Path(__file__).resolve().parent.parent.parent 
@@ -239,7 +239,7 @@ class ExperimentDeployer:
         """
         Orchestrates the full deployment process for the experiment.
         """
-        StatusManager.set(Phase.DEPLOYING_SUT, "Deploying SUT...")
+        StatusManager.set(StatusPhase.DEPLOYING_SUT, "Deploying SUT...")
         # Check for namespace
         logger.info(f"Checking if namespace '{self.experiment.namespace}' exists")
         self._create_namespace_if_not_exists()
@@ -262,7 +262,7 @@ class ExperimentDeployer:
             logger.info(f"Deploying the SUT: {ENV_CONFIG.SUT_NAME}")
             wrapper.deploy_sut()
         # Set the status
-        StatusManager.set(Phase.WAITING, "Waiting for system to stabilize...")
+        StatusManager.set(StatusPhase.WAITING, "Waiting for system to stabilize...")
         # Wait for all critical services
         logger.info(f"Waiting for all critical services: [{set(self.experiment.critical_services)}]")
         self._wait_until_services_ready()
@@ -271,5 +271,5 @@ class ExperimentDeployer:
             AutoscalingDeployer(self.experiment).setup_autoscaling()
         else:
             logger.info("Autoscaling disabled. Skipping its deployment.")
-        StatusManager.set(Phase.WAITING, "Waiting for load generator...")
+        StatusManager.set(StatusPhase.WAITING, "Waiting for load generator...")
         logger.info("SUT deployment successful.")
