@@ -5,7 +5,7 @@ import io
 import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, status
-from fastapi.responses import StreamingResponse, RedirectResponse
+from fastapi.responses import JSONResponse, StreamingResponse, RedirectResponse
 from pathlib import Path
 import yaml
 import multiprocessing
@@ -72,6 +72,11 @@ def run_deployment(config, experiment_name, sut_name, deploy_only, n_iterations,
 
 @app.get("/api/status", response_model=StatusResponse)
 def read_status():
+    """Endpoint to check if a deployment is currently in progress."""
+    with state_lock:
+        deploying = bool(is_deploying.value)
+    return StatusResponse(is_deploying=deploying, phase=None, message=None)
+    # TO-DO: Add multi-threaded status 
     phase, msg = StatusManager.get()
     return StatusResponse(phase=phase, message=msg or None)
 
