@@ -351,28 +351,10 @@ def download_results(result_id: str):
         # Parse the result ID to extract components
         # Expected format: timestamp_workload_branch_experiment_number
         id_parts = result_id.split('_')
-        if len(id_parts) < 4:
-            raise HTTPException(status_code=400, detail="Invalid result ID format")
-        
-        # The last part should be the experiment number
-        try:
-            experiment_number = int(id_parts[-1])
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid experiment number in result ID")
-        
-        # Extract timestamp from result_id 
-        # Format: timestamp_workload_branch_experiment, where timestamp includes date and time
-        # We need to find where the timestamp part ends and workload begins
-        # Timestamp format appears to be: YYYY-MM-DD_HH-MM-SS
-        
-        # Split the ID and reconstruct the timestamp (first two parts joined by _)
-        id_parts = result_id.split('_')
-        if len(id_parts) < 4:
-            raise HTTPException(status_code=400, detail="Invalid result ID format")
-        
-        # Timestamp should be the first two parts: date_time
         timestamp = f"{id_parts[0]}_{id_parts[1]}"
         timestamp_folder = results_base_path / timestamp
+        
+        logger.info(timestamp_folder)
         
         # Check if timestamp folder exists
         if not timestamp_folder.is_dir():

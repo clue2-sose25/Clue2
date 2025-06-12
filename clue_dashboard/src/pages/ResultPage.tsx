@@ -25,6 +25,45 @@ const ResultPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const handleDownloadButton = async () => {
+    try {
+      // Extract just the timestamp from resultEntryId (assumes timestamp is first two parts)
+      if (!resultEntryId) {
+        return;
+      }
+      const parts = resultEntryId.split("_");
+      if (parts.length < 2) {
+        throw new Error("Invalid resultEntryId format");
+      }
+      const timestamp = `${parts[0]}_${parts[1]}`;
+
+      const response = await fetch(`/api/results/${timestamp}/download`);
+
+      if (!response.ok) {
+        throw new Error(`Error downloading file: ${response.statusText}`);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+
+      // Extract filename from headers, or use a fallback
+      const disposition = response.headers.get("Content-Disposition");
+      const match = disposition?.match(/filename="?(.+)"?/);
+      const filename = match?.[1] || "download.zip";
+
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Download failed:", error);
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -78,10 +117,13 @@ const ResultPage = () => {
             <ArrowLeftIcon /> Back
           </Link>
           <div className="flex gap-4">
-            <button className="flex items-center gap-2 border px-4 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
+            <button className="flex items-center gap-2 border px-4 py-2 rounded hover:bg-gray-200">
               <RepeatIcon size={20} /> Repeat benchmark
             </button>
-            <button className="flex items-center gap-2 border px-4 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
+            <button
+              onClick={handleDownloadButton}
+              className="flex items-center gap-2 border px-4 py-2 rounded hover:bg-gray-200"
+            >
               <DownloadSimpleIcon size={20} /> Download results
             </button>
           </div>
