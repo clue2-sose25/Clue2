@@ -85,7 +85,7 @@ const DashboardPage = () => {
                   coffee, it may take a while...
                 </div>
                 <p className="font-medium mb-4">
-                  Status: <span className="text-green-400">WAITING...</span>
+                  Status: <span className="text-green-400">DEPLOYING...</span>
                 </p>
                 <div className="mb-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
