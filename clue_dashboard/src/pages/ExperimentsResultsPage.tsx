@@ -1,6 +1,17 @@
-import {TrashIcon} from "@phosphor-icons/react";
+import {DownloadSimpleIcon, RepeatIcon, TrashIcon} from "@phosphor-icons/react";
 import {useEffect, useState} from "react";
 import {Link} from "react-router";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  IconButton,
+  Tooltip,
+} from "@mui/material";
 
 interface Iteration {
   workload: string;
@@ -34,100 +45,75 @@ const ExperimentsResultsPage = () => {
       });
   }, []);
 
-  if (loading) return <div className="p-6">Loading results...</div>;
+  if (loading) return <div>Loading results...</div>;
 
   if (error || !results || results.length === 0) {
     return (
-      <div className="flex justify-center items-center h-[50vh] text-xl text-gray-500 text-center">
-        No experiments found. <br /> Deploy an experiment to see its results.
-      </div>
+      <div>No experiments found. Deploy an experiment to see its results.</div>
     );
   }
 
   return (
-    <div className="p-6">
-      <h3 className="text-2xl font-semibold mb-4">Experiment Results</h3>
+    <div className="w-full h-full flex flex-col gap-6 p-6 pt-4">
+      <p className="text-xl font-medium">Experiment Results</p>
 
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse border border-gray-300 rounded-lg shadow-sm">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="text-left px-4 py-3 border-b border-gray-300 font-semibold text-gray-700">
-                Timestamp
-              </th>
-              <th className="text-left px-4 py-3 border-b border-gray-300 font-semibold text-gray-700">
-                Workload
-              </th>
-              <th className="text-left px-4 py-3 border-b border-gray-300 font-semibold text-gray-700">
-                Branch
-              </th>
-              <th className="text-left px-4 py-3 border-b border-gray-300 font-semibold text-gray-700">
-                Experiment #
-              </th>
-              <th className="text-left px-4 py-3 border-b border-gray-300 font-semibold text-gray-700 w-20">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white">
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>
+                <p className="font-semibold">Timestamp</p>
+              </TableCell>
+              <TableCell>
+                <p className="font-semibold">Workload</p>
+              </TableCell>
+              <TableCell>
+                <p className="font-semibold">Branch</p>
+              </TableCell>
+              <TableCell>
+                <p className="font-semibold">Iteration</p>
+              </TableCell>
+              <TableCell></TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
             {results.map((result, i) =>
               result.iterations.map((iter, j) => (
-                <tr
+                <TableRow
                   key={`${i}-${j}`}
-                  className="border-b border-gray-200 hover:bg-gray-50 transition-colors"
+                  component={Link}
+                  to={`/results/${iter.branch_name}`}
+                  style={{textDecoration: "none", color: "inherit"}}
+                  hover
                 >
-                  <td className="px-4 py-3 text-gray-900">
-                    <Link
-                      to={`/results/${iter.branch_name}`}
-                      className="block w-full h-full hover:text-blue-600 transition-colors"
-                    >
-                      {result.timestamp}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-gray-900">
-                    <Link
-                      to={`/results/${iter.branch_name}`}
-                      className="block w-full h-full hover:text-blue-600 transition-colors"
-                    >
-                      {iter.workload}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-gray-900">
-                    <Link
-                      to={`/results/${iter.branch_name}`}
-                      className="block w-full h-full hover:text-blue-600 transition-colors"
-                    >
-                      {iter.branch_name}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-gray-900">
-                    <Link
-                      to={`/results/${iter.branch_name}`}
-                      className="block w-full h-full hover:text-blue-600 transition-colors"
-                    >
-                      {iter.experiment_number}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3">
-                    <button
-                      className="p-1 rounded hover:bg-red-100 text-red-600 hover:text-red-700 transition-colors"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        // Handle delete action here
-                        console.log("Delete clicked for:", iter.branch_name);
-                      }}
-                      aria-label="Delete experiment"
-                    >
-                      <TrashIcon size={18} />
-                    </button>
-                  </td>
-                </tr>
+                  <TableCell>{result.timestamp}</TableCell>
+                  <TableCell>{iter.workload}</TableCell>
+                  <TableCell>{iter.branch_name}</TableCell>
+                  <TableCell>{iter.experiment_number}</TableCell>
+                  <TableCell>
+                    {/** Icons */}
+                    <Tooltip title="Repeat experiment" arrow placement="top">
+                      <IconButton onClick={() => {}}>
+                        <RepeatIcon size={20} />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Download results" arrow placement="top">
+                      <IconButton onClick={() => {}}>
+                        <DownloadSimpleIcon size={20} />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Delete results" arrow placement="top">
+                      <IconButton onClick={() => {}}>
+                        <TrashIcon size={20} color="red" />
+                      </IconButton>
+                    </Tooltip>
+                  </TableCell>
+                </TableRow>
               ))
             )}
-          </tbody>
-        </table>
-      </div>
+          </TableBody>
+        </Table>
+      </TableContainer>
     </div>
   );
 };
