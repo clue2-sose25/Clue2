@@ -7,6 +7,5 @@ class ResultEntry(BaseModel):
     id: str
     workload: str
     branch_name: str
-    experiment_number: int
     timestamp: str
     iterations: int

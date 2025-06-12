@@ -140,36 +140,26 @@ async def list_all_results():
                         continue
                     
                     branch_name_str = branch_dir.name.strip()
-                    
+                    # Count the iterations
+                    iterations_count = 0
                     for exp_num_dir in branch_dir.iterdir():
                         if not exp_num_dir.is_dir():
                             logger.debug(f"Skipping non-directory entry in branch '{branch_name_str}': {exp_num_dir.name}")
-                            continue
-                        
-                        exp_num_str = exp_num_dir.name.strip()
-                        try:
-                            experiment_number_int = int(exp_num_str)
-                            
-                            # Count iterations (subdirectories) in the experiment directory
-                            iterations_count = sum(1 for item in exp_num_dir.iterdir() if item.is_dir())
-                            
-                            # Generate a unique ID for this result entry
-                            result_id = f"{timestamp}_{workload_name}_{branch_name_str}_{experiment_number_int}"
-                            
-                            processed_results.append(
-                                ResultEntry(
-                                    id=result_id,
-                                    workload=workload_name,
-                                    branch_name=branch_name_str,
-                                    experiment_number=experiment_number_int,
-                                    timestamp=timestamp,
-                                    iterations=iterations_count
-                                )
-                            )
-                        except ValueError:
-                            logger.warning(f"Could not convert experiment number '{exp_num_str}' to int for {results_dir.name}/{workload_name}/{branch_name_str}. Skipping.")
-                            raise ValueError(f"experiment_number {exp_num_str} cannot be casted into an integer.")
-            
+                            continue              
+                        # Count iterations in the experiment directory
+                        iterations_count = iterations_count + 1
+                    # Generate a unique ID for this result entry
+                    result_id = f"{timestamp}_{workload_name}_{branch_name_str}"
+                    # Append the results
+                    processed_results.append(
+                        ResultEntry(
+                            id=result_id,
+                            workload=workload_name,
+                            branch_name=branch_name_str,
+                            timestamp=timestamp,
+                            iterations=iterations_count
+                        )
+                    )
         return ResultsResponse(results=processed_results)
     except PermissionError:
         logger.exception("Permission error while accessing results directory.")
@@ -195,12 +185,6 @@ async def get_single_result(result_id: str):
         if len(id_parts) < 4:
             raise HTTPException(status_code=400, detail="Invalid result ID format")
         
-        # The last part should be the experiment number
-        try:
-            experiment_number = int(id_parts[-1])
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid experiment number in result ID")
-        
         # Join the remaining parts back (in case workload or branch names contain underscores)
         remaining_parts = id_parts[:-1]
         
@@ -224,10 +208,10 @@ async def get_single_result(result_id: str):
                     branch_name = branch_dir.name.strip()
                     
                     # Check if this combination matches our ID
-                    expected_id = f"{timestamp}_{workload_name}_{branch_name}_{experiment_number}"
+                    expected_id = f"{timestamp}_{workload_name}_{branch_name}"
                     if expected_id == result_id:
                         # Verify the experiment directory exists
-                        exp_dir = branch_dir / str(experiment_number)
+                        exp_dir = branch_dir
                         if not exp_dir.is_dir():
                             continue
                             
@@ -238,7 +222,6 @@ async def get_single_result(result_id: str):
                             id=result_id,
                             workload=workload_name,
                             branch_name=branch_name,
-                            experiment_number=experiment_number,
                             timestamp=timestamp,
                             iterations=iterations_count
                         )

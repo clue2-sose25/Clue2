@@ -1,7 +1,7 @@
-import type {Iteration} from "./Iteration";
-
 export interface ResultEntry {
   id: string;
+  workload: string;
+  branch_name: string;
   timestamp: string;
-  iterations: Iteration[];
+  iterations: number;
 }
