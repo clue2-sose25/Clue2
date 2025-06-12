@@ -14,7 +14,7 @@ const ControlsPage = () => {
   const [availableSUTs, setAvailableSUTs] = useState<SUT[]>([]);
 
   useEffect(() => {
-    fetch("/api/list/sut")
+    fetch("/api/suts")
       .then((r) => r.json())
       .then((d) => setAvailableSUTs(d.suts ?? []))
       .catch(() => setAvailableSUTs([]));

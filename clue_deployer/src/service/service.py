@@ -160,7 +160,7 @@ async def stream_logs():
         }
     )
 
-@app.get("/api/list/sut", response_model=SutsResponse)
+@app.get("/api/suts", response_model=SutsResponse)
 async def list_sut():
     """
     List all SUTs with their experiments.
@@ -450,7 +450,7 @@ def deploy_sut(request: DeployRequest):
     
     return {"message": f"Deployment of SUT {sut_name} has been started."}
 
-@app.get("/plot/list")
+@app.get("/api/plots")
 def list_plots(request: ResultEntry, iteration: int):
     """List all available plots for a specific iteration."""
     workload = request.workload
@@ -469,7 +469,7 @@ def list_plots(request: ResultEntry, iteration: int):
         plots.extend([file.name for file in results_path.glob(file_format)])
     return {"plots": plots}
 
-@app.get("/plot/download")
+@app.get("/api/plots/download")
 def download_plot(request: ResultEntry):
     """Download a specific plot for a given iteration."""
     workload = request.workload
