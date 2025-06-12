@@ -1,15 +1,16 @@
 import {useContext, useEffect, useState} from "react";
 import {DeploymentContext} from "../contexts/DeploymentContext";
-import LogsPanel from "../components/LogsPanel";
 import {InfoIcon} from "@phosphor-icons/react";
 import type {SUT} from "../models/SUT";
 import {Tooltip} from "@mui/material";
 import {workloadOptions, type Workload} from "../models/DeploymentForm";
+import {useNavigate} from "react-router";
 
 const ControlsPage = () => {
-  const {currentDeployment, setCurrentDeployment, ifDeploying, setIfDeploying} =
+  const {currentDeployment, setCurrentDeployment, setIfDeploying} =
     useContext(DeploymentContext);
 
+  const navigate = useNavigate();
   const [availableSUTs, setAvailableSUTs] = useState<SUT[]>([]);
 
   useEffect(() => {
@@ -34,6 +35,7 @@ const ControlsPage = () => {
     });
 
     setIfDeploying(true);
+    navigate("/dashboard");
   };
 
   return (
@@ -229,8 +231,6 @@ const ControlsPage = () => {
           Deploy experiment
         </button>
       </div>
-
-      <div>{ifDeploying && <LogsPanel ifDeploying={ifDeploying} />}</div>
     </div>
   );
 };

@@ -1,11 +1,8 @@
-import {useEffect} from "react";
+import {useContext, useEffect} from "react";
+import {DeploymentContext} from "../contexts/DeploymentContext";
 
-interface LogsPanelProps {
-  ifDeploying: boolean;
-}
-
-const LogsPanel: React.FC<LogsPanelProps> = ({ifDeploying}) => {
-  // const [logs, setLogs] = useState<string>("");
+const LogsPanel: React.FC = () => {
+  const {ifDeploying} = useContext(DeploymentContext);
 
   /**
    * Fetch the logs of the CLUE deployer
@@ -26,7 +23,7 @@ const LogsPanel: React.FC<LogsPanelProps> = ({ifDeploying}) => {
 
   return (
     <div className="flex-1 border p-2 overflow-y-auto h-96 bg-black text-white whitespace-pre-wrap">
-      {"No logs"}
+      {"No logs to show. Deploy an experiment."}
     </div>
   );
 };
