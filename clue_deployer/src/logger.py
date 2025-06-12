@@ -1,6 +1,7 @@
 import logging
 import sys
 from pathlib import Path
+from collections import deque
 
 # Define ANSI color codes
 COLORS = {
@@ -35,23 +36,31 @@ if not logger.handlers:
         '%(asctime)s [%(levelname)s] %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
     )
-    
-    file_formatter = logging.Formatter(
-        '%(asctime)s [%(levelname)s] %(filename)s:%(lineno)d - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
-    
+
     # Console handler
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(logging.INFO)
     console_handler.setFormatter(console_formatter)
     logger.addHandler(console_handler)
-    
-    # File handler
-    log_file = "logs/app.log"
-    Path(log_file).parent.mkdir(parents=True, exist_ok=True)
-    
-    file_handler = logging.FileHandler(log_file)
-    file_handler.setLevel(logging.INFO)
-    file_handler.setFormatter(file_formatter)
-    logger.addHandler(file_handler)
+
+    # In-memory buffer for API access
+    LOG_BUFFER = deque(maxlen=1000)
+
+    class BufferHandler(logging.Handler):
+        def __init__(self, buffer):
+            super().__init__()
+            self.buffer = buffer
+
+        def emit(self, record):
+            msg = self.format(record)
+            self.buffer.append(msg)
+
+    buffer_handler = BufferHandler(LOG_BUFFER)
+    buffer_handler.setLevel(logging.INFO)
+    buffer_handler.setFormatter(logging.Formatter(
+        '%(asctime)s [%(levelname)s] %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    ))
+    logger.addHandler(buffer_handler)
+    # Expose LOG_BUFFER for other modules
+    globals()['LOG_BUFFER'] = LOG_BUFFER
