@@ -1,4 +1,4 @@
-import {useContext} from "react";
+import {useContext, useEffect} from "react";
 import {DeploymentContext} from "../contexts/DeploymentContext";
 import {Link} from "react-router";
 import {
@@ -16,7 +16,8 @@ import {
 } from "@phosphor-icons/react/dist/ssr";
 
 const DashboardPage = () => {
-  const {ifDeploying, currentDeployment} = useContext(DeploymentContext);
+  const {ifDeploying, setIfDeploying, currentDeployment} =
+    useContext(DeploymentContext);
 
   const configItems = [
     {
@@ -45,6 +46,25 @@ const DashboardPage = () => {
       icon: <RepeatIcon size={24} />,
     },
   ];
+
+  useEffect(() => {
+    const fetchDeploymentStatus = async () => {
+      try {
+        const res = await fetch("/api/status");
+        const data = await res.json();
+        if (data && typeof data.is_deploying === "boolean") {
+          if (ifDeploying !== data.is_deploying) {
+            setIfDeploying(data.is_deploying);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch deployment status:", error);
+      }
+    };
+
+    fetchDeploymentStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="w-full h-full flex flex-col gap-6 pt-4 p-6">

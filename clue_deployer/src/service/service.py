@@ -1,3 +1,4 @@
+import json
 import os
 import zipfile
 import io
@@ -5,7 +6,7 @@ import shutil
 import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, status
-from fastapi.responses import StreamingResponse, RedirectResponse
+from fastapi.responses import JSONResponse, StreamingResponse, RedirectResponse
 from pathlib import Path
 import yaml
 import multiprocessing
@@ -18,15 +19,15 @@ from clue_deployer.src.models.status_response import StatusResponse
 from clue_deployer.src.models.sut import Sut
 from clue_deployer.src.models.suts_response import SutsResponse
 from clue_deployer.src.service.status_manager import StatusManager
-from clue_deployer.src.logger import logger
+from clue_deployer.src.logger import get_child_process_logger, logger, shared_log_buffer
 from clue_deployer.src.config.config import ENV_CONFIG
-from clue_deployer.src.logger import LOG_BUFFER
 from clue_deployer.src.main import ClueRunner
 from clue_deployer.src.config import SUTConfig, Config
 
 # Initialize multiprocessing lock and value for deployment synchronization. Used for deployments.
 state_lock = multiprocessing.Lock()
 is_deploying = multiprocessing.Value('i', 0)
+
 
 # Root page redirect to swagger /docs
 @asynccontextmanager
@@ -45,19 +46,38 @@ SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
 RESULTS_DIR = ENV_CONFIG.RESULTS_PATH
 CLUE_CONFIG_PATH = ENV_CONFIG.CLUE_CONFIG_PATH
 
-def run_deployment(config, experiment_name, sut_name, deploy_only, n_iterations, state_lock, is_deploying):
+def run_deployment(config, experiment_name, sut_name, deploy_only, n_iterations, 
+                  state_lock, is_deploying, shared_log_buffer):
     """Function to run the deployment in a separate process."""
+    # Setup logger for this child process
+    process_logger = get_child_process_logger(f"DEPLOY_{sut_name}", shared_log_buffer)
+    
     try:
-        runner = ClueRunner(config, experiment_name=experiment_name, sut_name=sut_name, deploy_only=deploy_only, n_iterations=n_iterations)
+        process_logger.info(f"Starting deployment for SUT {sut_name}")
+        runner = ClueRunner(config, experiment_name=experiment_name, sut_name=sut_name, 
+                           deploy_only=deploy_only, n_iterations=n_iterations)
+        
+        # You might want to pass the process_logger to ClueRunner if it accepts a logger parameter
+        # runner = ClueRunner(config, experiment_name=experiment_name, sut_name=sut_name, 
+        #                    deploy_only=deploy_only, n_iterations=n_iterations, logger=process_logger)
+        
         runner.main()
+        process_logger.info(f"Successfully completed deployment for SUT {sut_name}")
+        
     except Exception as e:
-        logger.error(f"Deployment process failed for SUT {sut_name}: {str(e)}")
+        process_logger.error(f"Deployment process failed for SUT {sut_name}: {str(e)}")
     finally:
         with state_lock:
             is_deploying.value = 0
+        process_logger.info(f"Deployment process for SUT {sut_name} finished")
 
 @app.get("/api/status", response_model=StatusResponse)
 def read_status():
+    """Endpoint to check if a deployment is currently in progress."""
+    with state_lock:
+        deploying = bool(is_deploying.value)
+    return StatusResponse(is_deploying=deploying, phase=None, message=None)
+    # TO-DO: Add multi-threaded status 
     phase, msg = StatusManager.get()
     return StatusResponse(phase=phase, message=msg or None)
 
@@ -65,25 +85,81 @@ def read_status():
 def health():
     return HealthResponse(message="true")
 
-@app.get("/api/logs", response_model=LogsResponse)
-def read_logs():
+@app.get("/api/logs")
+def get_logs(n: int = None):
+    """Get recent logs from the shared buffer."""
+    try:
+        logs = shared_log_buffer.get_logs(n)
+        return {"logs": logs, "count": len(logs)}
+    except Exception as e:
+        logger.error(f"Failed to retrieve logs: {str(e)}")
+        return {"logs": [], "count": 0, "error": str(e)}
 
-    """Return buffered log lines."""
-    return LogsResponse(logs="\n".join(LOG_BUFFER))
+@app.delete("/api/logs")
+def clear_logs():
+    """Clear the log buffer."""
+    try:
+        shared_log_buffer.clear()
+        logger.info("Log buffer cleared")
+        return {"message": "Log buffer cleared successfully"}
+    except Exception as e:
+        logger.error(f"Failed to clear logs: {str(e)}")
+        return {"error": str(e)}
+
 
 @app.get("/api/logs/stream")
 async def stream_logs():
     """Stream log buffer updates using Server-Sent Events."""
+
     async def event_generator():
-        last_idx = len(LOG_BUFFER)
+        last_count = 0
+        last_version = shared_log_buffer.get_version()  # Track version to detect clears
+
+        # Send initial logs
+        try:
+            current_logs = shared_log_buffer.get_logs()
+            if current_logs:
+                for log in current_logs:
+                    yield f"data: {json.dumps({'log': log})}\n\n"
+                last_count = len(current_logs)
+        except Exception as e:
+            yield f"data: {json.dumps({'error': f'Failed to get initial logs: {str(e)}'})}\n\n"
+
+        # Stream new logs
         while True:
-            if len(LOG_BUFFER) > last_idx:
-                for line in list(LOG_BUFFER)[last_idx:]:
-                    yield f"data: {line}\n\n"
-                last_idx = len(LOG_BUFFER)
-            else:
-                await asyncio.sleep(1)
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+            try:
+                await asyncio.sleep(0.5)
+
+                current_version = shared_log_buffer.get_version()
+                current_logs = shared_log_buffer.get_logs()
+                current_count = len(current_logs)
+
+                # If buffer was cleared, reset counters
+                if current_version != last_version:
+                    last_version = current_version
+                    last_count = 0
+
+                # Send new logs
+                if current_count > last_count:
+                    new_logs = current_logs[last_count:]
+                    for log in new_logs:
+                        yield f"data: {json.dumps({'log': log})}\n\n"
+                    last_count = current_count
+
+            except Exception as e:
+                yield f"data: {json.dumps({'error': f'Stream error: {str(e)}'})}\n\n"
+                await asyncio.sleep(1)  # Slow down on error
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "Cache-Control"
+        }
+    )
 
 @app.get("/api/list/sut", response_model=SutsResponse)
 async def list_sut():
@@ -423,11 +499,14 @@ def deploy_sut(request: DeployRequest):
     config = Config(sut_config=sut_path, clue_config=CLUE_CONFIG_PATH)
     
     try:
+        # Pass the shared buffer to the child process
         process = multiprocessing.Process(
             target=run_deployment,
-            args=(config, experiment_name, sut_name, deploy_only, n_iterations, state_lock, is_deploying)
+            args=(config, experiment_name, sut_name, deploy_only, n_iterations, 
+                  state_lock, is_deploying, shared_log_buffer)
         )
         process.start()
+        logger.info(f"Started deployment process for SUT {sut_name}")
     except Exception as e:
         with state_lock:
             is_deploying.value = 0
