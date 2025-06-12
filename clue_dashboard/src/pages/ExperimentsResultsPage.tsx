@@ -61,46 +61,44 @@ const ExperimentsResultsPage = () => {
                 <p className="font-semibold">Branch</p>
               </TableCell>
               <TableCell>
-                <p className="font-semibold">Iteration</p>
+                <p className="font-semibold">Iterations</p>
               </TableCell>
               <TableCell></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {results.map((result, i) =>
-              result.iterations.map((iter, j) => (
-                <TableRow
-                  key={`${i}-${j}`}
-                  component={Link}
-                  to={`/results/${iter.branch_name}`}
-                  style={{textDecoration: "none", color: "inherit"}}
-                  hover
-                >
-                  <TableCell>{result.timestamp}</TableCell>
-                  <TableCell>{iter.workload}</TableCell>
-                  <TableCell>{iter.branch_name}</TableCell>
-                  <TableCell>{iter.experiment_number}</TableCell>
-                  <TableCell>
-                    {/** Icons */}
-                    <Tooltip title="Repeat experiment" arrow placement="top">
-                      <IconButton onClick={() => {}}>
-                        <RepeatIcon size={20} />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Download results" arrow placement="top">
-                      <IconButton onClick={() => {}}>
-                        <DownloadSimpleIcon size={20} />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Delete results" arrow placement="top">
-                      <IconButton onClick={() => {}}>
-                        <TrashIcon size={20} color="red" />
-                      </IconButton>
-                    </Tooltip>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
+            {results.map((result) => (
+              <TableRow
+                key={result.id}
+                component={Link}
+                to={`/results/${result.id}`}
+                style={{textDecoration: "none", color: "inherit"}}
+                hover
+              >
+                <TableCell>{result.timestamp}</TableCell>
+                <TableCell>{result.workload}</TableCell>
+                <TableCell>{result.branch_name}</TableCell>
+                <TableCell>{result.iterations}</TableCell>
+                <TableCell>
+                  {/** Icons */}
+                  <Tooltip title="Repeat experiment" arrow placement="top">
+                    <IconButton onClick={() => {}}>
+                      <RepeatIcon size={20} />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Download results" arrow placement="top">
+                    <IconButton onClick={() => {}}>
+                      <DownloadSimpleIcon size={20} />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Delete results" arrow placement="top">
+                    <IconButton onClick={() => {}}>
+                      <TrashIcon size={20} color="red" />
+                    </IconButton>
+                  </Tooltip>
+                </TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       </TableContainer>
