@@ -1,53 +1,8 @@
-import {useEffect, useState} from "react";
+import {useContext, useEffect} from "react";
+import {DeploymentContext} from "../contexts/DeploymentContext";
 
-interface LogsPanelProps {
-  ifDeploying: boolean;
-}
-
-const MAX_LOG_LINES = 200;
-
-const LogsPanel: React.FC<LogsPanelProps> = ({ifDeploying}) => {
-  const [logs, setLogs] = useState("");
-
-  useEffect(() => {
-    let es: EventSource | null = null;
-    let isMounted = true;
-
-    const init = async () => {
-      try {
-        const res = await fetch("/api/logs");
-        const data = await res.json();
-        if (isMounted) {
-          setLogs(data.logs ?? "");
-        }
-      } catch {
-        if (isMounted) setLogs(" no logs yet!");
-      }
-      es = new EventSource("/api/logs/stream");
-      es.onmessage = (e) => {
-        if (isMounted) {
-          setLogs((prev) => {
-            const updated = prev + e.data;
-            const lines = updated.split("\n");
-            if (lines.length > MAX_LOG_LINES) {
-              return lines.slice(-MAX_LOG_LINES).join("\n");
-            }
-            return updated;
-          });
-        }
-      };
-      es.onerror = () => {
-        if (es) es.close();
-      };
-    };
-
-    init();
-
-    return () => {
-      isMounted = false;
-      if (es) es.close();
-    };
-  }, []);
+const LogsPanel: React.FC = () => {
+  const {ifDeploying} = useContext(DeploymentContext);
 
   /**
    * Fetch the logs of the CLUE deployer
@@ -67,8 +22,8 @@ const LogsPanel: React.FC<LogsPanelProps> = ({ifDeploying}) => {
   // }, [ifDeploying]);
 
   return (
-    <div className="flex-1 border p-2 overflow-y-auto h-96 bg-black text-white whitespace-pre-wrap">
-      {ifDeploying && (logs || "No logs")}
+    <div className="flex-1 border p-2 overflow-y-auto h-full w-full bg-black text-white whitespace-pre-wrap">
+      {"No logs to show. Please, deploy an experiment..."}
     </div>
   );
 };

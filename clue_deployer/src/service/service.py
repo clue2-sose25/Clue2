@@ -8,24 +8,19 @@ from fastapi.responses import StreamingResponse, RedirectResponse
 from pathlib import Path
 import yaml
 import multiprocessing
-from clue_deployer.service.status_manager import StatusManager
+from clue_deployer.src.models.result_entry import ResultEntry
+from clue_deployer.src.models.deploy_request import DeployRequest
+from clue_deployer.src.models.health_response import HealthResponse
+from clue_deployer.src.models.results_response import ResultsResponse
+from clue_deployer.src.models.status_response import StatusResponse
+from clue_deployer.src.models.sut import Sut
+from clue_deployer.src.models.suts_response import SutsResponse
+from clue_deployer.src.service.status_manager import StatusManager
 from clue_deployer.src.logger import logger
 from clue_deployer.src.config.config import ENV_CONFIG
 from clue_deployer.src.logger import LOG_BUFFER
 from clue_deployer.src.main import ClueRunner
 from clue_deployer.src.config import SUTConfig, Config
-from clue_deployer.service.models import (
-    HealthResponse,
-    LogsResponse,
-    Sut,
-    SutListResponse,
-    Timestamp,
-    Iteration,
-    ResultTimestampResponse,
-    DeployRequest,
-    StatusOut,
-    SingleIteration
-)
 
 # Initialize multiprocessing lock and value for deployment synchronization. Used for deployments.
 state_lock = multiprocessing.Lock()
@@ -59,10 +54,10 @@ def run_deployment(config, experiment_name, sut_name, deploy_only, n_iterations,
         with state_lock:
             is_deploying.value = 0
 
-@app.get("/api/status", response_model=StatusOut)
+@app.get("/api/status", response_model=StatusResponse)
 def read_status():
     phase, msg = StatusManager.get()
-    return StatusOut(phase=phase, message=msg or None)
+    return StatusResponse(phase=phase, message=msg or None)
 
 @app.get("/api/health", response_model=HealthResponse)
 def health():
@@ -88,7 +83,7 @@ async def stream_logs():
                 await asyncio.sleep(1)
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
-@app.get("/api/list/sut", response_model=SutListResponse)
+@app.get("/api/list/sut", response_model=SutsResponse)
 async def list_sut():
     """
     List all SUTs with their experiments.
@@ -130,33 +125,33 @@ async def list_sut():
             sut = Sut(name=sut_name, experiments=experiment_names)
             suts.append(sut)
 
-        return SutListResponse(suts=suts)
+        return SutsResponse(suts=suts)
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while listing SUTs: {str(e)}")
 
-@app.get("/api/list/results", response_model=ResultTimestampResponse)
+@app.get("/api/results", response_model=ResultsResponse)
 async def list_all_results():
     """List all results, structured by timestamp, workload, branch, and experiment number."""
     results_base_path = Path(RESULTS_DIR)
-
+    # Check for results directory
     if not results_base_path.is_dir():
         logger.error(f"Results directory not found: {results_base_path}")
         raise HTTPException(status_code=404, detail=f"Results directory not found: {results_base_path}")
-    
+    # List the results
     try:
-        processed_timestamps = []
+        processed_results = []
         
-        for timestamp_dir in results_base_path.iterdir():
-            if not timestamp_dir.is_dir():
-                logger.debug(f"Skipping non-directory entry in results: {timestamp_dir.name}")
+        for results_dir in results_base_path.iterdir():
+            if not results_dir.is_dir():
+                logger.debug(f"Skipping non-directory entry in results: {results_dir.name}")
                 continue
 
-            timestamp_data_obj = Timestamp(timestamp=timestamp_dir.name.strip(), iterations=[])
+            timestamp = results_dir.name.strip()
             
-            for workload_dir in timestamp_dir.iterdir():
+            for workload_dir in results_dir.iterdir():
                 if not workload_dir.is_dir():
-                    logger.debug(f"Skipping non-directory entry in timestamp '{timestamp_dir.name}': {workload_dir.name}")
+                    logger.debug(f"Skipping non-directory entry in timestamp '{results_dir.name}': {workload_dir.name}")
                     continue
                 
                 workload_name = workload_dir.name.strip()
@@ -167,29 +162,27 @@ async def list_all_results():
                         continue
                     
                     branch_name_str = branch_dir.name.strip()
-                    
+                    # Count the iterations
+                    iterations_count = 0
                     for exp_num_dir in branch_dir.iterdir():
                         if not exp_num_dir.is_dir():
                             logger.debug(f"Skipping non-directory entry in branch '{branch_name_str}': {exp_num_dir.name}")
-                            continue
-                        
-                        exp_num_str = exp_num_dir.name.strip()
-                        try:
-                            experiment_number_int = int(exp_num_str)
-                            timestamp_data_obj.iterations.append(
-                                Iteration(
-                                    workload=workload_name,
-                                    branch_name=branch_name_str,
-                                    experiment_number=experiment_number_int
-                                )
-                            )
-                        except ValueError:
-                            logger.warning(f"Could not convert experiment number '{exp_num_str}' to int for {timestamp_dir.name}/{workload_name}/{branch_name_str}. Skipping.")
-                            raise ValueError(f"experiment_number {exp_num_str} cannot be casted into an integer.")
-            
-            processed_timestamps.append(timestamp_data_obj)
-            
-        return ResultTimestampResponse(results=processed_timestamps)
+                            continue              
+                        # Count iterations in the experiment directory
+                        iterations_count = iterations_count + 1
+                    # Generate a unique ID for this result entry
+                    result_id = f"{timestamp}_{workload_name}_{branch_name_str}"
+                    # Append the results
+                    processed_results.append(
+                        ResultEntry(
+                            id=result_id,
+                            workload=workload_name,
+                            branch_name=branch_name_str,
+                            timestamp=timestamp,
+                            iterations=iterations_count
+                        )
+                    )
+        return ResultsResponse(results=processed_results)
     except PermissionError:
         logger.exception("Permission error while accessing results directory.")
         raise HTTPException(status_code=500, detail="Permission denied when accessing results.")
@@ -197,29 +190,151 @@ async def list_all_results():
         logger.exception("Unexpected error while retrieving results.")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving results: {str(e)}")
 
-@app.get("/api/download/results")
-def download_results():
-    """Download all results as a zip file."""
-    results_path = Path(RESULTS_DIR)
-    if not results_path.exists():
-        raise HTTPException(status_code=404, detail=f"Results directory {results_path} does not exist. Did you run any experiments?")
+@app.get("/api/results/{result_id}", response_model=ResultEntry)
+async def get_single_result(result_id: str):
+    """Get a single result by ID."""
+    results_base_path = Path(RESULTS_DIR)
     
-    zip_buffer = io.BytesIO()
-    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-        for file_path in results_path.rglob("*"):
-            if file_path.is_file():
-                zip_file.write(file_path, file_path.relative_to(results_path))
+    # Check for results directory
+    if not results_base_path.is_dir():
+        logger.error(f"Results directory not found: {results_base_path}")
+        raise HTTPException(status_code=404, detail=f"Results directory not found: {results_base_path}")
     
-    # Prepare the buffer for reading
-    zip_buffer.seek(0)
+    try:
+        # Parse the result ID to extract components
+        # Expected format: timestamp_workload_branch_experiment_number
+        id_parts = result_id.split('_')
+        if len(id_parts) < 4:
+            raise HTTPException(status_code=400, detail="Invalid result ID format")
+        
+        # Join the remaining parts back (in case workload or branch names contain underscores)
+        remaining_parts = id_parts[:-1]
+        
+        # Find the result by searching through the directory structure
+        for results_dir in results_base_path.iterdir():
+            if not results_dir.is_dir():
+                continue
+                
+            timestamp = results_dir.name.strip()
+            
+            for workload_dir in results_dir.iterdir():
+                if not workload_dir.is_dir():
+                    continue
+                    
+                workload_name = workload_dir.name.strip()
+                
+                for branch_dir in workload_dir.iterdir():
+                    if not branch_dir.is_dir():
+                        continue
+                        
+                    branch_name = branch_dir.name.strip()
+                    
+                    # Check if this combination matches our ID
+                    expected_id = f"{timestamp}_{workload_name}_{branch_name}"
+                    if expected_id == result_id:
+                        # Verify the experiment directory exists
+                        exp_dir = branch_dir
+                        if not exp_dir.is_dir():
+                            continue
+                            
+                        # Count iterations
+                        iterations_count = sum(1 for item in exp_dir.iterdir() if item.is_dir())
+                        
+                        return ResultEntry(
+                            id=result_id,
+                            workload=workload_name,
+                            branch_name=branch_name,
+                            timestamp=timestamp,
+                            iterations=iterations_count
+                        )
+        
+        # If we get here, the result wasn't found
+        raise HTTPException(status_code=404, detail=f"Result with ID '{result_id}' not found")
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except PermissionError:
+        logger.exception("Permission error while accessing results directory.")
+        raise HTTPException(status_code=500, detail="Permission denied when accessing results.")
+    except Exception as e:
+        logger.exception(f"Unexpected error while retrieving result '{result_id}'.")
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving result: {str(e)}")
 
-    # Return the zip file as a streaming response
-    return StreamingResponse(
-        zip_buffer,
-        media_type="application/zip",
-        headers={"Content-Disposition": f"attachment; filename=results_{results_path.name}.zip"}
-    )
-
+@app.get("/api/results/{result_id}/download")
+def download_results(result_id: str):
+    """Download a specific result as a zip file."""
+    results_base_path = Path(RESULTS_DIR)
+    
+    # Check for results directory
+    if not results_base_path.exists():
+        raise HTTPException(status_code=404, detail=f"Results directory {results_base_path} does not exist. Did you run any experiments?")
+    
+    try:
+        # Parse the result ID to extract components
+        # Expected format: timestamp_workload_branch_experiment_number
+        id_parts = result_id.split('_')
+        if len(id_parts) < 4:
+            raise HTTPException(status_code=400, detail="Invalid result ID format")
+        
+        # The last part should be the experiment number
+        try:
+            experiment_number = int(id_parts[-1])
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid experiment number in result ID")
+        
+        # Extract timestamp from result_id 
+        # Format: timestamp_workload_branch_experiment, where timestamp includes date and time
+        # We need to find where the timestamp part ends and workload begins
+        # Timestamp format appears to be: YYYY-MM-DD_HH-MM-SS
+        
+        # Split the ID and reconstruct the timestamp (first two parts joined by _)
+        id_parts = result_id.split('_')
+        if len(id_parts) < 4:
+            raise HTTPException(status_code=400, detail="Invalid result ID format")
+        
+        # Timestamp should be the first two parts: date_time
+        timestamp = f"{id_parts[0]}_{id_parts[1]}"
+        timestamp_folder = results_base_path / timestamp
+        
+        # Check if timestamp folder exists
+        if not timestamp_folder.is_dir():
+            raise HTTPException(status_code=404, detail=f"Timestamp folder '{timestamp}' not found")
+        
+        # Create zip file with the entire timestamp folder
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            # Include the entire timestamp folder and all its contents
+            for file_path in timestamp_folder.rglob("*"):
+                if file_path.is_file():
+                    # Preserve the full directory structure starting from timestamp folder
+                    # This creates: timestamp/workload/branch/experiment/files
+                    relative_path = file_path.relative_to(timestamp_folder.parent)
+                    zip_file.write(file_path, relative_path)
+        
+        # Prepare the buffer for reading
+        zip_buffer.seek(0)
+        
+        # Create a descriptive filename using the timestamp
+        safe_filename = f"{timestamp}.zip"
+        
+        # Return the zip file as a streaming response
+        return StreamingResponse(
+            io.BytesIO(zip_buffer.read()),
+            media_type="application/zip",
+            headers={"Content-Disposition": f"attachment; filename={safe_filename}"}
+        )
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except PermissionError:
+        logger.exception("Permission error while accessing results directory.")
+        raise HTTPException(status_code=500, detail="Permission denied when accessing results.")
+    except Exception as e:
+        logger.exception(f"Unexpected error while downloading result '{result_id}'.")
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred while downloading result: {str(e)}")
+    
 @app.get("/api/config/sut/{sut_name}", response_model=SUTConfig)
 async def get_sut_config(sut_name: str):
     """Get a specific SUT configuration."""
@@ -274,11 +389,11 @@ def deploy_sut(request: DeployRequest):
     return {"message": f"Deployment of SUT {sut_name} has been started."}
 
 @app.get("/plot/list")
-def list_plots(request: SingleIteration):
+def list_plots(request: ResultEntry, iteration: int):
     """List all available plots for a specific iteration."""
     workload = request.workload
     branch_name = request.branch_name
-    experiment_number = request.experiment_number
+    experiment_number = iteration
     timestamp = request.timestamp
 
     results_path = Path(RESULTS_DIR) / timestamp / workload / branch_name / str(experiment_number)
@@ -293,7 +408,7 @@ def list_plots(request: SingleIteration):
     return {"plots": plots}
 
 @app.get("/plot/download")
-def download_plot(request: SingleIteration):
+def download_plot(request: ResultEntry):
     """Download a specific plot for a given iteration."""
     workload = request.workload
     branch_name = request.branch_name

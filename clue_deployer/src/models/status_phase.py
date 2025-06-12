@@ -1,6 +1,6 @@
 from enum import Enum
 
-class Phase(str, Enum):
+class StatusPhase(str, Enum):
     PREPARING_CLUSTER = "Preparing the cluster"
     DEPLOYING_SUT = "Deploying SUT"
     WAITING = "Waiting"

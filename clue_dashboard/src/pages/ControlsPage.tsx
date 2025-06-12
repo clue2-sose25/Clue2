@@ -1,30 +1,18 @@
-import {useEffect, useState} from "react";
-import type {Deployment as DeploymentForm} from "../models/Deployment";
-import LogsPanel from "../components/LogsPanel";
-import {InfoIcon} from "@phosphor-icons/react";
+import {useContext, useEffect, useState} from "react";
+import {DeploymentContext} from "../contexts/DeploymentContext";
+import {InfoIcon, RocketLaunchIcon} from "@phosphor-icons/react";
 import type {SUT} from "../models/SUT";
 import {Tooltip} from "@mui/material";
-
-const workloadOptions = ["shaped", "rampup", "pausing", "fixed"];
+import {workloadOptions, type Workload} from "../models/DeploymentForm";
+import {useNavigate} from "react-router";
 
 const ControlsPage = () => {
-  const defaultDeploymentForm: DeploymentForm = {
-    SutName: null,
-    experimentName: null,
-    workload: "shaped",
-    iterations: 1,
-    deploy_only: false,
-  };
+  const {currentDeployment, setCurrentDeployment, setIfDeploying} =
+    useContext(DeploymentContext);
 
-  const [currentDeployment, setCurrentDeployment] = useState<DeploymentForm>(
-    defaultDeploymentForm
-  );
-  const [ifDeploying, setIfDeploying] = useState<boolean>(false);
+  const navigate = useNavigate();
   const [availableSUTs, setAvailableSUTs] = useState<SUT[]>([]);
 
-  /**
-   * Fetches the list of available SUTs
-   */
   useEffect(() => {
     fetch("/api/list/sut")
       .then((r) => r.json())
@@ -32,11 +20,9 @@ const ControlsPage = () => {
       .catch(() => setAvailableSUTs([]));
   }, []);
 
-  /**
-   * Deploys a SUT
-   */
   const deploySUT = async () => {
     if (!currentDeployment.SutName || !currentDeployment.experimentName) return;
+
     await fetch("/api/deploy/sut", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
@@ -47,7 +33,9 @@ const ControlsPage = () => {
         deploy_only: currentDeployment.deploy_only,
       }),
     });
+
     setIfDeploying(true);
+    navigate("/dashboard");
   };
 
   return (
@@ -56,6 +44,7 @@ const ControlsPage = () => {
         <p className="text-xl font-medium">Deploy CLUE</p>
         <p>Choose your parameters for the benchmark</p>
       </div>
+
       <div className="flex flex-col gap-4 w-1/3">
         {/* SUT Dropdown */}
         <div className="flex flex-col gap-2">
@@ -94,6 +83,7 @@ const ControlsPage = () => {
             ))}
           </select>
         </div>
+
         {/* Experiment Dropdown */}
         <div className="flex flex-col gap-2">
           <label
@@ -115,12 +105,12 @@ const ControlsPage = () => {
               !currentDeployment.SutName ? "opacity-50" : ""
             }`}
             value={currentDeployment.experimentName || ""}
-            onChange={(e) => {
+            onChange={(e) =>
               setCurrentDeployment({
                 ...currentDeployment,
                 experimentName: e.target.value,
-              });
-            }}
+              })
+            }
             disabled={!currentDeployment.SutName}
           >
             <option value="" disabled>
@@ -136,11 +126,12 @@ const ControlsPage = () => {
               ))}
           </select>
         </div>
+
         {/* Workload Type Dropdown */}
         <div className="flex flex-col gap-2">
           <label
             htmlFor="workload-select"
-            className="flex gap-2 items-center text-sm font-medium text-nowrap"
+            className="flex gap-2 items-center text-sm font-medium"
           >
             Workload Type
             <Tooltip
@@ -154,13 +145,13 @@ const ControlsPage = () => {
           <select
             id="workload-select"
             className="border p-2 w-full"
-            value={currentDeployment.workload || ""}
-            onChange={(e) => {
+            value={currentDeployment.workload ?? ""}
+            onChange={(e) =>
               setCurrentDeployment({
                 ...currentDeployment,
-                workload: e.target.value,
-              });
-            }}
+                workload: e.target.value as Workload,
+              })
+            }
           >
             {workloadOptions.map((w) => (
               <option key={w} value={w}>
@@ -169,11 +160,12 @@ const ControlsPage = () => {
             ))}
           </select>
         </div>
+
         {/* Iterations Input */}
         <div className="flex flex-col gap-2">
           <label
             htmlFor="iterations-input"
-            className="flex gap-2 items-center text-sm font-medium text-nowrap"
+            className="flex gap-2 items-center text-sm font-medium"
           >
             Iterations
             <Tooltip
@@ -198,6 +190,7 @@ const ControlsPage = () => {
             }
           />
         </div>
+
         {/* Deploy Only Checkbox */}
         <div className="flex items-center py-2 justify-between gap-2">
           <label
@@ -218,14 +211,15 @@ const ControlsPage = () => {
             type="checkbox"
             className="border w-5 h-5"
             checked={currentDeployment.deploy_only}
-            onChange={(e) => {
+            onChange={(e) =>
               setCurrentDeployment({
                 ...currentDeployment,
                 deploy_only: e.target.checked,
-              });
-            }}
+              })
+            }
           />
         </div>
+
         {/* Deploy Button */}
         <button
           className="rounded p-2 bg-blue-500 text-white hover:bg-blue-700"
@@ -234,10 +228,12 @@ const ControlsPage = () => {
             !currentDeployment.SutName || !currentDeployment.experimentName
           }
         >
-          Deploy experiment
+          <div className="flex items-center justify-center gap-2">
+            <RocketLaunchIcon size={24} className="inline-block" />
+            <span className="font-medium">Deploy experiment</span>
+          </div>
         </button>
       </div>
-      <div className="w-full">{<LogsPanel ifDeploying={ifDeploying} />}</div>
     </div>
   );
 };

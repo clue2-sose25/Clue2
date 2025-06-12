@@ -20,7 +20,7 @@ fi
 # If DEPLOY_AS_SERVICE = True, deploy CLUE as a service
 if [ "$DEPLOY_AS_SERVICE" = "true" ]; then
     echo "[ENTRYPOINT.SH] Starting FastAPI service..."
-    exec uvicorn clue_deployer.service.service:app --host 0.0.0.0 --port 8000
+    exec uvicorn clue_deployer.src.service.service:app --host 0.0.0.0 --port 8000
     exit 0
 fi
 

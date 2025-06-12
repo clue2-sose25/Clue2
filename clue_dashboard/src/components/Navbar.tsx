@@ -1,31 +1,45 @@
-import {NavLink} from "react-router";
+import {
+  CommandIcon,
+  FilesIcon,
+  GaugeIcon,
+} from "@phosphor-icons/react/dist/ssr";
+import {NavLink} from "react-router"; // Assuming you're really using this
 
 const Navbar = () => {
   const pages = [
-    {name: "CONTROL PANEL", href: "/"},
-    {name: "BENCHMARKS", href: "/benchmarks"},
-    {name: "RESULTS ANALYSIS", href: "/results"},
+    {name: "CONTROL PANEL", href: "/", icon: <CommandIcon size={20} />},
+    {name: "DASHBOARD", href: "/dashboard", icon: <GaugeIcon size={20} />},
+    {name: "RESULTS", href: "/results", icon: <FilesIcon size={20} />},
     {name: "LOGS", href: "/logs"},
   ];
 
   return (
-    <div className="flex w-full border-b justify-between shadow-sm p-4 ">
-      <div className="font-semibold flex flex-col">
-        <div className="text-xl">CLUE</div>
-        <div className="text-xs">DASHBOARD</div>
-      </div>
+    <div className="flex w-full border-b justify-between shadow-sm p-4">
+      <NavLink key={"home"} to="/">
+        <div className="font-semibold flex flex-col">
+          <div className="text-xl">CLUE</div>
+          <div className="text-xs">DASHBOARD</div>
+        </div>
+      </NavLink>
       <div className="flex gap-8">
-        {pages.map((page) => {
-          return (
-            <NavLink
-              className="flex items-center text-sm"
-              to={page.href}
-              key={page.name}
-            >
-              {page.name}
-            </NavLink>
-          );
-        })}
+        {pages.map((page) => (
+          <NavLink
+            key={page.name}
+            to={page.href}
+            className={({isActive}) =>
+              `flex items-center gap-1 text-sm font-medium ${
+                isActive
+                  ? "border-b-1 border-black"
+                  : "border-b-1 border-transparent"
+              }`
+            }
+            end
+          >
+            <div className="flex gap-1 h-2">
+              {page.icon} {page.name}
+            </div>
+          </NavLink>
+        ))}
       </div>
     </div>
   );
