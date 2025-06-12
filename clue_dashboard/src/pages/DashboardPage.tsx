@@ -114,7 +114,7 @@ const DashboardPage = () => {
                 </button>
               </div>
             ) : (
-              <div>
+              <div className="w-full h-[500px]">
                 <p className="flex gap-2 font-medium text-xl items-center pt-2 pb-4">
                   <WarningIcon size={24} /> No experiment in progress!
                 </p>{" "}
