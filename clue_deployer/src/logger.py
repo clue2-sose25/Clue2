@@ -225,6 +225,9 @@ def setup_shared_logging():
     
     return main_logger, shared_buffer
 
+# Initialize shared logging at module level for easy importing
+logger, shared_log_buffer = setup_shared_logging()
+
 # Utility function to get logger for child processes
 def get_child_process_logger(process_name, shared_buffer=None):
     """Get a logger configured for a child process."""

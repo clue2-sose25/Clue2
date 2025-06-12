@@ -17,7 +17,7 @@ from clue_deployer.src.models.status_response import StatusResponse
 from clue_deployer.src.models.sut import Sut
 from clue_deployer.src.models.suts_response import SutsResponse
 from clue_deployer.src.service.status_manager import StatusManager
-from clue_deployer.src.logger import get_child_process_logger, logger, setup_shared_logging
+from clue_deployer.src.logger import get_child_process_logger, logger, shared_log_buffer
 from clue_deployer.src.config.config import ENV_CONFIG
 from clue_deployer.src.logger import LOG_BUFFER
 from clue_deployer.src.main import ClueRunner
@@ -26,7 +26,6 @@ from clue_deployer.src.config import SUTConfig, Config
 # Initialize multiprocessing lock and value for deployment synchronization. Used for deployments.
 state_lock = multiprocessing.Lock()
 is_deploying = multiprocessing.Value('i', 0)
-main_logger, shared_log_buffer = setup_shared_logging()
 
 
 # Root page redirect to swagger /docs
@@ -87,8 +86,19 @@ def get_logs(n: int = None):
         logs = shared_log_buffer.get_logs(n)
         return {"logs": logs, "count": len(logs)}
     except Exception as e:
-        main_logger.error(f"Failed to retrieve logs: {str(e)}")
+        logger.error(f"Failed to retrieve logs: {str(e)}")
         return {"logs": [], "count": 0, "error": str(e)}
+
+@app.delete("/api/logs")
+def clear_logs():
+    """Clear the log buffer."""
+    try:
+        shared_log_buffer.clear()
+        logger.info("Log buffer cleared")
+        return {"message": "Log buffer cleared successfully"}
+    except Exception as e:
+        logger.error(f"Failed to clear logs: {str(e)}")
+        return {"error": str(e)}
 
 @app.get("/api/logs/stream")
 async def stream_logs():
@@ -403,11 +413,11 @@ def deploy_sut(request: DeployRequest):
                   state_lock, is_deploying, shared_log_buffer)
         )
         process.start()
-        main_logger.info(f"Started deployment process for SUT {sut_name}")
+        logger.info(f"Started deployment process for SUT {sut_name}")
     except Exception as e:
         with state_lock:
             is_deploying.value = 0
-        main_logger.error(f"Failed to start deployment process: {str(e)}")
+        logger.error(f"Failed to start deployment process: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to start deployment: {str(e)}")
     
     return {"message": f"Deployment of SUT {sut_name} has been started."}

@@ -3,7 +3,7 @@ import {
   FilesIcon,
   GaugeIcon,
 } from "@phosphor-icons/react/dist/ssr";
-import {NavLink} from "react-router"; // Assuming you're really using this
+import {NavLink} from "react-router";
 
 const Navbar = () => {
   const pages = [
