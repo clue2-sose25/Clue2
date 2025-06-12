@@ -8,6 +8,7 @@ from fastapi.responses import StreamingResponse, RedirectResponse
 from pathlib import Path
 import yaml
 import multiprocessing
+from clue_deployer.src.models.logs_response import LogsResponse
 from clue_deployer.src.models.result_entry import ResultEntry
 from clue_deployer.src.models.deploy_request import DeployRequest
 from clue_deployer.src.models.health_response import HealthResponse
