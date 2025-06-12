@@ -45,8 +45,6 @@ const ExperimentsResultsPage = () => {
 
   return (
     <div className="w-full h-full flex flex-col gap-6 p-6 pt-4">
-      <p className="text-xl font-medium">Experiment Results</p>
-
       <TableContainer component={Paper}>
         <Table>
           <TableHead>

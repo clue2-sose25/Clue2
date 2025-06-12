@@ -1,6 +1,6 @@
 import {useContext, useEffect, useState} from "react";
 import {DeploymentContext} from "../contexts/DeploymentContext";
-import {InfoIcon} from "@phosphor-icons/react";
+import {InfoIcon, RocketLaunchIcon} from "@phosphor-icons/react";
 import type {SUT} from "../models/SUT";
 import {Tooltip} from "@mui/material";
 import {workloadOptions, type Workload} from "../models/DeploymentForm";
@@ -228,7 +228,10 @@ const ControlsPage = () => {
             !currentDeployment.SutName || !currentDeployment.experimentName
           }
         >
-          Deploy experiment
+          <div className="flex items-center justify-center gap-2">
+            <RocketLaunchIcon size={24} className="inline-block" />
+            <span className="font-medium">Deploy experiment</span>
+          </div>
         </button>
       </div>
     </div>

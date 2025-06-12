@@ -22,7 +22,7 @@ const LogsPanel: React.FC = () => {
   }, [ifDeploying]);
 
   return (
-    <div className="flex-1 border p-2 overflow-y-auto h-96 bg-black text-white whitespace-pre-wrap">
+    <div className="flex-1 border p-2 overflow-y-auto h-full w-full bg-black text-white whitespace-pre-wrap">
       {"No logs to show. Deploy an experiment."}
     </div>
   );
