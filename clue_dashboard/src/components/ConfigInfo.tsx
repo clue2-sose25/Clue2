@@ -1,5 +1,6 @@
 import {
   CalendarDotsIcon,
+  FileIcon,
   FlaskIcon,
   LightningIcon,
   RepeatIcon,
@@ -24,6 +25,11 @@ const ConfigInfo: React.FC<ConfigInfoProps> = ({resultEntry}) => {
   };
 
   const configItems = [
+    {
+      label: "Experiment ID",
+      value: resultEntry.id,
+      icon: <FileIcon size={24} />,
+    },
     {
       label: "SUT (System Under Test)",
       value: "SUT",

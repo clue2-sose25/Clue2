@@ -3,7 +3,7 @@ import {NavLink} from "react-router";
 const Navbar = () => {
   const pages = [
     {name: "CONTROL PANEL", href: "/"},
-    {name: "EXPERIMENTS RESULTS", href: "/results"},
+    {name: "RESULTS", href: "/results"},
   ];
 
   return (

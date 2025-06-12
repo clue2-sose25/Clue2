@@ -1,9 +1,9 @@
-import {Fragment, useEffect, useState} from "react";
+import {useEffect, useState} from "react";
 import type {Metric} from "../models/Metric";
 import {
   ArrowLeftIcon,
   DownloadSimpleIcon,
-  FlaskIcon,
+  FilesIcon,
   GearIcon,
   RepeatIcon,
 } from "@phosphor-icons/react";
@@ -67,9 +67,9 @@ const ResultPage = () => {
   }
 
   return (
-    <Fragment>
+    <div className="flex flex-col gap-6">
+      {/* Top Bar with Back-Link and Buttons */}
       <div className="flex flex-col gap-4">
-        {/* Top Bar with Back-Link and Buttons */}
         <div className="flex justify-between items-center">
           <Link
             to="/results"
@@ -87,25 +87,21 @@ const ResultPage = () => {
           </div>
         </div>
 
-        {/* Header */}
-        <div className="flex flex-col gap-2">
-          <div className="flex gap-2">
-            <FlaskIcon size="24" />
-            <p className="text-xl font-medium">Experiment:</p>
+        {/* Configuration Details */}
+        <div className="flex flex-col gap-4">
+          <div className="flex gap-2 items-center">
+            <GearIcon size="24" />
+            <p className="text-xl font-medium">Experiment Config</p>
           </div>
-
-          <p className="text-lg text-gray-700">{resultEntry.id}</p>
+          <ConfigInfo resultEntry={resultEntry} />
         </div>
 
-        <div className="flex gap-2 items-center">
-          <GearIcon size="24" />
-          <p className="text-xl font-medium">Configuration Details</p>
-        </div>
-        <ConfigInfo resultEntry={resultEntry} />
-
-        {/* Summary Cards */}
-        <div className="flex flex-col gap-6 mt-8">
-          <h3 className="text-sm font-semibold">Results Summary</h3>
+        {/* Results Summary */}
+        <div className="flex flex-col gap-4">
+          <div className="flex gap-2 items-center">
+            <FilesIcon size="24" />
+            <p className="text-xl font-medium">Results summary</p>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {metrics.length > 0 ? (
               metrics.map((m) => (
@@ -123,27 +119,26 @@ const ResultPage = () => {
               <div>No metrics available</div>
             )}
           </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <img
-            src="/api/static/request-chart.png"
-            alt="Request Chart"
-            className="w-full rounded border"
-          />
-          <img
-            src="/api/static/resource-chart.png"
-            alt="Resource Efficiency"
-            className="w-full rounded border"
-          />
-          <img
-            src="/api/static/platform-chart.png"
-            alt="Platform Overhead"
-            className="w-full rounded border"
-          />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <img
+              src="/api/static/request-chart.png"
+              alt="Request Chart"
+              className="w-full rounded border"
+            />
+            <img
+              src="/api/static/resource-chart.png"
+              alt="Resource Efficiency"
+              className="w-full rounded border"
+            />
+            <img
+              src="/api/static/platform-chart.png"
+              alt="Platform Overhead"
+              className="w-full rounded border"
+            />
+          </div>
         </div>
       </div>
-    </Fragment>
+    </div>
   );
 };
 
