@@ -23,7 +23,7 @@ const LogsPanel: React.FC = () => {
 
   return (
     <div className="flex-1 border p-2 overflow-y-auto h-full w-full bg-black text-white whitespace-pre-wrap">
-      {"No logs to show. Deploy an experiment."}
+      {"No logs to show. Please, deploy an experiment..."}
     </div>
   );
 };
