@@ -18,9 +18,8 @@ from clue_deployer.src.models.status_response import StatusResponse
 from clue_deployer.src.models.sut import Sut
 from clue_deployer.src.models.suts_response import SutsResponse
 from clue_deployer.src.service.status_manager import StatusManager
-from clue_deployer.src.logger import LEN_LOG_BUFFER, get_child_process_logger, logger, shared_log_buffer
+from clue_deployer.src.logger import get_child_process_logger, logger, shared_log_buffer
 from clue_deployer.src.config.config import ENV_CONFIG
-from clue_deployer.src.logger import LOG_BUFFER
 from clue_deployer.src.main import ClueRunner
 from clue_deployer.src.config import SUTConfig, Config
 
@@ -101,13 +100,15 @@ def clear_logs():
         logger.error(f"Failed to clear logs: {str(e)}")
         return {"error": str(e)}
 
+
 @app.get("/api/logs/stream")
 async def stream_logs():
     """Stream log buffer updates using Server-Sent Events."""
-    
+
     async def event_generator():
         last_count = 0
-        
+        last_version = shared_log_buffer.get_version()  # Track version to detect clears
+
         # Send initial logs
         try:
             current_logs = shared_log_buffer.get_logs()
@@ -117,27 +118,34 @@ async def stream_logs():
                 last_count = len(current_logs)
         except Exception as e:
             yield f"data: {json.dumps({'error': f'Failed to get initial logs: {str(e)}'})}\n\n"
-        
+
         # Stream new logs
         while True:
             try:
-                await asyncio.sleep(0.5)  # Check every 500ms
+                await asyncio.sleep(0.5)
+
+                current_version = shared_log_buffer.get_version()
                 current_logs = shared_log_buffer.get_logs()
                 current_count = len(current_logs)
-                
-                # If we have new logs, send only the new ones
+
+                # If buffer was cleared, reset counters
+                if current_version != last_version:
+                    last_version = current_version
+                    last_count = 0
+
+                # Send new logs
                 if current_count > last_count:
                     new_logs = current_logs[last_count:]
                     for log in new_logs:
                         yield f"data: {json.dumps({'log': log})}\n\n"
                     last_count = current_count
-                    
+
             except Exception as e:
                 yield f"data: {json.dumps({'error': f'Stream error: {str(e)}'})}\n\n"
-                await asyncio.sleep(1)  # Wait longer on error
-    
+                await asyncio.sleep(1)  # Slow down on error
+
     return StreamingResponse(
-        event_generator(), 
+        event_generator(),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
