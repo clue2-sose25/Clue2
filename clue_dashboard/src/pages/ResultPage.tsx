@@ -3,10 +3,13 @@ import type {Metric} from "../models/Metric";
 import {
   ArrowLeftIcon,
   DownloadSimpleIcon,
+  FlaskIcon,
+  GearIcon,
   RepeatIcon,
 } from "@phosphor-icons/react";
 import {Link, useParams} from "react-router";
 import type {ResultEntry} from "../models/ResultEntry";
+import ConfigInfo from "../components/ConfigInfo";
 
 // Define params type for useParams
 type ResultEntryParams = {
@@ -16,7 +19,6 @@ type ResultEntryParams = {
 const ResultPage = () => {
   // The ID of the results
   const {resultEntryId} = useParams<ResultEntryParams>();
-  console.log(resultEntryId);
 
   const [metrics, setMetrics] = useState<Metric[]>([]);
   const [resultEntry, setResultEntry] = useState<ResultEntry | null>(null);
@@ -77,33 +79,29 @@ const ResultPage = () => {
           </Link>
           <div className="flex gap-4">
             <button className="flex items-center gap-2 border px-4 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
-              <RepeatIcon size={20} /> REPEAT BENCHMARK
+              <RepeatIcon size={20} /> Repeat benchmark
             </button>
             <button className="flex items-center gap-2 border px-4 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
-              <DownloadSimpleIcon size={20} /> DOWNLOAD RESULTS
+              <DownloadSimpleIcon size={20} /> Download results
             </button>
           </div>
         </div>
 
         {/* Header */}
-        <div className="mb-8">
-          <p className="text-xl font-medium">Experiment:</p>
-          <p className="text-lg text-gray-700">
-            {resultEntry.id || "No path specified"}
-          </p>
+        <div className="flex flex-col gap-2">
+          <div className="flex gap-2">
+            <FlaskIcon size="24" />
+            <p className="text-xl font-medium">Experiment:</p>
+          </div>
+
+          <p className="text-lg text-gray-700">{resultEntry.id}</p>
         </div>
 
-        {/* Config Info */}
-        <div className="bg-gray-100 dark:bg-gray-400 rounded p-4 text-sm leading-relaxed">
-          <div>
-            <strong>Config:</strong>
-          </div>
-          <div>SUT: TO-DO</div>
-          <div>Experiment: {resultEntry.branch_name}</div>
-          <div>Workload type: {resultEntry.workload}</div>
-          <div>Iterations: {resultEntry.iterations}</div>
-          <div>Timestamp: {resultEntry.timestamp}</div>
+        <div className="flex gap-2 items-center">
+          <GearIcon size="24" />
+          <p className="text-xl font-medium">Configuration Details</p>
         </div>
+        <ConfigInfo resultEntry={resultEntry} />
 
         {/* Summary Cards */}
         <div className="flex flex-col gap-6 mt-8">
