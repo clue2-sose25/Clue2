@@ -1,5 +1,5 @@
 import {DownloadSimpleIcon, RepeatIcon, TrashIcon} from "@phosphor-icons/react";
-import {useEffect, useState} from "react";
+import React, {useEffect, useState} from "react";
 import {Link} from "react-router";
 import {
   Table,
@@ -18,6 +18,18 @@ const ExperimentsResultsPage = () => {
   const [results, setResults] = useState<ResultEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      const res = await fetch(`/api/results/${id}`, {method: "DELETE"});
+      if (!res.ok) throw new Error("Failed to delete");
+      setResults((prev) => prev.filter((r) => r.id !== id));
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
     fetch("/api/results")
@@ -90,7 +102,7 @@ const ExperimentsResultsPage = () => {
                     </IconButton>
                   </Tooltip>
                   <Tooltip title="Delete results" arrow placement="top">
-                    <IconButton onClick={() => {}}>
+                    <IconButton onClick={(e) => handleDelete(result.id, e)}>
                       <TrashIcon size={20} color="red" />
                     </IconButton>
                   </Tooltip>

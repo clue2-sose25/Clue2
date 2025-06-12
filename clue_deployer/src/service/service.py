@@ -2,6 +2,7 @@ import json
 import os
 import zipfile
 import io
+import shutil
 import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, status
@@ -393,7 +394,53 @@ def download_results(result_id: str):
     except Exception as e:
         logger.exception(f"Unexpected error while downloading result '{result_id}'.")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while downloading result: {str(e)}")
-    
+
+@app.delete("/api/results/{result_id}")
+def delete_result(result_id: str):
+    """Delete a specific result directory."""
+    results_base_path = Path(RESULTS_DIR)
+
+    if not results_base_path.exists():
+        raise HTTPException(status_code=404, detail=f"Results directory {results_base_path} does not exist")
+
+    try:
+        # Locate the directory matching the provided ID by traversing
+        for timestamp_dir in results_base_path.iterdir():
+            if not timestamp_dir.is_dir():
+                continue
+            timestamp = timestamp_dir.name.strip()
+
+            for workload_dir in timestamp_dir.iterdir():
+                if not workload_dir.is_dir():
+                    continue
+                workload_name = workload_dir.name.strip()
+
+                for branch_dir in workload_dir.iterdir():
+                    if not branch_dir.is_dir():
+                        continue
+                    branch_name = branch_dir.name.strip()
+
+                    expected_id = f"{timestamp}_{workload_name}_{branch_name}"
+                    if expected_id == result_id:
+                        # Remove the branch directory and clean up parents
+                        shutil.rmtree(branch_dir)
+
+                        if not any(workload_dir.iterdir()):
+                            workload_dir.rmdir()
+                            if not any(timestamp_dir.iterdir()):
+                                timestamp_dir.rmdir()
+
+                        return {"message": f"Result {result_id} deleted"}
+
+        # If we reach here, the result wasn't found
+        raise HTTPException(status_code=404, detail=f"Result with ID '{result_id}' not found")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Unexpected error while deleting result '{result_id}'.")
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred while deleting result: {str(e)}")
+        
 @app.get("/api/config/sut/{sut_name}", response_model=SUTConfig)
 async def get_sut_config(sut_name: str):
     """Get a specific SUT configuration."""
