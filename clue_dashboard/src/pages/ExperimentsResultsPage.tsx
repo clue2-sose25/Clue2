@@ -12,17 +12,7 @@ import {
   IconButton,
   Tooltip,
 } from "@mui/material";
-
-interface Iteration {
-  workload: string;
-  branch_name: string;
-  experiment_number: number;
-}
-
-interface ResultEntry {
-  timestamp: string;
-  iterations: Iteration[];
-}
+import type {ResultEntry} from "../models/ResultEntry";
 
 const ExperimentsResultsPage = () => {
   const [results, setResults] = useState<ResultEntry[]>([]);

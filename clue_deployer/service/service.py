@@ -7,22 +7,18 @@ from fastapi.responses import StreamingResponse, RedirectResponse
 from pathlib import Path
 import yaml
 import multiprocessing
+from clue_deployer.models.ResultEntry import ResultEntry
+from clue_deployer.models.DeployRequest import DeployRequest
+from clue_deployer.models.HealthResponse import HealthResponse
+from clue_deployer.models.ResultsResponse import ResultsResponse
+from clue_deployer.models.StatusOut import StatusOut
+from clue_deployer.models.Sut import Sut
+from clue_deployer.models.SutListResponse import SutListResponse
 from clue_deployer.service.status_manager import StatusManager
 from clue_deployer.src.logger import logger
 from clue_deployer.src.config.config import ENV_CONFIG
 from clue_deployer.src.main import ClueRunner
 from clue_deployer.src.config import SUTConfig, Config
-from clue_deployer.service.models import (
-    HealthResponse,
-    Sut,
-    SutListResponse,
-    Timestamp,
-    Iteration,
-    ResultTimestampResponse,
-    DeployRequest,
-    StatusOut,
-    SingleIteration
-)
 
 # Initialize multiprocessing lock and value for deployment synchronization. Used for deployments.
 state_lock = multiprocessing.Lock()
@@ -112,28 +108,28 @@ async def list_sut():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while listing SUTs: {str(e)}")
 
-@app.get("/api/list/results", response_model=ResultTimestampResponse)
+@app.get("/api/list/results", response_model=ResultsResponse)
 async def list_all_results():
     """List all results, structured by timestamp, workload, branch, and experiment number."""
     results_base_path = Path(RESULTS_DIR)
-
+    # Check for results directory
     if not results_base_path.is_dir():
         logger.error(f"Results directory not found: {results_base_path}")
         raise HTTPException(status_code=404, detail=f"Results directory not found: {results_base_path}")
-    
+    # List the results
     try:
-        processed_timestamps = []
+        processed_results = []
         
-        for timestamp_dir in results_base_path.iterdir():
-            if not timestamp_dir.is_dir():
-                logger.debug(f"Skipping non-directory entry in results: {timestamp_dir.name}")
+        for results_dir in results_base_path.iterdir():
+            if not results_dir.is_dir():
+                logger.debug(f"Skipping non-directory entry in results: {results_dir.name}")
                 continue
 
-            timestamp_data_obj = Timestamp(timestamp=timestamp_dir.name.strip(), iterations=[])
+            timestamp = results_dir.name.strip()
             
-            for workload_dir in timestamp_dir.iterdir():
+            for workload_dir in results_dir.iterdir():
                 if not workload_dir.is_dir():
-                    logger.debug(f"Skipping non-directory entry in timestamp '{timestamp_dir.name}': {workload_dir.name}")
+                    logger.debug(f"Skipping non-directory entry in timestamp '{results_dir.name}': {workload_dir.name}")
                     continue
                 
                 workload_name = workload_dir.name.strip()
@@ -153,20 +149,28 @@ async def list_all_results():
                         exp_num_str = exp_num_dir.name.strip()
                         try:
                             experiment_number_int = int(exp_num_str)
-                            timestamp_data_obj.iterations.append(
-                                Iteration(
+                            
+                            # Count iterations (subdirectories) in the experiment directory
+                            iterations_count = sum(1 for item in exp_num_dir.iterdir() if item.is_dir())
+                            
+                            # Generate a unique ID for this result entry
+                            result_id = f"{timestamp}_{workload_name}_{branch_name_str}_{experiment_number_int}"
+                            
+                            processed_results.append(
+                                ResultEntry(
+                                    id=result_id,
                                     workload=workload_name,
                                     branch_name=branch_name_str,
-                                    experiment_number=experiment_number_int
+                                    experiment_number=experiment_number_int,
+                                    timestamp=timestamp,
+                                    iterations=iterations_count
                                 )
                             )
                         except ValueError:
-                            logger.warning(f"Could not convert experiment number '{exp_num_str}' to int for {timestamp_dir.name}/{workload_name}/{branch_name_str}. Skipping.")
+                            logger.warning(f"Could not convert experiment number '{exp_num_str}' to int for {results_dir.name}/{workload_name}/{branch_name_str}. Skipping.")
                             raise ValueError(f"experiment_number {exp_num_str} cannot be casted into an integer.")
             
-            processed_timestamps.append(timestamp_data_obj)
-            
-        return ResultTimestampResponse(results=processed_timestamps)
+        return ResultsResponse(results=processed_results)
     except PermissionError:
         logger.exception("Permission error while accessing results directory.")
         raise HTTPException(status_code=500, detail="Permission denied when accessing results.")
@@ -251,11 +255,11 @@ def deploy_sut(request: DeployRequest):
     return {"message": f"Deployment of SUT {sut_name} has been started."}
 
 @app.get("/plot/list")
-def list_plots(request: SingleIteration):
+def list_plots(request: ResultEntry, iteration: int):
     """List all available plots for a specific iteration."""
     workload = request.workload
     branch_name = request.branch_name
-    experiment_number = request.experiment_number
+    experiment_number = iteration
     timestamp = request.timestamp
 
     results_path = Path(RESULTS_DIR) / timestamp / workload / branch_name / str(experiment_number)
@@ -270,7 +274,7 @@ def list_plots(request: SingleIteration):
     return {"plots": plots}
 
 @app.get("/plot/download")
-def download_plot(request: SingleIteration):
+def download_plot(request: ResultEntry):
     """Download a specific plot for a given iteration."""
     workload = request.workload
     branch_name = request.branch_name
