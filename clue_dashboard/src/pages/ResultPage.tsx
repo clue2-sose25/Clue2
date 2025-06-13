@@ -1,4 +1,4 @@
-import {useEffect, useState} from "react";
+import {Fragment, useEffect, useState} from "react";
 import type {Metric} from "../models/Metric";
 import {
   ArrowLeftIcon,
@@ -82,6 +82,34 @@ const ResultPage = () => {
         }
         const resultData: ResultEntry = await resultRes.json();
         setResultEntry(resultData);
+
+        const res = await fetch(`/api/results/assets/${resultEntryId}`);
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || "Failed to load result assets");
+        }
+
+        const data = await res.json();
+
+        const entries = Object.entries(data.metrics) as [
+          string,
+          string | number | null | boolean
+        ][];
+        const metricsArr: Metric[] = entries.map(([label, value]) => ({
+          label,
+          value:
+            typeof value === "number"
+              ? Number(value.toFixed(2))
+              : typeof value === "string"
+              ? value
+              : JSON.stringify(value),
+        }));
+        setMetrics(metricsArr);
+        setSvgData({
+          cpu: data.cpu_svg,
+          memory: data.memory_svg,
+          wattage: data.wattage_svg,
+        });
       } catch (err) {
         console.error("Error fetching data:", err);
         setError(
@@ -96,6 +124,12 @@ const ResultPage = () => {
 
     fetchData();
   }, [resultEntryId]);
+
+  const [svgData, setSvgData] = useState<{
+    cpu: string;
+    memory: string;
+    wattage: string;
+  } | null>(null);
 
   if (loading) {
     return <div className="p-4">Loading...</div>;
@@ -144,39 +178,40 @@ const ResultPage = () => {
             <FilesIcon size="24" />
             <p className="text-xl font-medium">Results summary</p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
             {metrics.length > 0 ? (
               metrics.map((m) => (
                 <div
                   key={m.label}
-                  className="border rounded-xl p-4 shadow bg-white dark:bg-gray-400"
+                  className="border rounded-xl shadow bg-white py-1 px-3"
                 >
-                  <div className="text-sm text-gray-500">{m.label}</div>
-                  <div className="text-xl font-bold mt-1 text-center">
+                  <span className="text-sm">{m.label}: </span>
+                  <span className="text-md font-bold text-center">
                     {m.value}
-                  </div>
+                  </span>
                 </div>
               ))
             ) : (
               <div>No metrics available</div>
             )}
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <img
-              src="/api/static/request-chart.png"
-              alt="Request Chart"
-              className="w-full rounded border"
-            />
-            <img
-              src="/api/static/resource-chart.png"
-              alt="Resource Efficiency"
-              className="w-full rounded border"
-            />
-            <img
-              src="/api/static/platform-chart.png"
-              alt="Platform Overhead"
-              className="w-full rounded border"
-            />
+          <div className="w-full max-w-full grid grid-cols-1 md:grid-cols-3 gap-4">
+            {svgData && (
+              <Fragment>
+                <div
+                  className="w-32 h-32"
+                  dangerouslySetInnerHTML={{__html: svgData.cpu}}
+                />
+                <div
+                  className="w-32 h-32"
+                  dangerouslySetInnerHTML={{__html: svgData.memory}}
+                />
+                <div
+                  className="w-32 h-32"
+                  dangerouslySetInnerHTML={{__html: svgData.wattage}}
+                />
+              </Fragment>
+            )}
           </div>
         </div>
       </div>
