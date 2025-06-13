@@ -80,6 +80,55 @@ def read_status():
     phase, msg = StatusManager.get()
     return StatusResponse(is_deploying=deploying, phase=phase, message=msg or None)
 
+@app.get("/api/status/stream")
+async def stream_status(request: Request):
+    """Stream status updates using Server-Sent Events."""
+
+    async def event_generator():
+        with state_lock:
+            last_deploying = bool(is_deploying.value)
+        last_phase, last_detail = StatusManager.get()
+
+        # Send initial status
+        initial = {
+            "is_deploying": last_deploying,
+            "phase": last_phase.value,
+            "detail": last_detail,
+        }
+        yield f"data: {json.dumps(initial)}\n\n"
+
+        while True:
+            if await request.is_disconnected():
+                break
+            await asyncio.sleep(0.5)
+
+            with state_lock:
+                deploying = bool(is_deploying.value)
+            phase, detail = StatusManager.get()
+
+            if deploying != last_deploying or phase != last_phase or detail != last_detail:
+                last_deploying = deploying
+                last_phase = phase
+                last_detail = detail
+                update = {
+                    "is_deploying": deploying,
+                    "phase": phase.value,
+                    "detail": detail,
+                }
+                yield f"data: {json.dumps(update)}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "Cache-Control",
+        },
+    )
+
+
 @app.get("/status")
 def simple_status():
     """Simple readiness probe used for container health checks."""
@@ -490,8 +539,9 @@ def deploy_sut(request: DeployRequest):
         # Pass the shared buffer to the child process
         process = multiprocessing.Process(
             target=run_deployment,
-            args=(config, experiment_name, sut_name, deploy_only, n_iterations, 
-                  state_lock, is_deploying, shared_log_buffer)
+            args=(config, experiment_name, sut_name, deploy_only, n_iterations,
+                  state_lock, is_deploying, shared_log_buffer,
+                  shared_status, status_lock)
         )
         process.start()
         logger.info(f"Started deployment process for SUT {sut_name}")
