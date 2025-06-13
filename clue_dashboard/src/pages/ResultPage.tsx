@@ -64,10 +64,10 @@ const ResultPage = () => {
     }
   };
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setError(null);
+useEffect(() => {
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
 
       try {
         if (!resultEntryId) {
@@ -82,6 +82,33 @@ const ResultPage = () => {
         }
         const resultData: ResultEntry = await resultRes.json();
         setResultEntry(resultData);
+
+        const res = await fetch(`/api/results/assets/${resultEntryId}`);
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || "Failed to load result assets");
+        }
+
+        const data = await res.json();
+
+        const entries = Object.entries(data.metrics) as [string, string | number | null | boolean][];
+        const metricsArr: Metric[] = entries.map(([label, value]) => ({
+          label,
+          value:
+            typeof value === "number"
+              ? Number(value.toFixed(2))
+              : typeof value === "string"
+              ? value
+              : JSON.stringify(value),
+        }));
+        setMetrics(metricsArr);
+        setSvgData({
+          cpu: data.cpu_svg,
+          memory: data.memory_svg,
+          wattage: data.wattage_svg,
+        });
+
+
       } catch (err) {
         console.error("Error fetching data:", err);
         setError(
@@ -96,6 +123,13 @@ const ResultPage = () => {
 
     fetchData();
   }, [resultEntryId]);
+
+  const [svgData, setSvgData] = useState<{
+      cpu: string;
+      memory: string;
+      wattage: string;
+  } | null>(null);
+
 
   if (loading) {
     return <div className="p-4">Loading...</div>;
@@ -162,21 +196,13 @@ const ResultPage = () => {
             )}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <img
-              src="/api/static/request-chart.png"
-              alt="Request Chart"
-              className="w-full rounded border"
-            />
-            <img
-              src="/api/static/resource-chart.png"
-              alt="Resource Efficiency"
-              className="w-full rounded border"
-            />
-            <img
-              src="/api/static/platform-chart.png"
-              alt="Platform Overhead"
-              className="w-full rounded border"
-            />
+            {svgData && (
+              <>
+                <div dangerouslySetInnerHTML={{ __html: svgData.cpu }} />
+                <div dangerouslySetInnerHTML={{ __html: svgData.memory }} />
+                <div dangerouslySetInnerHTML={{ __html: svgData.wattage }} />
+              </>
+            )}
           </div>
         </div>
       </div>
