@@ -117,7 +117,7 @@ class HelmWrapper():
                 raise FileNotFoundError(f"Chart.yaml not found at {chart_path}. Cannot add dependencies from chart.")
             
             
-            dependencies = Dependencies.load_from_yaml(chart_file)
+            dependencies = Dependencies.load_from_yaml(chart_path)
             for dependency in dependencies.dependencies:
                 logger.info(f"Adding Helm repository {dependency.name} at {dependency.repository}")
                 helm_repo_add = subprocess.run(
