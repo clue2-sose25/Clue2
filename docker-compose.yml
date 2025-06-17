@@ -23,8 +23,6 @@ services:
     container_name: clue-webui
     ports:
       - "5001:80"
-    depends_on:
-      - clue-deployer
     environment:
       DOCKER_BUILDKIT: 1
     networks:
