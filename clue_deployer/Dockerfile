@@ -30,7 +30,7 @@ RUN curl -LO https://get.helm.sh/helm-v3.14.4-linux-amd64.tar.gz && \
 
 # Copy files to run uv (better caching)
 COPY clue_deployer/pyproject.toml /app
-COPY clue_deployer/agent/ /app/agent
+COPY clue_deployer/src/agent/ /app/clue_deployer/src/agent
 RUN mkdir -p /app/clue_deployer
 RUN mkdir -p /app/data
 
