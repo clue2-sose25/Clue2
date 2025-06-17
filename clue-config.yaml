@@ -15,7 +15,7 @@ config:
   result_base_path: "results/"
   # Type of the workloads
   workloads: ["shaped"]
+  # The number of iterations to run
+  n_iterations: 1
   ### AUTOSCALING ###
   target_utilization: 70
-
-  n_iterations: 1
