@@ -100,7 +100,7 @@ To run the main CLUE2, run the task below. Make sure that all required images ar
 docker compose up -d --build clue-deployer
 ```
 
-![Running the Experiments](readme/running_experiments.png)
+![Running the Experiments](public/running_experiments.png)
 
 ### 6. 📋 (Optional) CLUE2 Deployment with local changes
 

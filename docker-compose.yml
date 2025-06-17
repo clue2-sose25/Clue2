@@ -14,13 +14,13 @@ services:
     networks:
       - clue2
 
-  # The CLUE dashboard
-  clue-dashboard:
-    image: ghcr.io/clue2-sose25/clue2/clue-dashboard:latest
+  # The CLUE webui
+  clue-webui:
+    image: ghcr.io/clue2-sose25/clue2/clue-webui:latest
     build:
-      context: ./clue_dashboard
+      context: ./clue_webui
       dockerfile: Dockerfile
-    container_name: clue-dashboard
+    container_name: clue-webui
     ports:
       - "5001:80"
     depends_on:
