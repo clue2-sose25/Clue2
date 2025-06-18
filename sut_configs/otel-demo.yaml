@@ -93,6 +93,7 @@ services:
 #TODO
 experiments:
   - name: "baseline"
+    description: "Baseline experiment for the otel-demo application"
     target_branch: "main"
     colocated_workload: true
     critical_services:

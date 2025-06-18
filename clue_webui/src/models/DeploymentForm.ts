@@ -9,7 +9,7 @@ export const workloadOptions: Workload[] = [
 
 export interface DeploymentForm {
   SutName: string | null;
-  experimentName: string | null;
+  experimentNames: string[];
   workload: Workload;
   iterations: number;
   deploy_only: boolean;

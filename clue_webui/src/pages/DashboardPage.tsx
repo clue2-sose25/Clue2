@@ -26,8 +26,8 @@ const DashboardPage = () => {
       icon: <WrenchIcon size={24} />,
     },
     {
-      label: "Experiment",
-      value: currentDeployment.experimentName,
+      label: "Experiments",
+      value: currentDeployment.experimentNames.join(", "),
       icon: <FlaskIcon size={24} />,
     },
     {
@@ -124,7 +124,7 @@ const DashboardPage = () => {
                   onClick={() => {}}
                   disabled={
                     !currentDeployment.SutName ||
-                    !currentDeployment.experimentName
+                    currentDeployment.experimentNames.length === 0
                   }
                 >
                   <div className="flex items-center justify-center gap-2">
