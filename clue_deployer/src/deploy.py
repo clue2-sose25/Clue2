@@ -178,10 +178,12 @@ class ExperimentDeployer:
             logger.info("Copying values file to results")
 
 
-    def _wait_until_services_ready(self, timeout: int = 180):
+    def _wait_until_services_ready(self):
         """
         Wait a specified amount of time for the critical services
         """
+        timeout = self.config.sut_config.timeout_for_services_ready
+        logger.info(f"Waiting for critical services to be ready for {timeout} seconds")
         v1_apps = self.apps_v1_api
         ready_services = set()
         start_time = time.time()
@@ -224,8 +226,11 @@ class ExperimentDeployer:
         """
         if self.config.sut_config.helm_chart_repo:
             # If a helm chart repo is provided, clone it
-            logger.info(f"Cloning Helm chart repository from {self.config.sut_config.helm_chart_repo} to {self.sut_path}")
-            subprocess.check_call(["git", "clone", self.config.sut_config.helm_chart_repo, str(self.sut_path)])
+            if self.sut_path.exists():
+                logger.warning(f"SUT path {self.sut_path} already exists. It will not clone the repository again.")
+            else: 
+                logger.info(f"Cloning Helm chart repository from {self.config.sut_config.helm_chart_repo} to {self.sut_path}")
+                subprocess.check_call(["git", "clone", self.config.sut_config.helm_chart_repo, str(self.sut_path)])
         elif not self.sut_path.exists():
             if not self.config.sut_config.sut_git_repo:
                 raise ValueError("SUT Git repository URL is not provided in the configuration")

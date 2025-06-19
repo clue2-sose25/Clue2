@@ -8,6 +8,7 @@ config:
   values_yaml_name: "values.yaml"
   target_service_name: "frontend" # The k8s service name (used for in-cluster communication)
   application_endpoint_path: "/" # The specific path
+  timeout_for_services_ready: 300 # 5 minutes since otel demo can take a while to start
   default_resource_limits:
     cpu: 1000
     memory: 1024
@@ -21,6 +22,8 @@ config:
 helm_replacements:
   - old_value: "ghcr.io/open-telemetry/demo"
     new_value: "registry:5000/clue/otel-demo"
+  - old_value: 'tag: ""'
+    new_value: 'tag: "clue-ots"'
 
 services:
   - name: "checkout"
@@ -108,8 +111,6 @@ experiments:
         "frontend",
         "image-provider",
         "email",
-        "accounting",
-        "cart",
         "kafka",
         "recommendation",
         "shipping",
