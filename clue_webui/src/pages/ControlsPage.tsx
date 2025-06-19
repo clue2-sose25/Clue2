@@ -49,7 +49,7 @@ const ControlsPage = () => {
         <p>Choose your parameters for the benchmark</p>
       </div>
 
-      <div className="flex flex-col gap-4 w-1/3">
+      <div className="flex flex-col gap-4 md:w-1/3 w-3/4">
         {/* SUT Dropdown */}
         <div className="flex flex-col gap-2">
           <label
@@ -106,7 +106,7 @@ const ControlsPage = () => {
             </p>
           </label>
           <div
-            className={`border p-2 flex flex-col gap-2 ${
+            className={`border p-2 flex flex-col gap-2 max-h-[10.5rem] overflow-auto  ${
               !currentDeployment.SutName ? "opacity-50" : ""
             }`}
           >
