@@ -21,7 +21,11 @@ const ControlsPage = () => {
   }, []);
 
   const deploySUT = async () => {
-    if (!currentDeployment.SutName || currentDeployment.experimentNames.length === 0) return;
+    if (
+      !currentDeployment.SutName ||
+      currentDeployment.experimentNames.length === 0
+    )
+      return;
 
     await fetch("/api/deploy/sut", {
       method: "POST",
@@ -74,7 +78,7 @@ const ControlsPage = () => {
             }}
           >
             <option value="" disabled>
-              {availableSUTs.length > 0 ? "Select SUT" : "Loading SUTs..."}
+              {availableSUTs.length > 0 ? "Select the SUT" : "Loading SUTs..."}
             </option>
             {availableSUTs.map((sut) => (
               <option key={sut.name} value={sut.name}>
@@ -86,15 +90,20 @@ const ControlsPage = () => {
 
         {/* Experiment Selection */}
         <div className="flex flex-col gap-2">
-          <label className="flex gap-2 items-center text-sm font-medium">
-            Experiments
-            <Tooltip
-              title="Select one or more experiments to run sequentially"
-              placement="right"
-              arrow
-            >
-              <InfoIcon size={18} />
-            </Tooltip>
+          <label className="flex flex-col gap-2  text-sm font-medium">
+            <div className="flex justify-start w-full gap-2 items-center">
+              Experiments
+              <Tooltip
+                title="Select one or more experiments to run sequentially"
+                placement="right"
+                arrow
+              >
+                <InfoIcon size={18} />
+              </Tooltip>
+            </div>
+            <p className="text-xs text-gray-500">
+              You can select multiple experiments; they will run sequentially.
+            </p>
           </label>
           <div
             className={`border p-2 flex flex-col gap-2 ${
@@ -105,35 +114,48 @@ const ControlsPage = () => {
               .filter((sut) => sut.name === currentDeployment.SutName)
               .flatMap((sut) => sut.experiments)
               .map((exp) => (
-                <label key={exp.name} className="flex gap-2 items-start">
-                  <input
-                    type="checkbox"
-                    className="mt-1"
-                    disabled={!currentDeployment.SutName}
-                    checked={currentDeployment.experimentNames.includes(exp.name)}
-                    onChange={() => {
-                      const exists = currentDeployment.experimentNames.includes(
+                <label
+                  key={exp.name}
+                  className="flex flex-col gap-1 items-start"
+                >
+                  <div className="flex gap-2">
+                    <input
+                      type="checkbox"
+                      className="mt-1"
+                      disabled={!currentDeployment.SutName}
+                      checked={currentDeployment.experimentNames.includes(
                         exp.name
-                      );
-                      setCurrentDeployment({
-                        ...currentDeployment,
-                        experimentNames: exists
-                          ? currentDeployment.experimentNames.filter((n) => n !== exp.name)
-                          : [...currentDeployment.experimentNames, exp.name],
-                      });
-                    }}
-                  />
-                  <div className="flex flex-col">
+                      )}
+                      onChange={() => {
+                        const exists =
+                          currentDeployment.experimentNames.includes(exp.name);
+                        setCurrentDeployment({
+                          ...currentDeployment,
+                          experimentNames: exists
+                            ? currentDeployment.experimentNames.filter(
+                                (n) => n !== exp.name
+                              )
+                            : [...currentDeployment.experimentNames, exp.name],
+                        });
+                      }}
+                    />
                     <span>{exp.name}</span>
+                  </div>
+
+                  <div className="flex flex-col">
                     {exp.description && (
-                      <span className="text-xs text-gray-500">{exp.description}</span>
+                      <span className="text-xs text-gray-500">
+                        {exp.description}
+                      </span>
                     )}
                   </div>
                 </label>
               ))}
-          <p className="text-xs text-gray-500">
-              You can select multiple experiments; they will run sequentially.
-            </p>
+            {availableSUTs
+              .filter((sut) => sut.name === currentDeployment.SutName)
+              .flatMap((sut) => sut.experiments).length === 0 && (
+              <p>Select experiments</p>
+            )}
           </div>
         </div>
 
@@ -235,7 +257,8 @@ const ControlsPage = () => {
           className="rounded p-2 bg-blue-500 text-white hover:bg-blue-700"
           onClick={deploySUT}
           disabled={
-            !currentDeployment.SutName || currentDeployment.experimentNames.length === 0
+            !currentDeployment.SutName ||
+            currentDeployment.experimentNames.length === 0
           }
         >
           <div className="flex items-center justify-center gap-2">
