@@ -21,14 +21,18 @@ const ControlsPage = () => {
   }, []);
 
   const deploySUT = async () => {
-    if (!currentDeployment.SutName || !currentDeployment.experimentName) return;
+    if (
+      !currentDeployment.SutName ||
+      currentDeployment.experimentNames.length === 0
+    )
+      return;
 
     await fetch("/api/deploy/sut", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({
         sut_name: currentDeployment.SutName,
-        experiment_name: currentDeployment.experimentName,
+        experiment_name: currentDeployment.experimentNames.join(","),
         n_iterations: currentDeployment.iterations,
         deploy_only: currentDeployment.deploy_only,
       }),
@@ -45,7 +49,7 @@ const ControlsPage = () => {
         <p>Choose your parameters for the benchmark</p>
       </div>
 
-      <div className="flex flex-col gap-4 w-1/3">
+      <div className="flex flex-col gap-4 md:w-1/3 w-3/4">
         {/* SUT Dropdown */}
         <div className="flex flex-col gap-2">
           <label
@@ -69,12 +73,12 @@ const ControlsPage = () => {
               setCurrentDeployment({
                 ...currentDeployment,
                 SutName: e.target.value,
-                experimentName: null,
+                experimentNames: [],
               });
             }}
           >
             <option value="" disabled>
-              {availableSUTs.length > 0 ? "Select SUT" : "Loading SUTs..."}
+              {availableSUTs.length > 0 ? "Select the SUT" : "Loading SUTs..."}
             </option>
             {availableSUTs.map((sut) => (
               <option key={sut.name} value={sut.name}>
@@ -84,47 +88,75 @@ const ControlsPage = () => {
           </select>
         </div>
 
-        {/* Experiment Dropdown */}
+        {/* Experiment Selection */}
         <div className="flex flex-col gap-2">
-          <label
-            htmlFor="experiment-select"
-            className="flex gap-2 items-center text-sm font-medium"
-          >
-            Experiment
-            <Tooltip
-              title="The SUT experiment to deploy"
-              placement="right"
-              arrow
-            >
-              <InfoIcon size={18} />
-            </Tooltip>
+          <label className="flex flex-col gap-2  text-sm font-medium">
+            <div className="flex justify-start w-full gap-2 items-center">
+              Experiments
+              <Tooltip
+                title="Select one or more experiments to run sequentially"
+                placement="right"
+                arrow
+              >
+                <InfoIcon size={18} />
+              </Tooltip>
+            </div>
+            <p className="text-xs text-gray-500">
+              You can select multiple experiments; they will run sequentially.
+            </p>
           </label>
-          <select
-            id="experiment-select"
-            className={`border py-2 px-4 w-full ${
+          <div
+            className={`border p-2 flex flex-col gap-2 max-h-[10.5rem] overflow-auto  ${
               !currentDeployment.SutName ? "opacity-50" : ""
             }`}
-            value={currentDeployment.experimentName || ""}
-            onChange={(e) =>
-              setCurrentDeployment({
-                ...currentDeployment,
-                experimentName: e.target.value,
-              })
-            }
-            disabled={!currentDeployment.SutName}
           >
-            <option value="" disabled>
-              Select Experiment
-            </option>
             {availableSUTs
               .filter((sut) => sut.name === currentDeployment.SutName)
               .flatMap((sut) => sut.experiments)
               .map((exp) => (
-                <option key={exp} value={exp}>
-                  {exp}
-                </option>
+                <label
+                  key={exp.name}
+                  className="flex flex-col gap-1 items-start"
+                >
+                  <div className="flex gap-2">
+                    <input
+                      type="checkbox"
+                      className="mt-1"
+                      disabled={!currentDeployment.SutName}
+                      checked={currentDeployment.experimentNames.includes(
+                        exp.name
+                      )}
+                      onChange={() => {
+                        const exists =
+                          currentDeployment.experimentNames.includes(exp.name);
+                        setCurrentDeployment({
+                          ...currentDeployment,
+                          experimentNames: exists
+                            ? currentDeployment.experimentNames.filter(
+                                (n) => n !== exp.name
+                              )
+                            : [...currentDeployment.experimentNames, exp.name],
+                        });
+                      }}
+                    />
+                    <span>{exp.name}</span>
+                  </div>
+
+                  <div className="flex flex-col">
+                    {exp.description && (
+                      <span className="text-xs text-gray-500">
+                        {exp.description}
+                      </span>
+                    )}
+                  </div>
+                </label>
               ))}
-          </select>
+            {availableSUTs
+              .filter((sut) => sut.name === currentDeployment.SutName)
+              .flatMap((sut) => sut.experiments).length === 0 && (
+              <p>Select experiments</p>
+            )}
+          </div>
         </div>
 
         {/* Workload Type Dropdown */}
@@ -225,7 +257,8 @@ const ControlsPage = () => {
           className="rounded p-2 bg-blue-500 text-white hover:bg-blue-700"
           onClick={deploySUT}
           disabled={
-            !currentDeployment.SutName || !currentDeployment.experimentName
+            !currentDeployment.SutName ||
+            currentDeployment.experimentNames.length === 0
           }
         >
           <div className="flex items-center justify-center gap-2">

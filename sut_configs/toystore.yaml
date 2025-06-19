@@ -43,6 +43,7 @@ services:
 
 experiments:
   - name: "baseline"
+    description: "Baseline experiment for the toystore application"
     target_branch: "main"
     colocated_workload: true
     critical_services: ["toystore-frontend", "toystore-backend"]

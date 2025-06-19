@@ -5,7 +5,7 @@ import type {DeploymentForm} from "../models/DeploymentForm";
 // Define default form values
 const defaultDeploymentForm: DeploymentForm = {
   SutName: null,
-  experimentName: null,
+  experimentNames: [],
   workload: "shaped",
   iterations: 1,
   deploy_only: false,

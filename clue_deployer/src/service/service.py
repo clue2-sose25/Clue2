@@ -16,7 +16,7 @@ from clue_deployer.src.models.deploy_request import DeployRequest
 from clue_deployer.src.models.health_response import HealthResponse
 from clue_deployer.src.models.results_response import ResultsResponse
 from clue_deployer.src.models.status_response import StatusResponse
-from clue_deployer.src.models.sut import Sut
+from clue_deployer.src.models.sut import Sut, ExperimentEntry
 from clue_deployer.src.models.suts_response import SutsResponse
 from clue_deployer.src.service.status_manager import StatusManager
 from clue_deployer.src.logger import get_child_process_logger, logger, shared_log_buffer
@@ -196,15 +196,17 @@ async def list_sut():
             if not isinstance(experiments, list):
                 raise HTTPException(status_code=500, detail=f"Invalid SUT configuration file: {filename} has 'experiments' that is not a list")
 
-            # Extract experiment names
-            experiment_names = []
+            # Extract experiments with optional description
+            parsed_experiments = []
             for exp in experiments:
                 if not isinstance(exp, dict) or 'name' not in exp:
                     raise HTTPException(status_code=500, detail=f"Invalid experiment in SUT configuration file: {filename}")
-                experiment_names.append(exp['name'])
+                parsed_experiments.append(
+                    ExperimentEntry(name=exp['name'], description=exp.get('description'))
+                )
 
             # Create Sut object and add to list
-            sut = Sut(name=sut_name, experiments=experiment_names)
+            sut = Sut(name=sut_name, experiments=parsed_experiments)
             suts.append(sut)
 
         return SutsResponse(suts=suts)

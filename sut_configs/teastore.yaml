@@ -68,11 +68,13 @@ services:
 
 experiments:
   - name: "baseline"
+    description: "Baseline experiment for the teastore application"
     target_branch: "vanilla"
     colocated_workload: true
     critical_services: ["teastore-auth", "teastore-registry", "teastore-webui"]
     autoscaling: "cpu"
   - name: "serverless"
+    description: "Serverless experiment for the teastore application"
     target_branch: "serverless"
     colocated_workload: true
     critical_services: ["teastore-registry", "teastore-webui"]
