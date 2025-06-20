@@ -23,7 +23,6 @@ const ResultPage = () => {
   const [metrics, setMetrics] = useState<Metric[]>([]);
   const [resultEntry, setResultEntry] = useState<ResultEntry | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const handleDownloadButton = async () => {
     try {
@@ -67,7 +66,6 @@ const ResultPage = () => {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      setError(null);
 
       try {
         if (!resultEntryId) {
@@ -112,9 +110,6 @@ const ResultPage = () => {
         });
       } catch (err) {
         console.error("Error fetching data:", err);
-        setError(
-          err instanceof Error ? err.message : "An unexpected error occurred"
-        );
         setMetrics([]);
         setResultEntry(null);
       } finally {
@@ -133,10 +128,6 @@ const ResultPage = () => {
 
   if (loading) {
     return <div className="p-4">Loading...</div>;
-  }
-
-  if (error || !resultEntry) {
-    return <div className="p-4">Error: {error || "No data available"}</div>;
   }
 
   return (
@@ -192,7 +183,9 @@ const ResultPage = () => {
                 </div>
               ))
             ) : (
-              <div>No metrics available</div>
+              <div>
+                No metrics available. Did the experiment finish running?
+              </div>
             )}
           </div>
           <div className="w-full max-w-full grid grid-cols-1 md:grid-cols-3 gap-4">

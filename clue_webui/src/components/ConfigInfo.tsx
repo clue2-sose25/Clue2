@@ -9,7 +9,7 @@ import {
 import type {ResultEntry} from "../models/ResultEntry";
 
 interface ConfigInfoProps {
-  resultEntry: ResultEntry;
+  resultEntry: ResultEntry | null;
 }
 
 const ConfigInfo: React.FC<ConfigInfoProps> = ({resultEntry}) => {
@@ -27,32 +27,36 @@ const ConfigInfo: React.FC<ConfigInfoProps> = ({resultEntry}) => {
   const configItems = [
     {
       label: "Experiment ID",
-      value: resultEntry.id,
+      value: resultEntry ? resultEntry.id : "No data avaiable",
       icon: <FileIcon size={24} />,
     },
     {
       label: "SUT (System Under Test)",
-      value: "SUT",
+      value: resultEntry ? "SUT Name" : "No data avaiable",
       icon: <WrenchIcon size={24} />,
     },
     {
       label: "Experiment",
-      value: resultEntry.branch_name,
+      value: resultEntry ? resultEntry.branch_name : "No data avaiable",
       icon: <FlaskIcon size={24} />,
     },
     {
       label: "Workload Type",
-      value: resultEntry.workload,
+      value: resultEntry ? resultEntry.workload : "No data avaiable",
       icon: <LightningIcon size={24} />,
     },
     {
       label: "Iterations",
-      value: resultEntry.iterations.toLocaleString(),
+      value: resultEntry
+        ? resultEntry.iterations.toLocaleString()
+        : "No data avaiable",
       icon: <RepeatIcon size={24} />,
     },
     {
       label: "Timestamp",
-      value: formatTimestamp(resultEntry.timestamp),
+      value: resultEntry
+        ? formatTimestamp(resultEntry.timestamp)
+        : "No data avaiable",
       icon: <CalendarDotsIcon size={24} />,
     },
   ];
