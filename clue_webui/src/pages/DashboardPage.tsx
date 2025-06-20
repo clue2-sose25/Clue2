@@ -207,7 +207,7 @@ const DashboardPage = () => {
             </div>
           </div>
         ) : (
-          <div className="flex flex-col items-center w-full h-[500px]">
+          <div className="flex flex-col items-center w-full h-[500px] justify-center">
             <span className="flex flex-col font-semibold text-xl items-center pb-2 gap-2">
               <WarningIcon size={90} /> The experiments queue is empty!
             </span>{" "}
