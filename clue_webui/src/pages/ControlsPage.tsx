@@ -1,23 +1,60 @@
 import {useContext, useEffect, useState} from "react";
 import {DeploymentContext} from "../contexts/DeploymentContext";
-import {InfoIcon, RocketLaunchIcon} from "@phosphor-icons/react";
+import {InfoIcon, RocketLaunchIcon, StackPlusIcon} from "@phosphor-icons/react";
 import type {SUT} from "../models/SUT";
 import {Tooltip} from "@mui/material";
 import {workloadOptions, type Workload} from "../models/DeploymentForm";
 import {useNavigate} from "react-router";
+import {QueueContext} from "../contexts/QueueContext";
 
 const ControlsPage = () => {
   const {currentDeployment, setCurrentDeployment, setIfDeploying} =
     useContext(DeploymentContext);
 
+  const {currentQueue, setCurrentQueue} = useContext(QueueContext);
+
   const navigate = useNavigate();
   const [availableSUTs, setAvailableSUTs] = useState<SUT[]>([]);
 
+  /**
+   * On the component load
+   */
+  useEffect(() => {
+    fetch("/api/queue")
+      .then(async (r) => {
+        if (!r.ok) {
+          throw new Error(`API responded with status ${r.status}`);
+        }
+        const data = await r.json();
+        // Validate data type (optional, adjust based on your needs)
+        if (!Array.isArray(data)) {
+          console.error("API returned non-array data:", data);
+          return [];
+        }
+        return data;
+      })
+      .then((d) => setCurrentQueue(d ?? []))
+      .catch((err) => {
+        console.error("Failed to fetch queue:", err);
+        setCurrentQueue([]);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     fetch("/api/suts")
-      .then((r) => r.json())
+      .then(async (r) => {
+        if (!r.ok) {
+          throw new Error(`API responded with status ${r.status}`);
+        }
+        const data = await r.json();
+        return data;
+      })
       .then((d) => setAvailableSUTs(d.suts ?? []))
-      .catch(() => setAvailableSUTs([]));
+      .catch((err) => {
+        console.error("Failed to fetch SUTs:", err);
+        setAvailableSUTs([]);
+      });
   }, []);
 
   const deploySUT = async () => {
@@ -261,10 +298,17 @@ const ControlsPage = () => {
             currentDeployment.experimentNames.length === 0
           }
         >
-          <div className="flex items-center justify-center gap-2">
-            <RocketLaunchIcon size={24} className="inline-block" />
-            <span className="font-medium">Deploy experiment</span>
-          </div>
+          {currentQueue ? (
+            <div className="flex items-center justify-center gap-2">
+              <RocketLaunchIcon size={24} className="inline-block" />
+              <span className="font-medium">Deploy experiment</span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center gap-2">
+              <StackPlusIcon size={24} className="inline-block" />
+              <span className="font-medium">Queue experiment</span>
+            </div>
+          )}
         </button>
       </div>
     </div>

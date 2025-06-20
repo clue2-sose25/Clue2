@@ -13,7 +13,7 @@ const Navbar = () => {
   ];
 
   return (
-    <div className="flex w-full border-b justify-between shadow-sm p-4">
+    <div className="flex w-full h-full border-b justify-between shadow-sm px-4 py-2">
       <NavLink key={"home"} to="/">
         <div className="font-semibold flex flex-col">
           <div className="text-xl">CLUE</div>
@@ -25,18 +25,20 @@ const Navbar = () => {
           <NavLink
             key={page.name}
             to={page.href}
-            className={({isActive}) =>
-              `flex items-center gap-1 text-sm font-medium ${
-                isActive
-                  ? "border-b-1 border-black"
-                  : "border-b-1 border-transparent"
-              }`
-            }
+            className="flex h-full items-center gap-1 text-sm font-medium"
             end
           >
-            <div className="flex gap-1 h-2">
-              {page.icon} {page.name}
-            </div>
+            {({isActive}) => (
+              <div
+                className={`flex gap-1 ${
+                  isActive
+                    ? "border-b-1 border-black"
+                    : "border-b-1 border-transparent"
+                }`}
+              >
+                {page.icon} {page.name}
+              </div>
+            )}
           </NavLink>
         ))}
       </div>

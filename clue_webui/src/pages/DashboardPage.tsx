@@ -1,7 +1,9 @@
-import {useContext, useEffect} from "react";
+import {useContext, useEffect, useState} from "react";
 import {DeploymentContext} from "../contexts/DeploymentContext";
 import {Link} from "react-router";
 import {
+  CaretLeftIcon,
+  CaretRightIcon,
   FilesIcon,
   RocketLaunchIcon,
   WarningIcon,
@@ -14,10 +16,42 @@ import {
   RepeatIcon,
   WrenchIcon,
 } from "@phosphor-icons/react/dist/ssr";
+import {QueueContext} from "../contexts/QueueContext";
+import {IconButton} from "@mui/material";
 
 const DashboardPage = () => {
   const {ifDeploying, setIfDeploying, currentDeployment} =
     useContext(DeploymentContext);
+
+  // The experiments queue
+  const {currentQueue, setCurrentQueue} = useContext(QueueContext);
+  // The currently displayed index from queue
+  const [currentQueueIndex, setCurrentQueueIndex] = useState<number>(0);
+
+  /**
+   * On the component load
+   */
+  useEffect(() => {
+    fetch("/api/queue")
+      .then(async (r) => {
+        if (!r.ok) {
+          throw new Error(`API responded with status ${r.status}`);
+        }
+        const data = await r.json();
+        // Validate data type (optional, adjust based on your needs)
+        if (!Array.isArray(data)) {
+          console.error("API returned non-array data:", data);
+          return [];
+        }
+        return data;
+      })
+      .then((d) => setCurrentQueue(d ?? []))
+      .catch((err) => {
+        console.error("Failed to fetch queue:", err);
+        setCurrentQueue([]);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const configItems = [
     {
@@ -66,8 +100,40 @@ const DashboardPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const increaseIndexInQueue = () => {
+    if (currentQueue.length > currentQueueIndex) {
+      setCurrentQueueIndex(currentQueueIndex + 1);
+    }
+  };
+
+  const decreaseIndexInQueue = () => {
+    if (currentQueueIndex > 0) {
+      setCurrentQueueIndex(currentQueueIndex - 1);
+    }
+  };
+
   return (
-    <div className="w-full h-full flex flex-col gap-6 pt-4 p-6">
+    <div className="w-full h-full flex flex-col gap-2 pt-2 p-6">
+      <div className="w-full flex items-center justify-center gap-2">
+        <IconButton
+          disabled={currentQueueIndex <= 0}
+          onClick={decreaseIndexInQueue}
+        >
+          <CaretLeftIcon size={18}></CaretLeftIcon>
+        </IconButton>
+        <span className="font-medium select-none">
+          Experiment {currentQueue.length > 0 ? currentQueueIndex + 1 : 0}/
+          {currentQueue.length}
+        </span>
+        <IconButton
+          disabled={
+            currentQueueIndex >= currentQueue.length - 1 || !currentQueue
+          }
+          onClick={increaseIndexInQueue}
+        >
+          <CaretRightIcon size={18}></CaretRightIcon>
+        </IconButton>
+      </div>
       <div className="bg-white p-6 rounded-lg shadow-md w-full">
         <div className="flex gap-6 ">
           <div className="w-1/3">
