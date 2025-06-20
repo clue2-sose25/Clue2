@@ -15,20 +15,26 @@ class Worker:
         self.shared_flag = mp.Value('b', True)
         self.state_lock = mp.Lock()
         self.is_deploying = mp.Value('i', 0)
-        self.process = mp.Process(target=self.worker_loop, args=(self.shared_flag,))
-        self.process.start()
+        self.process = mp.Process(target=self._worker_loop, args=(self.shared_flag,))
         self.process_logger = get_child_process_logger(f"DEPLOY_{self.sut_name}", shared_log_buffer)
 
-    def worker_loop(self, shared_flag):
-        print("Worker started.")
-        while shared_flag.value:
+    def _worker_loop(self):
+        with self.state_lock:
+            if self.is_deploying.value == 1:
+                raise HTTPException(
+                    status_code=409,
+                    detail="A deployment is already running."
+                )
+            self.is_deploying.value = 1
+        self.process_logger.info("Worker process started and ready to deploy experiments.")
+        while self.shared_flag.value:
             with self.condition:
                 # Wait until the queue is not empty or shared_flag is False
-                while self.experiment_queue.is_empty() and shared_flag.value:
+                while self.experiment_queue.is_empty() and self.shared_flag.value:
                     self.condition.wait()
 
                 # Exit if shared_flag is no longer True
-                if not shared_flag.value:
+                if not self.shared_flag.value:
                     break
 
                 # Dequeue the experiment
@@ -63,6 +69,13 @@ class Worker:
         with self.state_lock:
             self.is_deploying.value = 0
         self.process_logger.info(f"Deployment process for SUT {experiment.sut_name} finished")
+    
+    def start(self):
+        if self.process.is_alive():
+            raise RuntimeError("Worker process is already running.")
+        
+        self.process.start()
+        self.process_logger.info("Worker process started successfully.")
     
     def stop(self):
         self.process_logger.info("Stopping worker queue and waiting for current deployment to finish...")

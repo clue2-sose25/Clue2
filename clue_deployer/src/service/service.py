@@ -606,14 +606,14 @@ async def deploy_sut(request: DeployRequest):
                   state_lock, is_deploying, shared_log_buffer)
         )
         process.start()
-        logger.info(f"Started deployment process for SUT {sut_name}")
+        logger.info(f"Started deployment process for SUT {request.sut_name}")
     except Exception as e:
         with state_lock:
             is_deploying.value = 0
         logger.error(f"Failed to start deployment process: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to start deployment: {str(e)}")
     
-    return {"message": f"Deployment of SUT {sut_name} has been started."}
+    return {"message": f"Deployment of SUT {request.sut_name} has been started."}
 
 @app.post("/api/queue/enqueue", status_code=status.HTTP_202_ACCEPTED)
 def enqueue_experiment(request: list[DeployRequest]):
@@ -637,16 +637,17 @@ def deploy_from_queue():
     """
     start deploy worker
     """
-    with state_lock:
-        if is_deploying.value == 1:
-            raise HTTPException(
-                status_code=409,
-                detail="A deployment is already running."
-            )
-        is_deploying.value = 1
+    try:
+        worker.start()
+    except Exception as e:
+        logger.error(f"Failed to start deployment worker: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                             detail=f"Failed to start deployment worker: {str(e)}")
     
-    sut_filename = f"{request.sut_name}.yaml"
-    sut_path = os.path.join(SUT_CONFIGS_DIR, sut_filename)
+    logger.info("Deployment worker started.")
+    return JSONResponse(status_code=status.HTTP_202_ACCEPTED, content={"message": "Deployment worker started."})
+    
+    
 
 @app.delete("api/deploy/kill", status_code=status.HTTP_204_NO_CONTENT)
 def deploy_kill():
