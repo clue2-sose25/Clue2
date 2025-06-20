@@ -20,6 +20,11 @@ const ControlsPage = () => {
    * On the component load
    */
   useEffect(() => {
+    fetchQueue();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const fetchQueue = () => {
     fetch("/api/queue")
       .then(async (r) => {
         if (!r.ok) {
@@ -38,8 +43,7 @@ const ControlsPage = () => {
         console.error("Failed to fetch queue:", err);
         setCurrentQueue([]);
       });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  };
 
   useEffect(() => {
     fetch("/api/suts")
@@ -76,6 +80,7 @@ const ControlsPage = () => {
     });
 
     setIfDeploying(true);
+    fetchQueue();
     navigate("/dashboard");
   };
 
@@ -291,7 +296,12 @@ const ControlsPage = () => {
 
         {/* Deploy Button */}
         <button
-          className="rounded p-2 bg-blue-500 text-white hover:bg-blue-700"
+          className={`rounded p-2  ${
+            !currentDeployment.SutName ||
+            currentDeployment.experimentNames.length === 0
+              ? "bg-gray-300 text-gray-500"
+              : "bg-blue-500 text-white hover:bg-blue-700"
+          }`}
           onClick={deploySUT}
           disabled={
             !currentDeployment.SutName ||
