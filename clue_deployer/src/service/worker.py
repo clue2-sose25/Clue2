@@ -1,5 +1,5 @@
 import multiprocessing as mp
-from experiment_queue import ExperimentQueue
+from clue_deployer.src.service.experiment_queue import ExperimentQueue
 from clue_deployer.src.logger import get_child_process_logger, logger, shared_log_buffer
 from clue_deployer.src.models.deploy_request import DeployRequest
 from clue_deployer.src.main import ClueRunner
@@ -11,14 +11,15 @@ CLUE_CONFIG_PATH = ENV_CONFIG.CLUE_CONFIG_PATH
 
 class Worker:
     def __init__(self):
-        self.experiment_queue = ExperimentQueue()
         self.shared_flag = mp.Value('b', True)
         self.state_lock = mp.Lock()
         self.is_deploying = mp.Value('i', 0)
         self.process = mp.Process(target=self._worker_loop, args=(self.shared_flag,))
-        self.process_logger = get_child_process_logger(f"DEPLOY_{self.sut_name}", shared_log_buffer)
+        self.process_logger = get_child_process_logger(f"NO_SUT", shared_log_buffer)
+        self.condition = mp.Condition()
+        self.experiment_queue = ExperimentQueue(condition=self.condition)
 
-    def _worker_loop(self):
+    def _worker_loop(self, shared_flag):
         with self.state_lock:
             if self.is_deploying.value == 1:
                 raise HTTPException(
@@ -30,19 +31,24 @@ class Worker:
         while self.shared_flag.value:
             with self.condition:
                 # Wait until the queue is not empty or shared_flag is False
-                while self.experiment_queue.is_empty() and self.shared_flag.value:
+                while self.experiment_queue.is_empty() and shared_flag.value:
                     self.condition.wait()
 
                 # Exit if shared_flag is no longer True
-                if not self.shared_flag.value:
+                if not shared_flag.value:
                     break
 
                 # Dequeue the experiment
                 experiment: DeployRequest = self.experiment_queue.dequeue()
 
+                self.process_logger = get_child_process_logger(
+                    experiment.sut_name,
+                    shared_log_buffer
+                )
+
             try:
                 sut_filename = f"{experiment.sut_name}.yaml"
-                sut_path = SUT_CONFIGS_DIR.join(sut_filename)
+                sut_path = SUT_CONFIGS_DIR.joinpath(sut_filename)
                 
                 if not sut_path.exists():
                     with self.state_lock:
@@ -75,13 +81,13 @@ class Worker:
             raise RuntimeError("Worker process is already running.")
         
         self.process.start()
-        self.process_logger.info("Worker process started successfully.")
+        logger.info("Worker process started successfully.")
     
     def stop(self):
-        self.process_logger.info("Stopping worker queue and waiting for current deployment to finish...")
+        logger.info("Stopping worker queue and waiting for current deployment to finish...")
         self.shared_flag.value = False
         self.process.join()
-        self.process_logger.info("Worker stopped.")
+        logger.info("Worker stopped.")
 
     def kill(self):
         with self.state_lock:
@@ -90,8 +96,8 @@ class Worker:
             self.is_deploying.value = 0
         
         self.shared_flag.value = False
-        self.process_logger.info("Stopping worker queue by killing the process...")
+        logger.info("Stopping worker queue by killing the process...")
         self.process.terminate()
         self.process.join()
-        self.process_logger.info("Worker killed.")
+        logger.info("Worker killed.")
 

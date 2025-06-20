@@ -23,7 +23,7 @@ from clue_deployer.src.logger import get_child_process_logger, logger, shared_lo
 from clue_deployer.src.config.config import ENV_CONFIG
 from clue_deployer.src.main import ClueRunner
 from clue_deployer.src.config import SUTConfig, Config
-from clue_deployer.src.service.worker import Worker, experiment_queue
+from clue_deployer.src.service.worker import Worker
 
 
 # Initialize multiprocessing lock and value for deployment synchronization. Used for deployments.
@@ -626,7 +626,7 @@ def enqueue_experiment(request: list[DeployRequest]):
         raise HTTPException(status_code=400, detail="No requests provided")
     
     for deploy_request in request:
-        experiment_queue.enqueue(deploy_request)
+        worker.experiment_queue.enqueue(deploy_request)
     
     logger.info(f"Enqueued {len(request)} deployment requests.")
     return {"message": f"Enqueued {len(request)} deployment requests."}
@@ -685,16 +685,17 @@ def stop_deployment():
 @app.delete("/api/queue/flush", status_code=status.HTTP_204_NO_CONTENT)
 def flush_queue():
     """Flush the deployment queue."""
-    experiment_queue.flush()
+    worker.experiment_queue.flush()
     logger.info("Experiment queue flushed.")
     return JSONResponse(status_code=status.HTTP_204_NO_CONTENT, content=None)
 
 @app.get("/api/queue/status")
 def get_queue_status():
     """Get the current status of the deployment queue."""
-    queue_size = experiment_queue.size()
+    queue_size = worker.experiment_queue.size()
     return {
         "queue_size": queue_size,
-        "mirror": experiment_queue.get_all()
+        "queue": worker.experiment_queue.get_all()
     }
-    
+
+

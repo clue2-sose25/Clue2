@@ -3,10 +3,11 @@ from clue_deployer.src.models.deploy_request import DeployRequest
 
 
 class ExperimentQueue:
-    def __init__(self):
+    def __init__(self, condition=None):
+        self.condition = condition
         self.queue = Queue()
         self._mirror = []
-        self.last_experiment = None
+        self._last_experiment = None
 
     @property
     def last_experiment(self):
@@ -14,9 +15,16 @@ class ExperimentQueue:
             raise ValueError("No experiment has been dequeued yet.")
         return self.last_experiment
 
+
+    @last_experiment.setter
+    def last_experiment(self, value):
+        self._last_experiment = value
+    
     def enqueue(self, experiment: DeployRequest):
-        self.queue.put(experiment)
-        self._mirror.append(experiment)
+        with self.condition:
+            self.queue.put(experiment)
+            self._mirror.append(experiment)
+            self.condition.notify()  # Notify the worker that a new item is available
 
     def dequeue(self):
         experiment = self.queue.get()
