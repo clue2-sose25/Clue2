@@ -3,9 +3,14 @@ import subprocess
 from pathlib import Path
 import tempfile
 import shutil
+import yaml
+from pydantic import BaseModel
 from clue_deployer.src.logger import logger
 from clue_deployer.src.config import Config
+from clue_deployer.src.config.helm_dependencies import Dependencies, Dependency
 from clue_deployer.src.scaling_experiment_setting import ScalingExperimentSetting
+
+
 
 
 class HelmWrapper():
@@ -100,11 +105,42 @@ class HelmWrapper():
             f.write(values)
         return values
     
+
+    def _add_helm_repos(self) -> None:
+        """
+        Adds Helm repositories
+        """
+        if self.sut_config.helm_dependencies_from_chart:
+            logger.info("Helm dependencies from chart")
+            chart_path = self.sut_config.helm_chart_path.joinpath("Chart.yaml")
+            if not chart_path.exists():
+                raise FileNotFoundError(f"Chart.yaml not found at {chart_path}. Cannot add dependencies from chart.")
+            
+            
+            dependencies = Dependencies.load_from_yaml(chart_path)
+            for dependency in dependencies.dependencies:
+                logger.info(f"Adding Helm repository {dependency.name} at {dependency.repository}")
+                helm_repo_add = subprocess.run(
+                    ["helm", "repo", "add", dependency.name, dependency.repository],
+                    capture_output=True,
+                    text=True
+                )
+                if helm_repo_add.returncode != 0:
+                    logger.error(f"Failed to add Helm repository {dependency.name}. Exit code: {helm_repo_add.returncode}")
+                    logger.error(f"STDOUT: {helm_repo_add.stdout}")
+                    logger.error(f"STDERR: {helm_repo_add.stderr}")
+                    raise RuntimeError(f"Failed to add Helm repository {dependency.name}. Check the logs for details.")
+                logger.info(helm_repo_add.stdout)
+        else:
+            #TODO maybe allow adding repositories from the SUT config?
+            pass
+    
     def _build_dependencies(self) -> None:
         """
         Builds Helm chart dependencies.
         """
         try:
+            self._add_helm_repos()
             logger.info(f"Building Helm dependencies for chart at {self.active_chart_path}")
             helm_dependency_build = subprocess.run(
                 ["helm", "dependency", "build", self.active_chart_path],
