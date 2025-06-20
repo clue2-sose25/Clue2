@@ -114,30 +114,32 @@ const DashboardPage = () => {
 
   return (
     <div className="w-full h-full flex flex-col gap-2 pt-2 p-6">
-      <div className="w-full flex items-center justify-center gap-2">
-        <IconButton
-          disabled={currentQueueIndex <= 0}
-          onClick={decreaseIndexInQueue}
-        >
-          <CaretLeftIcon size={18}></CaretLeftIcon>
-        </IconButton>
-        <span className="font-medium select-none">
-          Experiment {currentQueue.length > 0 ? currentQueueIndex + 1 : 0}/
-          {currentQueue.length}
-        </span>
-        <IconButton
-          disabled={
-            currentQueueIndex >= currentQueue.length - 1 || !currentQueue
-          }
-          onClick={increaseIndexInQueue}
-        >
-          <CaretRightIcon size={18}></CaretRightIcon>
-        </IconButton>
-      </div>
+      {ifDeploying && (
+        <div className="w-full flex items-center justify-center gap-2">
+          <IconButton
+            disabled={currentQueueIndex <= 0}
+            onClick={decreaseIndexInQueue}
+          >
+            <CaretLeftIcon size={18}></CaretLeftIcon>
+          </IconButton>
+          <span className="font-medium select-none">
+            Experiment {currentQueue.length > 0 ? currentQueueIndex + 1 : 0}/
+            {currentQueue.length}
+          </span>
+          <IconButton
+            disabled={
+              currentQueueIndex >= currentQueue.length - 1 || !currentQueue
+            }
+            onClick={increaseIndexInQueue}
+          >
+            <CaretRightIcon size={18}></CaretRightIcon>
+          </IconButton>
+        </div>
+      )}
       <div className="bg-white p-6 rounded-lg shadow-md w-full">
-        <div className="flex gap-6 ">
-          <div className="w-1/3">
-            {ifDeploying ? (
+        {ifDeploying ? (
+          <div className="flex gap-6 ">
+            <div className="w-1/3">
               <div className="flex flex-col gap-2">
                 <div className="pb-2">
                   <p className="flex gap-2 text-xl items-center pt-2 pb-2">
@@ -199,23 +201,25 @@ const DashboardPage = () => {
                   </div>
                 </button>
               </div>
-            ) : (
-              <div className="w-full h-[500px]">
-                <p className="flex gap-2 font-medium text-xl items-center pt-2 pb-4">
-                  <WarningIcon size={24} /> No experiment in progress!
-                </p>{" "}
-                Visit the{" "}
-                <Link className="font-medium text-blue-500" to={"/"}>
-                  Control Panel
-                </Link>{" "}
-                to deploy an experiment.
-              </div>
-            )}
+            </div>
+            <div className="w-2/3">
+              <LogsPanel />
+            </div>
           </div>
-          <div className="w-2/3">
-            <LogsPanel />
+        ) : (
+          <div className="flex flex-col items-center w-full h-[500px]">
+            <span className="flex flex-col font-semibold text-xl items-center pb-2 gap-2">
+              <WarningIcon size={90} /> The experiments queue is empty!
+            </span>{" "}
+            <span>
+              Visit the{" "}
+              <Link className="font-medium text-sm text-blue-500" to={"/"}>
+                Control Panel
+              </Link>{" "}
+              to add an experiment to the queue!
+            </span>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
