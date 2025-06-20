@@ -22,7 +22,6 @@ const ResultPage = () => {
 
   const [metrics, setMetrics] = useState<Metric[]>([]);
   const [resultEntry, setResultEntry] = useState<ResultEntry | null>(null);
-  const [loading, setLoading] = useState(true);
 
   const handleDownloadButton = async () => {
     try {
@@ -65,8 +64,6 @@ const ResultPage = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true);
-
       try {
         if (!resultEntryId) {
           throw new Error("No result ID provided");
@@ -112,8 +109,6 @@ const ResultPage = () => {
         console.error("Error fetching data:", err);
         setMetrics([]);
         setResultEntry(null);
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -126,12 +121,8 @@ const ResultPage = () => {
     wattage: string;
   } | null>(null);
 
-  if (loading) {
-    return <div className="p-4">Loading...</div>;
-  }
-
   return (
-    <div className="flex flex-col gap-6">
+    <div className="w-full h-full flex flex-col gap-6 p-6 pt-4">
       {/* Top Bar with Back-Link and Buttons */}
       <div className="flex flex-col gap-4">
         <div className="flex justify-between items-center">

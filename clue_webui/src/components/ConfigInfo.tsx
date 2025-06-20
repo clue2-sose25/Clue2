@@ -27,36 +27,36 @@ const ConfigInfo: React.FC<ConfigInfoProps> = ({resultEntry}) => {
   const configItems = [
     {
       label: "Experiment ID",
-      value: resultEntry ? resultEntry.id : "No data avaiable",
+      value: resultEntry ? resultEntry.id : "No data available",
       icon: <FileIcon size={24} />,
     },
     {
       label: "SUT (System Under Test)",
-      value: resultEntry ? "SUT Name" : "No data avaiable",
+      value: resultEntry ? "SUT Name" : "No data available",
       icon: <WrenchIcon size={24} />,
     },
     {
       label: "Experiment",
-      value: resultEntry ? resultEntry.branch_name : "No data avaiable",
+      value: resultEntry ? resultEntry.branch_name : "No data available",
       icon: <FlaskIcon size={24} />,
     },
     {
       label: "Workload Type",
-      value: resultEntry ? resultEntry.workload : "No data avaiable",
+      value: resultEntry ? resultEntry.workload : "No data available",
       icon: <LightningIcon size={24} />,
     },
     {
       label: "Iterations",
       value: resultEntry
         ? resultEntry.iterations.toLocaleString()
-        : "No data avaiable",
+        : "No data available",
       icon: <RepeatIcon size={24} />,
     },
     {
       label: "Timestamp",
       value: resultEntry
         ? formatTimestamp(resultEntry.timestamp)
-        : "No data avaiable",
+        : "No data available",
       icon: <CalendarDotsIcon size={24} />,
     },
   ];

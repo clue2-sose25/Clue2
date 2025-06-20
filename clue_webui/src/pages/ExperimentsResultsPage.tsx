@@ -1,4 +1,9 @@
-import {DownloadSimpleIcon, RepeatIcon, TrashIcon} from "@phosphor-icons/react";
+import {
+  ArrowLeftIcon,
+  DownloadSimpleIcon,
+  RepeatIcon,
+  TrashIcon,
+} from "@phosphor-icons/react";
 import React, {useEffect, useState} from "react";
 import {Link} from "react-router";
 import {
@@ -16,8 +21,6 @@ import type {ResultEntry} from "../models/ResultEntry";
 
 const ExperimentsResultsPage = () => {
   const [results, setResults] = useState<ResultEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.preventDefault();
@@ -39,24 +42,20 @@ const ExperimentsResultsPage = () => {
       })
       .then((data) => {
         setResults(data.results);
-        setLoading(false);
       })
-      .catch(() => {
-        setError(true);
-        setLoading(false);
-      });
+      .catch(() => {});
   }, []);
-
-  if (loading) return <div>Loading results...</div>;
-
-  if (error || !results || results.length === 0) {
-    return (
-      <div>No experiments found. Deploy an experiment to see its results.</div>
-    );
-  }
 
   return (
     <div className="w-full h-full flex flex-col gap-6 p-6 pt-4">
+      <div className="flex justify-between items-center">
+        <Link
+          to="/"
+          className="flex gap-2 items-center text-sm text-gray-600 hover:underline"
+        >
+          <ArrowLeftIcon /> Back
+        </Link>
+      </div>
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
