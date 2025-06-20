@@ -1,0 +1,77 @@
+import multiprocessing as mp
+from experiment_queue import ExperimentQueue
+from clue_deployer.src.logger import get_child_process_logger, logger, shared_log_buffer
+from clue_deployer.src.models.deploy_request import DeployRequest
+from clue_deployer.src.main import ClueRunner
+from clue_deployer.src.config.config import ENV_CONFIG, Config
+
+SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
+CLUE_CONFIG_PATH = ENV_CONFIG.CLUE_CONFIG_PATH
+
+class Worker:
+    def __init__(self):
+        self.experiment_queue = ExperimentQueue()
+        self.shared_flag = mp.Value('b', True)
+        self.state_lock = mp.Lock()
+        self.is_deploying = mp.Value('i', 0)
+        self.process = mp.Process(target=self.worker_loop, args=(self.shared_flag,))
+        self.process.start()
+        self.process_logger = get_child_process_logger(f"DEPLOY_{self.sut_name}", shared_log_buffer)
+
+    def worker_loop(self, shared_flag):
+        print("Worker started.")
+        while shared_flag.value:
+            with self.condition:
+                # Wait until the queue is not empty or shared_flag is False
+                while self.experiment_queue.is_empty() and shared_flag.value:
+                    self.condition.wait()
+
+                # Exit if shared_flag is no longer True
+                if not shared_flag.value:
+                    break
+
+                # Dequeue the experiment
+                experiment: DeployRequest = self.experiment_queue.dequeue()
+
+            try:
+                sut_filename = f"{experiment.sut_name}.yaml"
+                sut_path = SUT_CONFIGS_DIR.join(sut_filename)
+                
+                if not sut_path.exists():
+                    with self.state_lock:
+                        self.is_deploying.value = 0
+                    self.process_logger.error(f"SUT configuration file {sut_filename} does not exist.")
+                    continue
+                
+                config = Config(sut_config=sut_path, clue_config=CLUE_CONFIG_PATH)
+            
+                self.process_logger.info(f"Starting deployment for SUT {experiment.sut_name}")
+                runner = ClueRunner(
+                    config,
+                    experiment_name=experiment.experiment_name,
+                    sut_name=experiment.sut_name,
+                    deploy_only=experiment.deploy_only,
+                    n_iterations=experiment.n_iterations,
+                )
+                runner.main()
+                self.process_logger.info(f"Successfully completed deployment for SUT {experiment.sut_name}")
+            except Exception as e:
+                self.process_logger.error(f"Deployment process failed for SUT {experiment.sut_name}: {str(e)}")
+        
+        # Clean up the deployment state
+        with self.state_lock:
+            self.is_deploying.value = 0
+        self.process_logger.info(f"Deployment process for SUT {experiment.sut_name} finished")
+    
+    def stop(self):
+        print("Stopping worker...")
+        self.shared_flag.value = False
+        self.process.join()
+        print("Worker stopped.")
+
+    def kill(self):
+        print("Killing worker...")
+        self.process.terminate()
+        self.process.join()
+        print("Worker killed.")
+

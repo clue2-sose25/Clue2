@@ -23,10 +23,14 @@ from clue_deployer.src.logger import get_child_process_logger, logger, shared_lo
 from clue_deployer.src.config.config import ENV_CONFIG
 from clue_deployer.src.main import ClueRunner
 from clue_deployer.src.config import SUTConfig, Config
+from clue_deployer.src.service.worker import Worker, experiment_queue
+
 
 # Initialize multiprocessing lock and value for deployment synchronization. Used for deployments.
-state_lock = multiprocessing.Lock()
-is_deploying = multiprocessing.Value('i', 0)
+
+worker = Worker()
+state_lock = worker.state_lock
+is_deploying = worker.is_deploying
 
 def read_svg(name, base_path):
     path = os.path.join(base_path, f"{name}.svg")
@@ -50,12 +54,17 @@ SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
 RESULTS_DIR = ENV_CONFIG.RESULTS_PATH
 CLUE_CONFIG_PATH = ENV_CONFIG.CLUE_CONFIG_PATH
 
-def run_deployment(config, experiment_name, sut_name, deploy_only, n_iterations, 
+def run_deployment(config, deploy_request,
                   state_lock, is_deploying, shared_log_buffer):
     """Function to run the deployment in a separate process."""
     # Setup logger for this child process
     process_logger = get_child_process_logger(f"DEPLOY_{sut_name}", shared_log_buffer)
     
+    deploy_only = deploy_request.deploy_only
+    experiment_name = deploy_request.experiment_name
+    n_iterations = deploy_request.n_iterations
+    sut_name = deploy_request.sut_name
+
     try:
         process_logger.info(f"Starting deployment for SUT {sut_name}")
         runner = ClueRunner(config, experiment_name=experiment_name, sut_name=sut_name, 
@@ -346,7 +355,7 @@ async def get_single_result(result_id: str):
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving result: {str(e)}")
 
 @app.get("/api/results/assets/{result_id}")
-def get_results(result_id:str):
+async def get_results(result_id:str):
     results_base_path = Path(RESULTS_DIR)
     
     # Check for results directory
@@ -416,7 +425,7 @@ def get_results(result_id:str):
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving result: {str(e)}")
 
 @app.get("/api/results/{result_id}/download")
-def download_results(result_id: str):
+async def download_results(result_id: str):
     """Download a specific result as a zip file."""
     results_base_path = Path(RESULTS_DIR)
     
@@ -472,7 +481,7 @@ def download_results(result_id: str):
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while downloading result: {str(e)}")
 
 @app.delete("/api/results/{result_id}")
-def delete_result(result_id: str):
+async def delete_result(result_id: str):
     """Delete a specific result directory."""
     results_base_path = Path(RESULTS_DIR)
 
@@ -531,50 +540,8 @@ async def get_sut_config(sut_name: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving SUT configuration: {str(e)}")
 
-@app.post("/api/deploy/sut", status_code=status.HTTP_202_ACCEPTED)
-def deploy_sut(request: DeployRequest):
-    """Deploy a specific SUT in a separate process, ensuring only one deployment runs at a time."""
-    with state_lock:
-        if is_deploying.value == 1:
-            raise HTTPException(
-                status_code=409,
-                detail="A deployment is already running."
-            )
-        is_deploying.value = 1
-
-    sut_name = request.sut_name
-    deploy_only = request.deploy_only
-    experiment_name = request.experiment_name
-    n_iterations = request.n_iterations
-    sut_filename = f"{sut_name}.yaml"
-    sut_path = os.path.join(SUT_CONFIGS_DIR, sut_filename)
-    
-    if not os.path.isfile(sut_path):
-        with state_lock:
-            is_deploying.value = 0
-        raise HTTPException(status_code=404, detail=f"SUT configuration not found: {request.sut_name}")
-    
-    config = Config(sut_config=sut_path, clue_config=CLUE_CONFIG_PATH)
-    
-    try:
-        # Pass the shared buffer to the child process
-        process = multiprocessing.Process(
-            target=run_deployment,
-            args=(config, experiment_name, sut_name, deploy_only, n_iterations, 
-                  state_lock, is_deploying, shared_log_buffer)
-        )
-        process.start()
-        logger.info(f"Started deployment process for SUT {sut_name}")
-    except Exception as e:
-        with state_lock:
-            is_deploying.value = 0
-        logger.error(f"Failed to start deployment process: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to start deployment: {str(e)}")
-    
-    return {"message": f"Deployment of SUT {sut_name} has been started."}
-
 @app.get("/api/plots")
-def list_plots(request: ResultEntry, iteration: int):
+async def list_plots(request: ResultEntry, iteration: int):
     """List all available plots for a specific iteration."""
     workload = request.workload
     branch_name = request.branch_name
@@ -593,7 +560,7 @@ def list_plots(request: ResultEntry, iteration: int):
     return {"plots": plots}
 
 @app.get("/api/plots/download")
-def download_plot(request: ResultEntry):
+async def download_plot(request: ResultEntry):
     """Download a specific plot for a given iteration."""
     workload = request.workload
     branch_name = request.branch_name
@@ -609,3 +576,73 @@ def download_plot(request: ResultEntry):
         media_type="application/octet-stream",
         headers={"Content-Disposition": f"attachment; filename={plot_filename}"}
     )
+
+@app.post("/api/deploy/sut", status_code=status.HTTP_202_ACCEPTED)
+async def deploy_sut(request: DeployRequest):
+    """Deploy a specific SUT in a separate process, ensuring only one deployment runs at a time."""
+    with state_lock:
+        if is_deploying.value == 1:
+            raise HTTPException(
+                status_code=409,
+                detail="A deployment is already running."
+            )
+        is_deploying.value = 1
+
+    sut_filename = f"{request.sut_name}.yaml"
+    sut_path = os.path.join(SUT_CONFIGS_DIR, sut_filename)
+    
+    if not os.path.isfile(sut_path):
+        with state_lock:
+            is_deploying.value = 0
+        raise HTTPException(status_code=404, detail=f"SUT configuration not found: {request.sut_name}")
+    
+    config = Config(sut_config=sut_path, clue_config=CLUE_CONFIG_PATH)
+    
+    try:
+        # Pass the shared buffer to the child process
+        process = multiprocessing.Process(
+            target=run_deployment,
+            args=(config, request, 
+                  state_lock, is_deploying, shared_log_buffer)
+        )
+        process.start()
+        logger.info(f"Started deployment process for SUT {sut_name}")
+    except Exception as e:
+        with state_lock:
+            is_deploying.value = 0
+        logger.error(f"Failed to start deployment process: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to start deployment: {str(e)}")
+    
+    return {"message": f"Deployment of SUT {sut_name} has been started."}
+
+@app.post("/api/queue/enqueue", status_code=status.HTTP_202_ACCEPTED)
+def enqueue_experiment(request: list[DeployRequest]):
+    """
+    Enqueue a list of deployment requests to the experiment queue.
+    """ 
+    if not request:
+        raise HTTPException(status_code=400, detail="Request body cannot be empty")
+    if len(request) == 0:
+        raise HTTPException(status_code=400, detail="No requests provided")
+    
+    for deploy_request in request:
+        experiment_queue.enqueue(deploy_request)
+    
+    logger.info(f"Enqueued {len(request)} deployment requests.")
+    return {"message": f"Enqueued {len(request)} deployment requests."}
+    
+
+
+
+
+@app.get("/api/queue/status")
+def get_queue_status():
+    """Get the current status of the deployment queue."""
+    queue_size = experiment_queue.size()
+    return {
+        "queue_size": queue_size,
+        "mirror": experiment_queue.get_all()
+    }
+
+#@app.post("/api/queue/enqueue", status_code=status.HTTP_202_ACCEPTED)
+    
