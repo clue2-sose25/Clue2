@@ -630,10 +630,63 @@ def enqueue_experiment(request: list[DeployRequest]):
     
     logger.info(f"Enqueued {len(request)} deployment requests.")
     return {"message": f"Enqueued {len(request)} deployment requests."}
+
+
+@app.post("/api/deploy/start", status_code=status.HTTP_202_ACCEPTED)
+def deploy_from_queue():
+    """
+    start deploy worker
+    """
+    with state_lock:
+        if is_deploying.value == 1:
+            raise HTTPException(
+                status_code=409,
+                detail="A deployment is already running."
+            )
+        is_deploying.value = 1
     
+    sut_filename = f"{request.sut_name}.yaml"
+    sut_path = os.path.join(SUT_CONFIGS_DIR, sut_filename)
 
+@app.delete("api/deploy/kill", status_code=status.HTTP_204_NO_CONTENT)
+def deploy_kill():
+    """
+    Kill the current deployment process.
+    """
+    
+    
+    # Terminate the worker process
+    try:
+        worker.terminate()
+    except Exception as e:
+        logger.error(f"Failed to terminate deployment process: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                             detail=f"Failed to terminate deployment: {str(e)}")
 
+    logger.info("Deployment process terminated.")
+    return JSONResponse(status_code=status.HTTP_204_NO_CONTENT, content=None)
 
+@app.delete("api/deploy/stop", status_code=status.HTTP_204_NO_CONTENT)
+def stop_deployment():
+    """
+    Stop the current deployment process gracefully.
+    """
+    try:
+        worker.stop()
+    except Exception as e:
+        logger.error(f"Failed to stop deployment process: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                             detail=f"Failed to stop deployment: {str(e)}")
+
+    logger.info("Deployment process stopped.")
+    return JSONResponse(status_code=status.HTTP_204_NO_CONTENT, content=None)
+
+@app.delete("/api/queue/flush", status_code=status.HTTP_204_NO_CONTENT)
+def flush_queue():
+    """Flush the deployment queue."""
+    experiment_queue.flush()
+    logger.info("Experiment queue flushed.")
+    return JSONResponse(status_code=status.HTTP_204_NO_CONTENT, content=None)
 
 @app.get("/api/queue/status")
 def get_queue_status():
@@ -643,6 +696,4 @@ def get_queue_status():
         "queue_size": queue_size,
         "mirror": experiment_queue.get_all()
     }
-
-#@app.post("/api/queue/enqueue", status_code=status.HTTP_202_ACCEPTED)
     

@@ -4,6 +4,7 @@ from clue_deployer.src.logger import get_child_process_logger, logger, shared_lo
 from clue_deployer.src.models.deploy_request import DeployRequest
 from clue_deployer.src.main import ClueRunner
 from clue_deployer.src.config.config import ENV_CONFIG, Config
+from fastapi import HTTPException
 
 SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
 CLUE_CONFIG_PATH = ENV_CONFIG.CLUE_CONFIG_PATH
@@ -64,14 +65,20 @@ class Worker:
         self.process_logger.info(f"Deployment process for SUT {experiment.sut_name} finished")
     
     def stop(self):
-        print("Stopping worker...")
+        self.process_logger.info("Stopping worker queue and waiting for current deployment to finish...")
         self.shared_flag.value = False
         self.process.join()
-        print("Worker stopped.")
+        self.process_logger.info("Worker stopped.")
 
     def kill(self):
-        print("Killing worker...")
+        with self.state_lock:
+            if self.is_deploying.value == 0:
+                raise ValueError("Worker is not currently deploying. Cannot kill the process.")
+            self.is_deploying.value = 0
+        
+        self.shared_flag.value = False
+        self.process_logger.info("Stopping worker queue by killing the process...")
         self.process.terminate()
         self.process.join()
-        print("Worker killed.")
+        self.process_logger.info("Worker killed.")
 
