@@ -121,14 +121,15 @@ class ExperimentRunner:
             tracker.stop()
             node_channel.flush()
             pod_channel.flush()
-
         except SystemExit:
-            # Clean up
-            if platform.system() == "Windows" and timer:
-                timer.cancel()  # Cancel the Windows timer
-            elif platform.system() != "Windows":
-                signal.alarm(0)  # Disable SIGALRM on Unix-like systems
-            logging.info("Program terminated")
+            _ = None  # Ignore SystemExit raised by the cancel function and clean up gracefully
+
+        logger.info("Cleaning up timers after the experiment")
+        # Clean up
+        if platform.system() == "Windows" and timer:
+            timer.cancel()  # Cancel the Windows timer
+        elif platform.system() != "Windows":
+            signal.alarm(0)  # Disable SIGALRM on Unix-like systems
 
 
     def cleanup(self, helm_wrapper: HelmWrapper):
