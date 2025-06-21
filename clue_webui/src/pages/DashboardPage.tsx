@@ -66,7 +66,7 @@ const DashboardPage = () => {
     },
     {
       label: "Workload Type",
-      value: currentDeployment.workload,
+      value: currentDeployment.workloads.join(", "),
       icon: <LightningIcon size={24} />,
     },
     {
