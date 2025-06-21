@@ -71,6 +71,10 @@ class ExperimentRunner:
         # noinspection PyUnusedLocal
         def cancel(sig=None, frame=None):
             """Handler for timeout, SIGINT, or manual cancellation."""
+            if StatusManager.get() == StatusPhase.DONE:
+                logger.info("Reached timout but experiment is already done, skipping cancellation.")
+                return
+            logger.warning(f"Workload timeout of {timeout}s reached, stopping the experiment.")
             tracker.stop()
             pod_channel.flush()
             node_channel.flush()
