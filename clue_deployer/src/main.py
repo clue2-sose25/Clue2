@@ -119,8 +119,9 @@ class ClueRunner:
         StatusManager.set(StatusPhase.PREPARING_CLUSTER, "Preparing the cluster...")
         # Deploy a single experiment if deploy only
         if self.deploy_only:
-            logger.info(f"Starting experiment: {exps.experiments[0]}")
+            logger.info(f"Starting deployment only for experiment: {exps.experiments[0]}")
             self.run_single_experiment(exps.experiments[0])
+            logger.info("Deployment executed successfully. Exiting CLUE.")
         else:
             # Get the workloads
             logger.info("Appending workloads to the experiments")
