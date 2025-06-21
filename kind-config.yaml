@@ -5,6 +5,11 @@ networking:
   apiServerPort: 6443
 nodes:
   - role: control-plane
+    extraMounts:
+      - hostPath: /proc
+        containerPath: /proc-host
+      - hostPath: /usr/src
+        containerPath: /usr/src
   - role: worker
     kubeadmConfigPatches:
       - |

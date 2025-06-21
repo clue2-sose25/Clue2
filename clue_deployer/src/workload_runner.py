@@ -13,6 +13,7 @@ from kubernetes.client.rest import ApiException
 from clue_deployer.src.experiment import Experiment
 from clue_deployer.src.result_files import ResultFiles
 from clue_deployer.src.workload_cancelled_exception import WorkloadCancelled
+from clue_deployer.src.logger import logger
 
 
 class WorkloadRunner:
@@ -42,13 +43,17 @@ class WorkloadRunner:
             self._run_local_workload(outpath)
 
     def _run_remote_workload(self, outpath):
+        logger.info("Deploying workload remotely in Kubernetes cluster")
         observations = os.path.join(outpath, "")  # ensure trailing slash for later path building
         core = client.CoreV1Api()
         exp = self.exp
 
         def cancel(sig=None, frame=None):
+            logger.info("Workload cancelled, stopping remote workload and deleting pod")
             # attempt to download results before deleting the pod
             self._download_results("loadgenerator", observations)
+            # (force) delete the running pod to stop the workload
+            logger.info("Deleting loadgenerator pod in namespace %s", exp.namespace)
             core.delete_collection_namespaced_pod(
                 namespace=exp.namespace,
                 label_selector="app=loadgenerator",
@@ -64,10 +69,10 @@ class WorkloadRunner:
 
         try:
             self._deploy_remote_workload(exp, core)
-            logging.debug("deployed workload container")
 
             self._wait_for_workload(core, exp, observations)
 
+            logger.info("Deleting loadgenerator pod in namespace %s", exp.namespace)
             core.delete_namespaced_pod(name="loadgenerator", namespace=exp.namespace)
         except WorkloadCancelled:
             logging.info("Remote workload stopped due to cancellation")
@@ -78,6 +83,7 @@ class WorkloadRunner:
             should the pod disappear before it finishes, we stop waiting.
         """
         finished = False
+        logger.info("The experiment is running now. Waiting until the loadgenerator is finished...")
         while not finished:
             w = watch.Watch()
             for event in w.stream(
@@ -86,18 +92,18 @@ class WorkloadRunner:
                     label_selector="app=loadgenerator",
                     timeout_seconds=60,
             ):
-                logging.debug("container event: %s", event['type'])
                 pod = event["object"]
                 if pod.status.phase == "Succeeded" or pod.status.phase == "Completed":
-                    print("container finished, downloading results")
+                    logger.info("Loadgenerator container finished!")
                     try:
                         self._download_results("loadgenerator", observations)
                     finally:
                         w.stop()
                         finished = True
                 elif pod.status.phase == "Failed":
-                    logging.error(f"workload could not be started... {pod}")
+                    logger.error(f"loadgenerator could not be started... {pod}")
                     try:
+                        logger.info(f"Attempting to download results from failed pod, just in case")
                         self._download_results("loadgenerator", observations)
                     finally:
                         w.stop()
@@ -107,7 +113,7 @@ class WorkloadRunner:
                 # workload did not finish during the watch repeat
                 pod_list = core.list_namespaced_pod(exp.namespace, label_selector="app=loadgenerator")
                 if len(pod_list.items) == 0:
-                    logging.error("workload pod was not found, did it fail to start?, can't download results")
+                    logger.error("workload pod was not found, did it fail to start?, can't download results")
                     finished = True
 
 
@@ -127,7 +133,7 @@ class WorkloadRunner:
             )
         )
 
-        logging.debug("using workload container env: %s", container_env)
+        logger.debug("using workload container env: %s", container_env)
 
 
         # make sure that the loadgenerator runs on a seperate node, unless we're using e.g. minikube
@@ -179,6 +185,7 @@ class WorkloadRunner:
                 ),
             ),
         )
+        logger.info("Deployed loadgenerator to cluster!")
 
     # noinspection PyUnboundLocalVariable
     def _download_results(self, pod_name: str, destination_path: str):
@@ -190,7 +197,7 @@ class WorkloadRunner:
             resp = core.read_namespaced_pod_log(name=pod_name, namespace=namespace)
             log_contents = resp
             if not log_contents or len(log_contents) == 0:
-                print(f"{pod_name} in namespace {namespace} has no logs, workload failed?")
+                logger.error(f"{pod_name} in namespace {namespace} has no logs, workload failed?")
                 return 
             
             with TemporaryFile() as tar_buffer:
@@ -202,19 +209,21 @@ class WorkloadRunner:
                         mode="r:gz",
                 ) as tar:
                     tar.extractall(path=destination_path)
+            logger.info(f"Succesfully downloaded results from pod {pod_name} in namespace {namespace} to {destination_path}!")
         except ApiException as e:
-            logging.error(f"failed to get log from pod {pod_name} in namespace {namespace}: %s", e)
+            logger.error(f"failed to get log from pod {pod_name} in namespace {namespace}: %s", e)
         except tarfile.TarError as e:
-            logging.error(f"failed to extract log from TAR", e, log_contents)
+            logger.error(f"failed to extract log from TAR", e, log_contents)
         except Exception as e:
-            logging.error("failed to extraxt log",e,log_contents)
+            logger.error("failed to extraxt log",e,log_contents)
             
 
     def _run_local_workload(self, outpath):
-
+        logger.info("Deploying workload locally in docker container on host machine")
         observations = outpath
         docker_client = docker.from_env()
 
+        # port forward the sut service on the local machine
         forward = subprocess.Popen(
             [
                 "kubectl",
@@ -230,9 +239,7 @@ class WorkloadRunner:
             stderr=subprocess.PIPE,
         )
 
-        # create locust stats files
-
-
+        # create locust stats paths for mounting them into the container
         mounts = {
             path.abspath(path.join(observations, "locust_stats.csv")): {
                 "bind": f"/loadgenerator/{self.result_filenames.stats_csv}",
@@ -252,7 +259,7 @@ class WorkloadRunner:
             },
         }
 
-        # todo: what does this do
+        # create files for the mounts if they do not exist
         for f in mounts.keys():
             if not os.path.isfile(f):
                 with open(f, "w") as f:
@@ -260,12 +267,12 @@ class WorkloadRunner:
 
         # TODO: XXX get local ip to use for locust host
         def cancel(sig, frame):
+            logger.info("Workload cancelled, stopping port forward and loadgenerator container")
             forward.kill()
             try:
                 docker_client.containers.get("loadgenerator").kill()
             except:
                 pass
-            print("local workload timeout reached.")
 
         signal.signal(signal.SIGUSR1, cancel)
 
@@ -293,5 +300,5 @@ class WorkloadRunner:
             with open(path.join(observations, "docker.log"), "w") as f:
                 f.write(workload)
         except Exception as e:
-            logging.error("failed to run workload properly", e)
+            logger.error("failed to run workload in docker container", e)
         forward.kill()
