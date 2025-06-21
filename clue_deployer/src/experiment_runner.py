@@ -14,6 +14,8 @@ from os import path
 import signal
 import kubernetes
 import logging
+from kubernetes.client.rest import ApiException
+from clue_deployer.src.logger import logger
 
 class ExperimentRunner:
 
@@ -134,6 +136,7 @@ class ExperimentRunner:
         Remove sets for autoscaling, remove workload pods,
         """
         print("🧹 Cleaning up...")
+        logger.info("🧹 Cleaning up deployments...")
 
         if self.experiment.autoscaling:
             hpas = kubernetes.client.AutoscalingV1Api()
@@ -146,11 +149,21 @@ class ExperimentRunner:
             core = kubernetes.client.CoreV1Api()
             # noinspection PyBroadException
             try:
+                # Check if the pod exists before trying to delete it --> throws an error if it does not exist
+                core.read_namespaced_pod(name="loadgenerator", namespace=self.experiment.namespace)
+
+                logger.info("Deleting loadgenerator pod")    
                 core.delete_namespaced_pod(
                     name="loadgenerator", namespace=self.experiment.namespace
                 )
+            except ApiException as e:
+                if e.status == 404:
+                    _ = None  # Pod does not exist, no action needed
+                else:
+                    logger.error(f"Error checking or deleting pod:" + str(e))
             except Exception as e:
                 logging.error("Error cleaning up. Probably already deleted: " + str(e))
+                logger.error("Error cleaning up. Probably already deleted: " + str(e))
                 pass
         
         helm_wrapper.uninstall()
