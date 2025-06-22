@@ -23,7 +23,7 @@ helm_replacements:
   - old_value: "ghcr.io/open-telemetry/demo"
     new_value: "registry:5000/clue/otel-demo"
   - old_value: 'tag: ""'
-    new_value: 'tag: "clue-ots"'
+    new_value: 'tag: "__EXPERIMENT_TAG__"'
 
 services:
   - name: "checkout"

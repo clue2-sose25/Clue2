@@ -23,7 +23,7 @@ helm_replacements:
   - old_value: "pullPolicy: IfNotPresent"
     new_value: "pullPolicy: Always"
   - old_value: 'tag: ""'
-    new_value: 'tag: "vanilla"'
+    new_value: 'tag: "__EXPERIMENT_TAG__"'
   - old_value: "enabled: false"
     new_value: "enabled: true"
     conditions:
