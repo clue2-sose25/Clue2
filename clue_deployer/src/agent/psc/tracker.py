@@ -234,8 +234,6 @@ class ResourceTracker:
         kepler_consumtion = f'sum by (pod_name, node) (irate(kepler_container_package_joules_total{{container_namespace="{namespace}"}}[1m])) + sum by (pod_name, node)  (irate(kepler_container_core_joules_total{{container_namespace="{namespace}"}}[1m])) + sum by (pod_name, node)  (irate(kepler_container_dram_joules_total{{container_namespace="{namespace}"}}[1m]))'#f'sum by (pod_name, node) (irate(kepler_container_joules_total{{container_namespace="{namespace}"}}[1m]))'
         scraphandre_consumtion = f'sum by (container_id, node) (scaph_process_power_consumption_microwatts/1e6)'
         
-        # cpu_pod = f'sum by (pod, instance) (irate(container_cpu_usage_seconds_total{{namespace="{namespace}", container!=""}}[1m]))'
-        # memory_pod = f'avg by (pod,instance) (container_memory_working_set_bytes{{namespace="{namespace}", container!=""}}/ 1e6)'
         cpu_pod = f'sum by (pod, instance) (irate(container_cpu_usage_seconds_total{{namespace="{namespace}"}}[1m]))'
         memory_pod = f'avg by (pod,instance) (container_memory_working_set_bytes{{namespace="{namespace}"}}/ 1e6)'
         network_pod = f'sum by (pod, instance) (rate(container_network_transmit_bytes_total{{pod!="",namespace="{namespace}"}}[1m]) + rate(container_network_receive_bytes_total{{pod!="",namespace="{namespace}"}}[1m]))/1e6 '
@@ -243,7 +241,7 @@ class ResourceTracker:
         cpu_pod_result = self.get_pod_metrics(self.prm.custom_query(cpu_pod))
         memory_pod_result = self.get_pod_metrics(self.prm.custom_query(memory_pod))
         network_pod_result = self.get_pod_metrics(self.prm.custom_query(network_pod))
-        kepler_consumption_result = self.get_pod_metrics(self.prm.custom_query(kepler_consumtion),instance_name="node", pod_name="pod_name")
+        kepler_consumption_result = self.get_pod_metrics(self.prm.custom_query(kepler_consumtion),node_or_instance_label="node", pod_label="pod_name")
         scaphandre_consumption_result = self.get_scaphandre_metrics(self.prm.custom_query(scraphandre_consumtion), pod_index)
 
         pods = []
@@ -283,9 +281,7 @@ class ResourceTracker:
     def get_node_metrics(self, _results):
         results = {}
         for node in _results:
-
             metric = node['metric']
-
             if 'node' in metric:
                 name = metric['node']
             elif 'instance' in metric:
@@ -305,18 +301,21 @@ class ResourceTracker:
             }
         return results
 
-    def get_pod_metrics(self, _results, instance_name="instance",pod_name="pod"):
+    def get_pod_metrics(self, prometheus_results, node_or_instance_label="instance", pod_label="pod"):
         results = {}
-        for pod in _results:
-            if instance_name not in pod['metric']:
-                logger.warning("unknown instance name %s in pod %s", instance_name, pod_name)
-                continue 
-
-            results[pod['metric'][pod_name]] = {
-                "timestamp":datetime.datetime.fromtimestamp(pod['value'][0]),
-                "value":pod['value'][1],
-                "instance":pod['metric'][instance_name]
-            }
+        for pod_metric in prometheus_results:
+            metric_labels = pod_metric.get('metric', {})
+            if pod_label in metric_labels:
+                pod_name = metric_labels[pod_label]
+                node_name = metric_labels.get('node', metric_labels.get(node_or_instance_label, "unknown"))
+                results[pod_name] = {
+                    "timestamp": datetime.datetime.fromtimestamp(pod_metric['value'][0]),
+                    "value": pod_metric['value'][1],
+                    "instance": node_name
+                }
+            else:
+                logger.warning("metric missing expected pod label '%s': %s", pod_label, pod_metric)
+                continue
         return results
     
     def get_scaphandre_metrics(self,_results, pod_index={}):
