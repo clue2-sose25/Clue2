@@ -136,7 +136,13 @@ class ResourceTracker:
         
         if "kube_node_info" in available:
             info = self.prm.get_current_metric_value("kube_node_info")
-            self.node_map = dict(map(lambda x: (x["internal_ip"], x["node"]), map(lambda x: x["metric"], info)))
+            # Build a mapping from instance to the node name (instance: IP:9100||10250 --> node exporter + prometheus operator port) 
+            self.node_map = {}
+            for entry in info:
+                metric = entry["metric"]
+                node_name = metric.get("node")
+                internal_ip = metric.get("internal_ip")
+                self.node_map[internal_ip] = node_name
         else:
             self.node_map = {}
 
@@ -211,15 +217,26 @@ class ResourceTracker:
             n.cpu_usage = cpu_result.get(node, {"value":0})["value"]
             n.memory_usage = mem_result.get(node, {"value":0})["value"]
             n.network_usage = network_result.get(node, {"value":0})["value"]
-            n.wattage_kepler = kepler_result.get(node, {"value":0})["value"]
-            n.wattage_scaph = scaphandre_result.get(node, {"value":0})["value"]
-            n.wattage_auxilary = auxilary_wattage_result.get(node, {"value":0})["value"]
+
+            # Extract IP part from instance
+            ip = node.split(":")[0]
+            # Get node name from the node_map for kepler --> kepler metrics are per instance, not per node
+            node_name = self.node_map.get(ip, None)
+            if node_name:
+                n.wattage_kepler = kepler_result.get(node_name, {"value":0})["value"]
+                n.wattage_scaph = scaphandre_result.get(node_name, {"value":0})["value"]
+                n.wattage_auxilary = auxilary_wattage_result.get(node_name, {"value":0})["value"]
+            else:
+                print(f"No node_name found for {node}, setting wattages to 0")
+                n.wattage_kepler = 0
+                n.wattage_scaph = 0
+                n.wattage_auxilary = 0
+
             n.wattage = tapo_result.get(node, {"value":0})["value"]
             n.observation_time = cpu_result.get(node, {"timestamp":None})["timestamp"]
             if n.observation_time is None:
                 continue
             n.observation_time = n.observation_time.replace(microsecond=0)
-            
             n.num_processes = pods_result.get(node, {"value":0})["value"]
             n.temp = temp_result.get(node, {"value":0})["value"]
 
@@ -289,12 +306,6 @@ class ResourceTracker:
             else:
                 logger.warning("metric has neither instance nor node info: %s", node)
                 continue
-            
-            # if 'node' not in node['metric']:
-            #     name = node['metric']['instance']
-            # else :
-            #     name = node['metric']['node']
-                
             results[name] = {
                 "timestamp": datetime.datetime.fromtimestamp(node['value'][0]),
                 "value": node['value'][1]
