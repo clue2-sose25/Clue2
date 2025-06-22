@@ -12,7 +12,7 @@ from clue_deployer.src.helm_wrapper import HelmWrapper
 from clue_deployer.src.experiment import Experiment
 from clue_deployer.src.config import Config
 from clue_deployer.src.autoscaling_deployer import AutoscalingDeployer
-from clue_deployer.service.status_manager import StatusManager, Phase
+from clue_deployer.src.service.status_manager import StatusManager, StatusPhase
 
 # Adjust if deploy.py is not 3 levels down from project root
 BASE_DIR = Path(__file__).resolve().parent.parent.parent 
@@ -111,11 +111,15 @@ class ExperimentDeployer:
                 )
             if prometheus_status.returncode != 0:
                 logger.info("Helm chart 'kube-prometheus-stack' is not installed. Installing it now...")
+                logger.info("Note: You may see some 'memcache.go' warnings during installation - these are harmless.")
+                
                 # Install with NodePort service type for Prometheus
                 subprocess.check_call([
                     "helm", "install", "kps1", "prometheus-community/kube-prometheus-stack",
                     "--set", "prometheus.service.type=NodePort",
-                    "--set", "prometheus.service.nodePort=30090"
+                    "--set", "prometheus.service.nodePort=30090",
+                    "--wait",
+                    "--timeout", "15m"
                 ])
             else:
                 logger.info("Prometheus stack found")
@@ -152,7 +156,9 @@ class ExperimentDeployer:
                     "--namespace", "kepler",
                     "--create-namespace",
                     "--set", "serviceMonitor.enabled=true",
-                    "--set", "serviceMonitor.labels.release=kps1"
+                    "--set", "serviceMonitor.labels.release=kps1",
+                    "--wait",
+                    "--timeout", "10m"
                 ])
             else:
                 logger.info("Kepler stack found")
@@ -172,10 +178,12 @@ class ExperimentDeployer:
             logger.info("Copying values file to results")
 
 
-    def _wait_until_services_ready(self, timeout: int = 180):
+    def _wait_until_services_ready(self):
         """
         Wait a specified amount of time for the critical services
         """
+        timeout = self.config.sut_config.timeout_for_services_ready
+        logger.info(f"Waiting for critical services to be ready for {timeout} seconds")
         v1_apps = self.apps_v1_api
         ready_services = set()
         start_time = time.time()
@@ -216,7 +224,16 @@ class ExperimentDeployer:
         """
         Clones the SUT repository if it doesn't exist.
         """
-        if not self.sut_path.exists():
+        if self.config.sut_config.helm_chart_repo:
+            # If a helm chart repo is provided, clone it
+            if self.sut_path.exists():
+                logger.warning(f"SUT path {self.sut_path} already exists. It will not clone the repository again.")
+            else: 
+                logger.info(f"Cloning Helm chart repository from {self.config.sut_config.helm_chart_repo} to {self.sut_path}")
+                subprocess.check_call(["git", "clone", self.config.sut_config.helm_chart_repo, str(self.sut_path)])
+        elif not self.sut_path.exists():
+            if not self.config.sut_config.sut_git_repo:
+                raise ValueError("SUT Git repository URL is not provided in the configuration")
             logger.info(f"Cloning SUT from {self.config.sut_config.sut_git_repo} to {self.sut_path}")
             subprocess.check_call(["git", "clone", self.config.sut_config.sut_git_repo, str(self.sut_path)])
         else:
@@ -227,7 +244,7 @@ class ExperimentDeployer:
         """
         Orchestrates the full deployment process for the experiment.
         """
-        StatusManager.set(Phase.DEPLOYING_SUT, "Deploying SUT...")
+        StatusManager.set(StatusPhase.DEPLOYING_SUT, "Deploying SUT...")
         # Check for namespace
         logger.info(f"Checking if namespace '{self.experiment.namespace}' exists")
         self._create_namespace_if_not_exists()
@@ -250,7 +267,7 @@ class ExperimentDeployer:
             logger.info(f"Deploying the SUT: {ENV_CONFIG.SUT_NAME}")
             wrapper.deploy_sut()
         # Set the status
-        StatusManager.set(Phase.WAITING, "Waiting for system to stabilize...")
+        StatusManager.set(StatusPhase.WAITING, "Waiting for system to stabilize...")
         # Wait for all critical services
         logger.info(f"Waiting for all critical services: [{set(self.experiment.critical_services)}]")
         self._wait_until_services_ready()
@@ -259,5 +276,5 @@ class ExperimentDeployer:
             AutoscalingDeployer(self.experiment).setup_autoscaling()
         else:
             logger.info("Autoscaling disabled. Skipping its deployment.")
-        StatusManager.set(Phase.WAITING, "Waiting for load generator...")
+        StatusManager.set(StatusPhase.WAITING, "Waiting for load generator...")
         logger.info("SUT deployment successful.")

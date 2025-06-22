@@ -1,0 +1,121 @@
+config:
+  namespace: "otel-demo"
+  sut_git_repo: "https://github.com/JulianLegler/opentelemetry-demo.git"
+  sut_path: "opentelemetry-demo"
+  helm_chart_repo: "https://github.com/open-telemetry/opentelemetry-helm-charts"
+  helm_chart_path: "opentelemetry-demo/charts/opentelemetry-demo"
+  helm_dependencies_from_chart: true # If true, dependencies are fetched from the chart
+  values_yaml_name: "values.yaml"
+  target_service_name: "frontend" # The k8s service name (used for in-cluster communication)
+  application_endpoint_path: "/" # The specific path
+  timeout_for_services_ready: 300 # 5 minutes since otel demo can take a while to start
+  default_resource_limits:
+    cpu: 1000
+    memory: 1024
+  workload_settings: {}
+  timeout_duration: 3600 # 1 hour in seconds
+  wait_before_workloads: 180 # 3 minutes in seconds
+  wait_after_workloads: 180 # 3 minutes in seconds
+  tags: []
+  
+
+helm_replacements:
+  - old_value: "ghcr.io/open-telemetry/demo"
+    new_value: "registry:5000/clue/otel-demo"
+  - old_value: 'tag: ""'
+    new_value: 'tag: "clue-ots"'
+
+services:
+  - name: "checkout"
+    resource_limits: # You can override defaults here if needed
+      cpu: 500 # Using default
+      memory: 512 # Using default
+  - name: "product-catalog"
+    resource_limits:
+      cpu: 500
+      memory: 512
+  - name: "ad"
+    resource_limits:
+      cpu: 500
+      memory: 512
+  - name: "frontend-proxy" # Often a key entry point
+    resource_limits:
+      cpu: 750 # Example: slightly higher for a proxy
+      memory: 768
+  - name: "fraud-detection"
+    resource_limits:
+      cpu: 500
+      memory: 512
+  - name: "currency"
+    resource_limits:
+      cpu: 500
+      memory: 512
+  - name: "frontend" # This is different from frontend-proxy
+    resource_limits:
+      cpu: 750
+      memory: 768
+  - name: "image-provider"
+    resource_limits:
+      cpu: 500
+      memory: 512
+  - name: "email"
+    resource_limits:
+      cpu: 500
+      memory: 512
+  - name: "accounting"
+    resource_limits:
+      cpu: 500
+      memory: 512
+  - name: "cart"
+    resource_limits:
+      cpu: 500
+      memory: 512
+  - name: "kafka" # Infrastructure component, might need different defaults
+    resource_limits:
+      cpu: 1000
+      memory: 1024
+  - name: "recommendation"
+    resource_limits:
+      cpu: 500
+      memory: 512
+  - name: "shipping"
+    resource_limits:
+      cpu: 500
+      memory: 512
+  - name: "quote"
+    resource_limits:
+      cpu: 500
+      memory: 512
+  - name: "payment"
+    resource_limits:
+      cpu: 500
+      memory: 512
+  - name: "flagd-ui" # UI for feature flags, might be less critical for performance
+    resource_limits:
+      cpu: 250
+      memory: 256
+
+#TODO
+experiments:
+  - name: "baseline"
+    description: "Baseline experiment for the otel-demo application"
+    target_branch: "main"
+    colocated_workload: true
+    critical_services:
+      [
+        "checkout",
+        "product-catalog",
+        "ad",
+        "frontend-proxy",
+        "fraud-detection",
+        "currency",
+        "frontend",
+        "image-provider",
+        "email",
+        "kafka",
+        "recommendation",
+        "shipping",
+        "quote",
+        "payment",
+      ]
+    autoscaling: "cpu"

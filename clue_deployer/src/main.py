@@ -8,8 +8,8 @@ from os import path
 import progressbar
 from kubernetes import config as kube_config
 from clue_deployer.src.config.config import CONFIGS, ENV_CONFIG, Config
-from clue_deployer.service.status import Phase
-from clue_deployer.service.status_manager import StatusManager
+from clue_deployer.src.models.status_phase import StatusPhase
+from clue_deployer.src.service.status_manager import StatusManager
 from clue_deployer.src.experiment import Experiment
 from clue_deployer.src.experiment_runner import ExperimentRunner
 from clue_deployer.src.experiment_workloads import get_workload_instance
@@ -28,11 +28,13 @@ class ClueRunner:
     def __init__(self, config: Config = CONFIGS, 
                 experiment_name: str = ENV_CONFIG.EXPERIMENT_NAME,
                 deploy_only = ENV_CONFIG.DEPLOY_ONLY,
-                sut_name: str = ENV_CONFIG.SUT_NAME) -> None:
+                sut_name: str = ENV_CONFIG.SUT_NAME,
+                n_iterations: int = CONFIGS.clue_config.n_iterations) -> None:
         self.config = config
         self.experiment_name = experiment_name
         self.deploy_only = deploy_only
         self.sut_name = sut_name
+        self.n_iterations = n_iterations
 
     @staticmethod
     def available_suts():
@@ -89,7 +91,7 @@ class ClueRunner:
         """
         Iterates over the experiment
         """
-        num_iterations = self.config.sut_config.num_iterations
+        num_iterations = self.n_iterations
         logger.info(f"Starting {exp} experiment")
         # Run all iterations
         for i in range(num_iterations):
@@ -120,7 +122,7 @@ class ClueRunner:
         if not len(exps.experiments):
             raise ValueError(f"Invalid experiment name for {self.sut_name}")
         # Set the status to preparing
-        StatusManager.set(Phase.PREPARING_CLUSTER, "Preparing the cluster...")
+        StatusManager.set(StatusPhase.PREPARING_CLUSTER, "Preparing the cluster...")
         # Deploy a single experiment if deploy only
         if self.deploy_only:
             logger.info(f"Starting experiment: {exps.experiments[0]}")

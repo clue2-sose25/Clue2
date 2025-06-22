@@ -37,7 +37,11 @@ docker compose up -d registry
 
 ### 2. ✨ Cluster preparation
 
-When deploying a CLUE container, it mounts the current kube config of the host machine. Therefore, to specify a specific k8s cluster for CLUE, be sure that your current `.kube` config is set to the cluster of choice.
+In order to use CLUE to benchmark the SUT of choice, CLUE needs an access to a K8s cluster pre-prepared to run the benchmarks. The requirements include:
+- `Prometheus Node Exporter` - we recommend the Kube Prometheus Stack helm chart, which includes e.g. Node Exporter and Grafana resources.
+- `Kepler` - we recommend to deploy the official `Kepler Helm chart` by following the official [Kepler docs](https://sustainable-computing.io/installation/kepler-helm/). If the `Prometheus Node Exporter` was setup before, one can skip the corresponding steps in the `Kepler` guide.
+
+When deploying CLUE service, docker mounts the current kube config of the host machine to the CLUE deployer container. Therefore, to specify a specific k8s cluster for CLUE, be sure that your current `.kube` context is selected to the cluster of your choice.
 
 1. Setting up a local `Kind` cluster
 
@@ -45,14 +49,6 @@ For local testing, we recommend using a `Kind` cluster, simply deployable by pro
 
 ```bash
 sh create-kind-cluster.sh
-```
-
-### 3. 🛠️ CLUE2 setup
-
-As the PSC tracker repository is private, clone it into `clue_deployer/agent`:
-
-```bash
-git clone https://github.com/clue2-sose25/PSC clue_deployer/agent
 ```
 
 ### 3. 🧱 (Optional) Build Images for the selected SUT
@@ -70,6 +66,7 @@ To build images for the selected SUT, use one of the commands listed below.
   By default the script builds images for all experiments. To specify a single experiment you can modify the `.env` file and change the `TEASTORE_EXP_NAME` environment variable to contain the name of one of the experiments listed in the `sut_configs/teastore.yaml` file.
 
 - Open Telemetry Shop
+
   ```bash
   docker compose up -d --build ots-builder
   ```
@@ -107,7 +104,7 @@ To run the main CLUE2, run the task below. Make sure that all required images ar
 docker compose up -d --build clue-deployer
 ```
 
-![Running the Experiments](readme/running_experiments.png)
+![Running the Experiments](public/running_experiments.png)
 
 ### 6. 📋 (Optional) CLUE2 Deployment with local changes
 

@@ -15,6 +15,7 @@ class ClueConfig(BaseSettings):
     result_base_path: Path
     workloads: list[str] 
     target_utilization: int
+    n_iterations: int
 
     class Config:
         # Allow environment variable overrides

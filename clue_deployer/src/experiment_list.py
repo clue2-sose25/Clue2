@@ -19,6 +19,11 @@ class ExperimentList():
         """
         experiments_config = config.experiments_config
         experiments = []
+
+        if exp_name == "all":
+            names = None
+        else:
+            names = [n.strip() for n in exp_name.split(",") if n.strip()]
         
         for exp in experiments_config.experiments:
             # Create an Experiment instance for each experiment in the YAML file
@@ -32,7 +37,7 @@ class ExperimentList():
                 config=config,
             )
             # Add experiment to list if exp_name is 'all' or matches experiment name
-            if exp_name == "all" or exp.name == exp_name:
+            if names is None or exp.name in names:
                 experiments.append(experiment)
         
         return ExperimentList(experiments=experiments)

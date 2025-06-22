@@ -14,11 +14,10 @@ config:
   wait_before_workloads: 10
   wait_after_workloads: 10
   tags: []
-  num_iterations: 2
 
 helm_replacements:
-  - old_value: 'ghcr.io/clue2-sose25/sustainable_toystore'
-    new_value: 'registry:5000/clue'
+  - old_value: "ghcr.io/clue2-sose25/sustainable_toystore"
+    new_value: "registry:5000/clue"
 
 services:
   - name: "teastore-auth"
@@ -44,7 +43,8 @@ services:
 
 experiments:
   - name: "baseline"
+    description: "Baseline experiment for the toystore application"
     target_branch: "main"
     colocated_workload: true
-    critical_services: ['toystore-frontend', 'toystore-backend']
+    critical_services: ["toystore-frontend", "toystore-backend"]
     autoscaling: "cpu"
