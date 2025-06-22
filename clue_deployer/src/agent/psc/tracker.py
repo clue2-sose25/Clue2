@@ -1,14 +1,11 @@
 import datetime
 from prometheus_api_client import PrometheusConnect
+from clue_deployer.src.logger import logger
 from threading import Timer
-import logging
 from kubernetes import client, config
 import copy 
 from queue import Queue
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("ResourceTracker")
-logger.setLevel(logging.DEBUG)
 
 #TODO: make a cluster cunfig class that can be used to configure the tracker, it should allow to specifiy the prometheus url, the k8s api url, the namespaces to track, the update interval, and the queries to use for each metric. 
 class NodeUsage:
@@ -96,8 +93,6 @@ class ResourceTracker:
 
         self.sumby = "instance" # or node
 
-        logger.debug("using local PSC resource tracker")
-
         self.prometheus_url = prometheus_url
         if self.prometheus_url:
             self.prm = PrometheusConnect(url=self.prometheus_url, disable_ssl=True)
@@ -108,21 +103,20 @@ class ResourceTracker:
             self.UPDATE_INTERVAL = interval
             self.timer = RepeatTimer(interval, self.update)
             self.namespaces = namespaces
-            self._check_metrics()
-            
+            self.initialize_and_validate_metrics()
 
             try:
                 config.load_incluster_config()
             except Exception as e:
                 config.load_kube_config()
-            
             self.k8s_api_client = client.CoreV1Api()
+            logger.info("Resource Tracker initialized.")
         else:
             self.prm = None
-            print(f"No prometheus_url provided. {self.__class__.__name__} will be inactive.")
+            logger.error(f"No prometheus_url provided. {self.__class__.__name__} will be inactive.")
 
 
-    def _check_metrics(self):
+    def initialize_and_validate_metrics(self):
         available = set(self.prm.all_metrics())
 
         #check node_exporter metrics - cpu/memory
@@ -132,7 +126,7 @@ class ResourceTracker:
         if not required.issubset(available):
             raise ValueError("Prometheus does not provide the required metrics.")
 
-        #check if prometheus is managing a kubernetes cluster
+        #check if prometheus is managing a kubernetes cluster on container or node level
         if "container_network_transmit_bytes_total" in available:
             self.network_metric = "container_network"
         elif "node_network_transmit_bytes_total" in available:
@@ -150,7 +144,7 @@ class ResourceTracker:
         try:
             self.track()
         except Exception as e:
-            logging.exception("Error while updating resource tracker. %s", e)
+            logger.error("Error while updating resource tracker: " + str(e))
 
     def fetch_pods(self):
         pods = {}
@@ -208,9 +202,6 @@ class ResourceTracker:
         pods_result = self.get_node_metrics(self.prm.custom_query(pods))
         auxilary_wattage_result = self.get_node_metrics(self.prm.custom_query(auxilary_wattage))
         temp_result = self.get_node_metrics(self.prm.custom_query(temp))
-
-        logging.debug("cpu result: %s", cpu_result)
-        logging.debug("mem result: %s", mem_result)
 
         nodes = []
         keys = set().union(mem_result.keys(), cpu_result.keys(), network_result.keys(), kepler_result.keys(), scaphandre_result.keys(), tapo_result.keys(), temp_result.keys())
@@ -354,12 +345,10 @@ class ResourceTracker:
             nodes = self._query_nodes()
             for node in nodes:
                 self.node_channel.put(node)
-                logging.debug("node: %s", node)
                 
             pods = []
             for namespace in self.namespaces:
                 pods = pods + self._query_pods(namespace, pod_index)
-                logging.debug("pods: %s", pods)
 
             #insert the data
             for p in pods:
