@@ -257,9 +257,9 @@ jobs:
           cache-to: type=gha,scope=clue_webui,mode=max
       - name: Smoke test clue_webui container
         run: |
-          docker run  -d --name=clue-webui ghcr.io/clue2-sose25/clue2-${IMAGE_NAME}:pr-test /bin/sh -c "echo Clue WebUI OK"
-          echo "hallloooo"
-          sleep 5
+          docker run -p 5001:80 -d --name=clue-webui ghcr.io/clue2-sose25/clue2-${IMAGE_NAME}:pr-test 
+          sleep 8
+          curl -fs http://localhost:5001/ | grep -q "Clue Dashboard"
           docker logs clue-webui || true
           docker stop clue-webui
 
