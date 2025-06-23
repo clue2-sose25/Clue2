@@ -104,34 +104,17 @@ jobs:
           cache-to: type=gha,scope=clue_deployer,mode=max
 
       - name: Smoke test clue_deployer container
-        if: ${{ github.event_name != 'pull_request' }}
         run: |
           # Start the CLUE Deployer container as a service
           docker run -d --name test_clue_deployer \
-            -e DEPLOY_AS_SERVICE=true -p 8000:8000 \
-            ghcr.io/clue2-sose25/clue2-${IMAGE_NAME}:$SHORT_SHA
+            -e DEPLOY_AS_SERVICE=true -p 9001:8000 \
+            ghcr.io/clue2-sose25/clue2-${IMAGE_NAME}:pr-test
+          curl --fail http://localhost:9001/api/health
           sleep 10
-          # Verify the FastAPI service responds on /status (HTTP 200)
-          docker logs test_clue_deployer || true
-          echo 'hi'
-          sleep 10
-          curl --fail http://localhost:8000/status
-          # Print logs (for debugging) and stop the container
           docker logs test_clue_deployer || true
           docker stop test_clue_deployer
           docker rm test_clue_deployer || true
 
-      - name: Smoke test clue_deployer container (PR)
-        if: ${{ github.event_name == 'pull_request' }}
-        run: |
-          docker run -d --name test_clue_deployer \
-            -e DEPLOY_AS_SERVICE=true -p 8000:8000 \
-            ghcr.io/clue2-sose25/clue2-${IMAGE_NAME}:pr-test
-          sleep 10
-          curl --fail http://localhost:8000/status
-          docker logs test_clue_deployer || true
-          docker stop test_clue_deployer
-          docker rm test_clue_deployer || true
 
 
 #     - name: Compute short Git SHA
