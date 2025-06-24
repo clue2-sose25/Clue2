@@ -244,7 +244,7 @@ const ControlsPage = () => {
             {availableSUTs
               .filter((sut) => sut.name === currentDeployment.SutName)
               .flatMap((sut) => sut.experiments).length === 0 && (
-              <p>Select experiments</p>
+              <p>Firstly select the SUT</p>
             )}
           </div>
         </div>
