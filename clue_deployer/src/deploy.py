@@ -45,7 +45,7 @@ class ExperimentDeployer:
             raise
 
         self.port_forward_process = None # To keep track of the port-forwarding process
-        self.helm_wrapper = HelmWrapper(self.config, self.experiment.autoscaling) 
+        self.helm_wrapper = HelmWrapper(self.config, self.experiment) 
     
 
 

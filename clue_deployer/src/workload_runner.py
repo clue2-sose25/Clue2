@@ -169,7 +169,7 @@ class WorkloadRunner:
                     containers=[
                         client.V1Container(
                             name="loadgenerator",
-                            image=f"{exp.env.docker_registry_address}/loadgenerator:vanilla",
+                            image=f"{exp.env.docker_registry_address}/loadgenerator:{exp.target_branch}",
                             env=container_env,
                             command=[
                                 "sh",
