@@ -1,6 +1,7 @@
 FROM python:3.11-bookworm
 WORKDIR /loadgenerator
 COPY requirements.txt ./
+RUN cat /etc/resolv.conf
 RUN yes | pip3 install -v --index-url https://pypi.python.org/simple/ locust
 
 COPY *.py ./
