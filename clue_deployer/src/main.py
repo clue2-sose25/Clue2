@@ -78,13 +78,6 @@ class ClueRunner:
             # Clean up
             logger.info("Cleaning up after the experiment")
             ExperimentRunner(exp).cleanup(experiment_deployer.helm_wrapper)
-            logger.info(f"Waiting {exp.env.wait_after_workloads}s after cleaning the workload")
-            time.sleep(exp.env.wait_after_workloads)
-            logger.info("Waiting 60 sleep after a run just to be on the safe side")
-            time.sleep(60)
-            logger.info("All benchmarks executed successfully. Exiting CLUE.")
-        else:
-            logger.info("Deployment tested successfully. Exiting CLUE.")
 
 
     def iterate_single_experiment(self, exp: Experiment, timestamp: str) -> None:
@@ -101,9 +94,10 @@ class ClueRunner:
             out_path = path.join(root, timestamp, tags, name, str(i))
             logger.info(f"Running iteration ({i + 1}/{num_iterations}) with output to: {out_path}")
             self.run_single_experiment(exp, out_path)
-        # Wait
-        logger.info(f"Sleeping for 120s to let the system settle after one experiment")
-        time.sleep(120)
+            # additional wait after each iteration except the last one
+            if i < num_iterations - 1:
+                logger.info(f"Sleeping {exp.env.wait_after_workloads} seconds before next experiment iteration")
+                time.sleep(exp.env.wait_after_workloads)
 
     def main(self) -> None:
         logger.info(f"Starting CLUE with DEPLOY_ONLY={self.deploy_only}")
@@ -125,8 +119,9 @@ class ClueRunner:
         StatusManager.set(StatusPhase.PREPARING_CLUSTER, "Preparing the cluster...")
         # Deploy a single experiment if deploy only
         if self.deploy_only:
-            logger.info(f"Starting experiment: {exps.experiments[0]}")
+            logger.info(f"Starting deployment only for experiment: {exps.experiments[0]}")
             self.run_single_experiment(exps.experiments[0])
+            logger.info("Deployment executed successfully. Exiting CLUE.")
         else:
             # Get the workloads
             logger.info("Appending workloads to the experiments")
@@ -143,6 +138,12 @@ class ClueRunner:
             # Run over all iterations of each of the experiments
             for exp in exps:
                 self.iterate_single_experiment(exp, timestamp)
+                # additional wait after each experiment except the last one
+                if exp != exps.experiments[-1]:
+                    logger.info(f"Sleeping additional {exp.env.wait_after_workloads} seconds before starting next experiment")
+                    time.sleep(exp.env.wait_after_workloads)
+                                
+            logger.info("All experiments executed successfully. Exiting CLUE.")
 
 
 if __name__ == "__main__":
