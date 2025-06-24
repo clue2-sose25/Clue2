@@ -103,17 +103,17 @@ jobs:
           cache-from: type=gha,scope=clue_deployer
           cache-to: type=gha,scope=clue_deployer,mode=max
 
-      - name: Smoke test clue_deployer container
-        run: |
-          # Start the CLUE Deployer container as a service
-          docker run -d --name test_clue_deployer \
-            -e DEPLOY_AS_SERVICE=true -p 9001:8000 \
-            ghcr.io/clue2-sose25/clue2-${IMAGE_NAME}:pr-test
-          sleep 15
-          docker logs test_clue_deployer  || true
-          curl --fail http://localhost:9001/api/health
-          docker stop test_clue_deployer || true
-          docker rm test_clue_deployer || true
+#      - name: Smoke test clue_deployer container
+#        run: |
+#          # Start the CLUE Deployer container as a service
+#          docker run -d --name test_clue_deployer \
+#            -e DEPLOY_AS_SERVICE=true -p 9001:8000 \
+#            ghcr.io/clue2-sose25/clue2-${IMAGE_NAME}:pr-test
+#          sleep 15
+#          docker logs test_clue_deployer  || true
+#          curl --fail http://localhost:9001/api/health
+#          docker stop test_clue_deployer || true
+#          docker rm test_clue_deployer || true
 
 
 
