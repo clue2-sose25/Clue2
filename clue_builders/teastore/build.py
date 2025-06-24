@@ -224,14 +224,13 @@ def build_main():
         if not selected_experiments:
             print(f"No experiment found for: {exp_list}")
             sys.exit(1)  # Exit with error if experiment not found
-    
+    # Build the workload generator
+    build_workload(selected_experiments[0])
     # Build the teastore images
     for experiment in selected_experiments:
         print(f"Building teastore images for {experiment.name}")
-        # Build the experiment
+        # Build each experiment
         build(experiment)
-        # Build the workload
-        build_workload(experiment)
 
 if __name__ == "__main__":
     build_main()
