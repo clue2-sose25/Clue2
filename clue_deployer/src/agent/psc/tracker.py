@@ -1,14 +1,11 @@
 import datetime
 from prometheus_api_client import PrometheusConnect
+from clue_deployer.src.logger import logger
 from threading import Timer
-import logging
 from kubernetes import client, config
 import copy 
 from queue import Queue
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("ResourceTracker")
-logger.setLevel(logging.DEBUG)
 
 #TODO: make a cluster cunfig class that can be used to configure the tracker, it should allow to specifiy the prometheus url, the k8s api url, the namespaces to track, the update interval, and the queries to use for each metric. 
 class NodeUsage:
@@ -96,8 +93,6 @@ class ResourceTracker:
 
         self.sumby = "instance" # or node
 
-        logger.debug("using local PSC resource tracker")
-
         self.prometheus_url = prometheus_url
         if self.prometheus_url:
             self.prm = PrometheusConnect(url=self.prometheus_url, disable_ssl=True)
@@ -108,21 +103,20 @@ class ResourceTracker:
             self.UPDATE_INTERVAL = interval
             self.timer = RepeatTimer(interval, self.update)
             self.namespaces = namespaces
-            self._check_metrics()
-            
+            self.initialize_and_validate_metrics()
 
             try:
                 config.load_incluster_config()
             except Exception as e:
                 config.load_kube_config()
-            
             self.k8s_api_client = client.CoreV1Api()
+            logger.info("Resource Tracker initialized.")
         else:
             self.prm = None
-            print(f"No prometheus_url provided. {self.__class__.__name__} will be inactive.")
+            logger.error(f"No prometheus_url provided. {self.__class__.__name__} will be inactive.")
 
 
-    def _check_metrics(self):
+    def initialize_and_validate_metrics(self):
         available = set(self.prm.all_metrics())
 
         #check node_exporter metrics - cpu/memory
@@ -132,7 +126,7 @@ class ResourceTracker:
         if not required.issubset(available):
             raise ValueError("Prometheus does not provide the required metrics.")
 
-        #check if prometheus is managing a kubernetes cluster
+        #check if prometheus is managing a kubernetes cluster on container or node level
         if "container_network_transmit_bytes_total" in available:
             self.network_metric = "container_network"
         elif "node_network_transmit_bytes_total" in available:
@@ -142,7 +136,13 @@ class ResourceTracker:
         
         if "kube_node_info" in available:
             info = self.prm.get_current_metric_value("kube_node_info")
-            self.node_map = dict(map(lambda x: (x["internal_ip"], x["node"]), map(lambda x: x["metric"], info)))
+            # Build a mapping from instance to the node name (instance: IP:9100||10250 --> node exporter + prometheus operator port) 
+            self.node_map = {}
+            for entry in info:
+                metric = entry["metric"]
+                node_name = metric.get("node")
+                internal_ip = metric.get("internal_ip")
+                self.node_map[internal_ip] = node_name
         else:
             self.node_map = {}
 
@@ -150,7 +150,7 @@ class ResourceTracker:
         try:
             self.track()
         except Exception as e:
-            logging.exception("Error while updating resource tracker. %s", e)
+            logger.error("Error while updating resource tracker: " + str(e))
 
     def fetch_pods(self):
         pods = {}
@@ -209,9 +209,6 @@ class ResourceTracker:
         auxilary_wattage_result = self.get_node_metrics(self.prm.custom_query(auxilary_wattage))
         temp_result = self.get_node_metrics(self.prm.custom_query(temp))
 
-        logging.debug("cpu result: %s", cpu_result)
-        logging.debug("mem result: %s", mem_result)
-
         nodes = []
         keys = set().union(mem_result.keys(), cpu_result.keys(), network_result.keys(), kepler_result.keys(), scaphandre_result.keys(), tapo_result.keys(), temp_result.keys())
         for node in keys:
@@ -220,15 +217,26 @@ class ResourceTracker:
             n.cpu_usage = cpu_result.get(node, {"value":0})["value"]
             n.memory_usage = mem_result.get(node, {"value":0})["value"]
             n.network_usage = network_result.get(node, {"value":0})["value"]
-            n.wattage_kepler = kepler_result.get(node, {"value":0})["value"]
-            n.wattage_scaph = scaphandre_result.get(node, {"value":0})["value"]
-            n.wattage_auxilary = auxilary_wattage_result.get(node, {"value":0})["value"]
+
+            # Extract IP part from instance
+            ip = node.split(":")[0]
+            # Get node name from the node_map for kepler --> kepler metrics are per instance, not per node
+            node_name = self.node_map.get(ip, None)
+            if node_name:
+                n.wattage_kepler = kepler_result.get(node_name, {"value":0})["value"]
+                n.wattage_scaph = scaphandre_result.get(node_name, {"value":0})["value"]
+                n.wattage_auxilary = auxilary_wattage_result.get(node_name, {"value":0})["value"]
+            else:
+                print(f"No node_name found for {node}, setting wattages to 0")
+                n.wattage_kepler = 0
+                n.wattage_scaph = 0
+                n.wattage_auxilary = 0
+
             n.wattage = tapo_result.get(node, {"value":0})["value"]
             n.observation_time = cpu_result.get(node, {"timestamp":None})["timestamp"]
             if n.observation_time is None:
                 continue
             n.observation_time = n.observation_time.replace(microsecond=0)
-            
             n.num_processes = pods_result.get(node, {"value":0})["value"]
             n.temp = temp_result.get(node, {"value":0})["value"]
 
@@ -243,8 +251,6 @@ class ResourceTracker:
         kepler_consumtion = f'sum by (pod_name, node) (irate(kepler_container_package_joules_total{{container_namespace="{namespace}"}}[1m])) + sum by (pod_name, node)  (irate(kepler_container_core_joules_total{{container_namespace="{namespace}"}}[1m])) + sum by (pod_name, node)  (irate(kepler_container_dram_joules_total{{container_namespace="{namespace}"}}[1m]))'#f'sum by (pod_name, node) (irate(kepler_container_joules_total{{container_namespace="{namespace}"}}[1m]))'
         scraphandre_consumtion = f'sum by (container_id, node) (scaph_process_power_consumption_microwatts/1e6)'
         
-        # cpu_pod = f'sum by (pod, instance) (irate(container_cpu_usage_seconds_total{{namespace="{namespace}", container!=""}}[1m]))'
-        # memory_pod = f'avg by (pod,instance) (container_memory_working_set_bytes{{namespace="{namespace}", container!=""}}/ 1e6)'
         cpu_pod = f'sum by (pod, instance) (irate(container_cpu_usage_seconds_total{{namespace="{namespace}"}}[1m]))'
         memory_pod = f'avg by (pod,instance) (container_memory_working_set_bytes{{namespace="{namespace}"}}/ 1e6)'
         network_pod = f'sum by (pod, instance) (rate(container_network_transmit_bytes_total{{pod!="",namespace="{namespace}"}}[1m]) + rate(container_network_receive_bytes_total{{pod!="",namespace="{namespace}"}}[1m]))/1e6 '
@@ -252,7 +258,7 @@ class ResourceTracker:
         cpu_pod_result = self.get_pod_metrics(self.prm.custom_query(cpu_pod))
         memory_pod_result = self.get_pod_metrics(self.prm.custom_query(memory_pod))
         network_pod_result = self.get_pod_metrics(self.prm.custom_query(network_pod))
-        kepler_consumption_result = self.get_pod_metrics(self.prm.custom_query(kepler_consumtion),instance_name="node", pod_name="pod_name")
+        kepler_consumption_result = self.get_pod_metrics(self.prm.custom_query(kepler_consumtion),node_or_instance_label="node", pod_label="pod_name")
         scaphandre_consumption_result = self.get_scaphandre_metrics(self.prm.custom_query(scraphandre_consumtion), pod_index)
 
         pods = []
@@ -292,9 +298,7 @@ class ResourceTracker:
     def get_node_metrics(self, _results):
         results = {}
         for node in _results:
-
             metric = node['metric']
-
             if 'node' in metric:
                 name = metric['node']
             elif 'instance' in metric:
@@ -302,30 +306,27 @@ class ResourceTracker:
             else:
                 logger.warning("metric has neither instance nor node info: %s", node)
                 continue
-            
-            # if 'node' not in node['metric']:
-            #     name = node['metric']['instance']
-            # else :
-            #     name = node['metric']['node']
-                
             results[name] = {
                 "timestamp": datetime.datetime.fromtimestamp(node['value'][0]),
                 "value": node['value'][1]
             }
         return results
 
-    def get_pod_metrics(self, _results, instance_name="instance",pod_name="pod"):
+    def get_pod_metrics(self, prometheus_results, node_or_instance_label="instance", pod_label="pod"):
         results = {}
-        for pod in _results:
-            if instance_name not in pod['metric']:
-                logger.warning("unknown instance name %s in pod %s", instance_name, pod_name)
-                continue 
-
-            results[pod['metric'][pod_name]] = {
-                "timestamp":datetime.datetime.fromtimestamp(pod['value'][0]),
-                "value":pod['value'][1],
-                "instance":pod['metric'][instance_name]
-            }
+        for pod_metric in prometheus_results:
+            metric_labels = pod_metric.get('metric', {})
+            if pod_label in metric_labels:
+                pod_name = metric_labels[pod_label]
+                node_name = metric_labels.get('node', metric_labels.get(node_or_instance_label, "unknown"))
+                results[pod_name] = {
+                    "timestamp": datetime.datetime.fromtimestamp(pod_metric['value'][0]),
+                    "value": pod_metric['value'][1],
+                    "instance": node_name
+                }
+            else:
+                logger.warning("metric missing expected pod label '%s': %s", pod_label, pod_metric)
+                continue
         return results
     
     def get_scaphandre_metrics(self,_results, pod_index={}):
@@ -354,12 +355,10 @@ class ResourceTracker:
             nodes = self._query_nodes()
             for node in nodes:
                 self.node_channel.put(node)
-                logging.debug("node: %s", node)
                 
             pods = []
             for namespace in self.namespaces:
                 pods = pods + self._query_pods(namespace, pod_index)
-                logging.debug("pods: %s", pods)
 
             #insert the data
             for p in pods:
