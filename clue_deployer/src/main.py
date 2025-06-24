@@ -68,7 +68,7 @@ class ClueRunner:
         experiment_deployer = ExperimentDeployer(exp, self.config)
         experiment_deployer.deploy_SUT()
         # If not deploy only, run the benchmark
-        if not ENV_CONFIG.DEPLOY_ONLY:
+        if not self.deploy_only:
             logger.info("Starting the benchmark")
             # Wait for the SUT
             logger.info(f"Waiting {exp.env.wait_before_workloads}s before starting workload")
