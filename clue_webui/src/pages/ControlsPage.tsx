@@ -1,9 +1,9 @@
-import {useContext, useEffect, useState} from "react";
+import {useContext, useEffect, useState, useRef} from "react";
 import {DeploymentContext} from "../contexts/DeploymentContext";
 import {InfoIcon, RocketLaunchIcon, StackPlusIcon} from "@phosphor-icons/react";
 import type {SUT} from "../models/SUT";
 import {Tooltip} from "@mui/material";
-import {workloadOptions, type Workload} from "../models/DeploymentForm";
+import {workloadOptions} from "../models/DeploymentForm";
 import {useNavigate} from "react-router";
 import {QueueContext} from "../contexts/QueueContext";
 
@@ -15,6 +15,8 @@ const ControlsPage = () => {
 
   const navigate = useNavigate();
   const [availableSUTs, setAvailableSUTs] = useState<SUT[]>([]);
+  const expSelectAllRef = useRef<HTMLInputElement>(null);
+  const workloadSelectAllRef = useRef<HTMLInputElement>(null);
 
   /**
    * On the component load
@@ -61,6 +63,33 @@ const ControlsPage = () => {
       });
   }, []);
 
+  const experimentOptions = availableSUTs
+    .filter((sut) => sut.name === currentDeployment.SutName)
+    .flatMap((sut) => sut.experiments);
+
+  const allExperimentsSelected =
+    experimentOptions.length > 0 &&
+    currentDeployment.experimentNames.length === experimentOptions.length;
+  const someExperimentsSelected =
+    currentDeployment.experimentNames.length > 0 && !allExperimentsSelected;
+
+  const allWorkloadsSelected =
+    currentDeployment.workloads.length === workloadOptions.length;
+  const someWorkloadsSelected =
+    currentDeployment.workloads.length > 0 && !allWorkloadsSelected;
+
+  useEffect(() => {
+    if (expSelectAllRef.current) {
+      expSelectAllRef.current.indeterminate = someExperimentsSelected;
+    }
+  }, [someExperimentsSelected]);
+
+  useEffect(() => {
+    if (workloadSelectAllRef.current) {
+      workloadSelectAllRef.current.indeterminate = someWorkloadsSelected;
+    }
+  }, [someWorkloadsSelected]);
+
   const deploySUT = async () => {
     if (
       !currentDeployment.SutName ||
@@ -74,6 +103,7 @@ const ControlsPage = () => {
       body: JSON.stringify({
         sut_name: currentDeployment.SutName,
         experiment_name: currentDeployment.experimentNames.join(","),
+        workload: currentDeployment.workloads.join(","),
         n_iterations: currentDeployment.iterations,
         deploy_only: currentDeployment.deploy_only,
       }),
@@ -152,6 +182,24 @@ const ControlsPage = () => {
               !currentDeployment.SutName ? "opacity-50" : ""
             }`}
           >
+            <label className="flex gap-2 items-center font-medium">
+              <input
+                type="checkbox"
+                ref={expSelectAllRef}
+                className="mt-1 bg-white"
+                disabled={!currentDeployment.SutName}
+                checked={allExperimentsSelected}
+                onChange={(e) => {
+                  setCurrentDeployment({
+                    ...currentDeployment,
+                    experimentNames: e.target.checked
+                      ? experimentOptions.map((ex) => ex.name)
+                      : [],
+                  });
+                }}
+              />
+              Select all
+            </label>
             {availableSUTs
               .filter((sut) => sut.name === currentDeployment.SutName)
               .flatMap((sut) => sut.experiments)
@@ -163,7 +211,7 @@ const ControlsPage = () => {
                   <div className="flex gap-2">
                     <input
                       type="checkbox"
-                      className="mt-1"
+                      className="mt-1 bg-white"
                       disabled={!currentDeployment.SutName}
                       checked={currentDeployment.experimentNames.includes(
                         exp.name
@@ -201,38 +249,68 @@ const ControlsPage = () => {
           </div>
         </div>
 
-        {/* Workload Type Dropdown */}
+        {/* Workload Selection */}
         <div className="flex flex-col gap-2">
-          <label
-            htmlFor="workload-select"
-            className="flex gap-2 items-center text-sm font-medium"
-          >
-            Workload Type
-            <Tooltip
-              title="The type of the workload which will be used during the experiment"
-              placement="right"
-              arrow
-            >
-              <InfoIcon size={18} />
-            </Tooltip>
+          <label className="flex flex-col gap-2  text-sm font-medium">
+            <div className="flex justify-start w-full gap-2 items-center">
+              Workloads
+              <Tooltip
+                title="Select one or more workloads to run sequentially"
+                placement="right"
+                arrow
+              >
+                <InfoIcon size={18} />
+              </Tooltip>
+            </div>
+            <p className="text-xs text-gray-500">
+              You can select multiple workloads; they will run sequentially.
+            </p>
           </label>
-          <select
-            id="workload-select"
-            className="border p-2 w-full"
-            value={currentDeployment.workload ?? ""}
-            onChange={(e) =>
-              setCurrentDeployment({
-                ...currentDeployment,
-                workload: e.target.value as Workload,
-              })
-            }
-          >
+          <div className="border p-2 flex flex-col gap-2 max-h-[10.5rem] overflow-auto">
+            <label className="flex gap-2 items-center font-medium">
+              <input
+                type="checkbox"
+                ref={workloadSelectAllRef}
+                className="mt-1 bg-white"
+                checked={allWorkloadsSelected}
+                onChange={(e) => {
+                  setCurrentDeployment({
+                    ...currentDeployment,
+                    workloads: e.target.checked
+                      ? workloadOptions.map((w) => w.name)
+                      : [],
+                  });
+                }}
+              />
+              Select all
+            </label>
             {workloadOptions.map((w) => (
-              <option key={w} value={w}>
-                {w}
-              </option>
+              <label key={w.name} className="flex flex-col gap-1 items-start">
+                <div className="flex gap-2">
+                  <input
+                    type="checkbox"
+                    className="mt-1 bg-white"
+                    checked={currentDeployment.workloads.includes(w.name)}
+                    onChange={() => {
+                      const exists = currentDeployment.workloads.includes(w.name);
+                      setCurrentDeployment({
+                        ...currentDeployment,
+                        workloads: exists
+                          ? currentDeployment.workloads.filter((n) => n !== w.name)
+                          : [...currentDeployment.workloads, w.name],
+                      });
+                    }}
+                  />
+                  <span>{w.name}</span>
+                </div>
+                <div className="flex flex-col">
+                  {w.description && (
+                    <span className="text-xs text-gray-500">{w.description}</span>
+                  )}
+                </div>
+              </label>
             ))}
-          </select>
+          </div>
         </div>
 
         {/* Iterations Input */}
@@ -283,7 +361,7 @@ const ControlsPage = () => {
           <input
             id="deploy-only-checkbox"
             type="checkbox"
-            className="border w-5 h-5"
+            className="border w-5 h-5 bg-white"
             checked={currentDeployment.deploy_only}
             onChange={(e) =>
               setCurrentDeployment({
