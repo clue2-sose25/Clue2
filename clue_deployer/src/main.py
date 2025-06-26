@@ -76,35 +76,32 @@ class ExperimentRunner:
         return sut_files
 
 
-    def execute_single_run(self, exp: Variant, observations_out_path: Path|None = None) -> None:
+    def execute_single_run(self, variant: Variant, results_path: Path) -> None:
         """
         Executes and runs a single variant
         """
-        # Create the experiment folder if necessary
-        if observations_out_path is not None:
-            logger.info("Creating a results folder")
-            try:
-                os.makedirs(observations_out_path, exist_ok=False)
-            except OSError:
-                logger.warning("Data for this experiment already exist, skipping")
-                raise RuntimeError("Data for this experiment already exist, skipping")
-        else:
-            logger.info("Skipping creating a results directory")
-        logger.info("Deploying the SUT")
+        # Create the results folder if necessary
+        logger.info(f"Creating the results folder: {results_path}")
+        try:
+            os.makedirs(results_path, exist_ok=False)
+        except OSError:
+            logger.error("Error creating a results folder!")
+            raise RuntimeError("Error creating a results folder")
+        logger.info(f"Deploying the SUT: {self.experiment.sut}")
         # Deploy the SUT
-        experiment_deployer = ExperimentDeployer(exp, self.config)
+        experiment_deployer = ExperimentDeployer(variant, self.experiment.configs)
         experiment_deployer.deploy_SUT()
         # If not deploy only, run the benchmark
         if not self.experiment.deploy_only:
             logger.info("Starting the benchmark")
-            # Wait for the SUT
-            logger.info(f"Waiting {exp.env.wait_before_workloads}s before starting workload")
-            time.sleep(exp.env.wait_before_workloads)  # wait for 120s before stressing the workload
+            # Wait for the SUT before stressing the SUT with a workload
+            logger.info(f"Waiting {variant.env.wait_before_workloads}s before starting workload")
+            time.sleep(variant.env.wait_before_workloads)  
             # Run the experiment
-            VariantRunner(exp).run(observations_out_path)
+            VariantRunner(variant).run(results_path)
             # Clean up
             logger.info("Cleaning up after the experiment")
-            VariantRunner(exp).cleanup(experiment_deployer.helm_wrapper)
+            VariantRunner(variant).cleanup(experiment_deployer.helm_wrapper)
 
 
     def iterate_single_variant(self, variant: Variant) -> None:
@@ -117,7 +114,7 @@ class ExperimentRunner:
         for iteration in range(num_iterations):
             # Create the results path
             results_path = path.join("data", self.experiment.sut, self.experiment.timestamp, variant.name, "workload_name" , str(iteration))
-            logger.info(f"Running iteration ({iteration + 1}/{num_iterations}) with output to: {results_path}")
+            logger.info(f"Running iteration ({iteration + 1}/{num_iterations})")
             self.execute_single_run(variant, results_path)
             # additional wait after each iteration except the last one
             if iteration < num_iterations - 1:
