@@ -15,9 +15,7 @@ config:
   workload_settings: {}
   timeout_duration: 3600 # 1 hour in seconds
   wait_before_workloads: 180 # 3 minutes in seconds
-  wait_after_workloads: 180 # 3 minutes in seconds
-  tags: []
-  
+  wait_after_workloads: 180 # 3 minutes in seconds  
 
 helm_replacements:
   - old_value: "ghcr.io/open-telemetry/demo"

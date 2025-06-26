@@ -3,16 +3,10 @@ import subprocess
 from pathlib import Path
 import tempfile
 import shutil
-import yaml
-from pydantic import BaseModel
 from clue_deployer.src.experiment import Experiment
 from clue_deployer.src.logger import logger
 from clue_deployer.src.config import Config
-from clue_deployer.src.config.helm_dependencies import Dependencies, Dependency
-from clue_deployer.src.scaling_experiment_setting import ScalingExperimentSetting
-
-
-
+from clue_deployer.src.config.helm_dependencies import Dependencies
 
 class HelmWrapper():
     

@@ -10,4 +10,4 @@ class ResultEntry(BaseModel):
     workloads: list[str]
     variants: list[str]
     timestamp: str
-    iterations: int
+    n_iterations: int

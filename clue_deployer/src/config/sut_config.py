@@ -20,7 +20,6 @@ class SUTConfig(BaseSettings):
     timeout_duration: int
     wait_before_workloads: int
     wait_after_workloads: int
-    tags: list[str]
     helm_chart_path: Path
     # The path to the Helm chart directory if the chart is not in the SUT directory
     timeout_for_services_ready: int = Field(default=180)

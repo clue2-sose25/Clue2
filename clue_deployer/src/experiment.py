@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 
 from clue_deployer.src.config import Config
-from clue_deployer.src.scaling_experiment_setting import ScalingExperimentSetting
+from clue_deployer.src.models.scaling_experiment_setting import ScalingExperimentSetting
 from clue_deployer.src.experiment_environment import ExperimentEnvironment
 
 
@@ -36,9 +36,6 @@ class Experiment:
 
         self.env = env
         self.autoscaling = autoscaling
-        if autoscaling is not None:
-            self.env.tags.append("scale")
-
         self.max_autoscale = max_autoscale
 
     def __str__(self) -> str:

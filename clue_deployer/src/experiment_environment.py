@@ -9,17 +9,14 @@ CONFIG_PATH = Path("..").joinpath("cfg").joinpath("experiment_config.yaml")
 class ExperimentEnvironment:
     def __init__(self, config: Config):
         """
-        Initialize the ExperimentEnvironment Instance.
+        Initialize the ExperimentEnvironment instance
         """
-        #self.config = config
-
         sut_config = config.sut_config
         clue_config = config.clue_config
         services_config = config.services_config
         # Files / IO
         self.sut_path = sut_config.sut_path
         self.local_public_ip = clue_config.local_public_ip
-
         # Infra
         self.local_port = clue_config.local_port
         self.docker_registry_address = clue_config.docker_registry_address
@@ -31,8 +28,6 @@ class ExperimentEnvironment:
         self.timeout_duration = sut_config.timeout_duration
         self.wait_before_workloads = sut_config.wait_before_workloads
         self.wait_after_workloads = sut_config.wait_after_workloads
-        self.tags = sut_config.tags
-        self.kind_cluster_name = None #TODO
     
 
     def total_duration(self) -> int:

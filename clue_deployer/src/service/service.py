@@ -271,7 +271,7 @@ async def list_all_results():
                             workload=workload_name,
                             branch_name=branch_name_str,
                             timestamp=timestamp,
-                            iterations=iterations_count
+                            n_iterations=iterations_count
                         )
                     )
         return ResultsResponse(results=processed_results)
@@ -337,7 +337,7 @@ async def get_single_result(result_id: str):
                             workload=workload_name,
                             branch_name=branch_name,
                             timestamp=timestamp,
-                            iterations=iterations_count
+                            n_iterations=iterations_count
                         )
         
         # If we get here, the result wasn't found

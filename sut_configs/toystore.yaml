@@ -13,7 +13,6 @@ config:
   timeout_duration: 360
   wait_before_workloads: 10
   wait_after_workloads: 10
-  tags: []
 
 helm_replacements:
   - old_value: "ghcr.io/clue2-sose25/sustainable_toystore"

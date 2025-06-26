@@ -34,19 +34,20 @@ class ClueRunner:
                 deploy_only = ENV_CONFIG.DEPLOY_ONLY,
                 sut: str = ENV_CONFIG.SUT,
                 n_iterations: int = CONFIGS.clue_config.n_iterations) -> None:
-        self.config = config
-        self.variants = variants
-        self.deploy_only = deploy_only
-        self.sut = sut
-        self.n_iterations = n_iterations
+        self.config: Config = config
+        self.variants: list[str] = variants.split(",")
+        self.workloads: list[str] = workloads.split(",")
+        self.deploy_only: bool = deploy_only
+        self.sut: str = sut
+        self.n_iterations: int = n_iterations
         # Create the results entry
-
         self.result_entry = ResultEntry(
             id = uuid.uuid4(),
             sut = self.sut,
-            variants= variants.split(","),
-            workloads= wo
-
+            variants = self.variants,
+            workloads = self.workloads,
+            n_iterations = self.n_iterations,
+            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         )
 
     @staticmethod
@@ -93,7 +94,7 @@ class ClueRunner:
             ExperimentRunner(exp).cleanup(experiment_deployer.helm_wrapper)
 
 
-    def iterate_single_experiment(self, exp: Experiment, timestamp: str) -> None:
+    def iterate_single_experiment(self, exp: Experiment) -> None:
         """
         Iterates over the experiment
         """
@@ -101,12 +102,10 @@ class ClueRunner:
         logger.info(f"Starting {exp} experiment")
         # Run all iterations
         for i in range(num_iterations):
-            root = "data"
-            name = exp.__str__()
-            tags = "_".join(["exp"] + exp.env.tags)
-            out_path = path.join(root, timestamp, tags, name, str(i))
-            logger.info(f"Running iteration ({i + 1}/{num_iterations}) with output to: {out_path}")
-            self.run_single_experiment(exp, out_path)
+            # Create the results path
+            results_path = path.join("data", self.result_entry.sut, self.result_entry.timestamp, exp.name, str(i))
+            logger.info(f"Running iteration ({i + 1}/{num_iterations}) with output to: {results_path}")
+            self.run_single_experiment(exp, results_path)
             # additional wait after each iteration except the last one
             if i < num_iterations - 1:
                 logger.info(f"Sleeping {exp.env.wait_after_workloads} seconds before next experiment iteration")
@@ -122,7 +121,6 @@ class ClueRunner:
             logger.info(f"Available SUTs: {available_suts_list}")
             return
         # Load the experiments
-        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         exps = ExperimentList.load_experiments(CONFIGS, self.variants)
         logger.info(f"Loaded {len(exps.experiments)} experiments to run")
         # Check if the list is not empty
@@ -150,7 +148,7 @@ class ClueRunner:
             progressbar.streams.wrap_stderr()
             # Run over all iterations of each of the experiments
             for exp in exps:
-                self.iterate_single_experiment(exp, timestamp)
+                self.iterate_single_experiment(exp)
                 # additional wait after each experiment except the last one
                 if exp != exps.experiments[-1]:
                     logger.info(f"Sleeping additional {exp.env.wait_after_workloads} seconds before starting next experiment")
