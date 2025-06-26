@@ -18,10 +18,10 @@ from clue_deployer.src.logger import logger
 
 class WorkloadRunner:
 
-    def __init__(self, experiment: Variant):
-        self.exp = experiment
+    def __init__(self, variant: Variant):
+        self.exp = variant
         wls = self.exp.env.workload_settings
-        self.config = experiment.config
+        self.config = variant.config
 
         self.workload_env = {
                                 # The duration of a stage in seconds.

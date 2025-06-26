@@ -19,18 +19,18 @@ from clue_deployer.src.logger import logger
 class VariantRunner:
 
     def __init__(self, variant: Variant):
-        self.experiment = variant
+        self.variant = variant
         self.config = variant.config
 
-    def run(self, observations_out_path: str = "data/default"):
-        exp = self.experiment
+    def run(self, results_path: str):
+        variant = self.variant
 
-        if len(exp.env.workload_settings) == 0:
-            raise ValueError(f"cant run {exp.name} with empty workload settings")
+        if len(variant.env.workload_settings) == 0:
+            raise ValueError(f"Cant run {variant.name} with empty workload settings")
         # todo: autoscaling is set up upon branch deployment but cleaned up here
 
         node_file = path.join(
-            observations_out_path, f"measurements_node_{datetime.now().strftime('%d_%m_%Y_%H_%M')}.csv"
+            results_path, f"measurements_node_{datetime.now().strftime('%d_%m_%Y_%H_%M')}.csv"
         )
 
         # noinspection PyProtectedMember
@@ -39,7 +39,7 @@ class VariantRunner:
         )
 
         pod_file = path.join(
-            observations_out_path, f"measurements_pod_{datetime.now().strftime('%d_%m_%Y_%H_%M')}.csv"
+            results_path, f"measurements_pod_{datetime.now().strftime('%d_%m_%Y_%H_%M')}.csv"
         )
 
         # noinspection PyProtectedMember
@@ -49,23 +49,20 @@ class VariantRunner:
 
         # tracker = ResourceTracker(exp.prometheus, observations_channel, tracker_namespaces, 10)
         tracker = ResourceTracker(
-            prometheus_url=exp.prometheus,
+            prometheus_url=variant.prometheus,
             node_channel=node_channel,
             pod_channel=pod_channel,
-            namespaces=[exp.namespace] + exp.infrastructure_namespaces,
+            namespaces=[variant.namespace] + variant.infrastructure_namespaces,
             interval=10,
         )
-
-        with open(path.join(observations_out_path, "experiment.json"), "w") as f:
-            f.write(exp.create_json())
-
-        # 5. start workload
-        # start resource tracker
+        # Create a variant info
+        with open(path.join(results_path, "variant_info.json"), "w") as f:
+            f.write(variant.create_json())
+        # Start resource tracker
         logger.info("Starting resource tracker")
         tracker.start()
-
         # MAIN timeout to kill the experiment after 2 min after the experiment should be over (to avoid hanging)
-        timeout = exp.env.total_duration() + 2 * 60 + 30
+        timeout = variant.env.total_duration() + 2 * 60 + 30
 
         # noinspection PyUnusedLocal
         def cancel(sig=None, frame=None):
@@ -102,19 +99,16 @@ class VariantRunner:
                 timer = threading.Timer(seconds, cancel)
                 timer.start()
                 return timer  # Return timer to allow cancellation
-
-        # Example usage
         try:
-            logger.info(f"Experiment started, deploying workload with timeout {timeout}s...")
-            StatusManager.set(StatusPhase.IN_PROGRESS, "Starting workload with time out, Experiment in progress...")
+            logger.info(f"Variant started, deploying workload with timeout {timeout}s...")
+            StatusManager.set(StatusPhase.IN_PROGRESS, "Starting workload with time out, variant deployment in progress...")
             # Set up the timeout
             timer = set_timeout(timeout)
-
-            # deploy workload on different node or locally and wait for workload to be completed (or timeout)
-            wlr = WorkloadRunner(experiment=exp)
-            # will run remotely or locally based on experiment
+            # Deploy workload on different node or locally and wait for workload to be completed (or timeout)
+            workload_runner = WorkloadRunner(variant=variant)
+            # Will run remotely or locally based on experiment
             try:
-                wlr.run_workload(observations_out_path)
+                workload_runner.run_workload(results_path)
             except WorkloadCancelled as e:
                 logger.warning("Workload was cancelled due to exception: " + str(e))
             StatusManager.set(StatusPhase.DONE, " Expermint Done, flushing channels :)")
@@ -140,23 +134,23 @@ class VariantRunner:
         """
         logger.info("🧹 Cleaning up deployments...")
 
-        if self.experiment.autoscaling:
+        if self.variant.autoscaling:
             hpas = kubernetes.client.AutoscalingV1Api()
-            _hpas = hpas.list_namespaced_horizontal_pod_autoscaler(self.experiment.namespace)
+            _hpas = hpas.list_namespaced_horizontal_pod_autoscaler(self.variant.namespace)
             for stateful_set in _hpas.items:
-                hpas.delete_namespaced_horizontal_pod_autoscaler(name=stateful_set.metadata.name, namespace=self.experiment.namespace)
+                hpas.delete_namespaced_horizontal_pod_autoscaler(name=stateful_set.metadata.name, namespace=self.variant.namespace)
 
 
-        if self.experiment.colocated_workload:
+        if self.variant.colocated_workload:
             core = kubernetes.client.CoreV1Api()
             # noinspection PyBroadException
             try:
                 # Check if the pod exists before trying to delete it --> throws an error if it does not exist
-                core.read_namespaced_pod(name="loadgenerator", namespace=self.experiment.namespace)
+                core.read_namespaced_pod(name="loadgenerator", namespace=self.variant.namespace)
 
                 logger.info("Deleting loadgenerator pod")    
                 core.delete_namespaced_pod(
-                    name="loadgenerator", namespace=self.experiment.namespace
+                    name="loadgenerator", namespace=self.variant.namespace
                 )
             except ApiException as e:
                 if e.status == 404:

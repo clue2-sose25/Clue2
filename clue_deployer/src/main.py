@@ -91,15 +91,15 @@ class ExperimentRunner:
         # Deploy the SUT
         experiment_deployer = ExperimentDeployer(variant, self.experiment.configs)
         experiment_deployer.deploy_SUT(results_path)
-        # If not deploy only, run the benchmark
+        # If not deploy only, run the workload
         if not self.experiment.deploy_only:
-            logger.info("Starting the benchmark")
             # Wait for the SUT before stressing the SUT with a workload
             logger.info(f"Waiting {variant.env.wait_before_workloads}s before starting workload")
             time.sleep(variant.env.wait_before_workloads)  
-            # Run the experiment
+            logger.info("Starting the workload")
+            # Run the variant
             VariantRunner(variant).run(results_path)
-            # Clean up
+            # Clean up the system
             logger.info("Cleaning up after the experiment")
             VariantRunner(variant).cleanup(experiment_deployer.helm_wrapper)
 

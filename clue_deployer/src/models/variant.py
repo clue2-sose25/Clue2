@@ -64,6 +64,9 @@ class Variant:
             "namespace": self.namespace,
             "executor": "colocated" if self.colocated_workload else "local",
             "scaling": str(self.autoscaling),
+            "max_autoscale": str(self.max_autoscale),
+            "target_host": self.target_host,
+            "critical_services": self.critical_services
         }
 
         # Convert Path objects in self.env.__dict__ to strings

@@ -168,7 +168,7 @@ class ExperimentDeployer:
             raise RuntimeError("Failed to fulfill Helm requirements. Please check the error above.")
             
 
-    def _creates_results_directory(self, values: dict, results_path: Path):
+    def _copy_values_file(self, values: dict, results_path: Path):
         # Write copy of used values to observations 
         with open(path.join(results_path, "values.yaml"), "w") as f:
             f.write(values)
@@ -254,15 +254,14 @@ class ExperimentDeployer:
         # Clones the SUT repository
         self.clone_sut() 
         # Prepare the Helm wrapper as a context manager
-        with self.helm_wrapper as wrapper:
+        with self.helm_wrapper as helm_wrapper:
             logger.info("Patching the helm chart")
-            values = wrapper.update_helm_chart()
-            # Create results folder
-            logger.info("Creating results directory")
-            self._creates_results_directory(values, results_path)
+            values = helm_wrapper.update_helm_chart()
+            # Copy values file
+            self._copy_values_file(values, results_path)
             # Deploy the SUT
             logger.info(f"Deploying the SUT: {ENV_CONFIG.SUT}")
-            wrapper.deploy_sut()
+            helm_wrapper.deploy_sut()
         # Set the status
         StatusManager.set(StatusPhase.WAITING, "Waiting for system to stabilize...")
         # Wait for all critical services
