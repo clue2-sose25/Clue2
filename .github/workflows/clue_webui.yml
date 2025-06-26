@@ -8,7 +8,10 @@ on:
     branches: [ "dev" ]
     paths:
       - 'clue_webui/**'
-
+permissions:
+  contents: read            # for checkout
+  packages: write           # needed to push to GHCR
+  
 jobs:
   build_clue_webui:
     runs-on: ubuntu-latest
