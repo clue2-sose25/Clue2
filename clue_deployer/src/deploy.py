@@ -170,7 +170,7 @@ class ExperimentDeployer:
 
     def _creates_results_directory(self, values: dict):
         # Create observations directory in the format RUN_CONFIG.clue_config.result_base_path / experiment.name / dd.mm.yyyy_hh-mm
-        observations = path.join(self.config.clue_config.result_base_path, self.experiment.name, time.strftime("%d.%m.%Y_%H-%M"))
+        observations = path.join("/data", self.experiment.name, time.strftime("%d.%m.%Y_%H-%M"))
         os.makedirs(observations)
         # Write copy of used values to observations 
         with open(path.join(observations, "values.yaml"), "w") as f:
@@ -264,7 +264,7 @@ class ExperimentDeployer:
             logger.info("Creating results directory")
             self._creates_results_directory(values)
             # Deploy the SUT
-            logger.info(f"Deploying the SUT: {ENV_CONFIG.SUT_NAME}")
+            logger.info(f"Deploying the SUT: {ENV_CONFIG.SUT}")
             wrapper.deploy_sut()
         # Set the status
         StatusManager.set(StatusPhase.WAITING, "Waiting for system to stabilize...")

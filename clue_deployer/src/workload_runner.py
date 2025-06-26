@@ -33,8 +33,8 @@ class WorkloadRunner:
                                 # "LOCUST_LOCUSTFILE": wls["LOCUSTFILE"],
                             } | self.exp.env.workload_settings
         
-        self.sut_name = self.exp.config.sut_config.sut_name
-        self.result_filenames = ResultFiles(sut_name=self.sut_name)
+        self.sut = self.exp.config.sut_config.sut
+        self.result_filenames = ResultFiles(sut=self.sut)
     
     def run_workload(self, outpath):
         if self.exp.colocated_workload:
@@ -174,7 +174,7 @@ class WorkloadRunner:
                             command=[
                                 "sh",
                                 "-c",
-                                f"locust --csv {self.sut_name} --csv-full-history --headless --only-summary 1>/dev/null 2>errors.log; tar zcf - {self.result_filenames.stats_csv} {self.result_filenames.failures_csv} {self.result_filenames.stats_history_csv} errors.log | base64 -w 0",
+                                f"locust --csv {self.sut} --csv-full-history --headless --only-summary 1>/dev/null 2>errors.log; tar zcf - {self.result_filenames.stats_csv} {self.result_filenames.failures_csv} {self.result_filenames.stats_history_csv} errors.log | base64 -w 0",
                             ],
                             working_dir="/loadgenerator",
                         )

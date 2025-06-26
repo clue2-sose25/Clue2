@@ -11,8 +11,6 @@ config:
   # The Platform specification
   remote_platform_arch: "linux/arm64/v8"
   local_platform_arch: "linux/arm64/v8"
-  # The base path for storing the results files
-  result_base_path: "results/"
   # Type of the workloads
   workloads: ["shaped"]
   # The number of iterations to run

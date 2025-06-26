@@ -10,7 +10,6 @@ from fastapi.responses import JSONResponse, StreamingResponse, RedirectResponse
 from pathlib import Path
 import yaml
 import multiprocessing
-from clue_deployer.src.models.logs_response import LogsResponse
 from clue_deployer.src.models.result_entry import ResultEntry
 from clue_deployer.src.models.deploy_request import DeployRequest
 from clue_deployer.src.models.health_response import HealthResponse
@@ -58,31 +57,31 @@ def run_deployment(config, deploy_request,
                   state_lock, is_deploying, shared_log_buffer):
     """Function to run the deployment in a separate process."""
     # Setup logger for this child process
-    process_logger = get_child_process_logger(f"DEPLOY_{sut_name}", shared_log_buffer)
+    process_logger = get_child_process_logger(f"DEPLOY_{sut}", shared_log_buffer)
     
     deploy_only = deploy_request.deploy_only
-    experiment_name = deploy_request.experiment_name
+    variants = deploy_request.variants
     n_iterations = deploy_request.n_iterations
-    sut_name = deploy_request.sut_name
+    sut = deploy_request.sut
 
     try:
-        process_logger.info(f"Starting deployment for SUT {sut_name}")
-        runner = ClueRunner(config, experiment_name=experiment_name, sut_name=sut_name, 
+        process_logger.info(f"Starting deployment for SUT {sut}")
+        runner = ClueRunner(config, variants=variants, sut=sut, 
                            deploy_only=deploy_only, n_iterations=n_iterations)
         
         # You might want to pass the process_logger to ClueRunner if it accepts a logger parameter
-        # runner = ClueRunner(config, experiment_name=experiment_name, sut_name=sut_name, 
+        # runner = ClueRunner(config, variants=variants, sut=sut, 
         #                    deploy_only=deploy_only, n_iterations=n_iterations, logger=process_logger)
         
         runner.main()
-        process_logger.info(f"Successfully completed deployment for SUT {sut_name}")
+        process_logger.info(f"Successfully completed deployment for SUT {sut}")
         
     except Exception as e:
-        process_logger.error(f"Deployment process failed for SUT {sut_name}: {str(e)}")
+        process_logger.error(f"Deployment process failed for SUT {sut}: {str(e)}")
     finally:
         with state_lock:
             is_deploying.value = 0
-        process_logger.info(f"Deployment process for SUT {sut_name} finished")
+        process_logger.info(f"Deployment process for SUT {sut} finished")
 
 @app.get("/api/status", response_model=StatusResponse)
 def read_status():
@@ -189,7 +188,7 @@ async def list_sut():
         suts = []
         for filename in files:
             # Extract SUT name from filename (without extension)
-            sut_name = os.path.splitext(filename)[0]
+            sut = os.path.splitext(filename)[0]
             file_path = os.path.join(SUT_CONFIGS_DIR, filename)
 
             # Read and parse the YAML file
@@ -215,7 +214,7 @@ async def list_sut():
                 )
 
             # Create Sut object and add to list
-            sut = Sut(name=sut_name, experiments=parsed_experiments)
+            sut = Sut(name=sut, experiments=parsed_experiments)
             suts.append(sut)
 
         return SutsResponse(suts=suts)
@@ -526,14 +525,14 @@ async def delete_result(result_id: str):
         logger.exception(f"Unexpected error while deleting result '{result_id}'.")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while deleting result: {str(e)}")
         
-@app.get("/api/config/sut/{sut_name}", response_model=SUTConfig)
-async def get_sut_config(sut_name: str):
+@app.get("/api/config/sut/{sut}", response_model=SUTConfig)
+async def get_sut_config(sut: str):
     """Get a specific SUT configuration."""
-    cleaned_sut_name = sut_name.strip().lower()
-    sut_filename = f"{cleaned_sut_name}.yaml"
+    cleaned_sut = sut.strip().lower()
+    sut_filename = f"{cleaned_sut}.yaml"
     sut_path = os.path.join(SUT_CONFIGS_DIR, sut_filename)
     if not os.path.isfile(sut_path):
-        raise HTTPException(status_code=404, detail=f"SUT configuration not found: {sut_name}")
+        raise HTTPException(status_code=404, detail=f"SUT configuration not found: {sut}")
     try: 
         sut_config = SUTConfig.load_from_yaml(sut_path)
         return sut_config
@@ -588,13 +587,13 @@ async def deploy_sut(request: DeployRequest):
             )
         is_deploying.value = 1
 
-    sut_filename = f"{request.sut_name}.yaml"
+    sut_filename = f"{request.sut}.yaml"
     sut_path = os.path.join(SUT_CONFIGS_DIR, sut_filename)
     
     if not os.path.isfile(sut_path):
         with state_lock:
             is_deploying.value = 0
-        raise HTTPException(status_code=404, detail=f"SUT configuration not found: {request.sut_name}")
+        raise HTTPException(status_code=404, detail=f"SUT configuration not found: {request.sut}")
     
     config = Config(sut_config=sut_path, clue_config=CLUE_CONFIG_PATH)
     
@@ -606,14 +605,14 @@ async def deploy_sut(request: DeployRequest):
                   state_lock, is_deploying, shared_log_buffer)
         )
         process.start()
-        logger.info(f"Started deployment process for SUT {request.sut_name}")
+        logger.info(f"Started deployment process for SUT {request.sut}")
     except Exception as e:
         with state_lock:
             is_deploying.value = 0
         logger.error(f"Failed to start deployment process: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to start deployment: {str(e)}")
     
-    return {"message": f"Deployment of SUT {request.sut_name} has been started."}
+    return {"message": f"Deployment of SUT {request.sut} has been started."}
 
 @app.post("/api/queue/enqueue", status_code=status.HTTP_202_ACCEPTED)
 def enqueue_experiment(request: list[DeployRequest]):

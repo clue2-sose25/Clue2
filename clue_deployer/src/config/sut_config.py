@@ -29,20 +29,20 @@ class SUTConfig(BaseSettings):
     values_yaml_name: str = Field(default="values.yaml")
     infrastructure_namespaces: list[str] = Field(default_factory=list)  
     num_iterations: int = Field(default=1)
-    sut_name: str = Field(default="")
+    sut: str = Field(default="")
     helm_replacements: list[HelmReplacement] = Field(default_factory=list)
 
     class Config:
         # Allow environment variable overrides
         env_prefix = "SUT_"
     
-    @field_validator("sut_name")
-    def get_sut_name(cls, sut_name: str, info: ValidationInfo) -> str:
+    @field_validator("sut")
+    def get_sut(cls, sut: str, info: ValidationInfo) -> str:
         """
-        Set the sut_name to the stem of the sut_path if not provided.
+        Set the SUT to the stem of the sut_path if not provided.
         """
-        if sut_name:
-            return sut_name
+        if sut:
+            return sut
         sut_path = info.data.get("sut_path")
         if sut_path:
             return sut_path.stem

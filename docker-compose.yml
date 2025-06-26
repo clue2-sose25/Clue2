@@ -43,8 +43,9 @@ services:
       - registry
     environment:
       DOCKER_BUILDKIT: 1
-      SUT_NAME: ${SUT_NAME}
-      EXPERIMENT_NAME: ${EXPERIMENT_NAME}
+      SUT: ${SUT}
+      VARIANTS: ${VARIANTS}
+      WORKLOADS: ${WORKLOADS}
       DEPLOY_ONLY: ${DEPLOY_ONLY}
       DEPLOY_AS_SERVICE: ${DEPLOY_AS_SERVICE}
     volumes:

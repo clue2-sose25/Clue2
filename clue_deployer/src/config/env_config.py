@@ -16,8 +16,9 @@ class EnvConfig(BaseSettings):
     LOG_LEVEL: str = "INFO"
 
     # Environment variables
-    SUT_NAME: str|None = Field(default=None, env="SUT_NAME")  
-    EXPERIMENT_NAME: str|None = Field(default=None, env="EXPERIMENT_NAME")
+    SUT: str|None = Field(default=None, env="SUT")  
+    VARIANTS: str|None = Field(default=None, env="VARIANTS")
+    WORKLOADS: str|None = Field(default=None, env="WORKLOADS")
     DEPLOY_ONLY: bool|None = Field(default=False, env="DEPLOY_ONLY")  
 
 
@@ -38,11 +39,11 @@ class EnvConfig(BaseSettings):
     @property
     def SUT_CONFIG_PATH(self) -> Path:
         """
-        Constructs the SUT configuration path based on the SUT_NAME.
+        Constructs the SUT configuration path based on the SUT.
         """
-        if self.SUT_NAME:
-            return self.SUT_CONFIGS_PATH / f"{self.SUT_NAME}.yaml"
+        if self.SUT:
+            return self.SUT_CONFIGS_PATH / f"{self.SUT}.yaml"
         else:
-            raise ValueError("SUT_NAME must be set to construct SUT_CONFIG_PATH.")
+            raise ValueError("SUT must be set to construct SUT_CONFIG_PATH.")
 
 

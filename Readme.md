@@ -86,7 +86,7 @@ For a test deployment of the SUT, without running the benchmark itself, open the
 docker compose up -d --build clue-deployer
 ```
 
-You can adjust the deployment to your needs via the environment variables inside the `.env` file, where `SUT_NAME` is the name of the SUT config inside of the `sut_configs` directory, and the `EXPERIMENT_NAME` is the name of the branch containing the desired experiment.
+You can adjust the deployment to your needs via the environment variables inside the `.env` file, where `SUT` is the name of the SUT config inside of the `sut_configs` directory, and the `VARIANTS` is the name of the branch containing the desired experiment.
 
 If you are deploying the Teastore locally you can forward a port so you to test and access the TeaStore:
 

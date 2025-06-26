@@ -1,11 +1,13 @@
+from uuid import UUID
 from pydantic import BaseModel
 
 class ResultEntry(BaseModel):
     """
     A single results folder object
     """
-    id: str
-    workload: str
-    branch_name: str
+    id: UUID
+    sut: str
+    workloads: list[str]
+    variants: list[str]
     timestamp: str
     iterations: int

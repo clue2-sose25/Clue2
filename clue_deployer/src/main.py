@@ -1,5 +1,7 @@
 import os
 import time
+import uuid
+from clue_deployer.src.models.result_entry import ResultEntry
 import urllib3
 import progressbar
 from pathlib import Path
@@ -25,16 +27,27 @@ kube_config.load_kube_config()
 
 
 class ClueRunner:
-    def __init__(self, config: Config = CONFIGS, 
-                experiment_name: str = ENV_CONFIG.EXPERIMENT_NAME,
+    def __init__(self, 
+                config: Config = CONFIGS, 
+                variants: str = ENV_CONFIG.VARIANTS,
+                workloads: str = ENV_CONFIG.WORKLOADS,
                 deploy_only = ENV_CONFIG.DEPLOY_ONLY,
-                sut_name: str = ENV_CONFIG.SUT_NAME,
+                sut: str = ENV_CONFIG.SUT,
                 n_iterations: int = CONFIGS.clue_config.n_iterations) -> None:
         self.config = config
-        self.experiment_name = experiment_name
+        self.variants = variants
         self.deploy_only = deploy_only
-        self.sut_name = sut_name
+        self.sut = sut
         self.n_iterations = n_iterations
+        # Create the results entry
+
+        self.result_entry = ResultEntry(
+            id = uuid.uuid4(),
+            sut = self.sut,
+            variants= variants.split(","),
+            workloads= wo
+
+        )
 
     @staticmethod
     def available_suts():
@@ -102,19 +115,19 @@ class ClueRunner:
     def main(self) -> None:
         logger.info(f"Starting CLUE with DEPLOY_ONLY={self.deploy_only}")
         logger.info("Disabled SLL verification for urllib3")
-        # Check if SUT_NAME is valid
+        # Check if SUT is valid
         available_suts_list = self.available_suts()
-        if self.sut_name not in available_suts_list:
-            logger.error(f"Invalid SUT name: '{self.sut_name}'")
+        if self.sut not in available_suts_list:
+            logger.error(f"Invalid SUT name: '{self.sut}'")
             logger.info(f"Available SUTs: {available_suts_list}")
             return
         # Load the experiments
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        exps = ExperimentList.load_experiments(CONFIGS, self.experiment_name)
+        exps = ExperimentList.load_experiments(CONFIGS, self.variants)
         logger.info(f"Loaded {len(exps.experiments)} experiments to run")
         # Check if the list is not empty
         if not len(exps.experiments):
-            raise ValueError(f"Invalid experiment name for {self.sut_name}")
+            raise ValueError(f"Invalid experiment name for {self.sut}")
         # Set the status to preparing
         StatusManager.set(StatusPhase.PREPARING_CLUSTER, "Preparing the cluster...")
         # Deploy a single experiment if deploy only

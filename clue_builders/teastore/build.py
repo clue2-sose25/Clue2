@@ -190,7 +190,7 @@ def switchBranch(sut_path, branch_name):
     return branch_name
 
 def build_main():
-    # Read BUILDER_EXPERIMENT_NAME environment variable, use "all" for default
+    # Read BUILDER_VARIANTS environment variable, use "all" for default
     exp_name = os.environ.get("TEASTORE_EXP_NAME", "all").lower().strip()
     
     # Allow multiple experiments per comma: ‘baseline,serverless’

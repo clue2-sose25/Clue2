@@ -42,12 +42,12 @@ class Worker:
                 experiment: DeployRequest = self.experiment_queue.dequeue()
 
                 self.process_logger = get_child_process_logger(
-                    experiment.sut_name,
+                    experiment.sut,
                     shared_log_buffer
                 )
 
             try:
-                sut_filename = f"{experiment.sut_name}.yaml"
+                sut_filename = f"{experiment.sut}.yaml"
                 sut_path = SUT_CONFIGS_DIR.joinpath(sut_filename)
                 
                 if not sut_path.exists():
@@ -58,23 +58,23 @@ class Worker:
                 
                 config = Config(sut_config=sut_path, clue_config=CLUE_CONFIG_PATH)
             
-                self.process_logger.info(f"Starting deployment for SUT {experiment.sut_name}")
+                self.process_logger.info(f"Starting deployment for SUT {experiment.sut}")
                 runner = ClueRunner(
                     config,
-                    experiment_name=experiment.experiment_name,
-                    sut_name=experiment.sut_name,
+                    variants=experiment.variants,
+                    sut=experiment.sut,
                     deploy_only=experiment.deploy_only,
                     n_iterations=experiment.n_iterations,
                 )
                 runner.main()
-                self.process_logger.info(f"Successfully completed deployment for SUT {experiment.sut_name}")
+                self.process_logger.info(f"Successfully completed deployment for SUT {experiment.sut}")
             except Exception as e:
-                self.process_logger.error(f"Deployment process failed for SUT {experiment.sut_name}: {str(e)}")
+                self.process_logger.error(f"Deployment process failed for SUT {experiment.sut}: {str(e)}")
         
         # Clean up the deployment state
         with self.state_lock:
             self.is_deploying.value = 0
-        self.process_logger.info(f"Deployment process for SUT {experiment.sut_name} finished")
+        self.process_logger.info(f"Deployment process for SUT {experiment.sut} finished")
     
     def start(self):
         if self.process.is_alive():
