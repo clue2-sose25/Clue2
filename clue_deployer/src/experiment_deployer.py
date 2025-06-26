@@ -168,14 +168,11 @@ class ExperimentDeployer:
             raise RuntimeError("Failed to fulfill Helm requirements. Please check the error above.")
             
 
-    def _creates_results_directory(self, values: dict):
-        # Create observations directory in the format RUN_CONFIG.clue_config.result_base_path / experiment.name / dd.mm.yyyy_hh-mm
-        observations = path.join("/data", self.experiment.name, time.strftime("%d.%m.%Y_%H-%M"))
-        os.makedirs(observations)
+    def _creates_results_directory(self, values: dict, results_path: Path):
         # Write copy of used values to observations 
-        with open(path.join(observations, "values.yaml"), "w") as f:
+        with open(path.join(results_path, "values.yaml"), "w") as f:
             f.write(values)
-            logger.info("Copying values file to results")
+            logger.info("Copying values.yaml file to results folder")
 
 
     def _wait_until_services_ready(self):
@@ -240,7 +237,7 @@ class ExperimentDeployer:
             logger.info(f"SUT already exists at {self.sut_path}. Skipping cloning.")
 
 
-    def deploy_SUT(self):
+    def deploy_SUT(self, results_path: Path):
         """
         Orchestrates the full deployment process for the experiment.
         """
@@ -262,7 +259,7 @@ class ExperimentDeployer:
             values = wrapper.update_helm_chart()
             # Create results folder
             logger.info("Creating results directory")
-            self._creates_results_directory(values)
+            self._creates_results_directory(values, results_path)
             # Deploy the SUT
             logger.info(f"Deploying the SUT: {ENV_CONFIG.SUT}")
             wrapper.deploy_sut()

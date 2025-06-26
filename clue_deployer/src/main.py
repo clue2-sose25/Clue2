@@ -11,10 +11,10 @@ from clue_deployer.src.config.config import CONFIGS, ENV_CONFIG, Config
 from clue_deployer.src.models.status_phase import StatusPhase
 from clue_deployer.src.service.status_manager import StatusManager
 from clue_deployer.src.models.variant import Variant
-from clue_deployer.src.variant_environment import VariantEnvironment
+from clue_deployer.src.models.variant_environment import VariantEnvironment
 from clue_deployer.src.variant_runner import VariantRunner
-from clue_deployer.src.experiment_workloads import Workload, get_workload_instance
-from clue_deployer.src.deploy import ExperimentDeployer
+from clue_deployer.src.models.workloads import Workload, get_workload_instance
+from clue_deployer.src.experiment_deployer import ExperimentDeployer
 from clue_deployer.src.logger import logger
 
 # Disable SSL verification
@@ -90,7 +90,7 @@ class ExperimentRunner:
         logger.info(f"Deploying the SUT: {self.experiment.sut}")
         # Deploy the SUT
         experiment_deployer = ExperimentDeployer(variant, self.experiment.configs)
-        experiment_deployer.deploy_SUT()
+        experiment_deployer.deploy_SUT(results_path)
         # If not deploy only, run the benchmark
         if not self.experiment.deploy_only:
             logger.info("Starting the benchmark")

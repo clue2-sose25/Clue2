@@ -2,7 +2,7 @@ from uuid import UUID
 from dataclasses import dataclass
 from clue_deployer.src.config.config import Config
 from typing import List
-from clue_deployer.src.experiment_workloads import Workload
+from clue_deployer.src.models.workloads import Workload
 from clue_deployer.src.models.variant import Variant
 
 @dataclass

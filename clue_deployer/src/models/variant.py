@@ -1,10 +1,9 @@
 from typing import List
 import json
 from pathlib import Path
-
 from clue_deployer.src.config import Config
 from clue_deployer.src.models.scaling_experiment_setting import ScalingExperimentSetting
-from clue_deployer.src.variant_environment import VariantEnvironment
+from clue_deployer.src.models.variant_environment import VariantEnvironment
 
 
 class Variant:
@@ -19,9 +18,11 @@ class Variant:
             autoscaling: ScalingExperimentSetting = None,
             max_autoscale: int = 3,
     ):
+        # Configs
         clue_config = config.clue_config
         sut_config = config.sut_config
-        # metadata
+        self.env = env
+        # Metadata
         self.config = config
         self.name = name
         self.target_branch = target_branch
@@ -29,22 +30,15 @@ class Variant:
         self.infrastructure_namespaces = sut_config.infrastructure_namespaces
         self.critical_services = critical_services
         self.target_host = sut_config.target_host
-
-        # observability data
+        # Observability data
         self.prometheus = clue_config.prometheus_url
         self.colocated_workload = colocated_workload
-
-        self.env = env
+        # Autoscaling
         self.autoscaling = autoscaling
         self.max_autoscale = max_autoscale
 
     def __str__(self) -> str:
-        if self.autoscaling:
-            return f"{self.name}_{self.target_branch}_{self.autoscaling}".replace(
-                "/", "_"
-            )
-        else:
-            return f"{self.name}_{self.target_branch}".replace("/", "_")
+        return self.name
 
     def __deepcopy__(self, memo=None):
         """
