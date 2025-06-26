@@ -1,7 +1,7 @@
 # Dockerfile.dind-privileged
 FROM docker:28.1-dind
 
-# Install system tools
+# Install system tools 
 RUN apk update \
      && apk add --no-cache \
      openjdk17 \
