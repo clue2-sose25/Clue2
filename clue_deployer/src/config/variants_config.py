@@ -4,7 +4,7 @@ from pathlib import Path
 import yaml
 
 
-class SingleExperiment(BaseModel):
+class Variant(BaseModel):
     name: str
     description: str | None = None
     target_branch: str
@@ -13,11 +13,12 @@ class SingleExperiment(BaseModel):
     autoscaling: str
 
 
-class ExperimentsConfig(BaseModel):
-    experiments: List[SingleExperiment]
+class VariantsConfig(BaseModel):
+    # The list of variants for the SUT
+    variants: List[Variant]
 
     @classmethod
-    def load_from_yaml(cls, config_path: Path) -> "ExperimentsConfig":
+    def load_from_yaml(cls, config_path: Path) -> "VariantsConfig":
         """
         Load experiments configuration from a YAML file.
         """

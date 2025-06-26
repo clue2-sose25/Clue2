@@ -63,13 +63,6 @@ class Experiment:
         )
         return new_instance
 
-    def to_row(self):
-        return [self.name, self.target_branch, self.namespace, self.autoscaling, self.env.tags]
-
-    @staticmethod
-    def headers():
-        return ["Name", "Branch", "Namespace", "Autoscaling", "Env Tags"]
-
     def create_json(self) -> str:
         description = {
             "name": self.name,

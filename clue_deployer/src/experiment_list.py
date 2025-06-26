@@ -3,7 +3,7 @@ import copy
 from dataclasses import dataclass
 from clue_deployer.src.config import Config
 from clue_deployer.src.experiment import Experiment
-from clue_deployer.src.scaling_experiment_setting import ScalingExperimentSetting
+from clue_deployer.src.models.scaling_experiment_setting import ScalingExperimentSetting
 from clue_deployer.src.experiment_workloads import Workload
 from clue_deployer.src.experiment_environment import ExperimentEnvironment
 
@@ -17,7 +17,7 @@ class ExperimentList():
         Load experiments from a YAML file and return an ExperimentList instance.
         If exp_name is 'all', returns all experiments; otherwise, filters by exp_name.
         """
-        experiments_config = config.experiments_config
+        experiments_config = config.variants_config
         experiments = []
 
         if exp_name == "all":
@@ -25,7 +25,7 @@ class ExperimentList():
         else:
             names = [n.strip() for n in exp_name.split(",") if n.strip()]
         
-        for exp in experiments_config.experiments:
+        for exp in experiments_config.variants:
             # Create an Experiment instance for each experiment in the YAML file
             experiment = Experiment(
                 name=exp.name,

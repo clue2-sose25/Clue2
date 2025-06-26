@@ -27,7 +27,6 @@ class SUTConfig(BaseSettings):
     helm_dependencies_from_chart: bool = Field(default=False)
     values_yaml_name: str = Field(default="values.yaml")
     infrastructure_namespaces: list[str] = Field(default_factory=list)  
-    num_iterations: int = Field(default=1)
     sut: str = Field(default="")
     helm_replacements: list[HelmReplacement] = Field(default_factory=list)
 

@@ -93,8 +93,7 @@ services:
       cpu: 250
       memory: 256
 
-#TODO
-experiments:
+variants:
   - name: "baseline"
     description: "Baseline experiment for the otel-demo application"
     target_branch: "main"

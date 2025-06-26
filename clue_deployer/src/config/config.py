@@ -3,8 +3,8 @@ from pathlib import Path
 
 from clue_deployer.src.config.clue_config import ClueConfig
 from clue_deployer.src.config.env_config import EnvConfig
-from clue_deployer.src.config.experiment_configs import ExperimentsConfig
-from clue_deployer.src.config.services import ServicesConfig
+from clue_deployer.src.config.variants_config import VariantsConfig
+from clue_deployer.src.config.services_config import ServicesConfig
 from clue_deployer.src.config.sut_config import SUTConfig
 
 class Config:
@@ -24,7 +24,7 @@ class Config:
             clue_config = env_config.CLUE_CONFIG_PATH
         self.env_config = env_config
         self.clue_config = ClueConfig.load_from_yaml(clue_config)
-        self.experiments_config = ExperimentsConfig.load_from_yaml(sut_config)
+        self.variants_config = VariantsConfig.load_from_yaml(sut_config)
         self.services_config = ServicesConfig.load_from_yaml(sut_config)
         self.sut_config = SUTConfig.load_from_yaml(sut_config)
 

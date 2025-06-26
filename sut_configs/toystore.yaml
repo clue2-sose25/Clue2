@@ -40,7 +40,7 @@ services:
       cpu: 1000
       memory: 2048
 
-experiments:
+variants:
   - name: "baseline"
     description: "Baseline experiment for the toystore application"
     target_branch: "main"
