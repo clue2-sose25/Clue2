@@ -3,7 +3,7 @@ import subprocess
 from pathlib import Path
 import tempfile
 import shutil
-from clue_deployer.src.experiment import Experiment
+from clue_deployer.src.models.experiment import Experiment
 from clue_deployer.src.logger import logger
 from clue_deployer.src.config import Config
 from clue_deployer.src.config.helm_dependencies import Dependencies

@@ -12,7 +12,7 @@ from kubernetes import config as kube_config
 from clue_deployer.src.config.config import CONFIGS, ENV_CONFIG, Config
 from clue_deployer.src.models.status_phase import StatusPhase
 from clue_deployer.src.service.status_manager import StatusManager
-from clue_deployer.src.experiment import Experiment
+from clue_deployer.src.models.experiment import Experiment
 from clue_deployer.src.experiment_runner import ExperimentRunner
 from clue_deployer.src.experiment_workloads import get_workload_instance
 from clue_deployer.src.experiment_list import ExperimentList
@@ -103,7 +103,7 @@ class ClueRunner:
         # Run all iterations
         for i in range(num_iterations):
             # Create the results path
-            results_path = path.join("data", self.result_entry.sut, self.result_entry.timestamp, exp.name, str(i))
+            results_path = path.join("data", self.result_entry.sut, self.result_entry.timestamp, exp.name, "workload_name" ,str(i))
             logger.info(f"Running iteration ({i + 1}/{num_iterations}) with output to: {results_path}")
             self.run_single_experiment(exp, results_path)
             # additional wait after each iteration except the last one

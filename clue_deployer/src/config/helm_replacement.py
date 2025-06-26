@@ -1,6 +1,6 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+from clue_deployer.src.models.scaling_experiment_setting import ScalingExperimentSetting
 
-from clue_deployer.src.scaling_experiment_setting import ScalingExperimentSetting
 
 class Conditions(BaseModel):
     """

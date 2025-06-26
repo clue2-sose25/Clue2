@@ -10,9 +10,9 @@ import docker
 import logging
 from kubernetes import client, watch
 from kubernetes.client.rest import ApiException
-from clue_deployer.src.experiment import Experiment
+from clue_deployer.src.models.experiment import Experiment
 from clue_deployer.src.result_files import ResultFiles
-from clue_deployer.src.workload_cancelled_exception import WorkloadCancelled
+from clue_deployer.src.models.workload_cancelled_exception import WorkloadCancelled
 from clue_deployer.src.logger import logger
 
 

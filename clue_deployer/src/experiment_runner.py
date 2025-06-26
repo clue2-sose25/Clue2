@@ -2,10 +2,10 @@ import platform
 import threading
 
 from datetime import datetime
+from clue_deployer.src.models.experiment import Experiment
 from psc.tracker import PodUsage
 from psc import ResourceTracker, NodeUsage
-from clue_deployer.src.experiment import Experiment
-from clue_deployer.src.workload_cancelled_exception import WorkloadCancelled
+from clue_deployer.src.models.workload_cancelled_exception import WorkloadCancelled
 from clue_deployer.src.flushing_queue import FlushingQueue
 from clue_deployer.src.workload_runner import WorkloadRunner
 from clue_deployer.src.helm_wrapper import HelmWrapper
