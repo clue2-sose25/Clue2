@@ -3,19 +3,17 @@ import time
 import uuid
 from clue_deployer.src.models.experiment import Experiment
 import urllib3
-import progressbar
 from pathlib import Path
 from datetime import datetime
 from os import path
-import progressbar
 from kubernetes import config as kube_config
 from clue_deployer.src.config.config import CONFIGS, ENV_CONFIG, Config
 from clue_deployer.src.models.status_phase import StatusPhase
 from clue_deployer.src.service.status_manager import StatusManager
 from clue_deployer.src.models.variant import Variant
+from clue_deployer.src.variant_environment import VariantEnvironment
 from clue_deployer.src.variant_runner import VariantRunner
-from clue_deployer.src.experiment_workloads import get_workload_instance
-from clue_deployer.src.variants_list import VariantsList
+from clue_deployer.src.experiment_workloads import Workload, get_workload_instance
 from clue_deployer.src.deploy import ExperimentDeployer
 from clue_deployer.src.logger import logger
 
@@ -33,14 +31,33 @@ class ExperimentRunner:
                 workloads: str = ENV_CONFIG.WORKLOADS,
                 deploy_only = ENV_CONFIG.DEPLOY_ONLY,
                 sut: str = ENV_CONFIG.SUT,
-                n_iterations: int = CONFIGS.clue_config.n_iterations) -> None:
-        # Create the experiment object
+                n_iterations: int = ENV_CONFIG.N_ITERATIONS) -> None:
+        # Prepare the variants object
+        variants_config = configs.variants_config
+        final_variants: list[Variant] = []
+        for variant in variants_config.variants:
+            # Create an Experiment instance for each experiment in the YAML file
+            if variant.name in variants:
+                # Add variant to the list
+                final_variants.append(Variant(
+                    name=variant.name,
+                    target_branch=variant.target_branch,
+                    colocated_workload=variant.colocated_workload,  # TODO default False
+                    env=VariantEnvironment(configs),
+                    autoscaling=variant.autoscaling,
+                    critical_services=variant.critical_services,
+                    config=configs,
+                ))
+        # Prepare the workloads
+        splitWorkloads = workloads.split(",")
+        workloads: list[Workload] = [get_workload_instance(workload) for workload in splitWorkloads]
+        # Create the final experiment object
         self.experiment = Experiment(
             id = uuid.uuid4(),
             configs = configs,
             sut = sut,
-            variants = variants.split(","),
-            workloads = workloads.split(","),
+            variants = final_variants,
+            workloads = workloads,
             n_iterations = n_iterations,
             timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S"),
             deploy_only= deploy_only
@@ -59,9 +76,9 @@ class ExperimentRunner:
         return sut_files
 
 
-    def run_single_experiment(self, exp: Variant, observations_out_path: Path|None = None) -> None:
+    def run_single(self, exp: Variant, observations_out_path: Path|None = None) -> None:
         """
-        Executes and runs a single experiment
+        Executes and runs a single variant
         """
         # Create the experiment folder if necessary
         if observations_out_path is not None:
@@ -78,7 +95,7 @@ class ExperimentRunner:
         experiment_deployer = ExperimentDeployer(exp, self.config)
         experiment_deployer.deploy_SUT()
         # If not deploy only, run the benchmark
-        if not self.deploy_only:
+        if not self.experiment.deploy_only:
             logger.info("Starting the benchmark")
             # Wait for the SUT
             logger.info(f"Waiting {exp.env.wait_before_workloads}s before starting workload")
@@ -101,7 +118,7 @@ class ExperimentRunner:
             # Create the results path
             results_path = path.join("data", self.result_entry.sut, self.result_entry.timestamp, exp.name, "workload_name" ,str(i))
             logger.info(f"Running iteration ({i + 1}/{num_iterations}) with output to: {results_path}")
-            self.run_single_experiment(exp, results_path)
+            self.run_single(exp, results_path)
             # additional wait after each iteration except the last one
             if i < num_iterations - 1:
                 logger.info(f"Sleeping {exp.env.wait_after_workloads} seconds before next experiment iteration")
@@ -111,46 +128,30 @@ class ExperimentRunner:
         logger.info(f"Starting CLUE with DEPLOY_ONLY={self.experiment.deploy_only}")
         logger.info("Disabled SLL verification for urllib3")
         # Check if SUT is valid
+        # TODO: More checks for the workloads, variants, etc.
         available_suts_list = self.available_suts()
         if self.experiment.sut not in available_suts_list:
             logger.error(f"Invalid SUT name: '{self.experiment.sut}'")
             logger.info(f"Available SUTs: {available_suts_list}")
             return
-        # Load the variants
-        variants_list = VariantsList.load_variants(CONFIGS, self.experiment.variants)
-        logger.info(f"Loaded {len(variants_list.variants)} variants to run")
-        # Check if the list is not empty
-        if not len(variants_list.variants):
-            raise ValueError(f"Invalid experiment name for {self.experiment.sut}")
+        logger.info(f"Selected {len(self.experiment.variants)} variants to run")
+        logger.info(f"Selected {len(self.experiment.workloads)} workloads to run")
         # Set the status to preparing
         StatusManager.set(StatusPhase.PREPARING_CLUSTER, "Preparing the cluster...")
-        # Deploy a single experiment if deploy only
+        # Deploy a single variant if deploy only
         if self.experiment.deploy_only:
-            logger.info(f"Starting deployment only for experiment: {variants_list.variants[0]}")
-            self.run_single_experiment(variants_list.variants[0])
-            logger.info("Deployment executed successfully. Exiting CLUE.")
+            logger.info(f"Starting deployment only for variant: {self.experiment.variants[0]}")
+            self.run_single(self.experiment.variants[0])
+            logger.info("Deploy only experiment executed successfully.")
         else:
-            # Get the workloads
-            logger.info("Appending workloads to the experiments")
-            workloads = [get_workload_instance(w) for w in self.experiment.configs.clue_config.workloads]
-            variants_list.add_workloads(workloads)
-            # Sort and log the experiments
-            variants_list.sort()
-            logger.info("Running the following experiments:")
-            i = 0
-            for exp in variants_list.variants:
-                logger.info(f"Experiment no.{i}: {exp}")
-                i = i + 1
-            progressbar.streams.wrap_stderr()
-            # Run over all iterations of each of the experiments
-            for exp in variants_list:
-                self.iterate_single_experiment(exp)
-                # additional wait after each experiment except the last one
-                if exp != variants_list.variants[-1]:
-                    logger.info(f"Sleeping additional {exp.env.wait_after_workloads} seconds before starting next experiment")
-                    time.sleep(exp.env.wait_after_workloads)
-                                
-            logger.info("All experiments executed successfully. Exiting CLUE.")
+            # Run over all variants of the experiment
+            for variant in self.experiment.variants:
+                self.iterate_single_experiment(variant)
+                # Additional wait after each variant except the last one
+                if variant != self.experiment.variants[-1]:
+                    logger.info(f"Sleeping additional {variant.env.wait_after_workloads} seconds before starting next variant")
+                    time.sleep(variant.env.wait_after_workloads)
+            logger.info("All variants executed successfully. Finished running the experiment.")
 
 
 if __name__ == "__main__":

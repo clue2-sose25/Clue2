@@ -9,7 +9,7 @@ import os
 import subprocess
 from kubernetes import config as k_config
 from clue_deployer.src.helm_wrapper import HelmWrapper
-from clue_deployer.src.models.experiment import Variant
+from clue_deployer.src.models.variant import Variant
 from clue_deployer.src.config import Config
 from clue_deployer.src.autoscaling_deployer import AutoscalingDeployer
 from clue_deployer.src.service.status_manager import StatusManager, StatusPhase

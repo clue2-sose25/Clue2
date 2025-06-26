@@ -1,7 +1,7 @@
 import math
 import kubernetes
 from clue_deployer.src.config.config import CONFIGS
-from clue_deployer.src.models.experiment import Variant
+from clue_deployer.src.models.variant import Variant
 from clue_deployer.src.models.scaling_experiment_setting import ScalingExperimentSetting
 from clue_deployer.src.logger import logger
 

@@ -19,6 +19,7 @@ class EnvConfig(BaseSettings):
     SUT: str|None = Field(default=None, env="SUT")  
     VARIANTS: str|None = Field(default=None, env="VARIANTS")
     WORKLOADS: str|None = Field(default=None, env="WORKLOADS")
+    N_ITERATIONS: int|None = Field(default=1, env="N_ITERATIONS")
     DEPLOY_ONLY: bool|None = Field(default=False, env="DEPLOY_ONLY")  
 
 

@@ -4,7 +4,7 @@ from pathlib import Path
 
 from clue_deployer.src.config import Config
 from clue_deployer.src.models.scaling_experiment_setting import ScalingExperimentSetting
-from clue_deployer.src.experiment_environment import VariantEnvironment
+from clue_deployer.src.variant_environment import VariantEnvironment
 
 
 class Variant:

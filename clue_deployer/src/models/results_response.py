@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from clue_deployer.src.models.result_entry import Experiment
+from clue_deployer.src.models.experiment import Experiment
 
 class ResultsResponse(BaseModel):
     """
