@@ -2,6 +2,7 @@ from uuid import UUID
 from dataclasses import dataclass
 from clue_deployer.src.config.config import Config
 from typing import List
+from clue_deployer.src.experiment_workloads import Workload
 from clue_deployer.src.models.variant import Variant
 
 @dataclass
@@ -13,7 +14,7 @@ class Experiment:
     id: UUID
     configs: Config
     sut: str
-    workloads: List[str]
+    workloads: List[Workload]
     variants: List[Variant]
     timestamp: str
     n_iterations: int
