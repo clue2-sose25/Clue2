@@ -8,6 +8,9 @@ on:
     branches: [ "dev" ]
     paths:
       - 'clue_deployer/**'
+permissions:
+  contents: read            # for checkout
+  packages: write           # needed to push to GHCR
 
 jobs:
   build_clue_deployer:
