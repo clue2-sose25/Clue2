@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse, StreamingResponse, RedirectResponse
 from pathlib import Path
 import yaml
 import multiprocessing
-from clue_deployer.src.models.result_entry import ResultEntry
+from clue_deployer.src.models.experiment import Experiment
 from clue_deployer.src.models.deploy_request import DeployRequest
 from clue_deployer.src.models.health_response import HealthResponse
 from clue_deployer.src.models.results_response import ResultsResponse
@@ -20,7 +20,7 @@ from clue_deployer.src.models.suts_response import SutsResponse
 from clue_deployer.src.service.status_manager import StatusManager
 from clue_deployer.src.logger import get_child_process_logger, logger, shared_log_buffer
 from clue_deployer.src.config.config import ENV_CONFIG
-from clue_deployer.src.main import ClueRunner
+from clue_deployer.src.main import ExperimentRunner
 from clue_deployer.src.config import SUTConfig, Config
 from clue_deployer.src.service.worker import Worker
 
@@ -66,7 +66,7 @@ def run_deployment(config, deploy_request,
 
     try:
         process_logger.info(f"Starting deployment for SUT {sut}")
-        runner = ClueRunner(config, variants=variants, sut=sut, 
+        runner = ExperimentRunner(config, variants=variants, sut=sut, 
                            deploy_only=deploy_only, n_iterations=n_iterations)
         
         # You might want to pass the process_logger to ClueRunner if it accepts a logger parameter
@@ -266,7 +266,7 @@ async def list_all_results():
                     result_id = f"{timestamp}_{workload_name}_{branch_name_str}"
                     # Append the results
                     processed_results.append(
-                        ResultEntry(
+                        Experiment(
                             id=result_id,
                             workload=workload_name,
                             branch_name=branch_name_str,
@@ -282,7 +282,7 @@ async def list_all_results():
         logger.exception("Unexpected error while retrieving results.")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving results: {str(e)}")
 
-@app.get("/api/results/{result_id}", response_model=ResultEntry)
+@app.get("/api/results/{result_id}", response_model=Experiment)
 async def get_single_result(result_id: str):
     """Get a single result by ID."""
     results_base_path = Path(RESULTS_DIR)
@@ -332,7 +332,7 @@ async def get_single_result(result_id: str):
                         # Count iterations
                         iterations_count = sum(1 for item in exp_dir.iterdir() if item.is_dir())
                         
-                        return ResultEntry(
+                        return Experiment(
                             id=result_id,
                             workload=workload_name,
                             branch_name=branch_name,
@@ -540,7 +540,7 @@ async def get_sut_config(sut: str):
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving SUT configuration: {str(e)}")
 
 @app.get("/api/plots")
-async def list_plots(request: ResultEntry, iteration: int):
+async def list_plots(request: Experiment, iteration: int):
     """List all available plots for a specific iteration."""
     workload = request.workload
     branch_name = request.branch_name
@@ -559,7 +559,7 @@ async def list_plots(request: ResultEntry, iteration: int):
     return {"plots": plots}
 
 @app.get("/api/plots/download")
-async def download_plot(request: ResultEntry):
+async def download_plot(request: Experiment):
     """Download a specific plot for a given iteration."""
     workload = request.workload
     branch_name = request.branch_name

@@ -10,7 +10,7 @@ import docker
 import logging
 from kubernetes import client, watch
 from kubernetes.client.rest import ApiException
-from clue_deployer.src.models.experiment import Experiment
+from clue_deployer.src.models.experiment import Variant
 from clue_deployer.src.result_files import ResultFiles
 from clue_deployer.src.models.workload_cancelled_exception import WorkloadCancelled
 from clue_deployer.src.logger import logger
@@ -18,7 +18,7 @@ from clue_deployer.src.logger import logger
 
 class WorkloadRunner:
 
-    def __init__(self, experiment: Experiment):
+    def __init__(self, experiment: Variant):
         self.exp = experiment
         wls = self.exp.env.workload_settings
         self.config = experiment.config
@@ -77,7 +77,7 @@ class WorkloadRunner:
         except WorkloadCancelled:
             logging.info("Remote workload stopped due to cancellation")
 
-    def _wait_for_workload(self, core: client.CoreV1Api, exp: Experiment, observations: str):
+    def _wait_for_workload(self, core: client.CoreV1Api, exp: Variant, observations: str):
         """
             this continuesly watches the pod until it is finished in 60s intervals
             should the pod disappear before it finishes, we stop waiting.
@@ -117,7 +117,7 @@ class WorkloadRunner:
                     finished = True
 
 
-    def _deploy_remote_workload(self, exp: Experiment, core: client.CoreV1Api):
+    def _deploy_remote_workload(self, exp: Variant, core: client.CoreV1Api):
         def k8s_env_pair(k, v):
             return client.V1EnvVar(
                 name=k,

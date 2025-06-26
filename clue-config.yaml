@@ -11,9 +11,5 @@ config:
   # The Platform specification
   remote_platform_arch: "linux/arm64/v8"
   local_platform_arch: "linux/arm64/v8"
-  # Type of the workloads
-  workloads: ["shaped"]
-  # The number of iterations to run
-  n_iterations: 1
   ### AUTOSCALING ###
   target_utilization: 70

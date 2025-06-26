@@ -46,6 +46,7 @@ services:
       SUT: ${SUT}
       VARIANTS: ${VARIANTS}
       WORKLOADS: ${WORKLOADS}
+      N_ITERATIONS: ${N_ITERATIONS}
       DEPLOY_ONLY: ${DEPLOY_ONLY}
       DEPLOY_AS_SERVICE: ${DEPLOY_AS_SERVICE}
     volumes:

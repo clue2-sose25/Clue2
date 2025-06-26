@@ -3,14 +3,14 @@ import subprocess
 from pathlib import Path
 import tempfile
 import shutil
-from clue_deployer.src.models.experiment import Experiment
+from clue_deployer.src.models.experiment import Variant
 from clue_deployer.src.logger import logger
 from clue_deployer.src.config import Config
 from clue_deployer.src.config.helm_dependencies import Dependencies
 
 class HelmWrapper():
     
-    def __init__(self, config: Config, experiment: Experiment):
+    def __init__(self, config: Config, experiment: Variant):
         self.clue_config = config.clue_config
         self.experiment = experiment
         self.sut_config = config.sut_config

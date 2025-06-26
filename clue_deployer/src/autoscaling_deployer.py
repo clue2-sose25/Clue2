@@ -1,7 +1,7 @@
 import math
 import kubernetes
 from clue_deployer.src.config.config import CONFIGS
-from clue_deployer.src.models.experiment import Experiment
+from clue_deployer.src.models.experiment import Variant
 from clue_deployer.src.models.scaling_experiment_setting import ScalingExperimentSetting
 from clue_deployer.src.logger import logger
 
@@ -9,7 +9,7 @@ class AutoscalingDeployer:
     # Read the target utilization of autoscaling
     target_utilization = CONFIGS.clue_config.target_utilization
 
-    def __init__(self, experiment: Experiment):
+    def __init__(self, experiment: Variant):
         self.experiment = experiment
 
     def setup_autoscaling(self):

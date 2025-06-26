@@ -6,7 +6,7 @@ from clue_deployer.src.config import Config
 
 CONFIG_PATH = Path("..").joinpath("cfg").joinpath("experiment_config.yaml")
 
-class ExperimentEnvironment:
+class VariantEnvironment:
     def __init__(self, config: Config):
         """
         Initialize the ExperimentEnvironment instance

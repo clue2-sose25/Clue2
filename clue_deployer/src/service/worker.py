@@ -2,7 +2,7 @@ import multiprocessing as mp
 from clue_deployer.src.service.experiment_queue import ExperimentQueue
 from clue_deployer.src.logger import get_child_process_logger, logger, shared_log_buffer
 from clue_deployer.src.models.deploy_request import DeployRequest
-from clue_deployer.src.main import ClueRunner
+from clue_deployer.src.main import ExperimentRunner
 from clue_deployer.src.config.config import ENV_CONFIG, Config
 from fastapi import HTTPException
 
@@ -59,7 +59,7 @@ class Worker:
                 config = Config(sut_config=sut_path, clue_config=CLUE_CONFIG_PATH)
             
                 self.process_logger.info(f"Starting deployment for SUT {experiment.sut}")
-                runner = ClueRunner(
+                runner = ExperimentRunner(
                     config,
                     variants=experiment.variants,
                     sut=experiment.sut,

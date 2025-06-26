@@ -2,61 +2,61 @@ import copy
 
 from dataclasses import dataclass
 from clue_deployer.src.config import Config
-from clue_deployer.src.models.experiment import Experiment
+from clue_deployer.src.models.variant import Variant
 from clue_deployer.src.models.scaling_experiment_setting import ScalingExperimentSetting
 from clue_deployer.src.experiment_workloads import Workload
-from clue_deployer.src.experiment_environment import ExperimentEnvironment
+from clue_deployer.src.experiment_environment import VariantEnvironment
 
 @dataclass
-class ExperimentList():
-    experiments: list[Experiment]
+class VariantsList():
+    variants: list[Variant]
 
     @staticmethod
-    def load_experiments(config: Config, exp_name: str) -> "ExperimentList":
+    def load_variants(config: Config, variant_name: str) -> "VariantsList":
         """
-        Load experiments from a YAML file and return an ExperimentList instance.
-        If exp_name is 'all', returns all experiments; otherwise, filters by exp_name.
+        Load variants from a YAML file and return an VariantsList instance.
+        If variant_name is 'all', returns all variants; otherwise, filters by variant_name
         """
-        experiments_config = config.variants_config
-        experiments = []
+        variants_config = config.variants_config
+        variants = []
 
-        if exp_name == "all":
+        if variant_name == "all":
             names = None
         else:
-            names = [n.strip() for n in exp_name.split(",") if n.strip()]
+            names = [n.strip() for n in variant_name.split(",") if n.strip()]
         
-        for exp in experiments_config.variants:
+        for exp in variants_config.variants:
             # Create an Experiment instance for each experiment in the YAML file
-            experiment = Experiment(
+            experiment = Variant(
                 name=exp.name,
                 target_branch=exp.target_branch,
                 colocated_workload=exp.colocated_workload,  # TODO default False
-                env=ExperimentEnvironment(config),
+                env=VariantEnvironment(config),
                 autoscaling=exp.autoscaling,
                 critical_services=exp.critical_services,
                 config=config,
             )
             # Add experiment to list if exp_name is 'all' or matches experiment name
             if names is None or exp.name in names:
-                experiments.append(experiment)
+                variants.append(experiment)
         
-        return ExperimentList(experiments=experiments)
+        return VariantsList(variants=variants)
     
     def __iter__(self):
         """
         Make the ExperimentList class iterable by returning an iterator
         for the list of experiments.
         """
-        return iter(self.experiments)
+        return iter(self.variants)
 
     def __repr__(self):
         """
         Return a string representation of the ExperimentList class.
         """
-        return f"ExperimentList({self.experiments})"
+        return f"ExperimentList({self.variants})"
 
     @staticmethod
-    def _set_workload(exp: Experiment, workload: Workload) -> Experiment:
+    def _set_workload(exp: Variant, workload: Workload) -> Variant:
         new_ex = copy.deepcopy(exp)
         new_ex.env.set_workload(workload)
         return new_ex
@@ -64,15 +64,15 @@ class ExperimentList():
     def add_workloads(self, workloads: list[Workload]) -> None:
         exps_with_workloads = []
         for w in workloads:
-            for exp in self.experiments:
+            for exp in self.variants:
                 exps_with_workloads.append(self._set_workload(exp,w))
-        self.experiments = exps_with_workloads
+        self.variants = exps_with_workloads
 
     def sort(self):
         """
         Sort the experiments based on their names.
         """
-        self.experiments.sort(key=lambda exp: "_".join([exp.target_branch, exp.name]))
+        self.variants.sort(key=lambda exp: "_".join([exp.target_branch, exp.name]))
 
 
 # exps = [

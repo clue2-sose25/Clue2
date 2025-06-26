@@ -2,7 +2,7 @@ import platform
 import threading
 
 from datetime import datetime
-from clue_deployer.src.models.experiment import Experiment
+from clue_deployer.src.models.variant import Variant
 from psc.tracker import PodUsage
 from psc import ResourceTracker, NodeUsage
 from clue_deployer.src.models.workload_cancelled_exception import WorkloadCancelled
@@ -16,11 +16,11 @@ import kubernetes
 from kubernetes.client.rest import ApiException
 from clue_deployer.src.logger import logger
 
-class ExperimentRunner:
+class VariantRunner:
 
-    def __init__(self, experiment: Experiment):
-        self.experiment = experiment
-        self.config = experiment.config
+    def __init__(self, variant: Variant):
+        self.experiment = variant
+        self.config = variant.config
 
     def run(self, observations_out_path: str = "data/default"):
         exp = self.experiment

@@ -4,7 +4,7 @@ import yaml
 
 class ClueConfig(BaseSettings):
     """
-    Configuration class for CLUE using pydantic's BaseSettings.
+    Configuration class for CLUE
     """
     prometheus_url: str
     local_public_ip: str
@@ -12,9 +12,7 @@ class ClueConfig(BaseSettings):
     remote_platform_arch: str
     local_platform_arch: str
     docker_registry_address: str
-    workloads: list[str] 
     target_utilization: int
-    n_iterations: int
 
     class Config:
         # Allow environment variable overrides

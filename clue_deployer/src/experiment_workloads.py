@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from clue_deployer.src.experiment_environment import ExperimentEnvironment
+from clue_deployer.src.experiment_environment import VariantEnvironment
 from enum import StrEnum
 
 
@@ -47,7 +47,7 @@ class Workload(ABC):
         return self._max_daily_users
 
     @abstractmethod
-    def set_workload(self, exp: ExperimentEnvironment) -> None:
+    def set_workload(self, exp: VariantEnvironment) -> None:
         """
         Abstract method to set workload settings for an experiment.
         Must be implemented by subclasses.
@@ -62,7 +62,7 @@ class ShapedWorkload(Workload):
     """
     Workload with custom load shape behavior.
     """
-    def set_workload(self, exp: ExperimentEnvironment) -> None:
+    def set_workload(self, exp: VariantEnvironment) -> None:
         exp.workload_settings = {
             "LOADGENERATOR_STAGE_DURATION": self.load_generator_duration // 8,  # runtime per load stage in seconds
             "LOADGENERATOR_MAX_DAILY_USERS": self.max_daily_users,  # max daily users
@@ -76,7 +76,7 @@ class RampingWorkload(Workload):
     """
     Workload that ramps up users at a constant rate.
     """
-    def set_workload(self, exp: ExperimentEnvironment) -> None:
+    def set_workload(self, exp: VariantEnvironment) -> None:
         exp.workload_settings = {
             "LOCUST_LOCUSTFILE": "./locustfile.py",
             "LOCUST_RUN_TIME": f'{self.load_generator_duration}s',
@@ -90,7 +90,7 @@ class PausingWorkload(Workload):
     """
     Workload that starts 20 pausing users, no ramp-up for the duration.
     """
-    def set_workload(self, exp: ExperimentEnvironment) -> None:
+    def set_workload(self, exp: VariantEnvironment) -> None:
         exp.workload_settings = {
             "LOCUST_LOCUSTFILE": "./pausing_users.py",
             "LOCUST_RUN_TIME": f'{self.load_generator_duration}s',
@@ -107,7 +107,7 @@ class FixedRampingWorkload(Workload):
     Workload that ramps up to max users for at most 1000 requests (failed or successful),
     running for at most the specified duration.
     """
-    def set_workload(self, exp: ExperimentEnvironment) -> None:
+    def set_workload(self, exp: VariantEnvironment) -> None:
         exp.workload_settings = {
             "LOCUST_LOCUSTFILE": "./fixed_requests.py",
             "LOCUST_RUN_TIME": f'{self.load_generator_duration}s',
