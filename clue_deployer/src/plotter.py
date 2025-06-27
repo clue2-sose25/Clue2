@@ -432,9 +432,11 @@ def generate_plots_dynamic(data_base_path: str, output_path: str):
         # Load all relevant CSVs using the SUT name from experiment.json
         sut_path = config.get("sut_path")
         stats_history = try_load_csv(f'{sut_path}_stats_history.csv')
-        pods_data = try_load_csv([f for f in os.listdir(exp_path) if f.startswith('measurements_pod') and f.endswith('.csv')][0]) if any(f.startswith('measurements_pod') for f in os.listdir(exp_path)) else None
+        pods_file = [f for f in os.listdir(exp_path) if f.startswith('measurements_pod') and f.endswith('.csv')]
+        pods_data = try_load_csv(pods_file[0]) if pods_file else None
         stats_data = try_load_csv(f'{sut_path}_stats.csv')
-        nodes_data = try_load_csv([f for f in os.listdir(exp_path) if f.startswith('measurements_node') and f.endswith('.csv')][0]) if any(f.startswith('measurements_node') for f in os.listdir(exp_path)) else None
+        nodes_file = [f for f in os.listdir(exp_path) if f.startswith('measurements_node') and f.endswith('.csv')]
+        nodes_data = try_load_csv(nodes_file[0]) if nodes_file else None
         failures_data = try_load_csv(f'{sut_path}_failures.csv')
         if stats_history is not None:
             all_stats_history.append(stats_history)
@@ -489,3 +491,89 @@ def generate_plots_dynamic(data_base_path: str, output_path: str):
             logger.info(f"Failure rate plot saved to {plot_path}")
         except Exception as e:
             logger.info(f"Failed to generate service quality plot: {e}")
+
+    # --- Concatenate Iterations for Experiment-level Analysis ---
+    try:
+        # Group by experiment (date/label/experiment) and concatenate all iterations
+        experiment_key = (exp.get('date'), exp.get('label'), exp.get('branch'))
+        if 'experiment_groups' not in locals():
+            experiment_groups = {}
+        if experiment_key not in experiment_groups:
+            experiment_groups[experiment_key] = {
+                'stats_history': [],
+                'pods_data': [],
+                'stats_data': [],
+                'nodes_data': [],
+                'failures_data': []
+            }
+        if stats_history is not None:
+            experiment_groups[experiment_key]['stats_history'].append(stats_history)
+        if pods_data is not None:
+            experiment_groups[experiment_key]['pods_data'].append(pods_data)
+        if stats_data is not None:
+            experiment_groups[experiment_key]['stats_data'].append(stats_data)
+        if nodes_data is not None:
+            experiment_groups[experiment_key]['nodes_data'].append(nodes_data)
+        if failures_data is not None:
+            experiment_groups[experiment_key]['failures_data'].append(failures_data)
+
+    # After the experiment loop, concatenate all iterations for each experiment
+    all_stats_history = []
+    all_pods_data = []
+    all_stats_data = []
+    all_nodes_data = []
+    all_failures_data = []
+    for group in experiment_groups.values():
+        if group['stats_history']:
+            all_stats_history.append(pd.concat(group['stats_history'], ignore_index=True))
+        if group['pods_data']:
+            all_pods_data.append(pd.concat(group['pods_data'], ignore_index=True))
+        if group['stats_data']:
+            all_stats_data.append(pd.concat(group['stats_data'], ignore_index=True))
+        if group['nodes_data']:
+            all_nodes_data.append(pd.concat(group['nodes_data'], ignore_index=True))
+        if group['failures_data']:
+            all_failures_data.append(pd.concat(group['failures_data'], ignore_index=True))
+
+    # Combine concatenated data
+    stats_history_df = pd.concat(all_stats_history, ignore_index=True) if all_stats_history else None
+    pods_data_df = pd.concat(all_pods_data, ignore_index=True) if all_pods_data else None
+    stats_data_df = pd.concat(all_stats_data, ignore_index=True) if all_stats_data else None
+    nodes_data_df = pd.concat(all_nodes_data, ignore_index=True) if all_nodes_data else None
+    failures_data_df = pd.concat(all_failures_data, ignore_index=True) if all_failures_data else None
+
+    # --- Service Quality Table and Plot (Experiment-level) ---
+    if stats_history_df is not None and stats_data_df is not None:
+        try:
+            left, right = "exp_scale_pausing", "exp_scale_rampup"
+            failures = stats_history_df[stats_history_df["exp_workload"].isin([left, right])].groupby(["exp_branch", "exp_workload"])[["rq", "frq"]].sum()
+            failures["Failure Rate"] = 100 * failures["frq"] / failures["rq"]
+            failures = failures.unstack()
+            failures["fr"] = failures["Failure Rate"].apply(lambda x: f'{x[left]:>2.2f} - {x[right]:>2.2f}', axis=1)
+            failures = failures.droplevel(1, axis=1).reset_index()[["exp_branch", "fr"]]
+
+            latency = stats_history_df[stats_history_df["exp_workload"].isin([left, right])].groupby(["exp_branch", "exp_workload"])[["p50", "p95"]].mean().unstack() / 1000
+            latency["p50_diff"] = latency["p50"].apply(lambda x: f'{x[left]:>2.2f} - {x[right]:>2.2f}', axis=1)
+            latency["p95_diff"] = latency["p95"].apply(lambda x: f'{x[left]:>2.2f} - {x[right]:>2.2f}', axis=1)
+            latency = latency.droplevel(1, axis=1).reset_index()[["exp_branch", "p50_diff", "p95_diff"]]
+
+            requests = stats_data_df.groupby(["exp_branch", "exp_workload"])[["Request Count", "Failure Count"]].sum().reset_index()
+            requests["rq"] = requests["Request Count"] - requests["Failure Count"]
+
+            main_table = latency.merge(failures, on="exp_branch")
+            main_table.columns = ["exp_branch", "Latency p50 [s]", "Latency p95 [s]", "Failure Rate [%]", "Failure Rate"]
+            table_path = os.path.join(output_path, "service_quality_table_experiment_level.json")
+            main_table.to_json(table_path, orient="records", indent=2)
+            logger.info(f"Service Quality table (experiment-level) saved to {table_path}")
+
+            # Plot
+            fig, ax = plt.subplots(figsize=(10, 6))
+            sns.barplot(data=main_table, x='exp_branch', y='Failure Rate [%]', ax=ax, palette=palette)
+            ax.set_title('Failure Rate by Experiment (Experiment-level)')
+            plot_path = os.path.join(output_path, "failure_rate_by_experiment_level.png")
+            fig.tight_layout()
+            fig.savefig(plot_path)
+            plt.close(fig)
+            logger.info(f"Failure rate plot (experiment-level) saved to {plot_path}")
+        except Exception as e:
+            logger.info(f"Failed to generate service quality plot (experiment-level): {e}")
