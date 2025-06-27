@@ -98,7 +98,6 @@ def _calculate_cost(row, config):
             (row.get("wattage_kepler", 0) * ws_price))
 
 def _calculate_memory_usage(row, config):
-    # If you want to use node model, you can add it to experiment.json
     return row['memory_usage']
 
 
@@ -109,7 +108,7 @@ def generate_plots(data_path: str, output_path: str):
     Generates and saves plots from the experiment data.
 
     Args:
-        data_path: Path to the directory containing 'observation.hdf5'.
+        data_path: Path to the directory containing the experiment CSV files (not HDF5).
         output_path: Path to the directory where images will be saved.
     """
     logger.info("--- Starting Plot Generation ---")
@@ -305,6 +304,53 @@ def generate_plots(data_path: str, output_path: str):
     except Exception as e:
         logger.info(f"Failed to generate energy consumption plot: {e}")
 
+    # --- Node-level Plots ---
+    if nodes_data_df is not None:
+        try:
+            # 1. Node CPU Usage Over Time
+            fig, ax = plt.subplots(figsize=(10, 6))
+            for instance, group in nodes_data_df.groupby('instance'):
+                ax.plot(pd.to_datetime(group['observation_time']), group['cpu_usage'], label=f'Node {instance}')
+            ax.set_title('Node CPU Usage Over Time')
+            ax.set_xlabel('Time')
+            ax.set_ylabel('CPU Usage (cores)')
+            ax.legend()
+            plot_path = os.path.join(output_path, "node_cpu_usage_over_time.png")
+            fig.tight_layout()
+            fig.savefig(plot_path)
+            plt.close(fig)
+            logger.info(f"Node CPU usage plot saved to {plot_path}")
+
+            # 2. Node Memory Usage Over Time
+            fig, ax = plt.subplots(figsize=(10, 6))
+            for instance, group in nodes_data_df.groupby('instance'):
+                ax.plot(pd.to_datetime(group['observation_time']), group['memory_usage'], label=f'Node {instance}')
+            ax.set_title('Node Memory Usage Over Time')
+            ax.set_xlabel('Time')
+            ax.set_ylabel('Memory Usage (GB)')
+            ax.legend()
+            plot_path = os.path.join(output_path, "node_memory_usage_over_time.png")
+            fig.tight_layout()
+            fig.savefig(plot_path)
+            plt.close(fig)
+            logger.info(f"Node memory usage plot saved to {plot_path}")
+
+            # 3. Node Power Consumption (Wattage Kepler) Over Time
+            if 'wattage_kepler' in nodes_data_df.columns:
+                fig, ax = plt.subplots(figsize=(10, 6))
+                for instance, group in nodes_data_df.groupby('instance'):
+                    ax.plot(pd.to_datetime(group['observation_time']), group['wattage_kepler'], label=f'Node {instance}')
+                ax.set_title('Node Power Consumption (Kepler) Over Time')
+                ax.set_xlabel('Time')
+                ax.set_ylabel('Wattage (Kepler)')
+                ax.legend()
+                plot_path = os.path.join(output_path, "node_wattage_kepler_over_time.png")
+                fig.tight_layout()
+                fig.savefig(plot_path)
+                plt.close(fig)
+                logger.info(f"Node wattage kepler plot saved to {plot_path}")
+        except Exception as e:
+            logger.info(f"Failed to generate node-level plots: {e}")
     logger.info("--- Plot Generation Complete ---")
 
 def _setup_style():
@@ -430,13 +476,3 @@ def generate_plots_dynamic(data_base_path: str, output_path: str):
             logger.info(f"Failure rate plot saved to {plot_path}")
         except Exception as e:
             logger.info(f"Failed to generate service quality plot: {e}")
-
-    # --- Accept and parse the new CSV formats as described ---
-    # measurements_node: columns include instance, observation_time, collection_time, cpu_usage, memory_usage, ...
-    # measurements_pod: columns include collection_time, observation_time, name, namespace, cpu_usage, memory_usage, ...
-    # teastore_stats: columns include Type, Name, Request Count, Failure Count, Median Response Time, ...
-    # All data loading and processing below will use these columns as described above.
-    # Example: For resource utilization, use 'cpu_usage' and 'memory_usage' from pods and nodes.
-    # For service quality, use 'Request Count', 'Failure Count', and latency columns from teastore_stats.
-    # All groupby and aggregation logic will use these column names.
-    # --- Dynamic Plot Generation Complete ---
