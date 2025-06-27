@@ -1,6 +1,7 @@
 import os
 import pathlib
 import warnings
+import json
 
 import glasbey
 import matplotlib.gridspec as gridspec
@@ -13,173 +14,91 @@ from clue_deployer.src.logger import logger
 
 warnings.filterwarnings('ignore')
 
-# --- Constants and Configurations from Notebook ---
+# --- Pricing Constants (AWS Frankfurt, fallback values) ---
+MEMORY_SECOND_PRICE = 0.00511 / 1024 / 60  # $/MBs per minute
+VCPU_SECOND_PRICE = 0.04656 / 60           # $/vCPU per minute
+SERVERLESS_PRICE = 0.0000166667            # $/GB-s (Lambda)
 
-WS_PRICE = 0.5 / 3_600_000  # based on germany mean kWh price
+# --- Dynamic Experiment Discovery and Configuration ---
+def discover_experiments(base_dir):
+    """
+    Recursively discover all experiment runs and their configurations.
+    Returns a list of dicts with experiment metadata and paths.
+    """
+    experiments = []
+    for root, dirs, files in os.walk(base_dir):
+        if 'experiment.json' in files:
+            exp_path = os.path.join(root, 'experiment.json')
+            try:
+                with open(exp_path, 'r') as f:
+                    config = json.load(f)
+                # Add useful metadata from the path structure
+                parts = pathlib.Path(root).parts
+                # Expect: .../<date>/<label>/<branch>/<iteration>
+                if len(parts) >= 4:
+                    experiments.append({
+                        'config': config,
+                        'path': root,
+                        'date': parts[-4],
+                        'label': parts[-3],
+                        'branch': parts[-2],
+                        'iteration': parts[-1],
+                    })
+                else:
+                    experiments.append({'config': config, 'path': root})
+            except Exception as e:
+                logger.info(f"Failed to load {exp_path}: {e}")
+    return experiments
 
-# AWS cost-model
-SERVERLESS_PRICE = 0.0000166667  # based on aws lambda price per GB-s (frankfurt)
-MEMORY_SECOND_PRICE = 0.00511 / 1024 / 60  # $/MBs based on AWS fargate memory price per hour (frankfurt)
-VCPU_SECOND_PRICE = 0.04656 / 60  # $/vCPU based on AWS fargate memory price per hour (frankfurt)
-
-NODE_MODEL = {
-    "sm-gpu": 32704316 // 1024,
-    "ise-knode6": 32719632 // 1024,
-    "ise-knode1": 32761604 // 1024,
-}
-
-POD_CONFIGURATION = {
-    "teastore-recommender": {"cpu": 2600, "memory": 1332},
-    "teastore-webui": {"cpu": 1300, "memory": 1950},
-    "teastore-image": {"cpu": 1300, "memory": 1950},
-    "teastore-auth": {"cpu": 585, "memory": 1332},
-    'teastore-registry': {"cpu": 1000, "memory": 1024},
-    'teastore-persistence': {"cpu": 1000, "memory": 1024},
-    'teastore-db': {"cpu": 1000, "memory": 1024},
-    "teastore-all": {"cpu": 1950, "memory": 2663},
-    "auth": {"cpu": 500, "memory": 500},
-}
-
-GENERAL_ALLOWANCE = {
-    "teastore-recommender": {"cpu": 2600, "memory": 1332},
-    "teastore-webui": {"cpu": 1300, "memory": 1950},
-    "teastore-image": {"cpu": 1300, "memory": 1950},
-    "teastore-auth": {"cpu": 585, "memory": 1332},
-    'teastore-registry': {"cpu": 1300, "memory": 1332},
-    'teastore-persistence': {"cpu": 1300, "memory": 1332},
-    'teastore-db': {"cpu": 1300, "memory": 1332},
-    "teastore-all": {"cpu": 1950, "memory": 2663},
-    "auth": {"cpu": 500, "memory": 500},
-}
-
-RESOURCE_SCALE = {
-    "baseline_vanilla_full": {
-        'teastore-recommender': 3, 'teastore-webui': 3, 'teastore-image': 3,
-        'teastore-auth': 3, 'teastore-registry': 1, 'teastore-persistence': 1,
-        'teastore-db': 1, "teastore-all": 0, "auth": 0,
-    },
-    'jvm_jvm-impoove_full': {
-        'teastore-recommender': 3, 'teastore-webui': 3, 'teastore-image': 3,
-        'teastore-auth': 3, 'teastore-registry': 1, 'teastore-persistence': 1,
-        'teastore-db': 1, "teastore-all": 0, "auth": 0,
-    },
-    'monolith_feature_monolith_full': {
-        'teastore-recommender': 0, 'teastore-webui': 0, 'teastore-image': 0,
-        'teastore-auth': 0, 'teastore-registry': 1, 'teastore-persistence': 0,
-        'teastore-db': 1, "teastore-all": 3, "auth": 0,
-    },
-    'norec_feature_norecommendations_full': {
-        'teastore-recommender': 0, 'teastore-webui': 3, 'teastore-image': 3,
-        'teastore-auth': 3, 'teastore-registry': 1, 'teastore-persistence': 1,
-        'teastore-db': 1, "teastore-all": 0, "auth": 0,
-    },
-    'serverless_feature_serverless_full': {
-        'teastore-recommender': 3, 'teastore-webui': 3, 'teastore-image': 3,
-        'teastore-auth': 0, 'teastore-registry': 1, 'teastore-persistence': 1,
-        'teastore-db': 1, "teastore-all": 0, "auth": 40,
-    },
-}
-
-FULL_STACK_FOCUS = [
-    "baseline_vanilla_full", "monolith_feature_monolith_full",
-    "serverless_feature_serverless_full", "norec_feature_norecommendations_full",
-    "jvm_jvm-impoove_full"
-]
-
-LABLE_NAMES = {
-    "baseline_vanilla_full": "Microservices",
-    'monolith_feature_monolith_full': "Monolith",
-    'serverless_feature_serverless_full': "Serverless",
-    'jvm_jvm-impoove_full': "Runtime Improvement",
-    'norec_feature_norecommendations_full': "Service Reduction",
-    'exp_scale_pausing': "Pausing",
-    "exp_scale_rampup": "Stress",
-    "exp_scale_fixed": "Fixed",
-    "exp_scale_shaped": "Regular",
-}
-
-SHORT_LABELS = {
-    "baseline_vanilla_full": "MS",
-    'monolith_feature_monolith_full': "ML",
-    'serverless_feature_serverless_full': "SL",
-    'jvm_jvm-impoove_full': "RT",
-    'norec_feature_norecommendations_full': "SR",
-}
-
-RUN_VARS = ['exp_start', 'exp_branch', 'exp_workload', 'run_iteration']
-
-# --- Helper Functions from Notebook ---
-
-def _setup_style():
-    """Sets up the plotting style."""
-    pd.set_option('display.max_columns', None)
-    sns.set_theme(rc={'figure.figsize': (12, 6)})
-    sns.set_context("paper")
-    sns.set_style("whitegrid")
-    plt.rcParams['pdf.fonttype'] = 42
-    plt.rcParams['ps.fonttype'] = 42
-    palette = glasbey.create_block_palette(
-        [4, 3, 3, 2, 2], colorblind_safe=True, cvd_severity=90
-    )
-    sns.set_palette(palette)
-    return palette
-
-def _calc_request_based_billing(row):
-    if row["type"] == "pod":
-        conf = POD_CONFIGURATION[row["pod_name"]]
+# --- Helper Functions (Dynamic) ---
+def _calc_request_based_billing(row, config):
+    # Use resource_limits from experiment.json
+    pod_name = row["pod_name"]
+    resource_limits = config.get("resource_limits", {})
+    if pod_name in resource_limits:
+        conf = resource_limits[pod_name]
         return conf["memory"] * MEMORY_SECOND_PRICE + np.ceil(conf["cpu"] / 1000) * VCPU_SECOND_PRICE
-    elif row["type"] == "function":
+    elif pod_name.startswith("auth"):  # fallback for serverless
         return 500 * SERVERLESS_PRICE
     return 0
 
-def _calc_usage_based_billing(row):
+def _calc_usage_based_billing(row, config):
     if row["type"] == "pod":
         return row["memory_usage"] * MEMORY_SECOND_PRICE + np.ceil(row["cpu_usage"]) * VCPU_SECOND_PRICE
     elif row["type"] == "function":
         return row["memory_usage"] * SERVERLESS_PRICE
     return 0
 
-def _calculate_maximum_resource_allowance(exp_branch: str):
-    scale = RESOURCE_SCALE[exp_branch]
+def _calculate_maximum_resource_allowance(config):
+    # Use resource_limits and scaling from experiment.json
+    scale = config.get("resource_limits", {})
     max_allowance = {"cpu": 0, "memory": 0}
-    for pod_name, pod_scale in scale.items():
-        if pod_name in GENERAL_ALLOWANCE:
-            for resource, value in GENERAL_ALLOWANCE[pod_name].items():
-                max_allowance[resource] += value * pod_scale
+    for pod_name, pod_conf in scale.items():
+        for resource, value in pod_conf.items():
+            max_allowance[resource] += value
     return max_allowance
 
-def _calulate_resource_allowence(row):
-    branch = row["exp_branch"]
+def _calulate_resource_allowence(row, config):
+    # Use resource_limits from experiment.json
+    resource_limits = config.get("resource_limits", {})
     pod_type = row["type"]
-    if branch not in RESOURCE_SCALE or pod_type not in RESOURCE_SCALE[branch]:
-        return row
-
-    if pod_type.startswith("auth"):
-        cpu = GENERAL_ALLOWANCE["auth"]["cpu"]
-        memory = GENERAL_ALLOWANCE["auth"]["memory"]
-        max_count = RESOURCE_SCALE[branch]["auth"]
-    elif pod_type in GENERAL_ALLOWANCE:
-        cpu = GENERAL_ALLOWANCE[pod_type]["cpu"]
-        memory = GENERAL_ALLOWANCE[pod_type]["memory"]
-        max_count = RESOURCE_SCALE[branch][pod_type]
-    else:
-        return row
-
-    row["cpu_limit"] = cpu * row["count"]
-    row["mem_limit"] = memory * row["count"]
-    row["cpu_max"] = cpu * max_count
-    row["mem_max"] = memory * max_count
+    if pod_type in resource_limits:
+        cpu = resource_limits[pod_type]["cpu"]
+        memory = resource_limits[pod_type]["memory"]
+        row["cpu_limit"] = cpu * row["count"]
+        row["mem_limit"] = memory * row["count"]
+        row["cpu_max"] = cpu
+        row["mem_max"] = memory
     return row
 
-def _calculate_cost(row):
+def _calculate_cost(row, config):
+    ws_price = 0.5 / 3_600_000
     return (row['memory_usage'] * MEMORY_SECOND_PRICE +
             np.ceil(row["cpu_usage"]) * VCPU_SECOND_PRICE +
-            (row["wattage_kepler"] * WS_PRICE))
+            (row.get("wattage_kepler", 0) * ws_price))
 
-def _calculate_memory_usage(row):
-    instance = row.get('instance')
-    if instance in NODE_MODEL:
-        return row['memory_usage'] * NODE_MODEL[instance]
+def _calculate_memory_usage(row, config):
+    # If you want to use node model, you can add it to experiment.json
     return row['memory_usage']
 
 
@@ -196,24 +115,19 @@ def generate_plots(data_path: str, output_path: str):
     logger.info("--- Starting Plot Generation ---")
     
     palette = _setup_style()
-    hdf_file = os.path.join(data_path, "observation.hdf5")
     pathlib.Path(output_path).mkdir(parents=True, exist_ok=True)
-
-    if not os.path.exists(hdf_file):
-        logger.info(f"Error: Data file not found at {hdf_file}")
-        return
 
     # 1. Load Data
     logger.info("Loading data...")
     try:
-        stats_history = pd.read_hdf(hdf_file, key="stats_history_aggregated")
-        pods_data = pd.read_hdf(hdf_file, key="pods")
-        stats_data = pd.read_hdf(hdf_file, key="stats")
-        nodes_data = pd.read_hdf(hdf_file, key="nodes")
-        pods_energy_data = pd.read_hdf(hdf_file, key="pods_energy")
-        run_stats_data = pd.read_hdf(hdf_file, key="run_stats")
+        stats_history = pd.read_csv(os.path.join(data_path, "teastore_stats_history.csv"))
+        pods_data = pd.read_csv([f for f in os.listdir(data_path) if f.startswith('measurements_pod') and f.endswith('.csv')][0]) if any(f.startswith('measurements_pod') for f in os.listdir(data_path)) else None
+        stats_data = pd.read_csv(os.path.join(data_path, "teastore_stats.csv"))
+        nodes_data = pd.read_csv([f for f in os.listdir(data_path) if f.startswith('measurements_node') and f.endswith('.csv')][0]) if any(f.startswith('measurements_node') for f in os.listdir(data_path)) else None
+        pods_energy_data = pd.read_csv(os.path.join(data_path, "pods_energy.csv"))
+        run_stats_data = pd.read_csv(os.path.join(data_path, "run_stats.csv"))
     except Exception as e:
-        logger.info(f"Error loading data from HDF5 file: {e}")
+        logger.info(f"Error loading data: {e}")
         return
 
     # 2. Generate and Save Service Quality Table
@@ -258,8 +172,8 @@ def generate_plots(data_path: str, output_path: str):
         main_table["exp_branch"] = main_table["exp_branch"].map(LABLE_NAMES)
         main_table.columns = ["Feature", "Latency p50 [s]", "Latency p95 [s]", "Failure Rate [%]", "Total Cost [$]", "Consumed Cost [$]", "Cost Per Request [¢/1000]"]
         
-        table_path = os.path.join(output_path, "service_quality_table.csv")
-        main_table.to_csv(table_path, index=False)
+        table_path = os.path.join(output_path, "service_quality_table.json")
+        main_table.to_json(table_path, orient="records", indent=2)
         logger.info(f"Service Quality table saved to {table_path}")
     except Exception as e:
         logger.info(f"Failed to generate service quality table: {e}")
@@ -392,3 +306,137 @@ def generate_plots(data_path: str, output_path: str):
         logger.info(f"Failed to generate energy consumption plot: {e}")
 
     logger.info("--- Plot Generation Complete ---")
+
+def _setup_style():
+    pd.set_option('display.max_columns', None)
+    sns.set_theme(rc={'figure.figsize': (12, 6)})
+    sns.set_context("paper")
+    sns.set_style("whitegrid")
+    plt.rcParams['pdf.fonttype'] = 42
+    plt.rcParams['ps.fonttype'] = 42
+    return sns.color_palette("tab10")
+
+def generate_plots_dynamic(data_base_path: str, output_path: str):
+    """
+    Dynamically generates and saves plots from all discovered experiment data.
+    Args:
+        data_base_path: Path to the base data directory (e.g., 'data').
+        output_path: Path to the directory where images will be saved.
+    """
+    logger.info("--- Starting Dynamic Plot Generation ---")
+    experiments = discover_experiments(data_base_path)
+    if not experiments:
+        logger.info("No experiments found.")
+        return
+
+    palette = _setup_style()
+    pathlib.Path(output_path).mkdir(parents=True, exist_ok=True)
+
+    # Build dynamic label/grouping info
+    label_names = {}
+    short_labels = {}
+    all_branches = set()
+    all_workloads = set()
+    for exp in experiments:
+        config = exp['config']
+        branch = exp.get('branch', config.get('target_branch', 'unknown'))
+        label = config.get('name', branch)
+        label_names[branch] = label
+        short_labels[branch] = label[:2].upper()
+        all_branches.add(branch)
+        if 'workload_settings' in config:
+            for k, v in config['workload_settings'].items():
+                all_workloads.add(str(v))
+
+    # --- Aggregate Data Across Experiments from CSVs ---
+    all_stats_history = []
+    all_pods_data = []
+    all_stats_data = []
+    all_nodes_data = []
+    all_failures_data = []
+    for exp in experiments:
+        config = exp['config']
+        exp_path = exp['path']
+        branch = exp.get('branch', config.get('target_branch', 'unknown'))
+        label = label_names[branch]
+        def try_load_csv(filename):
+            fpath = os.path.join(exp_path, filename)
+            if os.path.exists(fpath):
+                try:
+                    df = pd.read_csv(fpath)
+                    df['exp_branch'] = branch
+                    df['exp_label'] = label
+                    df['exp_path'] = exp_path
+                    return df
+                except Exception as e:
+                    logger.info(f"Failed to load {fpath}: {e}")
+            return None
+        # Load all relevant CSVs
+        stats_history = try_load_csv('teastore_stats_history.csv')
+        pods_data = try_load_csv([f for f in os.listdir(exp_path) if f.startswith('measurements_pod') and f.endswith('.csv')][0]) if any(f.startswith('measurements_pod') for f in os.listdir(exp_path)) else None
+        stats_data = try_load_csv('teastore_stats.csv')
+        nodes_data = try_load_csv([f for f in os.listdir(exp_path) if f.startswith('measurements_node') and f.endswith('.csv')][0]) if any(f.startswith('measurements_node') for f in os.listdir(exp_path)) else None
+        failures_data = try_load_csv('teastore_failures.csv')
+        if stats_history is not None:
+            all_stats_history.append(stats_history)
+        if pods_data is not None:
+            all_pods_data.append(pods_data)
+        if stats_data is not None:
+            all_stats_data.append(stats_data)
+        if nodes_data is not None:
+            all_nodes_data.append(nodes_data)
+        if failures_data is not None:
+            all_failures_data.append(failures_data)
+
+    # Combine data
+    stats_history_df = pd.concat(all_stats_history, ignore_index=True) if all_stats_history else None
+    pods_data_df = pd.concat(all_pods_data, ignore_index=True) if all_pods_data else None
+    stats_data_df = pd.concat(all_stats_data, ignore_index=True) if all_stats_data else None
+    nodes_data_df = pd.concat(all_nodes_data, ignore_index=True) if all_nodes_data else None
+    failures_data_df = pd.concat(all_failures_data, ignore_index=True) if all_failures_data else None
+
+    # --- Service Quality Table and Plot ---
+    if stats_history_df is not None and stats_data_df is not None:
+        try:
+            left, right = "exp_scale_pausing", "exp_scale_rampup"
+            failures = stats_history_df[stats_history_df["exp_workload"].isin([left, right])].groupby(["exp_branch", "exp_workload"])[["rq", "frq"]].sum()
+            failures["Failure Rate"] = 100 * failures["frq"] / failures["rq"]
+            failures = failures.unstack()
+            failures["fr"] = failures["Failure Rate"].apply(lambda x: f'{x[left]:>2.2f} - {x[right]:>2.2f}', axis=1)
+            failures = failures.droplevel(1, axis=1).reset_index()[["exp_branch", "fr"]]
+
+            latency = stats_history_df[stats_history_df["exp_workload"].isin([left, right])].groupby(["exp_branch", "exp_workload"])[["p50", "p95"]].mean().unstack() / 1000
+            latency["p50_diff"] = latency["p50"].apply(lambda x: f'{x[left]:>2.2f} - {x[right]:>2.2f}', axis=1)
+            latency["p95_diff"] = latency["p95"].apply(lambda x: f'{x[left]:>2.2f} - {x[right]:>2.2f}', axis=1)
+            latency = latency.droplevel(1, axis=1).reset_index()[["exp_branch", "p50_diff", "p95_diff"]]
+
+            requests = stats_data_df.groupby(["exp_branch", "exp_workload"])[["Request Count", "Failure Count"]].sum().reset_index()
+            requests["rq"] = requests["Request Count"] - requests["Failure Count"]
+
+            main_table = latency.merge(failures, on="exp_branch")
+            main_table.columns = ["exp_branch", "Latency p50 [s]", "Latency p95 [s]", "Failure Rate [%]", "Failure Rate"]
+            table_path = os.path.join(output_path, "service_quality_table.json")
+            main_table.to_json(table_path, orient="records", indent=2)
+            logger.info(f"Service Quality table saved to {table_path}")
+
+            # Plot
+            fig, ax = plt.subplots(figsize=(10, 6))
+            sns.barplot(data=main_table, x='exp_branch', y='Failure Rate [%]', ax=ax, palette=palette)
+            ax.set_title('Failure Rate by Experiment')
+            plot_path = os.path.join(output_path, "failure_rate_by_experiment.png")
+            fig.tight_layout()
+            fig.savefig(plot_path)
+            plt.close(fig)
+            logger.info(f"Failure rate plot saved to {plot_path}")
+        except Exception as e:
+            logger.info(f"Failed to generate service quality plot: {e}")
+
+    # --- Accept and parse the new CSV formats as described ---
+    # measurements_node: columns include instance, observation_time, collection_time, cpu_usage, memory_usage, ...
+    # measurements_pod: columns include collection_time, observation_time, name, namespace, cpu_usage, memory_usage, ...
+    # teastore_stats: columns include Type, Name, Request Count, Failure Count, Median Response Time, ...
+    # All data loading and processing below will use these columns as described above.
+    # Example: For resource utilization, use 'cpu_usage' and 'memory_usage' from pods and nodes.
+    # For service quality, use 'Request Count', 'Failure Count', and latency columns from teastore_stats.
+    # All groupby and aggregation logic will use these column names.
+    # --- Dynamic Plot Generation Complete ---
