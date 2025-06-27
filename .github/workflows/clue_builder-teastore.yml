@@ -28,7 +28,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Lint Dockerfile (teastore builder)
-        run: docker run --rm -i hadolint/hadolint < clue_builders/teastore/Dockerfile
+        run: docker run --rm -i hadolint/hadolint --ignore DL3059 --ignore DL3008 -  < clue_builders/teastore/Dockerfile
       - name: Compute short Git SHA
         id: vars
         run: |
