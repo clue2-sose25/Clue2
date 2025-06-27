@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import type { ReactElement } from "react";
 import { Link } from "react-router";
-import { PauseIcon, ClockIcon, FilesIcon } from "@phosphor-icons/react";
+import { PauseIcon, ClockIcon, FilesIcon, RocketLaunchIcon } from "@phosphor-icons/react";
 
 const HomePage = () => {
   const [statusText, setStatusText] = useState<string>("Loading...");
+  const [isDeploying, setIsDeploying] = useState<boolean | null>(null);
   const [queueCount, setQueueCount] = useState<number>(0);
   const [resultsCount, setResultsCount] = useState<number>(0);
 
@@ -13,12 +14,19 @@ const HomePage = () => {
       .then((res) => res.json())
       .then((data) => {
         if (data && typeof data.is_deploying === "boolean") {
-          setStatusText(data.is_deploying ? "Deploying..." : "Waiting for deployments");
+          setStatusText(
+            data.is_deploying ? "Deploying..." : "Waiting for deployments"
+          );
+          setIsDeploying(data.is_deploying);
         } else {
           setStatusText("Unknown");
+          setIsDeploying(null);
         }
       })
-      .catch(() => setStatusText("Unavailable"));
+      .catch(() => {
+        setStatusText("Unavailable");
+        setIsDeploying(null);
+      });
 
     fetch("/api/queue")
       .then((res) => res.json())
@@ -74,12 +82,21 @@ const HomePage = () => {
     </div>
   );
 
+  const statusIcon =
+    isDeploying === null ? (
+      <ClockIcon size={40} />
+    ) : isDeploying ? (
+      <RocketLaunchIcon size={40} />
+    ) : (
+      <PauseIcon size={40} />
+    );
+
   return (
     <div className="w-full h-full flex justify-center">
       <div className="pt-20 grid grid-cols-1 md:grid-cols-3 gap-8">
         <Card
           title="STATUS"
-          icon={<PauseIcon size={40} />}
+          icon={statusIcon}
           text={statusText}
           link="/dashboard"
           button="View dashboard"
