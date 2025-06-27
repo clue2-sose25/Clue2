@@ -108,7 +108,7 @@ def generate_plots(data_path: str, output_path: str):
     Generates and saves plots from the experiment data.
 
     Args:
-        data_path: Path to the directory containing the experiment CSV files (not HDF5).
+        data_path: Path to the directory containing the experiment CSV files.
         output_path: Path to the directory where images will be saved.
     """
     logger.info("--- Starting Plot Generation ---")
@@ -118,11 +118,23 @@ def generate_plots(data_path: str, output_path: str):
 
     # 1. Load Data
     logger.info("Loading data...")
+    # Load experiment.json to get SUT name
+    experiment_json_path = os.path.join(data_path, "experiment.json")
+    with open(experiment_json_path, "r") as f:
+        experiment_config = json.load(f)
+    sut_path = experiment_config.get("sut_path", "teastore")
+
+    # Use SUT name to find the correct stats and pod files
+    stats_history_file = os.path.join(data_path, f"{sut_path}_stats_history.csv")
+    stats_file = os.path.join(data_path, f"{sut_path}_stats.csv")
+    pods_file = [f for f in os.listdir(data_path) if f.startswith(f"measurements_pod") and f.endswith('.csv')]
+    nodes_file = [f for f in os.listdir(data_path) if f.startswith('measurements_node') and f.endswith('.csv')]
+
     try:
-        stats_history = pd.read_csv(os.path.join(data_path, "teastore_stats_history.csv"))
-        pods_data = pd.read_csv([f for f in os.listdir(data_path) if f.startswith('measurements_pod') and f.endswith('.csv')][0]) if any(f.startswith('measurements_pod') for f in os.listdir(data_path)) else None
-        stats_data = pd.read_csv(os.path.join(data_path, "teastore_stats.csv"))
-        nodes_data = pd.read_csv([f for f in os.listdir(data_path) if f.startswith('measurements_node') and f.endswith('.csv')][0]) if any(f.startswith('measurements_node') for f in os.listdir(data_path)) else None
+        stats_history = pd.read_csv(stats_history_file)
+        pods_data = pd.read_csv(os.path.join(data_path, pods_file[0])) if pods_file else None
+        stats_data = pd.read_csv(stats_file)
+        nodes_data = pd.read_csv(os.path.join(data_path, nodes_file[0])) if nodes_file else None
         pods_energy_data = pd.read_csv(os.path.join(data_path, "pods_energy.csv"))
         run_stats_data = pd.read_csv(os.path.join(data_path, "run_stats.csv"))
     except Exception as e:
@@ -417,12 +429,13 @@ def generate_plots_dynamic(data_base_path: str, output_path: str):
                 except Exception as e:
                     logger.info(f"Failed to load {fpath}: {e}")
             return None
-        # Load all relevant CSVs
-        stats_history = try_load_csv('teastore_stats_history.csv')
+        # Load all relevant CSVs using the SUT name from experiment.json
+        sut_path = config.get("sut_path")
+        stats_history = try_load_csv(f'{sut_path}_stats_history.csv')
         pods_data = try_load_csv([f for f in os.listdir(exp_path) if f.startswith('measurements_pod') and f.endswith('.csv')][0]) if any(f.startswith('measurements_pod') for f in os.listdir(exp_path)) else None
-        stats_data = try_load_csv('teastore_stats.csv')
+        stats_data = try_load_csv(f'{sut_path}_stats.csv')
         nodes_data = try_load_csv([f for f in os.listdir(exp_path) if f.startswith('measurements_node') and f.endswith('.csv')][0]) if any(f.startswith('measurements_node') for f in os.listdir(exp_path)) else None
-        failures_data = try_load_csv('teastore_failures.csv')
+        failures_data = try_load_csv(f'{sut_path}_failures.csv')
         if stats_history is not None:
             all_stats_history.append(stats_history)
         if pods_data is not None:
