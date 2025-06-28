@@ -16,28 +16,6 @@ helm_replacements:
   - old_value: "ghcr.io/clue2-sose25/sustainable_toystore"
     new_value: "registry:5000/clue"
 
-services:
-  - name: "teastore-auth"
-    resource_limits:
-      cpu: 450
-      memory: 1024
-  - name: "teastore-webui"
-    resource_limits:
-      cpu: 1000
-      memory: 1500
-  - name: "teastore-recommender"
-    resource_limits:
-      cpu: 1000
-      memory: 1024
-  - name: "teastore-image"
-    resource_limits:
-      cpu: 1000
-      memory: 1500
-  - name: "teastore-all"
-    resource_limits:
-      cpu: 1000
-      memory: 2048
-
 workloads:
   - name: "shaped"
     description: "Workload with custom load shape behavior."

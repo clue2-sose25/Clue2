@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings
 from pathlib import Path
 import yaml
 from clue_deployer.src.models.helm_replacement import HelmReplacement
-from clue_deployer.src.models.service import Service
+from clue_deployer.src.models.resource_limit import ResourceLimit
 from clue_deployer.src.models.variant import Variant
 from clue_deployer.src.models.workload import Workload
 
@@ -37,8 +37,8 @@ class SUTConfig(BaseSettings):
     variants: List[Variant]
     # The list of workloads
     workloads: List[Workload]
-    # The list of services
-    services: list[Service]
+    # The list of resource limits
+    resource_limits: list[ResourceLimit]
 
     class Config:
         env_prefix = "SUT_"
@@ -89,10 +89,10 @@ class SUTConfig(BaseSettings):
                     for item in full_data['variants']
                 ]
             
-            if 'services' in full_data:
-                config_data['services'] = [
-                    Service(**item) if isinstance(item, dict) else item
-                    for item in full_data['services']
+            if 'resource_limits' in full_data:
+                config_data['resource_limits'] = [
+                    ResourceLimit(**item) if isinstance(item, dict) else item
+                    for item in full_data['resource_limits']
                 ]
             
             if 'workloads' in full_data:
