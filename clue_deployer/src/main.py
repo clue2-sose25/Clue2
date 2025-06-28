@@ -11,7 +11,6 @@ from clue_deployer.src.configs.configs import CONFIGS, ENV_CONFIG, Configs
 from clue_deployer.src.models.status_phase import StatusPhase
 from clue_deployer.src.service.status_manager import StatusManager
 from clue_deployer.src.models.variant import Variant
-from clue_deployer.src.models.variant_environment import VariantEnvironment
 from clue_deployer.src.variant_runner import VariantRunner
 from clue_deployer.src.models.workload import Workload
 from clue_deployer.src.experiment_deployer import ExperimentDeployer
@@ -42,7 +41,6 @@ class ExperimentRunner:
                     name = variant.name,
                     target_branch = variant.target_branch,
                     colocated_workload = variant.colocated_workload,
-                    env = VariantEnvironment(configs),
                     autoscaling = variant.autoscaling,
                     critical_services = variant.critical_services,
                     configs = configs,

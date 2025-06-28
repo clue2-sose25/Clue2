@@ -3,21 +3,12 @@ from typing import Dict
 
 class Workload(BaseModel):
     """
-    Class for workloads, containing shared constants and configuration.
+    A simple class for workloads loaded from SUT config yaml
     """
-    def __init__(
-        self,
-        name: str,
-        timeout_duration: int,
-        workload_settings: Dict
-    ):
-        # Basic parameters
-        self.name = name
-        self.timeout_duration = timeout_duration
-        # Validate workload_settings using Pydantic
-        self.workload_settings = workload_settings
+    name: str
+    description: str
+    timeout_duration: int
+    workload_settings: Dict
 
     def __repr__(self) -> str:
-        return (
-            f"{self.__class__.__name__}"
-        )
+        return f"{self.__class__.__name__}(name='{self.name}')"
