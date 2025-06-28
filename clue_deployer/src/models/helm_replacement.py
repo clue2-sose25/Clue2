@@ -1,6 +1,6 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+from clue_deployer.src.models.scaling_experiment_setting import ScalingExperimentSetting
 
-from clue_deployer.src.scaling_experiment_setting import ScalingExperimentSetting
 
 class Conditions(BaseModel):
     """
@@ -18,9 +18,9 @@ class HelmReplacement(BaseModel):
     A single object representing a helm replacement. Used to replace strings in SUT's values.yaml files.
     """
     # The old value to replace
-    old_value: str
+    value: str
     # The new value to use
-    new_value: str
+    replacement: str
     # Conditions
     conditions: Conditions = None
     
@@ -41,4 +41,4 @@ class HelmReplacement(BaseModel):
         return False
     
     def __str__(self) -> str:
-        return f"{self.old_value} with {self.new_value} with conditions {self.conditions}"
+        return f"{self.value} with {self.replacement} with conditions {self.conditions}"

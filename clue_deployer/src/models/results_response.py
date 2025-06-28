@@ -1,8 +1,8 @@
 from pydantic import BaseModel
-from clue_deployer.src.models.result_entry import ResultEntry
+from clue_deployer.src.models.experiment import Experiment
 
 class ResultsResponse(BaseModel):
     """
     A response for the /list/results endpoint
     """
-    results: list[ResultEntry]
+    results: list[Experiment]

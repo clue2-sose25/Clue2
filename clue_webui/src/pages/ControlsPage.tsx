@@ -101,8 +101,8 @@ const ControlsPage = () => {
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({
-        sut_name: currentDeployment.SutName,
-        experiment_name: currentDeployment.experimentNames.join(","),
+        sut: currentDeployment.SutName,
+        variants: currentDeployment.experimentNames.join(","),
         workload: currentDeployment.workloads.join(","),
         n_iterations: currentDeployment.iterations,
         deploy_only: currentDeployment.deploy_only,

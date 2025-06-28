@@ -2,39 +2,27 @@ from pathlib import Path
 from os import path
 from kubernetes.client import CoreV1Api, V1Namespace, V1ObjectMeta, AppsV1Api
 from kubernetes.client.exceptions import ApiException   
-from clue_deployer.src.config.config import ENV_CONFIG
+from clue_deployer.src.configs.configs import CLUE_CONFIG, ENV_CONFIG, SUT_CONFIG
 from clue_deployer.src.logger import logger
 import time
-import os
 import subprocess
 from kubernetes import config as k_config
 from clue_deployer.src.helm_wrapper import HelmWrapper
-from clue_deployer.src.experiment import Experiment
-from clue_deployer.src.config import Config
+from clue_deployer.src.models.variant import Variant
 from clue_deployer.src.autoscaling_deployer import AutoscalingDeployer
 from clue_deployer.src.service.status_manager import StatusManager, StatusPhase
 
 # Adjust if deploy.py is not 3 levels down from project root
 BASE_DIR = Path(__file__).resolve().parent.parent.parent 
 
-class ExperimentDeployer:
-    def __init__(self, experiment: Experiment, config: Config):
-        self.experiment = experiment
-        # This object should hold clue_config, sut_config, etc.
-        self.config = config 
-
-        # Extract paths and addresses from the config object
-        # Ensure your Config class structure provides these attributes
-        if not hasattr(config, 'sut_config') or not hasattr(config.sut_config, 'sut_path'):
-            raise ValueError("Config object must have 'sut_config' with a 'sut_path' attribute.")
-        self.sut_path = Path(config.sut_config.sut_path) # Ensure sut_path is a Path object
-
-        if not hasattr(config, 'clue_config') or not hasattr(config.clue_config, 'docker_registry_address'):
-            raise ValueError("Config object must have 'clue_config' with a 'docker_registry_address' attribute.")
-        self.docker_registry_address = config.clue_config.docker_registry_address
-        
-        self.helm_chart_path = config.sut_config.helm_chart_path
-        self.values_yaml_name = config.sut_config.values_yaml_name
+class VariantDeployer:
+    def __init__(self, variant: Variant):
+        # The variant to run
+        self.variant = variant
+        self.sut_path = Path(SUT_CONFIG.sut_path)
+        self.docker_registry_address = CLUE_CONFIG.docker_registry_address
+        self.helm_chart_path = SUT_CONFIG.helm_chart_path
+        self.values_yaml_name = SUT_CONFIG.values_yaml_name
         # Initialize Kubernetes API clients
         try:
             k_config.load_kube_config()
@@ -43,17 +31,16 @@ class ExperimentDeployer:
         except Exception as e:
             logger.error(f"Failed to load kube config: {e}. Make sure you have a cluster available via kubectl.")
             raise
-
-        self.port_forward_process = None # To keep track of the port-forwarding process
-        self.helm_wrapper = HelmWrapper(self.config, self.experiment) 
+        # To keep track of the port-forwarding process
+        self.port_forward_process = None 
+        self.helm_wrapper = HelmWrapper(self.variant) 
     
-
 
     def _create_namespace_if_not_exists(self):
         """
         Checks if the given namespace exists in the cluster
         """
-        namespace = self.experiment.namespace
+        namespace = SUT_CONFIG.namespace
         try:
             self.core_v1_api.read_namespace(name=namespace)
             logger.info(f"Namespace '{namespace}' already exists.")
@@ -66,6 +53,7 @@ class ExperimentDeployer:
             else:
                 logger.error(f"Error checking/creating namespace '{namespace}': {e}")
                 raise
+
 
     def _check_labeled_node_available(self):
         """
@@ -168,27 +156,24 @@ class ExperimentDeployer:
             raise RuntimeError("Failed to fulfill Helm requirements. Please check the error above.")
             
 
-    def _creates_results_directory(self, values: dict):
-        # Create observations directory in the format RUN_CONFIG.clue_config.result_base_path / experiment.name / dd.mm.yyyy_hh-mm
-        observations = path.join(self.config.clue_config.result_base_path, self.experiment.name, time.strftime("%d.%m.%Y_%H-%M"))
-        os.makedirs(observations)
+    def _copy_values_file(self, values: dict, results_path: Path):
         # Write copy of used values to observations 
-        with open(path.join(observations, "values.yaml"), "w") as f:
+        with open(path.join(results_path, "values.yaml"), "w") as f:
             f.write(values)
-            logger.info("Copying values file to results")
+            logger.info("Copying values.yaml file to results folder")
 
 
     def _wait_until_services_ready(self):
         """
         Wait a specified amount of time for the critical services
         """
-        timeout = self.config.sut_config.timeout_for_services_ready
+        timeout = SUT_CONFIG.timeout_for_services_ready
         logger.info(f"Waiting for critical services to be ready for {timeout} seconds")
         v1_apps = self.apps_v1_api
         ready_services = set()
         start_time = time.time()
-        services = set(self.experiment.critical_services)
-        namespace = self.experiment.namespace
+        services = set(self.variant.critical_services)
+        namespace = SUT_CONFIG.namespace
 
         while len(ready_services) < len(services) and time.time() - start_time < timeout:
             for service in services.difference(ready_services):
@@ -224,29 +209,29 @@ class ExperimentDeployer:
         """
         Clones the SUT repository if it doesn't exist.
         """
-        if self.config.sut_config.helm_chart_repo:
+        if SUT_CONFIG.helm_chart_repo:
             # If a helm chart repo is provided, clone it
             if self.sut_path.exists():
                 logger.warning(f"SUT path {self.sut_path} already exists. It will not clone the repository again.")
             else: 
-                logger.info(f"Cloning Helm chart repository from {self.config.sut_config.helm_chart_repo} to {self.sut_path}")
-                subprocess.check_call(["git", "clone", self.config.sut_config.helm_chart_repo, str(self.sut_path)])
+                logger.info(f"Cloning Helm chart repository from {SUT_CONFIG.helm_chart_repo} to {self.sut_path}")
+                subprocess.check_call(["git", "clone", SUT_CONFIG.helm_chart_repo, str(self.sut_path)])
         elif not self.sut_path.exists():
-            if not self.config.sut_config.sut_git_repo:
+            if not SUT_CONFIG.sut_git_repo:
                 raise ValueError("SUT Git repository URL is not provided in the configuration")
-            logger.info(f"Cloning SUT from {self.config.sut_config.sut_git_repo} to {self.sut_path}")
-            subprocess.check_call(["git", "clone", self.config.sut_config.sut_git_repo, str(self.sut_path)])
+            logger.info(f"Cloning SUT from {SUT_CONFIG.sut_git_repo} to {self.sut_path}")
+            subprocess.check_call(["git", "clone", SUT_CONFIG.sut_git_repo, str(self.sut_path)])
         else:
             logger.info(f"SUT already exists at {self.sut_path}. Skipping cloning.")
 
 
-    def deploy_SUT(self):
+    def deploy_SUT(self, results_path: Path):
         """
         Orchestrates the full deployment process for the experiment.
         """
         StatusManager.set(StatusPhase.DEPLOYING_SUT, "Deploying SUT...")
         # Check for namespace
-        logger.info(f"Checking if namespace '{self.experiment.namespace}' exists")
+        logger.info(f"Checking if namespace '{SUT_CONFIG.namespace}' exists")
         self._create_namespace_if_not_exists()
         # Check for nodes labels
         logger.info(f"Checking for nodes with label scaphandre=true")
@@ -257,23 +242,22 @@ class ExperimentDeployer:
         # Clones the SUT repository
         self.clone_sut() 
         # Prepare the Helm wrapper as a context manager
-        with self.helm_wrapper as wrapper:
+        with self.helm_wrapper as helm_wrapper:
             logger.info("Patching the helm chart")
-            values = wrapper.update_helm_chart()
-            # Create results folder
-            logger.info("Creating results directory")
-            self._creates_results_directory(values)
+            values = helm_wrapper.update_helm_chart()
+            # Copy values file
+            self._copy_values_file(values, results_path)
             # Deploy the SUT
-            logger.info(f"Deploying the SUT: {ENV_CONFIG.SUT_NAME}")
-            wrapper.deploy_sut()
+            logger.info(f"Deploying the SUT: {ENV_CONFIG.SUT}")
+            helm_wrapper.deploy_sut()
         # Set the status
         StatusManager.set(StatusPhase.WAITING, "Waiting for system to stabilize...")
         # Wait for all critical services
-        logger.info(f"Waiting for all critical services: [{set(self.experiment.critical_services)}]")
+        logger.info(f"Waiting for all critical services: [{set(self.variant.critical_services)}]")
         self._wait_until_services_ready()
-        if self.experiment.autoscaling:
+        if self.variant.autoscaling:
             logger.info("Autoscaling is enabled. Deploying autoscaling...")
-            AutoscalingDeployer(self.experiment).setup_autoscaling()
+            AutoscalingDeployer(self.variant).setup_autoscaling()
         else:
             logger.info("Autoscaling disabled. Skipping its deployment.")
         StatusManager.set(StatusPhase.WAITING, "Waiting for load generator...")

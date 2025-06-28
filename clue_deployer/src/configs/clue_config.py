@@ -1,22 +1,20 @@
-from pydantic_settings import BaseSettings
 from pathlib import Path
+from pydantic_settings import BaseSettings
 import yaml
 
 class ClueConfig(BaseSettings):
     """
-    Configuration class for CLUE using pydantic's BaseSettings.
+    Configuration class for CLUE
     """
+    experiment_timeout: int
     prometheus_url: str
     local_public_ip: str
     local_port: int
     remote_platform_arch: str
     local_platform_arch: str
     docker_registry_address: str
-    result_base_path: Path
-    workloads: list[str] 
     target_utilization: int
-    n_iterations: int
-
+    
     class Config:
         # Allow environment variable overrides
         env_prefix = "CLUE_"

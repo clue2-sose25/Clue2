@@ -1,4 +1,6 @@
 config:
+  # The name of the SUT  
+  sut: "toystore"
   namespace: "toystore"
   sut_git_repo: "https://github.com/clue2-sose25/sustainable_toystore"
   sut_path: "toystore"
@@ -9,39 +11,20 @@ config:
   default_resource_limits:
     cpu: 1000
     memory: 1024
-  workload_settings: {}
-  timeout_duration: 360
   wait_before_workloads: 10
   wait_after_workloads: 10
-  tags: []
 
 helm_replacements:
-  - old_value: "ghcr.io/clue2-sose25/sustainable_toystore"
-    new_value: "registry:5000/clue"
+  - value: "ghcr.io/clue2-sose25/sustainable_toystore"
+    replacement: "registry:5000/clue"
 
-services:
-  - name: "teastore-auth"
-    resource_limits:
-      cpu: 450
-      memory: 1024
-  - name: "teastore-webui"
-    resource_limits:
-      cpu: 1000
-      memory: 1500
-  - name: "teastore-recommender"
-    resource_limits:
-      cpu: 1000
-      memory: 1024
-  - name: "teastore-image"
-    resource_limits:
-      cpu: 1000
-      memory: 1500
-  - name: "teastore-all"
-    resource_limits:
-      cpu: 1000
-      memory: 2048
+workloads:
+  - name: "shaped"
+    description: "Workload with custom load shape behavior."
+    timeout_duration: 120
+    workload_settings: {}
 
-experiments:
+variants:
   - name: "baseline"
     description: "Baseline experiment for the toystore application"
     target_branch: "main"

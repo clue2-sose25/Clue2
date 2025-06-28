@@ -10,8 +10,7 @@ from fastapi.responses import JSONResponse, StreamingResponse, RedirectResponse
 from pathlib import Path
 import yaml
 import multiprocessing
-from clue_deployer.src.models.logs_response import LogsResponse
-from clue_deployer.src.models.result_entry import ResultEntry
+from clue_deployer.src.models.experiment import Experiment
 from clue_deployer.src.models.deploy_request import DeployRequest
 from clue_deployer.src.models.health_response import HealthResponse
 from clue_deployer.src.models.results_response import ResultsResponse
@@ -20,9 +19,9 @@ from clue_deployer.src.models.sut import Sut, ExperimentEntry
 from clue_deployer.src.models.suts_response import SutsResponse
 from clue_deployer.src.service.status_manager import StatusManager
 from clue_deployer.src.logger import get_child_process_logger, logger, shared_log_buffer
-from clue_deployer.src.config.config import ENV_CONFIG
-from clue_deployer.src.main import ClueRunner
-from clue_deployer.src.config import SUTConfig, Config
+from clue_deployer.src.configs.configs import ENV_CONFIG
+from clue_deployer.src.main import ExperimentRunner
+from clue_deployer.src.configs import SUTConfig, Configs
 from clue_deployer.src.service.worker import Worker
 
 
@@ -54,35 +53,35 @@ SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
 RESULTS_DIR = ENV_CONFIG.RESULTS_PATH
 CLUE_CONFIG_PATH = ENV_CONFIG.CLUE_CONFIG_PATH
 
-def run_deployment(config, deploy_request,
+def run_deployment(configs, deploy_request,
                   state_lock, is_deploying, shared_log_buffer):
     """Function to run the deployment in a separate process."""
     # Setup logger for this child process
-    process_logger = get_child_process_logger(f"DEPLOY_{sut_name}", shared_log_buffer)
+    process_logger = get_child_process_logger(f"DEPLOY_{sut}", shared_log_buffer)
     
     deploy_only = deploy_request.deploy_only
-    experiment_name = deploy_request.experiment_name
+    variants = deploy_request.variants
     n_iterations = deploy_request.n_iterations
-    sut_name = deploy_request.sut_name
+    sut = deploy_request.sut
 
     try:
-        process_logger.info(f"Starting deployment for SUT {sut_name}")
-        runner = ClueRunner(config, experiment_name=experiment_name, sut_name=sut_name, 
+        process_logger.info(f"Starting deployment for SUT {sut}")
+        runner = ExperimentRunner(configs, variants=variants, sut=sut, 
                            deploy_only=deploy_only, n_iterations=n_iterations)
         
         # You might want to pass the process_logger to ClueRunner if it accepts a logger parameter
-        # runner = ClueRunner(config, experiment_name=experiment_name, sut_name=sut_name, 
+        # runner = ClueRunner(config, variants=variants, sut=sut, 
         #                    deploy_only=deploy_only, n_iterations=n_iterations, logger=process_logger)
         
         runner.main()
-        process_logger.info(f"Successfully completed deployment for SUT {sut_name}")
+        process_logger.info(f"Successfully completed deployment for SUT {sut}")
         
     except Exception as e:
-        process_logger.error(f"Deployment process failed for SUT {sut_name}: {str(e)}")
+        process_logger.error(f"Deployment process failed for SUT {sut}: {str(e)}")
     finally:
         with state_lock:
             is_deploying.value = 0
-        process_logger.info(f"Deployment process for SUT {sut_name} finished")
+        process_logger.info(f"Deployment process for SUT {sut} finished")
 
 @app.get("/api/status", response_model=StatusResponse)
 def read_status():
@@ -189,7 +188,7 @@ async def list_sut():
         suts = []
         for filename in files:
             # Extract SUT name from filename (without extension)
-            sut_name = os.path.splitext(filename)[0]
+            sut = os.path.splitext(filename)[0]
             file_path = os.path.join(SUT_CONFIGS_DIR, filename)
 
             # Read and parse the YAML file
@@ -215,7 +214,7 @@ async def list_sut():
                 )
 
             # Create Sut object and add to list
-            sut = Sut(name=sut_name, experiments=parsed_experiments)
+            sut = Sut(name=sut, experiments=parsed_experiments)
             suts.append(sut)
 
         return SutsResponse(suts=suts)
@@ -267,12 +266,12 @@ async def list_all_results():
                     result_id = f"{timestamp}_{workload_name}_{branch_name_str}"
                     # Append the results
                     processed_results.append(
-                        ResultEntry(
+                        Experiment(
                             id=result_id,
                             workload=workload_name,
                             branch_name=branch_name_str,
                             timestamp=timestamp,
-                            iterations=iterations_count
+                            n_iterations=iterations_count
                         )
                     )
         return ResultsResponse(results=processed_results)
@@ -283,7 +282,7 @@ async def list_all_results():
         logger.exception("Unexpected error while retrieving results.")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving results: {str(e)}")
 
-@app.get("/api/results/{result_id}", response_model=ResultEntry)
+@app.get("/api/results/{result_id}", response_model=Experiment)
 async def get_single_result(result_id: str):
     """Get a single result by ID."""
     results_base_path = Path(RESULTS_DIR)
@@ -333,12 +332,12 @@ async def get_single_result(result_id: str):
                         # Count iterations
                         iterations_count = sum(1 for item in exp_dir.iterdir() if item.is_dir())
                         
-                        return ResultEntry(
+                        return Experiment(
                             id=result_id,
                             workload=workload_name,
                             branch_name=branch_name,
                             timestamp=timestamp,
-                            iterations=iterations_count
+                            n_iterations=iterations_count
                         )
         
         # If we get here, the result wasn't found
@@ -526,14 +525,14 @@ async def delete_result(result_id: str):
         logger.exception(f"Unexpected error while deleting result '{result_id}'.")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while deleting result: {str(e)}")
         
-@app.get("/api/config/sut/{sut_name}", response_model=SUTConfig)
-async def get_sut_config(sut_name: str):
+@app.get("/api/config/sut/{sut}", response_model=SUTConfig)
+async def get_sut_config(sut: str):
     """Get a specific SUT configuration."""
-    cleaned_sut_name = sut_name.strip().lower()
-    sut_filename = f"{cleaned_sut_name}.yaml"
+    cleaned_sut = sut.strip().lower()
+    sut_filename = f"{cleaned_sut}.yaml"
     sut_path = os.path.join(SUT_CONFIGS_DIR, sut_filename)
     if not os.path.isfile(sut_path):
-        raise HTTPException(status_code=404, detail=f"SUT configuration not found: {sut_name}")
+        raise HTTPException(status_code=404, detail=f"SUT configuration not found: {sut}")
     try: 
         sut_config = SUTConfig.load_from_yaml(sut_path)
         return sut_config
@@ -541,7 +540,7 @@ async def get_sut_config(sut_name: str):
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving SUT configuration: {str(e)}")
 
 @app.get("/api/plots")
-async def list_plots(request: ResultEntry, iteration: int):
+async def list_plots(request: Experiment, iteration: int):
     """List all available plots for a specific iteration."""
     workload = request.workload
     branch_name = request.branch_name
@@ -560,7 +559,7 @@ async def list_plots(request: ResultEntry, iteration: int):
     return {"plots": plots}
 
 @app.get("/api/plots/download")
-async def download_plot(request: ResultEntry):
+async def download_plot(request: Experiment):
     """Download a specific plot for a given iteration."""
     workload = request.workload
     branch_name = request.branch_name
@@ -588,32 +587,32 @@ async def deploy_sut(request: DeployRequest):
             )
         is_deploying.value = 1
 
-    sut_filename = f"{request.sut_name}.yaml"
+    sut_filename = f"{request.sut}.yaml"
     sut_path = os.path.join(SUT_CONFIGS_DIR, sut_filename)
     
     if not os.path.isfile(sut_path):
         with state_lock:
             is_deploying.value = 0
-        raise HTTPException(status_code=404, detail=f"SUT configuration not found: {request.sut_name}")
+        raise HTTPException(status_code=404, detail=f"SUT configuration not found: {request.sut}")
     
-    config = Config(sut_config=sut_path, clue_config=CLUE_CONFIG_PATH)
+    configs = Configs(sut_config=sut_path, clue_config=CLUE_CONFIG_PATH)
     
     try:
         # Pass the shared buffer to the child process
         process = multiprocessing.Process(
             target=run_deployment,
-            args=(config, request, 
+            args=(configs, request, 
                   state_lock, is_deploying, shared_log_buffer)
         )
         process.start()
-        logger.info(f"Started deployment process for SUT {request.sut_name}")
+        logger.info(f"Started deployment process for SUT {request.sut}")
     except Exception as e:
         with state_lock:
             is_deploying.value = 0
         logger.error(f"Failed to start deployment process: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to start deployment: {str(e)}")
     
-    return {"message": f"Deployment of SUT {request.sut_name} has been started."}
+    return {"message": f"Deployment of SUT {request.sut} has been started."}
 
 @app.post("/api/queue/enqueue", status_code=status.HTTP_202_ACCEPTED)
 def enqueue_experiment(request: list[DeployRequest]):
