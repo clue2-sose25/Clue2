@@ -6,7 +6,7 @@ import shutil
 from clue_deployer.src.models.variant import Variant
 from clue_deployer.src.logger import logger
 from clue_deployer.src.config import Config
-from clue_deployer.src.config.helm_dependencies import Dependencies
+from clue_deployer.src.models.helm_dependencies import Dependencies
 
 class HelmWrapper():
     
