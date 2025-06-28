@@ -36,7 +36,6 @@ class VariantDeployer:
         self.helm_wrapper = HelmWrapper(self.variant) 
     
 
-
     def _create_namespace_if_not_exists(self):
         """
         Checks if the given namespace exists in the cluster
@@ -54,6 +53,7 @@ class VariantDeployer:
             else:
                 logger.error(f"Error checking/creating namespace '{namespace}': {e}")
                 raise
+
 
     def _check_labeled_node_available(self):
         """

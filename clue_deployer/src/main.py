@@ -103,7 +103,7 @@ class ExperimentRunner:
             for iteration in range(num_iterations):
                 # Create the results path
                 results_path = path.join("data", self.experiment.sut, self.experiment.timestamp, variant.name, workload.name , str(iteration))
-                logger.info(f"Running iteration ({iteration + 1}/{num_iterations}) for {variant.name} (workload: {workload.name})")
+                logger.info(f"Starting iteration ({iteration + 1}/{num_iterations}) for {variant.name}/{workload.name})")
                 self.execute_single_run(variant, workload, results_path)
                 # additional wait after each iteration except the last one
                 if iteration < num_iterations - 1:
