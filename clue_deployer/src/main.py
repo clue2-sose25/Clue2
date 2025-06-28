@@ -13,7 +13,7 @@ from clue_deployer.src.service.status_manager import StatusManager
 from clue_deployer.src.models.variant import Variant
 from clue_deployer.src.models.variant_environment import VariantEnvironment
 from clue_deployer.src.variant_runner import VariantRunner
-from clue_deployer.src.models.workloads import Workload, get_workload_instance
+from clue_deployer.src.models.workload import Workload
 from clue_deployer.src.experiment_deployer import ExperimentDeployer
 from clue_deployer.src.logger import logger
 
@@ -33,24 +33,31 @@ class ExperimentRunner:
                 sut: str = ENV_CONFIG.SUT,
                 n_iterations: int = ENV_CONFIG.N_ITERATIONS) -> None:
         # Prepare the variants object
-        variants_config = configs.variants_config
         final_variants: list[Variant] = []
-        for variant in variants_config.variants:
-            # Create an Experiment instance for each experiment in the YAML file
+        for variant in configs.sut_config.variants:
+            # Create an variant instance for each variant in the YAML file, filtered by the specified variants
             if variant.name in variants:
                 # Add variant to the list
                 final_variants.append(Variant(
-                    name=variant.name,
-                    target_branch=variant.target_branch,
-                    colocated_workload=variant.colocated_workload,  # TODO default False
-                    env=VariantEnvironment(configs),
-                    autoscaling=variant.autoscaling,
-                    critical_services=variant.critical_services,
-                    config=configs,
+                    name = variant.name,
+                    target_branch = variant.target_branch,
+                    colocated_workload = variant.colocated_workload,
+                    env = VariantEnvironment(configs),
+                    autoscaling = variant.autoscaling,
+                    critical_services = variant.critical_services,
+                    config = configs,
                 ))
         # Prepare the workloads
-        splitWorkloads = workloads.split(",")
-        workloads: list[Workload] = [get_workload_instance(workload) for workload in splitWorkloads]
+        final_workloads = list[Workload] = []
+        for workload in configs.sut_config.workloads:
+            # Create a workload instance for each workload in the YAML file, filtered by the specified workload
+            if workload.name in workloads:
+                # Add workload to the list
+                final_workloads.append(Workload(
+                    name = workload.name,
+                    timeout_duration = workload.timeout_duration,
+                    workload_settings = workload.workload_settings
+                ))
         # Create the final experiment object
         self.experiment = Experiment(
             id = uuid.uuid4(),

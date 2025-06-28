@@ -92,6 +92,12 @@ services:
       cpu: 250
       memory: 256
 
+workloads:
+  - name: "shaped"
+    description: "Workload with custom load shape behavior."
+    timeout_duration: 120
+    workload_settings: {}
+
 variants:
   - name: "baseline"
     description: "Baseline experiment for the otel-demo application"

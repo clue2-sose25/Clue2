@@ -3,8 +3,6 @@ from pathlib import Path
 
 from clue_deployer.src.config.clue_config import ClueConfig
 from clue_deployer.src.config.env_config import EnvConfig
-from clue_deployer.src.config.variants_config import VariantsConfig
-from clue_deployer.src.config.services_config import ServicesConfig
 from clue_deployer.src.config.sut_config import SUTConfig
 
 class Config:
@@ -12,21 +10,20 @@ class Config:
     Manage and provide access to all configurations.
     """
 
-    def __init__(self, sut_config: Path = None, clue_config: Path = None):
+    def __init__(self, sut_config_path: Path = None, clue_config_path: Path = None):
         """
-        Load all configurations from the given paths.
-
+        Load all configurations from the given paths, with variants loaded inplace.
         """
+        # Config paths
         env_config = EnvConfig.get_env_config()
-        if sut_config is None:
-            sut_config = env_config.SUT_CONFIG_PATH
-        if clue_config is None:
-            clue_config = env_config.CLUE_CONFIG_PATH
+        if sut_config_path is None:
+            sut_config_path = env_config.SUT_CONFIG_PATH
+        if clue_config_path is None:
+            clue_config_path = env_config.CLUE_CONFIG_PATH
+        # Set configs
         self.env_config = env_config
-        self.clue_config = ClueConfig.load_from_yaml(clue_config)
-        self.variants_config = VariantsConfig.load_from_yaml(sut_config)
-        self.services_config = ServicesConfig.load_from_yaml(sut_config)
-        self.sut_config = SUTConfig.load_from_yaml(sut_config)
+        self.clue_config = ClueConfig.load_from_yaml(clue_config_path)
+        self.sut_config = SUTConfig.load_from_yaml(sut_config_path)
 
 
     @classmethod
@@ -42,3 +39,4 @@ class Config:
 CONFIGS = Config()
 ENV_CONFIG = CONFIGS.env_config
 CLUE_CONFIG = CONFIGS.clue_config
+SUT_CONFIG = CONFIGS.sut_config

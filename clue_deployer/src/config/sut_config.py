@@ -1,9 +1,13 @@
+from typing import List
 from pydantic import Field, computed_field, field_validator, ValidationInfo
 from pydantic_settings import BaseSettings
 from pathlib import Path
 import yaml
 
-from clue_deployer.src.config.helm_replacement import HelmReplacement
+from clue_deployer.src.models.helm_replacement import HelmReplacement
+from clue_deployer.src.models.service import Service
+from clue_deployer.src.models.variant import Variant
+from clue_deployer.src.models.workload import Workload
 
   
 class SUTConfig(BaseSettings):
@@ -16,8 +20,6 @@ class SUTConfig(BaseSettings):
     target_service_name: str
     application_endpoint_path: str
     default_resource_limits: dict[str, int]
-    workload_settings: dict[str, str]
-    timeout_duration: int
     wait_before_workloads: int
     wait_after_workloads: int
     helm_chart_path: Path
@@ -26,9 +28,17 @@ class SUTConfig(BaseSettings):
     helm_chart_repo: str = Field(default="")
     helm_dependencies_from_chart: bool = Field(default=False)
     values_yaml_name: str = Field(default="values.yaml")
-    infrastructure_namespaces: list[str] = Field(default_factory=list)  
+    infrastructure_namespaces: list[str] = Field(default_factory=list)
+    # The SUT name
     sut: str = Field(default="")
+    # The list of helm replacements
     helm_replacements: list[HelmReplacement] = Field(default_factory=list)
+    # The list of variants
+    variants: List[Variant]
+    # The list of workloads
+    workloads: List[Workload]
+    # The list of services
+    services: list[Service]
 
     class Config:
         # Allow environment variable overrides

@@ -64,6 +64,49 @@ services:
       cpu: 1000
       memory: 2048
 
+workloads:
+  - name: "shaped"
+    description: "Workload with custom load shape behavior."
+    timeout_duration: 120
+    workload_settings:
+      {
+        "LOADGENERATOR_STAGE_DURATION": 8,
+        "LOADGENERATOR_MAX_DAILY_USERS": 100,
+        "LOCUST_LOCUSTFILE": "./consumerbehavior.py,./loadshapes.py",
+      }
+  - name: "rampup"
+    description: "Workload that ramps up users at a constant rate."
+    timeout_duration: 120
+    workload_settings:
+      {
+        "LOCUST_LOCUSTFILE": "./locustfile.py",
+        "LOCUST_RUN_TIME": "64s",
+        "LOCUST_SPAWN_RATE": 3,
+        "LOCUST_USERS": 100,
+      }
+  - name: "pausing"
+    description: "Workload that starts 20 pausing users, no ramp-up for the duration."
+    timeout_duration: 120
+    workload_settings:
+      {
+            "LOCUST_LOCUSTFILE": "./pausing_users.py",
+            "LOCUST_RUN_TIME": "64s",
+            "LOCUST_SPAWN_RATE": 1,
+            "LOCUST_USERS": 10,
+            "PAUSE_BACKOFF": 120,
+      }
+  - name: "fixed"
+    description: "Workload that ramps up to max users for at most 1000 requests (failed or successful), running for at most the specified duration."
+    timeout_duration: 120
+    workload_settings:
+      {
+        "LOCUST_LOCUSTFILE": "./fixed_requests.py",
+        "LOCUST_RUN_TIME": "64s",
+        "LOCUST_SPAWN_RATE": 1,
+        "LOCUST_USERS": 100,
+        "MAXIMUM_REQUESTS": 200,
+      }
+
 variants:
   - name: "baseline"
     description: "Baseline experiment for the teastore application"

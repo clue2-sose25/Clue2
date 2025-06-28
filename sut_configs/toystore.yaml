@@ -39,6 +39,12 @@ services:
       cpu: 1000
       memory: 2048
 
+workloads:
+  - name: "shaped"
+    description: "Workload with custom load shape behavior."
+    timeout_duration: 120
+    workload_settings: {}
+
 variants:
   - name: "baseline"
     description: "Baseline experiment for the toystore application"
