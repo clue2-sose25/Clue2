@@ -2,39 +2,27 @@ from pathlib import Path
 from os import path
 from kubernetes.client import CoreV1Api, V1Namespace, V1ObjectMeta, AppsV1Api
 from kubernetes.client.exceptions import ApiException   
-from clue_deployer.src.configs.configs import ENV_CONFIG
+from clue_deployer.src.configs.configs import CLUE_CONFIG, ENV_CONFIG, SUT_CONFIG
 from clue_deployer.src.logger import logger
 import time
-import os
 import subprocess
 from kubernetes import config as k_config
 from clue_deployer.src.helm_wrapper import HelmWrapper
 from clue_deployer.src.models.variant import Variant
-from clue_deployer.src.configs import Configs
 from clue_deployer.src.autoscaling_deployer import AutoscalingDeployer
 from clue_deployer.src.service.status_manager import StatusManager, StatusPhase
 
 # Adjust if deploy.py is not 3 levels down from project root
 BASE_DIR = Path(__file__).resolve().parent.parent.parent 
 
-class ExperimentDeployer:
-    def __init__(self, experiment: Variant, configs: Configs):
-        self.experiment = experiment
-        # This object should hold clue_config, sut_config, etc.
-        self.configs = configs 
-
-        # Extract paths and addresses from the config object
-        # Ensure your Config class structure provides these attributes
-        if not hasattr(configs, 'sut_config') or not hasattr(configs.sut_config, 'sut_path'):
-            raise ValueError("Config object must have 'sut_config' with a 'sut_path' attribute.")
-        self.sut_path = Path(configs.sut_config.sut_path) # Ensure sut_path is a Path object
-
-        if not hasattr(configs, 'clue_config') or not hasattr(configs.clue_config, 'docker_registry_address'):
-            raise ValueError("Config object must have 'clue_config' with a 'docker_registry_address' attribute.")
-        self.docker_registry_address = configs.clue_config.docker_registry_address
-        
-        self.helm_chart_path = configs.sut_config.helm_chart_path
-        self.values_yaml_name = configs.sut_config.values_yaml_name
+class VariantDeployer:
+    def __init__(self, variant: Variant):
+        # The variant to run
+        self.variant = variant
+        self.sut_path = Path(SUT_CONFIG.sut_path)
+        self.docker_registry_address = CLUE_CONFIG.docker_registry_address
+        self.helm_chart_path = SUT_CONFIG.helm_chart_path
+        self.values_yaml_name = SUT_CONFIG.values_yaml_name
         # Initialize Kubernetes API clients
         try:
             k_config.load_kube_config()
@@ -43,9 +31,9 @@ class ExperimentDeployer:
         except Exception as e:
             logger.error(f"Failed to load kube config: {e}. Make sure you have a cluster available via kubectl.")
             raise
-
-        self.port_forward_process = None # To keep track of the port-forwarding process
-        self.helm_wrapper = HelmWrapper(self.configs, self.experiment) 
+        # To keep track of the port-forwarding process
+        self.port_forward_process = None 
+        self.helm_wrapper = HelmWrapper(self.variant) 
     
 
 
@@ -53,7 +41,7 @@ class ExperimentDeployer:
         """
         Checks if the given namespace exists in the cluster
         """
-        namespace = self.experiment.namespace
+        namespace = self.variant.namespace
         try:
             self.core_v1_api.read_namespace(name=namespace)
             logger.info(f"Namespace '{namespace}' already exists.")
@@ -184,8 +172,8 @@ class ExperimentDeployer:
         v1_apps = self.apps_v1_api
         ready_services = set()
         start_time = time.time()
-        services = set(self.experiment.critical_services)
-        namespace = self.experiment.namespace
+        services = set(self.variant.critical_services)
+        namespace = self.variant.namespace
 
         while len(ready_services) < len(services) and time.time() - start_time < timeout:
             for service in services.difference(ready_services):
@@ -243,7 +231,7 @@ class ExperimentDeployer:
         """
         StatusManager.set(StatusPhase.DEPLOYING_SUT, "Deploying SUT...")
         # Check for namespace
-        logger.info(f"Checking if namespace '{self.experiment.namespace}' exists")
+        logger.info(f"Checking if namespace '{self.variant.namespace}' exists")
         self._create_namespace_if_not_exists()
         # Check for nodes labels
         logger.info(f"Checking for nodes with label scaphandre=true")
@@ -265,11 +253,11 @@ class ExperimentDeployer:
         # Set the status
         StatusManager.set(StatusPhase.WAITING, "Waiting for system to stabilize...")
         # Wait for all critical services
-        logger.info(f"Waiting for all critical services: [{set(self.experiment.critical_services)}]")
+        logger.info(f"Waiting for all critical services: [{set(self.variant.critical_services)}]")
         self._wait_until_services_ready()
-        if self.experiment.autoscaling:
+        if self.variant.autoscaling:
             logger.info("Autoscaling is enabled. Deploying autoscaling...")
-            AutoscalingDeployer(self.experiment).setup_autoscaling()
+            AutoscalingDeployer(self.variant).setup_autoscaling()
         else:
             logger.info("Autoscaling disabled. Skipping its deployment.")
         StatusManager.set(StatusPhase.WAITING, "Waiting for load generator...")

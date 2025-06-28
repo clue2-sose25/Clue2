@@ -1,5 +1,6 @@
 import os
 import time
+from typing import List
 import uuid
 from clue_deployer.src.models.experiment import Experiment
 import urllib3
@@ -7,13 +8,13 @@ from pathlib import Path
 from datetime import datetime
 from os import path
 from kubernetes import config as kube_config
-from clue_deployer.src.configs.configs import CONFIGS, ENV_CONFIG, Configs
+from clue_deployer.src.configs.configs import CONFIGS, ENV_CONFIG, SUT_CONFIG, Configs
 from clue_deployer.src.models.status_phase import StatusPhase
 from clue_deployer.src.service.status_manager import StatusManager
 from clue_deployer.src.models.variant import Variant
 from clue_deployer.src.variant_runner import VariantRunner
 from clue_deployer.src.models.workload import Workload
-from clue_deployer.src.experiment_deployer import ExperimentDeployer
+from clue_deployer.src.variant_deployer import VariantDeployer
 from clue_deployer.src.logger import logger
 
 # Disable SSL verification
@@ -32,9 +33,9 @@ class ExperimentRunner:
                 sut: str = ENV_CONFIG.SUT,
                 n_iterations: int = ENV_CONFIG.N_ITERATIONS) -> None:
         # Prepare the variants
-        final_variants = [variant for variant in configs.sut_config.variants if variant.name in variants]
+        final_variants: List[Variant] = [variant for variant in configs.sut_config.variants if variant.name in variants]
         # Prepare the workloads
-        final_workloads = [workload for workload in configs.sut_config.workloads if workload.name in workloads]
+        final_workloads: List[Workload] = [workload for workload in configs.sut_config.workloads if workload.name in workloads]
         # Create the final experiment object
         self.experiment = Experiment(
             id = uuid.uuid4(),
@@ -73,19 +74,19 @@ class ExperimentRunner:
             raise RuntimeError("Error creating a results folder")
         logger.info(f"Deploying the SUT: {self.experiment.sut}")
         # Deploy the SUT
-        experiment_deployer = ExperimentDeployer(variant, self.experiment.configs)
-        experiment_deployer.deploy_SUT(results_path)
+        variant_deployer = VariantDeployer(variant)
+        variant_deployer.deploy_SUT(results_path)
         # If not deploy only, run the workload
         if not self.experiment.deploy_only:
             # Wait for the SUT before stressing the SUT with a workload
-            logger.info(f"Waiting {variant.env.wait_before_workloads}s before starting workload")
-            time.sleep(variant.env.wait_before_workloads)  
+            logger.info(f"Waiting {SUT_CONFIG.wait_before_workloads}s before starting workload")
+            time.sleep(SUT_CONFIG.wait_before_workloads)  
             logger.info("Starting the workload")
             # Run the variant
             VariantRunner(variant).run(results_path)
             # Clean up the system
             logger.info("Cleaning up after the experiment")
-            VariantRunner(variant).cleanup(experiment_deployer.helm_wrapper)
+            VariantRunner(variant).cleanup(variant_deployer.helm_wrapper)
 
 
     def iterate_single_variant(self, variant: Variant) -> None:
@@ -105,14 +106,13 @@ class ExperimentRunner:
                 self.execute_single_run(variant, workload, results_path)
                 # additional wait after each iteration except the last one
                 if iteration < num_iterations - 1:
-                    logger.info(f"Sleeping {variant.env.wait_after_workloads} seconds before next experiment iteration")
-                    time.sleep(variant.env.wait_after_workloads)
+                    logger.info(f"Sleeping {SUT_CONFIG.wait_after_workloads} seconds before next iteration")
+                    time.sleep(SUT_CONFIG.wait_after_workloads)
 
     def main(self) -> None:
         logger.info(f"Starting CLUE with DEPLOY_ONLY={self.experiment.deploy_only}")
         logger.info("Disabled SLL verification for urllib3")
         # Check if SUT is valid
-        # TODO: More checks for the workloads, variants, etc.
         available_suts_list = self.available_suts()
         if self.experiment.sut not in available_suts_list:
             logger.error(f"Invalid SUT name: '{self.experiment.sut}'")
@@ -133,8 +133,8 @@ class ExperimentRunner:
                 self.iterate_single_variant(variant)
                 # Additional wait after each variant except the last one
                 if variant != self.experiment.variants[-1]:
-                    logger.info(f"Sleeping additional {variant.env.wait_after_workloads} seconds before starting next variant")
-                    time.sleep(variant.env.wait_after_workloads)
+                    logger.info(f"Sleeping additional {SUT_CONFIG.wait_after_workloads} seconds before starting next variant")
+                    time.sleep(SUT_CONFIG.wait_after_workloads)
             logger.info("All variants executed successfully. Finished running the experiment.")
 
 
