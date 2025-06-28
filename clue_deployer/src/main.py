@@ -31,38 +31,17 @@ class ExperimentRunner:
                 deploy_only = ENV_CONFIG.DEPLOY_ONLY,
                 sut: str = ENV_CONFIG.SUT,
                 n_iterations: int = ENV_CONFIG.N_ITERATIONS) -> None:
-        # Prepare the variants object
-        final_variants: list[Variant] = []
-        for variant in configs.sut_config.variants:
-            # Create an variant instance for each variant in the YAML file, filtered by the specified variants
-            if variant.name in variants:
-                # Add variant to the list
-                final_variants.append(Variant(
-                    name = variant.name,
-                    target_branch = variant.target_branch,
-                    colocated_workload = variant.colocated_workload,
-                    autoscaling = variant.autoscaling,
-                    critical_services = variant.critical_services,
-                    configs = configs,
-                ))
+        # Prepare the variants
+        final_variants = [variant for variant in configs.sut_config.variants if variant.name in variants]
         # Prepare the workloads
-        final_workloads = list[Workload] = []
-        for workload in configs.sut_config.workloads:
-            # Create a workload instance for each workload in the YAML file, filtered by the specified workload
-            if workload.name in workloads:
-                # Add workload to the list
-                final_workloads.append(Workload(
-                    name = workload.name,
-                    timeout_duration = workload.timeout_duration,
-                    workload_settings = workload.workload_settings
-                ))
+        final_workloads = [workload for workload in configs.sut_config.workloads if workload.name in workloads]
         # Create the final experiment object
         self.experiment = Experiment(
             id = uuid.uuid4(),
             configs = configs,
             sut = sut,
             variants = final_variants,
-            workloads = workloads,
+            workloads = final_workloads,
             n_iterations = n_iterations,
             timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S"),
             deploy_only= deploy_only
