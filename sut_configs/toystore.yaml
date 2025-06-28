@@ -9,7 +9,6 @@ config:
   default_resource_limits:
     cpu: 1000
     memory: 1024
-  workload_settings: {}
   timeout_duration: 360
   wait_before_workloads: 10
   wait_after_workloads: 10

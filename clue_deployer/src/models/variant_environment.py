@@ -24,7 +24,6 @@ class VariantEnvironment:
         self.local_platform_arch = clue_config.local_platform_arch
         self.resource_limits = services_config.get_all_resource_limits()
         self.default_resource_limits = sut_config.default_resource_limits
-        self.workload_settings = sut_config.workload_settings
         self.timeout_duration = sut_config.timeout_duration
         self.wait_before_workloads = sut_config.wait_before_workloads
         self.wait_after_workloads = sut_config.wait_after_workloads

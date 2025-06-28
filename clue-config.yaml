@@ -11,5 +11,8 @@ config:
   # The Platform specification
   remote_platform_arch: "linux/arm64/v8"
   local_platform_arch: "linux/arm64/v8"
+  ### WORKLOAD SETTINGS ###
+  workload_generator_duration: 64
+  workload_generator_max_daily_users: 100
   ### AUTOSCALING ###
   target_utilization: 70

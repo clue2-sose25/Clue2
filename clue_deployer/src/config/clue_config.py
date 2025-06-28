@@ -13,7 +13,9 @@ class ClueConfig(BaseSettings):
     local_platform_arch: str
     docker_registry_address: str
     target_utilization: int
-
+    workload_generator_duration: int
+    workload_generator_max_daily_users: int
+    
     class Config:
         # Allow environment variable overrides
         env_prefix = "CLUE_"

@@ -41,3 +41,4 @@ class Config:
 # Export a global config for other files
 CONFIGS = Config()
 ENV_CONFIG = CONFIGS.env_config
+CLUE_CONFIG = CONFIGS.clue_config

@@ -76,7 +76,7 @@ class ExperimentRunner:
         return sut_files
 
 
-    def execute_single_run(self, variant: Variant, results_path: Path) -> None:
+    def execute_single_run(self, variant: Variant, workload: Workload, results_path: Path) -> None:
         """
         Executes and runs a single variant
         """
@@ -111,15 +111,18 @@ class ExperimentRunner:
         num_iterations = self.experiment.n_iterations
         logger.info(f"Starting {variant} variant")
         # Run all iterations for the variant
-        for iteration in range(num_iterations):
-            # Create the results path
-            results_path = path.join("data", self.experiment.sut, self.experiment.timestamp, variant.name, "workload_name" , str(iteration))
-            logger.info(f"Running iteration ({iteration + 1}/{num_iterations})")
-            self.execute_single_run(variant, results_path)
-            # additional wait after each iteration except the last one
-            if iteration < num_iterations - 1:
-                logger.info(f"Sleeping {variant.env.wait_after_workloads} seconds before next experiment iteration")
-                time.sleep(variant.env.wait_after_workloads)
+        for workload in self.experiment.workloads:
+            logger.info(f"Running workload type {workload.name}")
+            # Iterate over workload types
+            for iteration in range(num_iterations):
+                # Create the results path
+                results_path = path.join("data", self.experiment.sut, self.experiment.timestamp, variant.name, workload.name , str(iteration))
+                logger.info(f"Running iteration ({iteration + 1}/{num_iterations}) for {variant.name} (workload: {workload.name})")
+                self.execute_single_run(variant, workload, results_path)
+                # additional wait after each iteration except the last one
+                if iteration < num_iterations - 1:
+                    logger.info(f"Sleeping {variant.env.wait_after_workloads} seconds before next experiment iteration")
+                    time.sleep(variant.env.wait_after_workloads)
 
     def main(self) -> None:
         logger.info(f"Starting CLUE with DEPLOY_ONLY={self.experiment.deploy_only}")
@@ -137,8 +140,8 @@ class ExperimentRunner:
         StatusManager.set(StatusPhase.PREPARING_CLUSTER, "Preparing the cluster...")
         # Deploy a single variant if deploy only
         if self.experiment.deploy_only:
-            logger.info(f"Starting deployment only for variant: {self.experiment.variants[0]}")
-            self.execute_single_run(self.experiment.variants[0])
+            logger.info(f"Starting deployment only for variant: {self.experiment.variants[0]} (workload: {self.experiment.workloads[0]})")
+            self.execute_single_run(self.experiment.variants[0], self.experiment.workloads[0])
             logger.info("Deploy only experiment executed successfully.")
         else:
             # Run over all variants of the experiment
