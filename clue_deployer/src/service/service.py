@@ -13,7 +13,7 @@ import multiprocessing
 from clue_deployer.src.models.experiment import Experiment
 from clue_deployer.src.models.deploy_request import DeployRequest
 from clue_deployer.src.models.health_response import HealthResponse
-#from clue_deployer.src.models.results_response import ResultsResponse
+from clue_deployer.src.models.results_response import ResultsResponse
 from clue_deployer.src.models.status_response import StatusResponse
 from clue_deployer.src.models.sut import Sut, ExperimentEntry
 from clue_deployer.src.models.suts_response import SutsResponse

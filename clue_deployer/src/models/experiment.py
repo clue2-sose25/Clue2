@@ -1,6 +1,7 @@
 import json
 from uuid import UUID
 from pydantic import BaseModel
+from pydantic_settings import SettingsConfigDict
 from typing import List
 from clue_deployer.src.models.workload import Workload
 from clue_deployer.src.models.variant import Variant
@@ -35,6 +36,10 @@ class Experiment(BaseModel):
             "configs": self.configs.model_dump()
         }
         return json.dumps(experiment_dict, indent=2)
+    
+    model_config = SettingsConfigDict(
+        arbitrary_types_allowed=True # because Configs is not a Pydantic model
+    )
     
     def __str__(self) -> str:
         """Return a readable string representation of the experiment."""
