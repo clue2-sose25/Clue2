@@ -24,9 +24,9 @@ class EnvConfig(BaseSettings):
         env_file=".env",  # Load from .env file if present 
         env_file_encoding="utf-8",
         extra="ignore",  # Ignore extra environment variables not defined in the model
-        case_sensitive=False 
+        case_sensitive=False
     )
-
+    
     #Workaround since pydantic does not support singleton pattern directly
     @lru_cache(maxsize=1)
     @staticmethod

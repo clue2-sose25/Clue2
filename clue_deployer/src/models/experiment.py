@@ -1,14 +1,14 @@
 import json
 from uuid import UUID
-from dataclasses import dataclass
+from pydantic import BaseModel
 from typing import List
 from clue_deployer.src.models.workload import Workload
 from clue_deployer.src.models.variant import Variant
 from clue_deployer.src.configs.configs import Configs
 
 
-@dataclass
-class Experiment:
+
+class Experiment(BaseModel):
     """
     A single experiment, the parent object,
     correlated with a single SUT, including several variants and runs.
