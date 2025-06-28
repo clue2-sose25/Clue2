@@ -167,13 +167,13 @@ class VariantDeployer:
         """
         Wait a specified amount of time for the critical services
         """
-        timeout = self.configs.sut_config.timeout_for_services_ready
+        timeout = SUT_CONFIG.timeout_for_services_ready
         logger.info(f"Waiting for critical services to be ready for {timeout} seconds")
         v1_apps = self.apps_v1_api
         ready_services = set()
         start_time = time.time()
         services = set(self.variant.critical_services)
-        namespace = self.variant.namespace
+        namespace = SUT_CONFIG.namespace
 
         while len(ready_services) < len(services) and time.time() - start_time < timeout:
             for service in services.difference(ready_services):
@@ -209,18 +209,18 @@ class VariantDeployer:
         """
         Clones the SUT repository if it doesn't exist.
         """
-        if self.configs.sut_config.helm_chart_repo:
+        if SUT_CONFIG.helm_chart_repo:
             # If a helm chart repo is provided, clone it
             if self.sut_path.exists():
                 logger.warning(f"SUT path {self.sut_path} already exists. It will not clone the repository again.")
             else: 
-                logger.info(f"Cloning Helm chart repository from {self.configs.sut_config.helm_chart_repo} to {self.sut_path}")
-                subprocess.check_call(["git", "clone", self.configs.sut_config.helm_chart_repo, str(self.sut_path)])
+                logger.info(f"Cloning Helm chart repository from {SUT_CONFIG.helm_chart_repo} to {self.sut_path}")
+                subprocess.check_call(["git", "clone", SUT_CONFIG.helm_chart_repo, str(self.sut_path)])
         elif not self.sut_path.exists():
-            if not self.configs.sut_config.sut_git_repo:
+            if not SUT_CONFIG.sut_git_repo:
                 raise ValueError("SUT Git repository URL is not provided in the configuration")
-            logger.info(f"Cloning SUT from {self.configs.sut_config.sut_git_repo} to {self.sut_path}")
-            subprocess.check_call(["git", "clone", self.configs.sut_config.sut_git_repo, str(self.sut_path)])
+            logger.info(f"Cloning SUT from {SUT_CONFIG.sut_git_repo} to {self.sut_path}")
+            subprocess.check_call(["git", "clone", SUT_CONFIG.sut_git_repo, str(self.sut_path)])
         else:
             logger.info(f"SUT already exists at {self.sut_path}. Skipping cloning.")
 

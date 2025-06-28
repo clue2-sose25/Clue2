@@ -1,5 +1,5 @@
 config:
-  namespace: "tea-bench"
+  namespace: "teastore"
   sut_git_repo: "https://github.com/ISE-TU-Berlin/sustainable_teastore.git"
   sut_path: "teastore"
   helm_chart_path: "teastore/examples/helm"

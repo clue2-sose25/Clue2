@@ -22,9 +22,64 @@ class VariantRunner:
     def __init__(self, variant: Variant, workload: Workload):
         self.variant = variant
         self.workload = workload
+        self._tracker = None
+        self._node_channel = None
+        self._pod_channel = None
+
+    def _cancel_handler(self, sig=None, frame=None):
+        """Handler for timeout, SIGINT, or manual cancellation."""
+        if StatusManager.get() == StatusPhase.DONE:
+            logger.info("Reached timeout but experiment is already done, skipping cancellation.")
+            return
+        
+        logger.warning(f"Workload timeout of {CLUE_CONFIG.experiment_timeout}s reached, stopping the experiment.")
+        
+        if self._tracker:
+            self._tracker.stop()
+        if self._pod_channel:
+            self._pod_channel.flush()
+        if self._node_channel:
+            self._node_channel.flush()
+            
+        if platform.system() != "Windows":
+            signal.raise_signal(signal.SIGUSR1)  # raise SIGUSR1 on Unix-like systems
+        else:
+            raise WorkloadCancelled("Workload cancelled")  # raise custom exception on Windows
+            
+        StatusManager.set(StatusPhase.DONE, " workload timeout reached, Done :)")
+        raise SystemExit(0)  # Exit gracefully
+
+    def _setup_signal_handlers(self):
+        """Set up signal handlers for cancellation."""
+        # Set up SIGINT handler (Ctrl+C) for all platforms
+        signal.signal(signal.SIGINT, self._cancel_handler)
+        
+        # Set up SIGUSR1 handler for Unix-like systems
+        if platform.system() != "Windows":
+            signal.signal(signal.SIGUSR1, self._cancel_handler)
+
+    def _setup_timeout(self, seconds):
+        """Cross-platform timeout setup."""
+        if platform.system() != "Windows":
+            # Unix-like systems: Use SIGALRM
+            signal.signal(signal.SIGALRM, self._cancel_handler)
+            signal.alarm(seconds)
+            return None
+        else:
+            # Windows: Use threading.Timer
+            timer = threading.Timer(seconds, self._cancel_handler)
+            timer.start()
+            return timer  # Return timer to allow cancellation
+
+    def _cleanup_timeout(self, timer):
+        """Clean up timeout mechanisms."""
+        logger.info("Cleaning up timers after the experiment")
+        if platform.system() == "Windows" and timer:
+            timer.cancel()  # Cancel the Windows timer
+        elif platform.system() != "Windows":
+            signal.alarm(0)  # Disable SIGALRM on Unix-like systems
 
     def run(self, results_path: str):
-
         if len(self.workload.workload_settings) == 0:
             raise ValueError(f"Cant run {self.variant.name} with empty workload settings")
         # TODO: autoscaling is set up upon branch deployment but cleaned up here
@@ -34,7 +89,7 @@ class VariantRunner:
         )
 
         # noinspection PyProtectedMember
-        node_channel = FlushingQueue(
+        self._node_channel = FlushingQueue(
             node_file, buffer_size=32, fields=NodeUsage._fields
         )
 
@@ -43,88 +98,59 @@ class VariantRunner:
         )
 
         # noinspection PyProtectedMember
-        pod_channel = FlushingQueue(
+        self._pod_channel = FlushingQueue(
             pod_file, buffer_size=32, fields=PodUsage._fields
         )
 
         # tracker = ResourceTracker(exp.prometheus, observations_channel, tracker_namespaces, 10)
-        tracker = ResourceTracker(
+        self._tracker = ResourceTracker(
             prometheus_url=CLUE_CONFIG.prometheus_url,
-            node_channel=node_channel,
-            pod_channel=pod_channel,
+            node_channel=self._node_channel,
+            pod_channel=self._pod_channel,
             namespaces=[SUT_CONFIG.namespace] + SUT_CONFIG.infrastructure_namespaces,
             interval=10,
         )
+        
         # Create a variant info
         with open(path.join(results_path, "variant_info.json"), "w") as f:
             f.write(self.variant.create_json())
+        
         # Start resource tracker
         logger.info("Starting resource tracker")
-        tracker.start()
+        self._tracker.start()
 
-        # noinspection PyUnusedLocal
-        def cancel(sig=None, frame=None):
-            """Handler for timeout, SIGINT, or manual cancellation."""
-            if StatusManager.get() == StatusPhase.DONE:
-                logger.info("Reached timout but experiment is already done, skipping cancellation.")
-                return
-            logger.warning(f"Workload timeout of {CLUE_CONFIG.experiment_timeout}s reached, stopping the experiment.")
-            tracker.stop()
-            pod_channel.flush()
-            node_channel.flush()
-            if platform.system() != "Windows":
-                signal.raise_signal(signal.SIGUSR1)  # raise SIGUSR1 on Unix-like systems
-            else:
-                raise WorkloadCancelled("Workload cancelled")  # raise custom exception on Windows
-            StatusManager.set(StatusPhase.DONE, " workload timeout reached, Done :)")
-            raise SystemExit(0)  # Exit gracefully
+        # Set up signal handlers
+        self._setup_signal_handlers()
 
-        # Set up SIGINT handler (Ctrl+C) for all platforms
-        signal.signal(signal.SIGINT, cancel)
-
-        # Set up SIGUSR1 handler for Unix-like systems
-        if platform.system() != "Windows":
-            signal.signal(signal.SIGUSR1, cancel)
-
-        def set_timeout(seconds):
-            """Cross-platform timeout setup."""
-            if platform.system() != "Windows":
-                # Unix-like systems: Use SIGALRM
-                signal.signal(signal.SIGALRM, cancel)
-                signal.alarm(seconds)
-            else:
-                # Windows: Use threading.Timer
-                timer = threading.Timer(seconds, cancel)
-                timer.start()
-                return timer  # Return timer to allow cancellation
         try:
             logger.info(f"Variant started, deploying workload with timeout {CLUE_CONFIG.experiment_timeout}s...")
             StatusManager.set(StatusPhase.IN_PROGRESS, "Starting workload with time out, variant deployment in progress...")
+            
             # Set up the timeout
-            timer = set_timeout(CLUE_CONFIG.experiment_timeout)
+            timer = self._setup_timeout(CLUE_CONFIG.experiment_timeout)
+            
             # Deploy workload on different node or locally and wait for workload to be completed (or timeout)
             workload_runner = WorkloadRunner(variant=self.variant)
+            
             # Will run remotely or locally based on experiment
             try:
                 workload_runner.run_workload(results_path)
             except WorkloadCancelled as e:
                 logger.warning("Workload was cancelled due to exception: " + str(e))
-            StatusManager.set(StatusPhase.DONE, " Expermint Done, flushing channels :)")
+                
+            StatusManager.set(StatusPhase.DONE, " Experiment Done, flushing channels :)")
             logger.info("Finished running workload, stopping trackers and flushing channels")
+            
             # stop resource tracker
-            tracker.stop()
-            node_channel.flush()
-            pod_channel.flush()
+            self._tracker.stop()
+            self._node_channel.flush()
+            self._pod_channel.flush()
+            
         except SystemExit:
             _ = None  # Ignore SystemExit raised by the cancel function and clean up gracefully
-
-        logger.info("Cleaning up timers after the experiment")
-        # Clean up
-        if platform.system() == "Windows" and timer:
-            timer.cancel()  # Cancel the Windows timer
-        elif platform.system() != "Windows":
-            signal.alarm(0)  # Disable SIGALRM on Unix-like systems
-
+        finally:
+            # Clean up timeout mechanisms
+            self._cleanup_timeout(timer if 'timer' in locals() else None)
 
     def cleanup(self, helm_wrapper: HelmWrapper):
         """
@@ -137,7 +163,6 @@ class VariantRunner:
             _hpas = hpas.list_namespaced_horizontal_pod_autoscaler(SUT_CONFIG.namespace)
             for stateful_set in _hpas.items:
                 hpas.delete_namespaced_horizontal_pod_autoscaler(name=stateful_set.metadata.name, namespace=SUT_CONFIG.namespace)
-
 
         if self.variant.colocated_workload:
             core = kubernetes.client.CoreV1Api()

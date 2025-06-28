@@ -81,7 +81,7 @@ class HelmWrapper():
         with open(self.active_values_file_path, "r") as f:
             values = f.read()
         # Apply all replacements
-        helm_replacements = self.sut_config.helm_replacements
+        helm_replacements = SUT_CONFIG.helm_replacements
         logger.info(f"Applying {len(helm_replacements)} helm replacements from the SUT config")
         # Loop through replacements
         for replacement in helm_replacements:
@@ -111,9 +111,9 @@ class HelmWrapper():
         """
         Adds Helm repositories
         """
-        if self.sut_config.helm_dependencies_from_chart:
+        if SUT_CONFIG.helm_dependencies_from_chart:
             logger.info("Helm dependencies from chart")
-            chart_path = self.sut_config.helm_chart_path.joinpath("Chart.yaml")
+            chart_path = SUT_CONFIG.helm_chart_path.joinpath("Chart.yaml")
             if not chart_path.exists():
                 raise FileNotFoundError(f"Chart.yaml not found at {chart_path}. Cannot add dependencies from chart.")
             
@@ -168,9 +168,9 @@ class HelmWrapper():
         self._build_dependencies()
         try:
             
-            logger.info(f"Deploying helm chart for {self.name} in namespace {self.sut_config.namespace}")
+            logger.info(f"Deploying helm chart for {self.name} in namespace {SUT_CONFIG.namespace}")
             helm_deploy = subprocess.run(
-                ["helm", "upgrade", "--install", self.name, "-n", self.sut_config.namespace, "."],
+                ["helm", "upgrade", "--install", self.name, "-n", SUT_CONFIG.namespace, "."],
                 cwd=self.active_chart_path,
                 capture_output=True,  # Capture both stdout and stderr
                 text=True  # Decode output to string automatically
@@ -193,4 +193,4 @@ class HelmWrapper():
         Uninstalls the helm chart
         """
         logger.info(f"Uninstalling the SUT's helm chart {self.name}")
-        subprocess.run(["helm", "uninstall", self.name, "-n", self.sut_config.namespace])
+        subprocess.run(["helm", "uninstall", self.name, "-n", SUT_CONFIG.namespace])
