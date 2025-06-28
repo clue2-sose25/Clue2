@@ -2,7 +2,8 @@ from pathlib import Path
 from os import path
 from kubernetes.client import CoreV1Api, V1Namespace, V1ObjectMeta, AppsV1Api
 from kubernetes.client.exceptions import ApiException   
-from logger import logger
+from clue_deployer.src.config.config import ENV_CONFIG
+from clue_deployer.src.logger import logger
 import time
 import os
 import subprocess
@@ -11,12 +12,10 @@ from clue_deployer.src.helm_wrapper import HelmWrapper
 from clue_deployer.src.experiment import Experiment
 from clue_deployer.src.config import Config
 from clue_deployer.src.autoscaling_deployer import AutoscalingDeployer
-from clue_deployer.service.status_manager import StatusManager, Phase
-from clue_deployer.src.config.env_config import EnvConfig
+from clue_deployer.src.service.status_manager import StatusManager, StatusPhase
 
 # Adjust if deploy.py is not 3 levels down from project root
 BASE_DIR = Path(__file__).resolve().parent.parent.parent 
-ENV_CONFIG = EnvConfig.get_env_config()
 
 class ExperimentDeployer:
     def __init__(self, experiment: Experiment, config: Config):
@@ -42,11 +41,11 @@ class ExperimentDeployer:
             self.core_v1_api = CoreV1Api()
             self.apps_v1_api = AppsV1Api()
         except Exception as e:
-            print(f"Failed to load kube config: {e}. Make sure you have a cluster available via kubectl.")
+            logger.error(f"Failed to load kube config: {e}. Make sure you have a cluster available via kubectl.")
             raise
 
         self.port_forward_process = None # To keep track of the port-forwarding process
-        self.helm_wrapper = HelmWrapper(self.config, self.experiment.autoscaling) 
+        self.helm_wrapper = HelmWrapper(self.config, self.experiment) 
     
 
 
@@ -82,6 +81,7 @@ class ExperimentDeployer:
             logger.error(f"Error listing nodes with label '{label_selector}': {e}")
             raise 
 
+    
     def _ensure_helm_requirements(self):
         """
         Checks if the cluster has deployed necessary observability tools, such as: Prometheus, Kepler
@@ -111,9 +111,36 @@ class ExperimentDeployer:
                 )
             if prometheus_status.returncode != 0:
                 logger.info("Helm chart 'kube-prometheus-stack' is not installed. Installing it now...")
-                subprocess.check_call(["helm", "install", "kps1", "prometheus-community/kube-prometheus-stack"])
+                logger.info("Note: You may see some 'memcache.go' warnings during installation - these are harmless.")
+                
+                # Install with NodePort service type for Prometheus
+                subprocess.check_call([
+                    "helm", "install", "kps1", "prometheus-community/kube-prometheus-stack",
+                    "--set", "prometheus.service.type=NodePort",
+                    "--set", "prometheus.service.nodePort=30090",
+                    "--wait",
+                    "--timeout", "15m"
+                ])
             else:
                 logger.info("Prometheus stack found")
+                # Check if service is already NodePort, if not patch it
+                try:
+                    service_info = subprocess.check_output([
+                        "kubectl", "get", "svc", "kps1-kube-prometheus-stack-prometheus", 
+                        "-o", "jsonpath={.spec.type}"
+                    ], text=True)
+                    
+                    if service_info.strip() != "NodePort":
+                        logger.info("Converting Prometheus service to NodePort...")
+                        subprocess.check_call([
+                            "kubectl", "patch", "svc", "kps1-kube-prometheus-stack-prometheus",
+                            "-p", '{"spec":{"type":"NodePort","ports":[{"port":9090,"targetPort":9090,"nodePort":30090}]}}'
+                        ])
+                    else:
+                        logger.info("Prometheus service is already NodePort")
+                except subprocess.CalledProcessError as e:
+                    logger.warning(f"Could not check/patch Prometheus service: {e}")
+
             # Check if kepler is installed
             logger.info("Checking for Kepler stack")
             kepler_status = subprocess.run(
@@ -129,7 +156,9 @@ class ExperimentDeployer:
                     "--namespace", "kepler",
                     "--create-namespace",
                     "--set", "serviceMonitor.enabled=true",
-                    "--set", "serviceMonitor.labels.release=kps1"
+                    "--set", "serviceMonitor.labels.release=kps1",
+                    "--wait",
+                    "--timeout", "10m"
                 ])
             else:
                 logger.info("Kepler stack found")
@@ -137,7 +166,7 @@ class ExperimentDeployer:
         except subprocess.CalledProcessError as e:
             logger.error(f"Error while fulfilling Helm requirements: {e}")
             raise RuntimeError("Failed to fulfill Helm requirements. Please check the error above.")
-        
+            
 
     def _creates_results_directory(self, values: dict):
         # Create observations directory in the format RUN_CONFIG.clue_config.result_base_path / experiment.name / dd.mm.yyyy_hh-mm
@@ -149,34 +178,45 @@ class ExperimentDeployer:
             logger.info("Copying values file to results")
 
 
-    def _wait_until_services_ready(self, timeout: int = 180):
+    def _wait_until_services_ready(self):
+        """
+        Wait a specified amount of time for the critical services
+        """
+        timeout = self.config.sut_config.timeout_for_services_ready
+        logger.info(f"Waiting for critical services to be ready for {timeout} seconds")
         v1_apps = self.apps_v1_api
         ready_services = set()
         start_time = time.time()
         services = set(self.experiment.critical_services)
         namespace = self.experiment.namespace
-        print("Waiting for deployment to be ready...")
 
         while len(ready_services) < len(services) and time.time() - start_time < timeout:
             for service in services.difference(ready_services):
+                # Check StatefulSet status
                 try:
-                    # Check StatefulSet status
                     statefulset_status = v1_apps.read_namespaced_stateful_set_status(service, namespace)
                     if statefulset_status.status.ready_replicas and statefulset_status.status.ready_replicas > 0:
                         ready_services.add(service)
                         continue
-
-                    # Check Deployment status
+                except ApiException as e:
+                    # Ignore not found errors
+                    if e.status != 404:  
+                        logger.error(f"Error checking status for service '{service}': {e}")
+                # Check Deployment status
+                try:
                     deployment_status = v1_apps.read_namespaced_deployment_status(service, namespace)
                     if deployment_status.status.ready_replicas and deployment_status.status.ready_replicas > 0:
                         ready_services.add(service)
+                        continue
                 except ApiException as e:
-                    if e.status != 404:  # Ignore not found errors
-                        print(f"Error checking status for service '{service}': {e}")
+                    # Ignore not found errors
+                    if e.status != 404:  
+                        logger.error(f"Error checking status for service '{service}': {e}")
             if services == ready_services:
-                print("All services are up!")
+                logger.info("All services are up!")
                 return True
             time.sleep(1)
+        logger.error("Timeout reached. The following services are not ready: " + str(list(services - ready_services)))
         raise RuntimeError("Timeout reached. The following services are not ready: " + str(list(services - ready_services)))
 
 
@@ -184,18 +224,27 @@ class ExperimentDeployer:
         """
         Clones the SUT repository if it doesn't exist.
         """
-        if not self.sut_path.exists():
+        if self.config.sut_config.helm_chart_repo:
+            # If a helm chart repo is provided, clone it
+            if self.sut_path.exists():
+                logger.warning(f"SUT path {self.sut_path} already exists. It will not clone the repository again.")
+            else: 
+                logger.info(f"Cloning Helm chart repository from {self.config.sut_config.helm_chart_repo} to {self.sut_path}")
+                subprocess.check_call(["git", "clone", self.config.sut_config.helm_chart_repo, str(self.sut_path)])
+        elif not self.sut_path.exists():
+            if not self.config.sut_config.sut_git_repo:
+                raise ValueError("SUT Git repository URL is not provided in the configuration")
             logger.info(f"Cloning SUT from {self.config.sut_config.sut_git_repo} to {self.sut_path}")
             subprocess.check_call(["git", "clone", self.config.sut_config.sut_git_repo, str(self.sut_path)])
         else:
             logger.info(f"SUT already exists at {self.sut_path}. Skipping cloning.")
 
 
-    def execute_deployment(self):
+    def deploy_SUT(self):
         """
         Orchestrates the full deployment process for the experiment.
         """
-        StatusManager.set(Phase.DEPLOYING_SUT, "Deploying SUT...")
+        StatusManager.set(StatusPhase.DEPLOYING_SUT, "Deploying SUT...")
         # Check for namespace
         logger.info(f"Checking if namespace '{self.experiment.namespace}' exists")
         self._create_namespace_if_not_exists()
@@ -218,14 +267,14 @@ class ExperimentDeployer:
             logger.info(f"Deploying the SUT: {ENV_CONFIG.SUT_NAME}")
             wrapper.deploy_sut()
         # Set the status
-        StatusManager.set(Phase.WAITING, "Waiting for system to stabilize...")
+        StatusManager.set(StatusPhase.WAITING, "Waiting for system to stabilize...")
         # Wait for all critical services
-        logger.info("Waiting for all critical services")
+        logger.info(f"Waiting for all critical services: [{set(self.experiment.critical_services)}]")
         self._wait_until_services_ready()
         if self.experiment.autoscaling:
             logger.info("Autoscaling is enabled. Deploying autoscaling...")
             AutoscalingDeployer(self.experiment).setup_autoscaling()
         else:
             logger.info("Autoscaling disabled. Skipping its deployment.")
-        StatusManager.set(Phase.WAITING, "Waiting for load generator...")
-        logger.info("Deployment complete. You can now run the experiment.")
+        StatusManager.set(StatusPhase.WAITING, "Waiting for load generator...")
+        logger.info("SUT deployment successful.")

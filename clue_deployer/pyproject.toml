@@ -23,12 +23,11 @@ dependencies = [
     "uvicorn>=0.34.3", 
     "fastapi>=0.111",
     "psc",
+    "debugpy"
 ]
 
 [tool.setuptools]
 packages = ["clue_deployer"]
 
 [tool.uv.sources]
-# Can we make the repo public in order to allow just cloing it here?
-# psc = { git = "https://github.com/clue2-sose25/PSC" }
-psc = { path = "./agent", editable = true }
+psc = { path = "./clue_deployer/src/agent", editable = true }

@@ -2,7 +2,6 @@ import os
 import subprocess
 import argparse
 import re
-from config import Config
 
 DEMO_VERSION = "clue-toystore"
 SUT_CONFIG = "/app/sut_configs/toystore.yaml"
@@ -10,11 +9,11 @@ CLUE_CONFIG = "/app/clue-config.yaml"
 SUT_PATH = "toystore"
 
 class ToystoreBuilder:
-    def __init__(self, config):
-        self.config = config
-        self.sut_repo = config.sut_config.sut_git_repo
+    def __init__(self):
+        self.sut_repo = "https://github.com/clue2-sose25/sustainable_toystore"
         self.docker_registry_address = "registry:5000/clue"
         self.image_version = "latest"
+        self.remote_platform_arch = "linux/arm64/v8"
         self._set_envs()
         self._clone_repo()
         self.sut_path = SUT_PATH
@@ -110,7 +109,7 @@ class ToystoreBuilder:
     
     def build_push_loadgenerator(self):
         platform = (
-            self.config.clue_config.remote_platform_arch
+            self.remote_platform_arch
         )
         registry = self.docker_registry_address
 
@@ -138,11 +137,7 @@ def main():
     """
     Main function to build and push the SUT image.
     """
-    config = Config(
-        sut_config=SUT_CONFIG,
-        clue_config=CLUE_CONFIG
-    )
-    builder = ToystoreBuilder(config)
+    builder = ToystoreBuilder()
     builder.check_docker_running()
     builder.check_buildx_available()
     builder.build_and_push()

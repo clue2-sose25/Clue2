@@ -14,17 +14,15 @@ services:
     networks:
       - clue2
 
-  # The CLUE dashboard
-  clue-dashboard:
-    image: ghcr.io/clue2-sose25/clue2/clue-dashboard:latest
+  # The CLUE webui
+  clue-webui:
+    image: ghcr.io/clue2-sose25/clue2/clue-webui:latest
     build:
-      context: ./clue_dashboard
+      context: ./clue_webui
       dockerfile: Dockerfile
-    container_name: clue-dashboard
+    container_name: clue-webui
     ports:
       - "5001:80"
-    depends_on:
-      - clue-deployer
     environment:
       DOCKER_BUILDKIT: 1
     networks:
@@ -39,6 +37,7 @@ services:
     container_name: clue-deployer
     ports:
       - "9001:8000"
+      - "5678:5678"
     privileged: true
     depends_on:
       - registry
@@ -54,6 +53,8 @@ services:
       - ./sut_configs:/app/sut_configs
       # Cluster configs
       - ~/.kube:/root/.kube:ro
+      # Results
+      - results-deployer-data:/app/data
     networks:
       - clue2
 
@@ -119,6 +120,7 @@ services:
 
 volumes:
   registry-data:
+  results-deployer-data:
 
 networks:
   clue2:

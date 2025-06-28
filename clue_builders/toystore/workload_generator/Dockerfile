@@ -18,5 +18,10 @@ COPY --from=builder /reqs /usr/local
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers
 RUN playwright install --with-deps chromium
 COPY ./locustfile.py .
-COPY ./people.json .
-ENTRYPOINT ["locust", "--skip-log-setup"]
+
+ENV LOCUST_HEADLESS=yes
+ENV LOCUST_WEB_PORT=8080
+
+EXPOSE 8080
+
+CMD ["locust" , "--csv", "toystore", "--csv-full-history", "--html", "./toystore_report.html","--headless","--only-summary"]

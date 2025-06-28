@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus-agent
+  namespace: $(namespace)
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus-agent
+  namespace: $(namespace)
+rules:
+- apiGroups: [""]
+  resources:
+  - pods
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus-agent
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus-agent
+subjects:
+- kind: ServiceAccount
+  name: prometheus-agent
+  namespace: $(namespace)
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-agent
+  namespace: $(namespace)
+spec:
+  selector:
+    app: prometheus-agent
+  ports:
+  - port: 8000
+    targetPort: 8000
+--- 
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus-agent
+  namespace: $(namespace)
+spec:
+  selector:
+    matchLabels:
+       name: prometheus-agent
+  template:
+    metadata:
+      labels:
+        name: prometheus-agent
+      namespace: $(namespace)
+    spec:
+      serviceAccountName: prometheus-agent
+      containers:
+      - name: prometheus-agent
+        image: prometeus-agent-image:latest
+        ports:
+          - containerPort: 8000
+        envFrom:
+          - configMapRef:
+              name: agent-config
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"

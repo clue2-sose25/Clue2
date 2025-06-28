@@ -18,7 +18,7 @@ class EnvConfig(BaseSettings):
     # Environment variables
     SUT_NAME: str|None = Field(default=None, env="SUT_NAME")  
     EXPERIMENT_NAME: str|None = Field(default=None, env="EXPERIMENT_NAME")
-    DEPLOY_ONLY: str|None = Field(default=False, env="DEPLOY_ONLY")  
+    DEPLOY_ONLY: bool|None = Field(default=False, env="DEPLOY_ONLY")  
 
 
     model_config = SettingsConfigDict(

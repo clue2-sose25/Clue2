@@ -1,6 +1,11 @@
 import logging
 import sys
+import threading
+import multiprocessing as mp
 from pathlib import Path
+from collections import deque
+from queue import Queue, Empty
+import time
 
 # Define ANSI color codes
 COLORS = {
@@ -21,37 +26,109 @@ class ColoredFormatter(logging.Formatter):
             return f"{COLORS[levelname]}{formatted}{RESET}"
         return formatted
 
-# Create logger
-logger = logging.getLogger("CLUE")
-logger.setLevel(logging.INFO)
 
-# Prevent propagation to root logger (this fixes the duplication)
-logger.propagate = False
+class SharedLogBuffer:
+    def __init__(self, maxlen=1000):
+        self.manager = mp.Manager()
+        self.shared_list = self.manager.list()
+        self.maxlen = maxlen
+        self.lock = self.manager.Lock()
+        self.version = self.manager.Value('i', 0)  # shared int
 
-# Only add handlers if they don't already exist
-if not logger.handlers:
-    # Create formatters
-    console_formatter = ColoredFormatter(
-        '%(asctime)s [%(levelname)s] %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
+    def append(self, message):
+        with self.lock:
+            self.shared_list.append(message)
+            while len(self.shared_list) > self.maxlen:
+                self.shared_list.pop(0)
+
+    def get_logs(self, n=None):
+        with self.lock:
+            logs = list(self.shared_list)
+            return logs if n is None else logs[-n:]
+
+    def clear(self):
+        with self.lock:
+            self.shared_list[:] = []
+            self.version.value += 1  # increment version
+
+    def get_version(self):
+        return self.version.value
+
+# Shared buffer handler for multiprocessing
+class SharedBufferHandler(logging.Handler):
+    def __init__(self, shared_buffer):
+        super().__init__()
+        self.shared_buffer = shared_buffer
+
+    def emit(self, record):
+        try:
+            msg = self.format(record)
+            self.shared_buffer.append(msg)
+        except Exception:
+            self.handleError(record)
+
+# Function to setup shared logging for multiprocessing
+def setup_shared_logging():
+    """Setup shared logging buffer for multiprocessing."""
+    shared_buffer = SharedLogBuffer(maxlen=1000)
     
-    file_formatter = logging.Formatter(
-        '%(asctime)s [%(levelname)s] %(filename)s:%(lineno)d - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
+    # Setup main process logger
+    main_logger = logging.getLogger("CLUE_MAIN")
+    main_logger.setLevel(logging.INFO)
+    main_logger.propagate = False
     
-    # Console handler
-    console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(logging.INFO)
-    console_handler.setFormatter(console_formatter)
-    logger.addHandler(console_handler)
+    if not main_logger.handlers:
+        # Console handler
+        console_formatter = ColoredFormatter(
+            '%(asctime)s [MAIN] [%(levelname)s] %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S'
+        )
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setLevel(logging.INFO)
+        console_handler.setFormatter(console_formatter)
+        main_logger.addHandler(console_handler)
+        
+        # Shared buffer handler
+        buffer_handler = SharedBufferHandler(shared_buffer)
+        buffer_handler.setLevel(logging.INFO)
+        buffer_handler.setFormatter(logging.Formatter(
+            '%(asctime)s [%(levelname)s] %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S'
+        ))
+        main_logger.addHandler(buffer_handler)
     
-    # File handler
-    log_file = "logs/app.log"
-    Path(log_file).parent.mkdir(parents=True, exist_ok=True)
+    return main_logger, shared_buffer
+
+# Initialize shared logging at module level for easy importing
+logger, shared_log_buffer = setup_shared_logging()
+
+# Utility function to get logger for child processes
+def get_child_process_logger(process_name, shared_buffer=None):
+    """Get a logger configured for a child process."""
+    logger_name = f"CLUE_{process_name}"
+    child_logger = logging.getLogger(logger_name)
+    child_logger.setLevel(logging.INFO)
+    child_logger.propagate = False
     
-    file_handler = logging.FileHandler(log_file)
-    file_handler.setLevel(logging.INFO)
-    file_handler.setFormatter(file_formatter)
-    logger.addHandler(file_handler)
+    if not child_logger.handlers:
+        # Console handler with process name
+        console_formatter = ColoredFormatter(
+            f'%(asctime)s [{process_name}] [%(levelname)s] %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S'
+        )
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setLevel(logging.INFO)
+        console_handler.setFormatter(console_formatter)
+        child_logger.addHandler(console_handler)
+        
+        # Add shared buffer handler if provided
+        if shared_buffer:
+            buffer_handler = SharedBufferHandler(shared_buffer)
+            buffer_handler.setLevel(logging.INFO)
+            buffer_handler.setFormatter(logging.Formatter(
+                f'%(asctime)s [{process_name}] [%(levelname)s] %(message)s',
+                datefmt='%Y-%m-%d %H:%M:%S'
+            ))
+            child_logger.addHandler(buffer_handler)
+    
+    return child_logger

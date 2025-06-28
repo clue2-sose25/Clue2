@@ -11,13 +11,13 @@ RUN apk update \
 WORKDIR /app
 
 # Copy just requirements.txt first to benefit from cache
-COPY clue_builders/toystore/ .
+COPY clue_builders/toystore/requirements.txt ./requirements.txt
 
 # Create a venv, install deps (ignoring PEP668)
 RUN pip install --no-cache-dir --break-system-packages -r requirements.txt
 
-# copy config files and loaders
-COPY ./clue_deployer/src/config ./config
+# Copy the rest of the files
+COPY clue_builders/toystore/ .
 
 # Convert line endings and make executable
 RUN dos2unix /app/entrypoint.sh \
