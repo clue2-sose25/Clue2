@@ -6,6 +6,7 @@ class ClueConfig(BaseSettings):
     """
     Configuration class for CLUE
     """
+    experiment_timeout: int
     prometheus_url: str
     local_public_ip: str
     local_port: int

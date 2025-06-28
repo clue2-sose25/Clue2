@@ -41,7 +41,7 @@ class VariantDeployer:
         """
         Checks if the given namespace exists in the cluster
         """
-        namespace = self.variant.namespace
+        namespace = SUT_CONFIG.namespace
         try:
             self.core_v1_api.read_namespace(name=namespace)
             logger.info(f"Namespace '{namespace}' already exists.")
@@ -231,7 +231,7 @@ class VariantDeployer:
         """
         StatusManager.set(StatusPhase.DEPLOYING_SUT, "Deploying SUT...")
         # Check for namespace
-        logger.info(f"Checking if namespace '{self.variant.namespace}' exists")
+        logger.info(f"Checking if namespace '{SUT_CONFIG.namespace}' exists")
         self._create_namespace_if_not_exists()
         # Check for nodes labels
         logger.info(f"Checking for nodes with label scaphandre=true")

@@ -21,12 +21,12 @@ dependencies = [
     "yaml-patch>=1.1.0",
     "uvicorn>=0.34.3", 
     "fastapi>=0.111",
-    "psc",
-    "debugpy"
+    "debugpy",
+    "prometheus-api-client",
+    "flask",
+    "flask-sock",
+    "gunicorn",
 ]
 
 [tool.setuptools]
 packages = ["clue_deployer"]
-
-[tool.uv.sources]
-psc = { path = "./clue_deployer/src/agent", editable = true }
