@@ -1,4 +1,3 @@
-from __future__ import annotations
 from pathlib import Path
 from clue_deployer.src.configs.clue_config import ClueConfig
 from clue_deployer.src.configs.env_config import EnvConfig

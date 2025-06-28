@@ -1,4 +1,3 @@
-from __future__ import print_function
 from psc import FixedQueue, NodeUsage
 from datetime import datetime
 import random
