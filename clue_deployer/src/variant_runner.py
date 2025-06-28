@@ -3,6 +3,7 @@ import threading
 
 from datetime import datetime
 from clue_deployer.src.models.variant import Variant
+from clue_deployer.src.models.workload import Workload
 from psc.tracker import PodUsage
 from psc import ResourceTracker, NodeUsage
 from clue_deployer.src.models.workload_cancelled_exception import WorkloadCancelled
@@ -18,9 +19,9 @@ from clue_deployer.src.logger import logger
 
 class VariantRunner:
 
-    def __init__(self, variant: Variant):
+    def __init__(self, variant: Variant, workload: Workload):
         self.variant = variant
-        self.config = variant.config
+        self.workload = workload
 
     def run(self, results_path: str):
         variant = self.variant

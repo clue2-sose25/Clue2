@@ -83,10 +83,11 @@ class ExperimentRunner:
             time.sleep(SUT_CONFIG.wait_before_workloads)  
             logger.info("Starting the workload")
             # Run the variant
-            VariantRunner(variant).run(results_path)
+            variant_runner = VariantRunner(variant, workload)
+            variant_runner.run(results_path)
             # Clean up the system
             logger.info("Cleaning up after the experiment")
-            VariantRunner(variant).cleanup(variant_deployer.helm_wrapper)
+            variant_runner.cleanup(variant_deployer.helm_wrapper)
 
 
     def iterate_single_variant(self, variant: Variant) -> None:
