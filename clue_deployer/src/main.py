@@ -72,9 +72,9 @@ class ExperimentRunner:
         # Create directories if they don't exist
         logger.info(f"Creating the results folder: {results_path}")
         os.makedirs(results_path, exist_ok=False)
-        # Create the full file path for experiment config
-        logger.info("Creating the experiment_config.json in the results folder")
-        experiment_file_path = path.join(results_path, 'experiment_config.json')
+        # Create the full file path for experiment.json
+        logger.info("Creating the experiment.json in the results folder")
+        experiment_file_path = path.join(results_path, 'experiment.json')
         # Copy the experiment object into json
         with open(experiment_file_path, 'w') as f:
             f.write(self.experiment.to_json())
