@@ -2,7 +2,7 @@ from pathlib import Path
 from os import path
 from kubernetes.client import CoreV1Api, V1Namespace, V1ObjectMeta, AppsV1Api
 from kubernetes.client.exceptions import ApiException   
-from clue_deployer.src.config.config import ENV_CONFIG
+from clue_deployer.src.configs.configs import ENV_CONFIG
 from clue_deployer.src.logger import logger
 import time
 import os
@@ -10,7 +10,7 @@ import subprocess
 from kubernetes import config as k_config
 from clue_deployer.src.helm_wrapper import HelmWrapper
 from clue_deployer.src.models.variant import Variant
-from clue_deployer.src.config import Config
+from clue_deployer.src.configs import Configs
 from clue_deployer.src.autoscaling_deployer import AutoscalingDeployer
 from clue_deployer.src.service.status_manager import StatusManager, StatusPhase
 
@@ -18,23 +18,23 @@ from clue_deployer.src.service.status_manager import StatusManager, StatusPhase
 BASE_DIR = Path(__file__).resolve().parent.parent.parent 
 
 class ExperimentDeployer:
-    def __init__(self, experiment: Variant, config: Config):
+    def __init__(self, experiment: Variant, configs: Configs):
         self.experiment = experiment
         # This object should hold clue_config, sut_config, etc.
-        self.config = config 
+        self.configs = configs 
 
         # Extract paths and addresses from the config object
         # Ensure your Config class structure provides these attributes
-        if not hasattr(config, 'sut_config') or not hasattr(config.sut_config, 'sut_path'):
+        if not hasattr(configs, 'sut_config') or not hasattr(configs.sut_config, 'sut_path'):
             raise ValueError("Config object must have 'sut_config' with a 'sut_path' attribute.")
-        self.sut_path = Path(config.sut_config.sut_path) # Ensure sut_path is a Path object
+        self.sut_path = Path(configs.sut_config.sut_path) # Ensure sut_path is a Path object
 
-        if not hasattr(config, 'clue_config') or not hasattr(config.clue_config, 'docker_registry_address'):
+        if not hasattr(configs, 'clue_config') or not hasattr(configs.clue_config, 'docker_registry_address'):
             raise ValueError("Config object must have 'clue_config' with a 'docker_registry_address' attribute.")
-        self.docker_registry_address = config.clue_config.docker_registry_address
+        self.docker_registry_address = configs.clue_config.docker_registry_address
         
-        self.helm_chart_path = config.sut_config.helm_chart_path
-        self.values_yaml_name = config.sut_config.values_yaml_name
+        self.helm_chart_path = configs.sut_config.helm_chart_path
+        self.values_yaml_name = configs.sut_config.values_yaml_name
         # Initialize Kubernetes API clients
         try:
             k_config.load_kube_config()
@@ -45,7 +45,7 @@ class ExperimentDeployer:
             raise
 
         self.port_forward_process = None # To keep track of the port-forwarding process
-        self.helm_wrapper = HelmWrapper(self.config, self.experiment) 
+        self.helm_wrapper = HelmWrapper(self.configs, self.experiment) 
     
 
 
@@ -179,7 +179,7 @@ class ExperimentDeployer:
         """
         Wait a specified amount of time for the critical services
         """
-        timeout = self.config.sut_config.timeout_for_services_ready
+        timeout = self.configs.sut_config.timeout_for_services_ready
         logger.info(f"Waiting for critical services to be ready for {timeout} seconds")
         v1_apps = self.apps_v1_api
         ready_services = set()
@@ -221,18 +221,18 @@ class ExperimentDeployer:
         """
         Clones the SUT repository if it doesn't exist.
         """
-        if self.config.sut_config.helm_chart_repo:
+        if self.configs.sut_config.helm_chart_repo:
             # If a helm chart repo is provided, clone it
             if self.sut_path.exists():
                 logger.warning(f"SUT path {self.sut_path} already exists. It will not clone the repository again.")
             else: 
-                logger.info(f"Cloning Helm chart repository from {self.config.sut_config.helm_chart_repo} to {self.sut_path}")
-                subprocess.check_call(["git", "clone", self.config.sut_config.helm_chart_repo, str(self.sut_path)])
+                logger.info(f"Cloning Helm chart repository from {self.configs.sut_config.helm_chart_repo} to {self.sut_path}")
+                subprocess.check_call(["git", "clone", self.configs.sut_config.helm_chart_repo, str(self.sut_path)])
         elif not self.sut_path.exists():
-            if not self.config.sut_config.sut_git_repo:
+            if not self.configs.sut_config.sut_git_repo:
                 raise ValueError("SUT Git repository URL is not provided in the configuration")
-            logger.info(f"Cloning SUT from {self.config.sut_config.sut_git_repo} to {self.sut_path}")
-            subprocess.check_call(["git", "clone", self.config.sut_config.sut_git_repo, str(self.sut_path)])
+            logger.info(f"Cloning SUT from {self.configs.sut_config.sut_git_repo} to {self.sut_path}")
+            subprocess.check_call(["git", "clone", self.configs.sut_config.sut_git_repo, str(self.sut_path)])
         else:
             logger.info(f"SUT already exists at {self.sut_path}. Skipping cloning.")
 

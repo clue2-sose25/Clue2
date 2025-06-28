@@ -19,9 +19,9 @@ from clue_deployer.src.models.sut import Sut, ExperimentEntry
 from clue_deployer.src.models.suts_response import SutsResponse
 from clue_deployer.src.service.status_manager import StatusManager
 from clue_deployer.src.logger import get_child_process_logger, logger, shared_log_buffer
-from clue_deployer.src.config.config import ENV_CONFIG
+from clue_deployer.src.configs.configs import ENV_CONFIG
 from clue_deployer.src.main import ExperimentRunner
-from clue_deployer.src.config import SUTConfig, Config
+from clue_deployer.src.configs import SUTConfig, Configs
 from clue_deployer.src.service.worker import Worker
 
 
@@ -53,7 +53,7 @@ SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
 RESULTS_DIR = ENV_CONFIG.RESULTS_PATH
 CLUE_CONFIG_PATH = ENV_CONFIG.CLUE_CONFIG_PATH
 
-def run_deployment(config, deploy_request,
+def run_deployment(configs, deploy_request,
                   state_lock, is_deploying, shared_log_buffer):
     """Function to run the deployment in a separate process."""
     # Setup logger for this child process
@@ -66,7 +66,7 @@ def run_deployment(config, deploy_request,
 
     try:
         process_logger.info(f"Starting deployment for SUT {sut}")
-        runner = ExperimentRunner(config, variants=variants, sut=sut, 
+        runner = ExperimentRunner(configs, variants=variants, sut=sut, 
                            deploy_only=deploy_only, n_iterations=n_iterations)
         
         # You might want to pass the process_logger to ClueRunner if it accepts a logger parameter
@@ -595,13 +595,13 @@ async def deploy_sut(request: DeployRequest):
             is_deploying.value = 0
         raise HTTPException(status_code=404, detail=f"SUT configuration not found: {request.sut}")
     
-    config = Config(sut_config=sut_path, clue_config=CLUE_CONFIG_PATH)
+    configs = Configs(sut_config=sut_path, clue_config=CLUE_CONFIG_PATH)
     
     try:
         # Pass the shared buffer to the child process
         process = multiprocessing.Process(
             target=run_deployment,
-            args=(config, request, 
+            args=(configs, request, 
                   state_lock, is_deploying, shared_log_buffer)
         )
         process.start()

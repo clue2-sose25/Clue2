@@ -1,6 +1,6 @@
 from uuid import UUID
 from dataclasses import dataclass
-from clue_deployer.src.config.config import Config
+from clue_deployer.src.configs.configs import Configs
 from typing import List
 from clue_deployer.src.models.workload import Workload
 from clue_deployer.src.models.variant import Variant
@@ -12,7 +12,7 @@ class Experiment:
     correlated with a single SUT, including several variants and runs.
     """
     id: UUID
-    configs: Config
+    configs: Configs
     sut: str
     workloads: List[Workload]
     variants: List[Variant]

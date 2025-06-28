@@ -1,7 +1,7 @@
 from typing import List
 import json
 from pathlib import Path
-from clue_deployer.src.config import Config
+from clue_deployer.src.configs import Configs
 from clue_deployer.src.models.scaling_experiment_setting import ScalingExperimentSetting
 from clue_deployer.src.models.variant_environment import VariantEnvironment
 
@@ -9,7 +9,7 @@ from clue_deployer.src.models.variant_environment import VariantEnvironment
 class Variant:
     def __init__(
             self,
-            config : Config,
+            configs : Configs,
             name: str,
             target_branch: str,
             critical_services: List[str],
@@ -19,11 +19,11 @@ class Variant:
             max_autoscale: int = 3,
     ):
         # Configs
-        clue_config = config.clue_config
-        sut_config = config.sut_config
+        clue_config = configs.clue_config
+        sut_config = configs.sut_config
         self.env = env
         # Metadata
-        self.config = config
+        self.config = configs
         self.name = name
         self.target_branch = target_branch
         self.namespace = sut_config.namespace
@@ -46,7 +46,7 @@ class Variant:
         """
         # Create a new instance of the class
         new_instance = Variant(
-            config=self.config,
+            configs=self.config,
             name=self.name,
             target_branch=self.target_branch,
             critical_services=self.critical_services,

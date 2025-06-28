@@ -1,11 +1,11 @@
 from __future__ import annotations
 from pathlib import Path
 
-from clue_deployer.src.config.clue_config import ClueConfig
-from clue_deployer.src.config.env_config import EnvConfig
-from clue_deployer.src.config.sut_config import SUTConfig
+from clue_deployer.src.configs.clue_config import ClueConfig
+from clue_deployer.src.configs.env_config import EnvConfig
+from clue_deployer.src.configs.sut_config import SUTConfig
 
-class Config:
+class Configs:
     """
     Manage and provide access to all configurations.
     """
@@ -27,7 +27,7 @@ class Config:
 
 
     @classmethod
-    def get_instance(cls) -> "Config":
+    def get_instance(cls) -> "Configs":
         """
         Get the singleton instance of the Config.
         """
@@ -36,7 +36,7 @@ class Config:
         return cls._instance
     
 # Export a global config for other files
-CONFIGS = Config()
+CONFIGS = Configs()
 ENV_CONFIG = CONFIGS.env_config
 CLUE_CONFIG = CONFIGS.clue_config
 SUT_CONFIG = CONFIGS.sut_config

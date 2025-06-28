@@ -7,7 +7,7 @@ from pathlib import Path
 from datetime import datetime
 from os import path
 from kubernetes import config as kube_config
-from clue_deployer.src.config.config import CONFIGS, ENV_CONFIG, Config
+from clue_deployer.src.configs.configs import CONFIGS, ENV_CONFIG, Configs
 from clue_deployer.src.models.status_phase import StatusPhase
 from clue_deployer.src.service.status_manager import StatusManager
 from clue_deployer.src.models.variant import Variant
@@ -26,7 +26,7 @@ kube_config.load_kube_config()
 
 class ExperimentRunner:
     def __init__(self, 
-                configs: Config = CONFIGS, 
+                configs: Configs = CONFIGS, 
                 variants: str = ENV_CONFIG.VARIANTS,
                 workloads: str = ENV_CONFIG.WORKLOADS,
                 deploy_only = ENV_CONFIG.DEPLOY_ONLY,
@@ -45,7 +45,7 @@ class ExperimentRunner:
                     env = VariantEnvironment(configs),
                     autoscaling = variant.autoscaling,
                     critical_services = variant.critical_services,
-                    config = configs,
+                    configs = configs,
                 ))
         # Prepare the workloads
         final_workloads = list[Workload] = []

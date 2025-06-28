@@ -5,15 +5,15 @@ import tempfile
 import shutil
 from clue_deployer.src.models.variant import Variant
 from clue_deployer.src.logger import logger
-from clue_deployer.src.config import Config
+from clue_deployer.src.configs import Configs
 from clue_deployer.src.models.helm_dependencies import Dependencies
 
 class HelmWrapper():
     
-    def __init__(self, config: Config, experiment: Variant):
-        self.clue_config = config.clue_config
+    def __init__(self, configs: Configs, experiment: Variant):
+        self.clue_config = configs.clue_config
         self.experiment = experiment
-        self.sut_config = config.sut_config
+        self.sut_config = configs.sut_config
         self.values_file_full_path = self.sut_config.helm_chart_path / self.sut_config.values_yaml_name
         self.name = self.sut_config.sut_path.name
         # Path to the ORIGINAL Helm chart in the SUT directory

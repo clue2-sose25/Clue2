@@ -1,11 +1,6 @@
 import logging
 import sys
-import threading
 import multiprocessing as mp
-from pathlib import Path
-from collections import deque
-from queue import Queue, Empty
-import time
 
 # Define ANSI color codes
 COLORS = {

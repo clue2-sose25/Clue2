@@ -1,10 +1,10 @@
 from pathlib import Path
-from clue_deployer.src.config import Config
+from clue_deployer.src.configs import Configs
 
 CONFIG_PATH = Path("..").joinpath("cfg").joinpath("experiment_config.yaml")
 
 class VariantEnvironment:
-    def __init__(self, config: Config):
+    def __init__(self, config: Configs):
         """
         Initialize the ExperimentEnvironment instance
         """

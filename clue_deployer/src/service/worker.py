@@ -3,7 +3,7 @@ from clue_deployer.src.service.experiment_queue import ExperimentQueue
 from clue_deployer.src.logger import get_child_process_logger, logger, shared_log_buffer
 from clue_deployer.src.models.deploy_request import DeployRequest
 from clue_deployer.src.main import ExperimentRunner
-from clue_deployer.src.config.config import ENV_CONFIG, Config
+from clue_deployer.src.configs.configs import ENV_CONFIG, Configs
 from fastapi import HTTPException
 
 SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
@@ -56,11 +56,11 @@ class Worker:
                     self.process_logger.error(f"SUT configuration file {sut_filename} does not exist.")
                     continue
                 
-                config = Config(sut_config=sut_path, clue_config=CLUE_CONFIG_PATH)
+                configs = Configs(sut_config=sut_path, clue_config=CLUE_CONFIG_PATH)
             
                 self.process_logger.info(f"Starting deployment for SUT {experiment.sut}")
                 runner = ExperimentRunner(
-                    config,
+                    configs,
                     variants=experiment.variants,
                     sut=experiment.sut,
                     deploy_only=experiment.deploy_only,
