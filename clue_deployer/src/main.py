@@ -1,3 +1,4 @@
+import json
 import os
 import time
 from typing import List
@@ -61,6 +62,27 @@ class ExperimentRunner:
         return sut_files
 
 
+    def create_experiment_files(self, results_path: str) -> None:
+        """
+        Create experiment configuration and status files in the specified results path.
+        
+        Args:
+            results_path: The directory path where files should be created
+        """
+        # Create directories if they don't exist
+        os.makedirs(results_path, exist_ok=True)
+        
+        # Create the full file path for experiment config
+        experiment_file_path = path.join(results_path, 'experiment_config.json')
+        # Copy the experiment object into json
+        with open(experiment_file_path, 'w') as f:
+            f.write(self.experiment.to_json())
+        # Create status file
+        status_file_path = path.join(results_path, 'status.json')
+        status_data = {"status": "STARTED"}
+        with open(status_file_path, 'w') as f:
+            json.dump(status_data, f, indent=2)
+
     def execute_single_run(self, variant: Variant, workload: Workload, results_path: Path) -> None:
         """
         Executes and runs a single variant
@@ -102,7 +124,10 @@ class ExperimentRunner:
             # Iterate over workload types
             for iteration in range(num_iterations):
                 # Create the results path
-                results_path = path.join("data", self.experiment.sut, self.experiment.timestamp, variant.name, workload.name , str(iteration))
+                results_path = path.join("data", self.experiment.sut, self.experiment.timestamp, variant.name, workload.name, str(iteration))
+                # Create experiment files
+                self.create_experiment_files(results_path)
+                # Iterate
                 logger.info(f"Starting iteration ({iteration + 1}/{num_iterations}) for {variant.name}/{workload.name})")
                 self.execute_single_run(variant, workload, results_path)
                 # additional wait after each iteration except the last one

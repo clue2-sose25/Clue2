@@ -1,4 +1,6 @@
 config:
+  # The name of the SUT  
+  sut: "otel-demo"
   namespace: "otel-demo"
   sut_git_repo: "https://github.com/JulianLegler/opentelemetry-demo.git"
   sut_path: "opentelemetry-demo"
@@ -16,10 +18,10 @@ config:
   wait_after_workloads: 180 # 3 minutes in seconds  
 
 helm_replacements:
-  - old_value: "ghcr.io/open-telemetry/demo"
-    new_value: "registry:5000/clue/otel-demo"
-  - old_value: 'tag: ""'
-    new_value: 'tag: "__EXPERIMENT_TAG__"'
+  - value: "ghcr.io/open-telemetry/demo"
+    replacement: "registry:5000/clue/otel-demo"
+  - value: 'tag: ""'
+    replacement: 'tag: "__EXPERIMENT_TAG__"'
 
 limit:
   - service_name: "checkout"

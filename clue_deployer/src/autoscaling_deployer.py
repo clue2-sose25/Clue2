@@ -59,7 +59,7 @@ class AutoscalingDeployer:
                 _ = apps.patch_namespaced_stateful_set(
                     stateful_set.metadata.name, SUT_CONFIG.namespace, stateful_set
                 )
-                if stateful_set.metadata.name in SUT_CONFIG.services:
+                if stateful_set.metadata.name in services_names:
                     hpa_creator(stateful_set.metadata.name, SUT_CONFIG.namespace)
             except kubernetes.client.rest.ApiException as e:
                 if e.status == 409:

@@ -86,15 +86,15 @@ class HelmWrapper():
         # Loop through replacements
         for replacement in helm_replacements:
             # If the new value contains the placeholder, replace it with the experiment tag
-            if replacement.new_value.__contains__("__EXPERIMENT_TAG__"):
+            if replacement.replacement.__contains__("__EXPERIMENT_TAG__"):
                 new_tag = self.variant.target_branch
-                replacement.new_value = replacement.new_value.replace("__EXPERIMENT_TAG__", new_tag)
-                values = values.replace(replacement.old_value, replacement.new_value)
+                replacement.replacement = replacement.replacement.replace("__EXPERIMENT_TAG__", new_tag)
+                values = values.replace(replacement.value, replacement.replacement)
             elif replacement.should_apply(autoscaling=self.variant.autoscaling):
-                no_instances = values.count(replacement.old_value)
+                no_instances = values.count(replacement.value)
                 if no_instances > 0:
                     logger.info(f"Replacing {no_instances} instances of: {replacement}")
-                    values = values.replace(replacement.old_value, replacement.new_value)
+                    values = values.replace(replacement.value, replacement.replacement)
                 else:
                     logger.warning(f"No instances found for replacement: {replacement}")
             else:

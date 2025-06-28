@@ -130,7 +130,7 @@ class VariantRunner:
             timer = self._setup_timeout(CLUE_CONFIG.experiment_timeout)
             
             # Deploy workload on different node or locally and wait for workload to be completed (or timeout)
-            workload_runner = WorkloadRunner(variant=self.variant)
+            workload_runner = WorkloadRunner(self.variant, self.workload)
             
             # Will run remotely or locally based on experiment
             try:

@@ -10,5 +10,8 @@ class Workload(BaseModel):
     timeout_duration: int
     workload_settings: Dict
 
+    def __str__(self) -> str:
+        return self.name
+
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(name='{self.name}')"

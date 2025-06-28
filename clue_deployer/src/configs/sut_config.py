@@ -13,7 +13,7 @@ class SUTConfig(BaseSettings):
     Configuration class for the System Under Test (SUT)
     """
     # SUT
-    sut: str = Field(default="")
+    sut: str
     sut_path: Path
     sut_git_repo: str
     # Helm
