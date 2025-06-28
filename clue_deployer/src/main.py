@@ -94,10 +94,10 @@ class ExperimentRunner:
         Iterates over a single variant of the experiment
         """
         num_iterations = self.experiment.n_iterations
-        logger.info(f"Starting {variant} variant")
+        logger.info(f"Starting variant: {variant}")
         # Run all iterations for the variant
         for workload in self.experiment.workloads:
-            logger.info(f"Running workload type {workload.name}")
+            logger.info(f"Starting workload: {variant}/{workload.name}")
             # Iterate over workload types
             for iteration in range(num_iterations):
                 # Create the results path
