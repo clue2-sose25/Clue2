@@ -1,6 +1,5 @@
 from __future__ import annotations
 from pathlib import Path
-
 from clue_deployer.src.configs.clue_config import ClueConfig
 from clue_deployer.src.configs.env_config import EnvConfig
 from clue_deployer.src.configs.sut_config import SUTConfig
@@ -25,6 +24,13 @@ class Configs:
         self.clue_config = ClueConfig.load_from_yaml(clue_config_path)
         self.sut_config = SUTConfig.load_from_yaml(sut_config_path)
 
+    def model_dump(self) -> dict:
+        """Return a dictionary representation of all configurations."""
+        return {
+            "env_config": self.env_config.model_dump(),
+            "clue_config": self.clue_config.model_dump(),
+            "sut_config": self.sut_config.model_dump()
+        }
 
     @classmethod
     def get_instance(cls) -> "Configs":
@@ -34,7 +40,7 @@ class Configs:
         if cls._instance is None:
             raise RuntimeError("ConfigManager has not been initialized. Call ConfigManager(sut_config, clue_config) first.")
         return cls._instance
-    
+
 # Export a global config for other files
 CONFIGS = Configs()
 ENV_CONFIG = CONFIGS.env_config

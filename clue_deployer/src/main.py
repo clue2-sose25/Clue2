@@ -70,14 +70,16 @@ class ExperimentRunner:
             results_path: The directory path where files should be created
         """
         # Create directories if they don't exist
-        os.makedirs(results_path, exist_ok=True)
-        
+        logger.info(f"Creating the results folder: {results_path}")
+        os.makedirs(results_path, exist_ok=False)
         # Create the full file path for experiment config
+        logger.info("Creating the experiment_config.json in the results folder")
         experiment_file_path = path.join(results_path, 'experiment_config.json')
         # Copy the experiment object into json
         with open(experiment_file_path, 'w') as f:
             f.write(self.experiment.to_json())
         # Create status file
+        logger.info("Creating the status.json in the results folder")
         status_file_path = path.join(results_path, 'status.json')
         status_data = {"status": "STARTED"}
         with open(status_file_path, 'w') as f:
@@ -87,13 +89,6 @@ class ExperimentRunner:
         """
         Executes and runs a single variant
         """
-        # Create the results folder if necessary
-        logger.info(f"Creating the results folder: {results_path}")
-        try:
-            os.makedirs(results_path, exist_ok=False)
-        except OSError:
-            logger.error("Error creating a results folder!")
-            raise RuntimeError("Error creating a results folder")
         logger.info(f"Deploying the SUT: {self.experiment.sut}")
         # Deploy the SUT
         variant_deployer = VariantDeployer(variant)

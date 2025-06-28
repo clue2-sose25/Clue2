@@ -24,6 +24,10 @@ class WorkloadRunner:
         self.variant = variant
         self.workload = workload
         self.result_filenames = ResultFiles(sut=self.sut)
+        self._core_api = None
+        self._observations_path = None
+        self._port_forward_process = None
+        self._docker_client = None
     
     def run_workload(self, outpath):
         if self.variant.colocated_workload:
@@ -31,35 +35,53 @@ class WorkloadRunner:
         else:
             self._run_local_workload(outpath)
 
-    def _run_remote_workload(self, outpath):
-        logger.info("Deploying workload remotely in Kubernetes cluster")
-        observations = os.path.join(outpath, "")  # ensure trailing slash for later path building
-        core = client.CoreV1Api()
-
-        def cancel(sig=None, frame=None):
-            logger.info("Workload cancelled, stopping remote workload and deleting pod")
-            # attempt to download results before deleting the pod
-            self._download_results("loadgenerator", observations)
-            # (force) delete the running pod to stop the workload
+    def _cancel_remote_workload(self, sig=None, frame=None):
+        """Cancel remote workload running in Kubernetes"""
+        logger.info("Workload cancelled, stopping remote workload and deleting pod")
+        # attempt to download results before deleting the pod
+        if self._observations_path:
+            self._download_results("loadgenerator", self._observations_path)
+        
+        # (force) delete the running pod to stop the workload
+        if self._core_api:
             logger.info("Deleting loadgenerator pod in namespace %s", SUT_CONFIG.namespace)
-            core.delete_collection_namespaced_pod(
+            self._core_api.delete_collection_namespaced_pod(
                 namespace=SUT_CONFIG.namespace,
                 label_selector="app=loadgenerator",
                 timeout_seconds=0,
                 grace_period_seconds=0,
             )
-            if platform.system() == "Windows":
-                raise WorkloadCancelled("Workload cancelled")  # Raise exception on Windows
+        
+        if platform.system() == "Windows":
+            raise WorkloadCancelled("Workload cancelled")  # Raise exception on Windows
+
+    def _cancel_local_workload(self, sig, frame):
+        """Cancel local workload running in Docker"""
+        logger.info("Workload cancelled, stopping port forward and loadgenerator container")
+        
+        if self._port_forward_process:
+            self._port_forward_process.kill()
+        
+        if self._docker_client:
+            try:
+                self._docker_client.containers.get("loadgenerator").kill()
+            except:
+                pass
+
+    def _run_remote_workload(self, outpath):
+        logger.info("Deploying workload remotely in Kubernetes cluster")
+        self._observations_path = os.path.join(outpath, "")  # ensure trailing slash for later path building
+        self._core_api = client.CoreV1Api()
 
         # Set up SIGUSR1 handler only on Unix-like systems
         if platform.system() != "Windows":
-            signal.signal(signal.SIGUSR1, cancel)
+            signal.signal(signal.SIGUSR1, self._cancel_remote_workload)
 
         try:
-            self._deploy_remote_workload(core)
-            self._wait_for_workload(core, observations)
+            self._deploy_remote_workload(self._core_api)
+            self._wait_for_workload(self._core_api, self._observations_path)
             logger.info("Deleting loadgenerator pod in namespace %s", SUT_CONFIG.namespace)
-            core.delete_namespaced_pod(name="loadgenerator", namespace=SUT_CONFIG.namespace)
+            self._core_api.delete_namespaced_pod(name="loadgenerator", namespace=SUT_CONFIG.namespace)
         except WorkloadCancelled:
             logging.info("Remote workload stopped due to cancellation")
 
@@ -102,7 +124,6 @@ class WorkloadRunner:
                     logger.error("workload pod was not found, did it fail to start?, can't download results")
                     finished = True
 
-
     def _deploy_remote_workload(self, core: client.CoreV1Api):
         def k8s_env_pair(k, v):
             return client.V1EnvVar(
@@ -137,7 +158,6 @@ class WorkloadRunner:
                             )
                         ),
                     ) 
-
 
         core.create_namespaced_pod(
             namespace=SUT_CONFIG.namespace,
@@ -202,10 +222,10 @@ class WorkloadRunner:
     def _run_local_workload(self, outpath):
         logger.info("Deploying workload locally in docker container on host machine")
         observations = outpath
-        docker_client = docker.from_env()
+        self._docker_client = docker.from_env()
 
         # Port forward the sut service on the local machine
-        forward = subprocess.Popen(
+        self._port_forward_process = subprocess.Popen(
             [
                 "kubectl",
                 "-n",
@@ -246,20 +266,12 @@ class WorkloadRunner:
                 with open(f, "w") as f:
                     pass
 
-        # TODO: XXX get local ip to use for locust host
-        def cancel(sig, frame):
-            logger.info("Workload cancelled, stopping port forward and loadgenerator container")
-            forward.kill()
-            try:
-                docker_client.containers.get("loadgenerator").kill()
-            except:
-                pass
-
-        signal.signal(signal.SIGUSR1, cancel)
+        # Set up signal handler for local workload cancellation
+        signal.signal(signal.SIGUSR1, self._cancel_local_workload)
 
         try:
             print("Running the workload generator")
-            workload = docker_client.containers.run(
+            workload = self._docker_client.containers.run(
                 image=f"{CLUE_CONFIG.docker_registry_address}/loadgenerator",
                 auto_remove=True,
                 environment=self.workload.workload_settings,
@@ -272,4 +284,6 @@ class WorkloadRunner:
                 f.write(workload)
         except Exception as e:
             logger.error("failed to run workload in docker container", e)
-        forward.kill()
+        
+        if self._port_forward_process:
+            self._port_forward_process.kill()

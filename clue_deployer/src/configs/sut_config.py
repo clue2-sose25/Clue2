@@ -1,12 +1,14 @@
+from __future__ import annotations
+from pathlib import Path
 from typing import List
 from pydantic import Field, computed_field, field_validator, ValidationInfo
 from pydantic_settings import BaseSettings
-from pathlib import Path
 import yaml
 from clue_deployer.src.models.helm_replacement import HelmReplacement
 from clue_deployer.src.models.resource_limit import ResourceLimit
 from clue_deployer.src.models.variant import Variant
 from clue_deployer.src.models.workload import Workload
+
 
 class SUTConfig(BaseSettings):
     """
@@ -102,3 +104,22 @@ class SUTConfig(BaseSettings):
                 ]
 
             return cls(**config_data)
+    
+    def model_dump(self, **kwargs) -> dict:
+        """Return a dictionary representation with proper serialization of nested objects."""
+        config_dict = super().model_dump(**kwargs)
+        
+        # Convert Path objects to strings for JSON serialization
+        for key, value in config_dict.items():
+            if isinstance(value, Path):
+                config_dict[key] = str(value)
+        
+        # Handle nested objects that have model_dump() method
+        for key in ['helm_replacements', 'variants', 'workloads', 'resource_limits']:
+            if key in config_dict and isinstance(config_dict[key], list):
+                config_dict[key] = [
+                    item.model_dump() if hasattr(item, 'model_dump') else item
+                    for item in config_dict[key]
+                ]
+        
+        return config_dict

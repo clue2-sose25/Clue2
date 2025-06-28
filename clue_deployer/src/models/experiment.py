@@ -1,10 +1,11 @@
+import json
 from uuid import UUID
 from dataclasses import dataclass
-from clue_deployer.src.configs.configs import Configs
 from typing import List
-import json
 from clue_deployer.src.models.workload import Workload
 from clue_deployer.src.models.variant import Variant
+from clue_deployer.src.configs.configs import Configs
+
 
 @dataclass
 class Experiment:
@@ -31,7 +32,7 @@ class Experiment:
             "timestamp": self.timestamp,
             "n_iterations": self.n_iterations,
             "deploy_only": self.deploy_only,
-            "configs": self.configs.model_dump() if hasattr(self.configs, 'model_dump') else str(self.configs)
+            "configs": self.configs.model_dump()
         }
         return json.dumps(experiment_dict, indent=2)
     

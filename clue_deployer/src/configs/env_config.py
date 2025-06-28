@@ -1,9 +1,8 @@
 from __future__ import annotations
+from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field, computed_field
-from pathlib import Path
 from functools import lru_cache
-
 
 class EnvConfig(BaseSettings):
     """
@@ -21,7 +20,6 @@ class EnvConfig(BaseSettings):
     WORKLOADS: str|None = Field(default=None, env="WORKLOADS")
     N_ITERATIONS: int|None = Field(default=1, env="N_ITERATIONS")
     DEPLOY_ONLY: bool|None = Field(default=False, env="DEPLOY_ONLY")  
-
 
     model_config = SettingsConfigDict(
         env_file=".env",  # Load from .env file if present 
@@ -46,5 +44,12 @@ class EnvConfig(BaseSettings):
             return self.SUT_CONFIGS_PATH / f"{self.SUT}.yaml"
         else:
             raise ValueError("SUT must be set to construct SUT_CONFIG_PATH.")
-
-
+    
+    def model_dump(self, **kwargs) -> dict:
+        """Return a dictionary representation with Path objects converted to strings."""
+        config_dict = super().model_dump(**kwargs)
+        # Convert Path objects to strings for JSON serialization
+        for key, value in config_dict.items():
+            if isinstance(value, Path):
+                config_dict[key] = str(value)
+        return config_dict
