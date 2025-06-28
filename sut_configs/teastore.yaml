@@ -41,6 +41,14 @@ helm_replacements:
       autoscaling: true
       autoscaling_type: full
 
+### RESOURCE LIMITS ###
+# A list of resource limits for individual services.
+# Can be left empty if a default limit is specified in the main config above.
+# Required fields:
+# service_name: str - the name of the service
+# limit: object - the limits for the individual service
+#   cpu: int - the cpu limit
+#   memory: int - the memory limit
 resource_limits:
   - service_name: "teastore-auth"
     limit:

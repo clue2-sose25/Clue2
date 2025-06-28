@@ -30,9 +30,17 @@ class AutoscalingDeployer:
     def _setup_autoscaling(self, hpa_creator):
         apps = kubernetes.client.AppsV1Api()
         sets: kubernetes.client.V1StatefulSetList = apps.list_namespaced_stateful_set(SUT_CONFIG.namespace)
+        # Get all service names from the resource_limits list
+        services_names = [resource_limit.service_name for resource_limit in SUT_CONFIG.resource_limits]
         for stateful_set in sets.items:
-            if stateful_set.metadata.name in SUT_CONFIG.resource_limits:
-                limit = SUT_CONFIG.resource_limits[stateful_set.metadata.name].limit
+            # Iterate over all services and use their limits, or default one
+            if stateful_set.metadata.name in services_names:
+                # Find the matching ResourceLimit object
+                resource_limit = next(
+                    (rl for rl in SUT_CONFIG.resource_limits if rl.service_name == stateful_set.metadata.name), 
+                    None
+                )
+                limit = resource_limit.limit if resource_limit else SUT_CONFIG.default_resource_limits
             else:
                 limit = SUT_CONFIG.default_resource_limits
             stateful_set.spec.template.spec.containers[0].resources = (
@@ -59,6 +67,7 @@ class AutoscalingDeployer:
                 else:
                     raise e
         logger.info("Successfully setup autoscaling")
+
 
     def _setup_mem_autoscaling(self):
         hpas = kubernetes.client.AutoscalingV2Api()
