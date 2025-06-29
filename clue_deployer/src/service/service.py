@@ -87,7 +87,8 @@ def read_status():
     """Endpoint to check if a deployment is currently in progress."""
     with state_lock:
         deploying = bool(is_deploying.value)
-    return StatusResponse(is_deploying=deploying, phase=None, message=None)
+        phase, message = StatusManager.get()
+    return StatusResponse(is_deploying=deploying, phase=phase, message=message)
     # TO-DO: Add multi-threaded status 
     phase, msg = StatusManager.get()
     return StatusResponse(phase=phase, message=msg or None)
@@ -629,6 +630,10 @@ def enqueue_experiment(request: list[DeployRequest]):
     logger.info(f"Enqueued {len(request)} deployment requests.")
     return {"message": f"Enqueued {len(request)} deployment requests."}
 
+@app.get("/api/deploy/current", status_code=status.HTTP_200_OK)
+async def get_current_deployment():
+    logger.info("Fetching current deployment status.")
+    return worker.current_deployment
 
 @app.post("/api/deploy/start", status_code=status.HTTP_202_ACCEPTED)
 def deploy_from_queue():
