@@ -26,8 +26,8 @@ export const workloadOptions: WorkloadOption[] = [
 ];
 
 export interface DeploymentForm {
-  SutName: string | null;
-  experimentNames: string[];
+  sut: string | null;
+  variants: string[];
   workloads: Workload[];
   iterations: number;
   deploy_only: boolean;

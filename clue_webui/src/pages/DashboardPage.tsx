@@ -1,6 +1,6 @@
-import {useContext, useEffect, useState} from "react";
-import {DeploymentContext} from "../contexts/DeploymentContext";
-import {Link} from "react-router";
+import { useContext, useEffect, useState } from "react";
+import { DeploymentContext } from "../contexts/DeploymentContext";
+import { Link } from "react-router";
 import {
   CaretLeftIcon,
   CaretRightIcon,
@@ -16,15 +16,15 @@ import {
   RepeatIcon,
   WrenchIcon,
 } from "@phosphor-icons/react/dist/ssr";
-import {QueueContext} from "../contexts/QueueContext";
-import {IconButton} from "@mui/material";
+import { QueueContext } from "../contexts/QueueContext";
+import { IconButton } from "@mui/material";
 
 const DashboardPage = () => {
-  const {ifDeploying, setIfDeploying, currentDeployment} =
+  const { ifDeploying, setIfDeploying, currentDeployment } =
     useContext(DeploymentContext);
 
   // The experiments queue
-  const {currentQueue, setCurrentQueue} = useContext(QueueContext);
+  const { currentQueue, setCurrentQueue } = useContext(QueueContext);
   // The currently displayed index from queue
   const [currentQueueIndex, setCurrentQueueIndex] = useState<number>(0);
 
@@ -56,12 +56,12 @@ const DashboardPage = () => {
   const configItems = [
     {
       label: "SUT (System Under Test)",
-      value: currentDeployment.SutName,
+      value: currentDeployment.sut,
       icon: <WrenchIcon size={24} />,
     },
     {
       label: "Experiments",
-      value: currentDeployment.experimentNames.join(", "),
+      value: currentDeployment.variants.join(", "),
       icon: <FlaskIcon size={24} />,
     },
     {
@@ -145,7 +145,7 @@ const DashboardPage = () => {
                   <p className="flex gap-2 text-xl items-center pt-2 pb-2">
                     <RocketLaunchIcon size={24} /> Deploying{" "}
                     <span className="font-medium">
-                      {currentDeployment.SutName}
+                      {currentDeployment.sut}
                     </span>
                     !
                   </p>
@@ -179,7 +179,7 @@ const DashboardPage = () => {
                 </div>
                 <button
                   className="rounded p-2 bg-green-400 text-white hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                  onClick={() => {}}
+                  onClick={() => { }}
                   disabled={true}
                 >
                   <div className="flex items-center justify-center gap-2">
@@ -189,10 +189,10 @@ const DashboardPage = () => {
                 </button>
                 <button
                   className="rounded p-2 bg-red-400 text-white hover:bg-red-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                  onClick={() => {}}
+                  onClick={() => { }}
                   disabled={
-                    !currentDeployment.SutName ||
-                    currentDeployment.experimentNames.length === 0
+                    !currentDeployment.sut ||
+                    currentDeployment.variants.length === 0
                   }
                 >
                   <div className="flex items-center justify-center gap-2">
