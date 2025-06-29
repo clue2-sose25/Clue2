@@ -3,10 +3,11 @@ import json
 import os
 from pathlib import Path
 import shutil
+import tempfile
 from typing import List, Optional
 import zipfile
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 from clue_deployer.src.configs.configs import ENV_CONFIG
 from clue_deployer.src.logger import logger
@@ -257,6 +258,72 @@ async def delete_result_by_uuid(uuid: str):
         logger.exception(f"Unexpected error while deleting experiment {uuid}.")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while deleting experiment: {str(e)}")
 
+def create_zip_from_directory(source_dir: Path, zip_path: Path) -> None:
+    """Create a ZIP file containing all contents of the source directory."""
+    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        # Walk through all files and directories
+        for root, dirs, files in os.walk(source_dir):
+            root_path = Path(root)
+            
+            # Add all files
+            for file in files:
+                file_path = root_path / file
+                # Create archive path relative to source directory
+                archive_path = file_path.relative_to(source_dir)
+                zipf.write(file_path, archive_path)
+            
+            # Add empty directories
+            for dir_name in dirs:
+                dir_path = root_path / dir_name
+                if not any(dir_path.iterdir()):  # Check if directory is empty
+                    archive_path = dir_path.relative_to(source_dir)
+                    # Add empty directory to zip
+                    zipf.writestr(f"{archive_path}/", "")
+
+@router.get("/api/results/{uuid}/download")
+async def download_experiment_by_uuid(uuid: str):
+    """Download the entire experiment directory as a ZIP file."""
+    results_base_path = Path(RESULTS_DIR)
+    
+    # Check for results directory
+    if not results_base_path.is_dir():
+        logger.error(f"Results directory not found: {results_base_path}")
+        raise HTTPException(status_code=404, detail=f"Results directory not found: {results_base_path}")
+    
+    try:
+        # Find the experiment directory by UUID
+        experiment_dir = find_experiment_directory_by_uuid(uuid, results_base_path)
+        
+        if experiment_dir is None:
+            raise HTTPException(status_code=404, detail=f"Experiment with UUID {uuid} not found")
+        
+        # Create a temporary ZIP file
+        temp_dir = Path(tempfile.gettempdir())
+        zip_filename = f"experiment_{uuid}_{experiment_dir.name}.zip"
+        zip_path = temp_dir / zip_filename
+        
+        # Create ZIP file from the experiment directory
+        create_zip_from_directory(experiment_dir, zip_path)
+        
+        logger.info(f"Created ZIP file for experiment {uuid}: {zip_path}")
+        
+        # Return the ZIP file as a download
+        return FileResponse(
+            path=str(zip_path),
+            media_type='application/zip',
+            filename=zip_filename,
+            background=None  # File will be automatically cleaned up by FastAPI
+        )
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except PermissionError:
+        logger.exception("Permission error while accessing experiment directory.")
+        raise HTTPException(status_code=500, detail="Permission denied when accessing experiment.")
+    except Exception as e:
+        logger.exception(f"Unexpected error while downloading experiment {uuid}.")
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred while downloading experiment: {str(e)}")
 
 # @router.get("/api/results/assets/{result_id}")
 # async def get_results(result_id:str):
@@ -327,60 +394,3 @@ async def delete_result_by_uuid(uuid: str):
 #     except Exception as e:
 #         logger.exception(f"Unexpected error while retrieving result '{result_id}'.")
 #         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving result: {str(e)}")
-
-# @router.get("/api/results/{result_id}/download")
-# async def download_results(result_id: str):
-#     """Download a specific result as a zip file."""
-#     results_base_path = Path(RESULTS_DIR)
-    
-#     # Check for results directory
-#     if not results_base_path.exists():
-#         raise HTTPException(status_code=404, detail=f"Results directory {results_base_path} does not exist. Did you run any experiments?")
-    
-#     try:
-#         # Parse the result ID to extract components
-#         # Expected format: timestamp_workload_branch_experiment_number
-#         id_parts = result_id.split('_')
-#         timestamp = f"{id_parts[0]}_{id_parts[1]}"
-#         timestamp_folder = results_base_path / timestamp
-        
-#         logger.info(timestamp_folder)
-        
-#         # Check if timestamp folder exists
-#         if not timestamp_folder.is_dir():
-#             raise HTTPException(status_code=404, detail=f"Timestamp folder '{timestamp}' not found")
-        
-#         # Create zip file with the entire timestamp folder
-#         zip_buffer = io.BytesIO()
-#         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-#             # Include the entire timestamp folder and all its contents
-#             for file_path in timestamp_folder.rglob("*"):
-#                 if file_path.is_file():
-#                     # Preserve the full directory structure starting from timestamp folder
-#                     # This creates: timestamp/workload/branch/experiment/files
-#                     relative_path = file_path.relative_to(timestamp_folder.parent)
-#                     zip_file.write(file_path, relative_path)
-        
-#         # Prepare the buffer for reading
-#         zip_buffer.seek(0)
-        
-#         # Create a descriptive filename using the timestamp
-#         safe_filename = f"{timestamp}.zip"
-        
-#         # Return the zip file as a streaming response
-#         return StreamingResponse(
-#             io.BytesIO(zip_buffer.read()),
-#             media_type="application/zip",
-#             headers={"Content-Disposition": f"attachment; filename={safe_filename}"}
-#         )
-        
-#     except HTTPException:
-#         # Re-raise HTTP exceptions
-#         raise
-#     except PermissionError:
-#         logger.exception("Permission error while accessing results directory.")
-#         raise HTTPException(status_code=500, detail="Permission denied when accessing results.")
-#     except Exception as e:
-#         logger.exception(f"Unexpected error while downloading result '{result_id}'.")
-#         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while downloading result: {str(e)}")
-        
