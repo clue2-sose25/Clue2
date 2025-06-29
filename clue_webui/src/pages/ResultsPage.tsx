@@ -35,6 +35,32 @@ const ResultsPage = () => {
     }
   };
 
+  const handleResultsDownload = async (uuid: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      const res = await fetch(`/api/results/${uuid}/download`);
+      if (!res.ok) throw new Error("Failed to download");
+
+      // Convert response to blob
+      const blob = await res.blob();
+
+      // Create download URL and trigger download
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `results-${uuid}.zip`; // Set filename
+      document.body.appendChild(link);
+      link.click();
+
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const handleRowClick = (uuid: string) => {
     navigate(`/results/${uuid}`);
   };
@@ -121,7 +147,7 @@ const ResultsPage = () => {
                     </IconButton>
                   </Tooltip>
                   <Tooltip title="Download results" arrow placement="top">
-                    <IconButton onClick={(e) => { e.stopPropagation(); }}>
+                    <IconButton onClick={(e) => { handleResultsDownload(result.uuid, e) }}>
                       <DownloadSimpleIcon size={20} />
                     </IconButton>
                   </Tooltip>
