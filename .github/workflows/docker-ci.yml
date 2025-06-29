@@ -1,5 +1,5 @@
+---
 # name: Build and Publish Docker Images
-
 # on:
 #   push:
 #     branches: [ "dev", "main" ]
