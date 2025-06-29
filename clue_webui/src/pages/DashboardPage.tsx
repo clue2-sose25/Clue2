@@ -213,7 +213,7 @@ const DashboardPage = () => {
             </span>{" "}
             <span>
               Visit the{" "}
-              <Link className="font-medium text-sm text-blue-500" to={"/"}>
+              <Link className="font-medium text-sm text-blue-500" to={"/control"}>
                 Control Panel
               </Link>{" "}
               to add an experiment to the queue!

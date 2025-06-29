@@ -3,7 +3,7 @@ import {DeploymentContext} from "../contexts/DeploymentContext";
 import {InfoIcon, RocketLaunchIcon, StackPlusIcon} from "@phosphor-icons/react";
 import type {SUT} from "../models/SUT";
 import {Tooltip} from "@mui/material";
-import {workloadOptions} from "../models/DeploymentForm";
+import {workloadOptions, type Workload} from "../models/DeploymentForm";
 import {useNavigate} from "react-router";
 import {QueueContext} from "../contexts/QueueContext";
 
@@ -17,6 +17,20 @@ const ControlsPage = () => {
   const [availableSUTs, setAvailableSUTs] = useState<SUT[]>([]);
   const expSelectAllRef = useRef<HTMLInputElement>(null);
   const workloadSelectAllRef = useRef<HTMLInputElement>(null);
+
+  const workloadDurations: Record<Workload, number> = {
+    shaped: 3,
+    rampup: 3,
+    pausing: 3,
+    fixed: 3,
+  };
+
+  const sutSelected = !!currentDeployment.SutName;
+  const benchmarkingSelected =
+    currentDeployment.experimentNames.length > 0 &&
+    currentDeployment.workloads.length > 0 &&
+    currentDeployment.iterations > 0;
+  const deployEnabled = sutSelected && benchmarkingSelected;
 
   /**
    * On the component load
@@ -90,12 +104,22 @@ const ControlsPage = () => {
     }
   }, [someWorkloadsSelected]);
 
+  const workloadTime = (w: Workload) => workloadDurations[w] ?? 0;
+  const variantTotals = currentDeployment.experimentNames.map((exp) => {
+    const perIteration = currentDeployment.workloads.reduce(
+      (sum, w) => sum + workloadTime(w),
+      0
+    );
+    return {
+      name: exp,
+      perIteration,
+      total: perIteration * currentDeployment.iterations,
+    };
+  });
+  const overallTotal = variantTotals.reduce((sum, v) => sum + v.total, 0);
+
   const deploySUT = async () => {
-    if (
-      !currentDeployment.SutName ||
-      currentDeployment.experimentNames.length === 0
-    )
-      return;
+    if (!deployEnabled) return;
 
     await fetch("/api/deploy/sut", {
       method: "POST",
@@ -121,7 +145,27 @@ const ControlsPage = () => {
         <p>Choose your parameters for the benchmark</p>
       </div>
 
-      <div className="flex flex-col gap-4 md:w-1/3 w-3/4">
+      <div className="flex flex-col md:flex-row gap-4 w-full justify-center">
+        {/* Progress Sidebar */}
+        <div className="border rounded shadow p-4 flex flex-col gap-2 md:w-1/5">
+          <p className="font-medium">Progress</p>
+          <label className="flex gap-2 items-center">
+            <input type="checkbox" readOnly checked={sutSelected} className="w-5 h-5" />
+            <span>System under test</span>
+          </label>
+          <label className="flex gap-2 items-center">
+            <input
+              type="checkbox"
+              readOnly
+              checked={benchmarkingSelected}
+              className="w-5 h-5"
+            />
+            <span>Benchmarking Options</span>
+          </label>
+        </div>
+
+        {/* Parameter Selection */}
+        <div className="flex flex-col gap-4 border rounded shadow p-4 md:w-2/5 w-3/4 flex-grow">
         {/* SUT Dropdown */}
         <div className="flex flex-col gap-2">
           <label
@@ -375,16 +419,12 @@ const ControlsPage = () => {
         {/* Deploy Button */}
         <button
           className={`rounded p-2  ${
-            !currentDeployment.SutName ||
-            currentDeployment.experimentNames.length === 0
+            !deployEnabled
               ? "bg-gray-300 text-gray-500"
               : "bg-blue-500 text-white hover:bg-blue-700"
           }`}
           onClick={deploySUT}
-          disabled={
-            !currentDeployment.SutName ||
-            currentDeployment.experimentNames.length === 0
-          }
+          disabled={!deployEnabled}
         >
           {currentQueue ? (
             <div className="flex items-center justify-center gap-2">
@@ -398,8 +438,33 @@ const ControlsPage = () => {
             </div>
           )}
         </button>
-      </div>
+        </div>
+
+        {/* Estimated Benchmarking Time */}
+        <div className="border rounded shadow p-4 flex flex-col gap-2 md:w-1/5">
+          <p className="font-medium">Estimated Benchmarking Time</p>
+          {variantTotals.length === 0 ? (
+            <p className="text-sm text-gray-500">No options selected</p>
+          ) : (
+            variantTotals.map((v) => (
+              <div key={v.name} className="text-sm flex flex-col gap-1">
+                <p className="font-medium">Variant ({v.name})</p>
+                {currentDeployment.workloads.map((w) => (
+                  <span key={w}>- Workload ({w}): {workloadTime(w)} min</span>
+                ))}
+                <p>
+                  Total: {v.perIteration} min * {currentDeployment.iterations} iterations ={' '}
+                  {v.total} min
+                </p>
+              </div>
+            ))
+          )}
+          {variantTotals.length > 0 && (
+            <p className="font-medium pt-2">Total: {overallTotal} min</p>
+          )}
+        </div>
     </div>
+  </div>
   );
 };
 

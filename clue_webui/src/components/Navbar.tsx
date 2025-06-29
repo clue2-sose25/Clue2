@@ -7,7 +7,7 @@ import {NavLink} from "react-router";
 
 const Navbar = () => {
   const pages = [
-    {name: "CONTROL PANEL", href: "/", icon: <CommandIcon size={20} />},
+    {name: "CONTROL PANEL", href: "/control", icon: <CommandIcon size={20} />},
     {name: "DASHBOARD", href: "/dashboard", icon: <GaugeIcon size={20} />},
     {name: "RESULTS", href: "/results", icon: <FilesIcon size={20} />},
   ];
