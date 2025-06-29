@@ -4,7 +4,7 @@ import yaml
 
 from clue_deployer.src.configs.configs import ENV_CONFIG
 from clue_deployer.src.configs.sut_config import SUTConfig
-from clue_deployer.src.models.sut import VariantEntry, Sut
+from clue_deployer.src.models.sut import VariantEntry, Sut, WorkloadEntry
 
 SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
 RESULTS_DIR = ENV_CONFIG.RESULTS_PATH
@@ -46,13 +46,27 @@ async def list_sut():
             parsed_variants = []
             for variant in variants:
                 if not isinstance(variant, dict) or 'name' not in variant:
-                    raise HTTPException(status_code=500, detail=f"Invalid experiment in SUT configuration file: {filename}")
+                    raise HTTPException(status_code=500, detail=f"Invalid variant in SUT configuration file: {filename}")
                 parsed_variants.append(
                     VariantEntry(name=variant.get('name'), description=variant.get('description'))
                 )
 
+            # Get workload section, default to empty list if missing
+            workloads = data.get('workloads', [])
+            if not isinstance(workloads, list):
+                raise HTTPException(status_code=500, detail=f"Invalid SUT configuration file: {filename} has 'workloads' that is not a list")
+            
+            # Extract workloads with optional description
+            parsed_workloads = []
+            for workload in workloads:
+                if not isinstance(workload, dict) or 'name' not in workload:
+                    raise HTTPException(status_code=500, detail=f"Invalid workload in SUT configuration file: {filename}")
+                parsed_variants.append(
+                    WorkloadEntry(name=workload.get('name'), description=workload.get('description'))
+                )
+
             # Create Sut object and add to list
-            sut = Sut(name=sut, variants=parsed_variants)
+            sut = Sut(name=sut, variants=parsed_variants, workloads=parsed_workloads)
             suts.append(sut)
 
         return suts

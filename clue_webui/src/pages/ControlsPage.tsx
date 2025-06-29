@@ -3,7 +3,6 @@ import { DeploymentContext } from "../contexts/DeploymentContext";
 import { InfoIcon, RocketLaunchIcon, StackPlusIcon } from "@phosphor-icons/react";
 import type { SUT } from "../models/SUT";
 import { Tooltip } from "@mui/material";
-import { workloadOptions, type Workload } from "../models/DeploymentForm";
 import { useNavigate } from "react-router";
 import { QueueContext } from "../contexts/QueueContext";
 
@@ -15,15 +14,9 @@ const ControlsPage = () => {
 
   const navigate = useNavigate();
   const [availableSUTs, setAvailableSUTs] = useState<SUT[]>([]);
-  const expSelectAllRef = useRef<HTMLInputElement>(null);
+  const variantSelectAllRef = useRef<HTMLInputElement>(null);
   const workloadSelectAllRef = useRef<HTMLInputElement>(null);
 
-  const workloadDurations: Record<Workload, number> = {
-    shaped: 3,
-    rampup: 3,
-    pausing: 3,
-    fixed: 3,
-  };
 
   const sutSelected = !!currentDeployment.sut;
   const benchmarkingSelected =
@@ -83,11 +76,15 @@ const ControlsPage = () => {
     .filter((sut) => sut.name === currentDeployment.sut)
     .flatMap((sut) => sut.variants);
 
-  const allExperimentsSelected =
+  const workloadOptions = availableSUTs
+    .filter((sut) => sut.name === currentDeployment.sut)
+    .flatMap((sut) => sut.workloads)
+
+  const allVariantsSelected =
     variantsOptions.length > 0 &&
     currentDeployment.variants.length === variantsOptions.length;
-  const someExperimentsSelected =
-    currentDeployment.variants.length > 0 && !allExperimentsSelected;
+  const someVariantsSelected =
+    currentDeployment.variants.length > 0 && !allVariantsSelected;
 
   const allWorkloadsSelected =
     currentDeployment.workloads.length === workloadOptions.length;
@@ -95,10 +92,10 @@ const ControlsPage = () => {
     currentDeployment.workloads.length > 0 && !allWorkloadsSelected;
 
   useEffect(() => {
-    if (expSelectAllRef.current) {
-      expSelectAllRef.current.indeterminate = someExperimentsSelected;
+    if (variantSelectAllRef.current) {
+      variantSelectAllRef.current.indeterminate = someVariantsSelected;
     }
-  }, [someExperimentsSelected]);
+  }, [someVariantsSelected]);
 
   useEffect(() => {
     if (workloadSelectAllRef.current) {
@@ -106,10 +103,10 @@ const ControlsPage = () => {
     }
   }, [someWorkloadsSelected]);
 
-  const workloadTime = (w: Workload) => workloadDurations[w] ?? 0;
+  const workloadTime = () => 3;
   const variantTotals = currentDeployment.variants.map((exp) => {
     const perIteration = currentDeployment.workloads.reduce(
-      (sum, w) => sum + workloadTime(w),
+      (sum, w) => sum + 3,
       0
     );
     return {
@@ -201,11 +198,11 @@ const ControlsPage = () => {
             </select>
           </div>
 
-          {/* Experiment Selection */}
+          {/* Variant Selection */}
           <div className="flex flex-col gap-2">
             <label className="flex flex-col gap-2  text-sm font-medium">
               <div className="flex justify-start w-full gap-2 items-center">
-                Experiments
+                Variants
                 <Tooltip
                   title="Select one or more experiments to run sequentially"
                   placement="right"
@@ -215,7 +212,7 @@ const ControlsPage = () => {
                 </Tooltip>
               </div>
               <p className="text-xs text-gray-500">
-                You can select multiple experiments; they will run sequentially.
+                You can select multiple variants; they will run sequentially.
               </p>
             </label>
             <div
@@ -225,15 +222,15 @@ const ControlsPage = () => {
               <label className="flex gap-2 items-center font-medium">
                 <input
                   type="checkbox"
-                  ref={expSelectAllRef}
+                  ref={variantSelectAllRef}
                   className="mt-1 bg-white"
                   disabled={!currentDeployment.sut}
-                  checked={allExperimentsSelected}
+                  checked={allVariantsSelected}
                   onChange={(e) => {
                     setCurrentDeployment({
                       ...currentDeployment,
                       variants: e.target.checked
-                        ? variantsOptions.map((ex) => ex.name)
+                        ? variantsOptions.map((variant) => variant.name)
                         : [],
                     });
                   }}
@@ -243,9 +240,9 @@ const ControlsPage = () => {
               {availableSUTs
                 .filter((sut) => sut.name === currentDeployment.sut)
                 .flatMap((sut) => sut.variants)
-                .map((exp) => (
+                .map((variant) => (
                   <label
-                    key={exp.name}
+                    key={variant.name}
                     className="flex flex-col gap-1 items-start"
                   >
                     <div className="flex gap-2">
@@ -254,28 +251,28 @@ const ControlsPage = () => {
                         className="mt-1 bg-white"
                         disabled={!currentDeployment.sut}
                         checked={currentDeployment.variants.includes(
-                          exp.name
+                          variant.name
                         )}
                         onChange={() => {
                           const exists =
-                            currentDeployment.variants.includes(exp.name);
+                            currentDeployment.variants.includes(variant.name);
                           setCurrentDeployment({
                             ...currentDeployment,
                             variants: exists
                               ? currentDeployment.variants.filter(
-                                (n) => n !== exp.name
+                                (n) => n !== variant.name
                               )
-                              : [...currentDeployment.variants, exp.name],
+                              : [...currentDeployment.variants, variant.name],
                           });
                         }}
                       />
-                      <span>{exp.name}</span>
+                      <span>{variant.name}</span>
                     </div>
 
                     <div className="flex flex-col">
-                      {exp.description && (
+                      {variant.description && (
                         <span className="text-xs text-gray-500">
-                          {exp.description}
+                          {variant.description}
                         </span>
                       )}
                     </div>
@@ -306,12 +303,16 @@ const ControlsPage = () => {
                 You can select multiple workloads; they will run sequentially.
               </p>
             </label>
-            <div className="border p-2 flex flex-col gap-2 max-h-[10.5rem] overflow-auto">
+            <div
+              className={`border p-2 flex flex-col gap-2 max-h-[10.5rem] overflow-auto  ${!currentDeployment.sut ? "opacity-50" : ""
+                }`}
+            >
               <label className="flex gap-2 items-center font-medium">
                 <input
                   type="checkbox"
                   ref={workloadSelectAllRef}
                   className="mt-1 bg-white"
+                  disabled={!currentDeployment.sut}
                   checked={allWorkloadsSelected}
                   onChange={(e) => {
                     setCurrentDeployment({
@@ -324,32 +325,41 @@ const ControlsPage = () => {
                 />
                 Select all
               </label>
-              {workloadOptions.map((w) => (
-                <label key={w.name} className="flex flex-col gap-1 items-start">
-                  <div className="flex gap-2">
-                    <input
-                      type="checkbox"
-                      className="mt-1 bg-white"
-                      checked={currentDeployment.workloads.includes(w.name)}
-                      onChange={() => {
-                        const exists = currentDeployment.workloads.includes(w.name);
-                        setCurrentDeployment({
-                          ...currentDeployment,
-                          workloads: exists
-                            ? currentDeployment.workloads.filter((n) => n !== w.name)
-                            : [...currentDeployment.workloads, w.name],
-                        });
-                      }}
-                    />
-                    <span>{w.name}</span>
-                  </div>
-                  <div className="flex flex-col">
-                    {w.description && (
-                      <span className="text-xs text-gray-500">{w.description}</span>
-                    )}
-                  </div>
-                </label>
-              ))}
+              {availableSUTs
+                .filter((sut) => sut.name === currentDeployment.sut)
+                .flatMap((sut) => sut.workloads)
+                .map((w) => (
+                  <label key={w.name} className="flex flex-col gap-1 items-start">
+                    <div className="flex gap-2">
+                      <input
+                        type="checkbox"
+                        className="mt-1 bg-white"
+                        disabled={!currentDeployment.sut}
+                        checked={currentDeployment.workloads.includes(w.name)}
+                        onChange={() => {
+                          const exists = currentDeployment.workloads.includes(w.name);
+                          setCurrentDeployment({
+                            ...currentDeployment,
+                            workloads: exists
+                              ? currentDeployment.workloads.filter((n) => n !== w.name)
+                              : [...currentDeployment.workloads, w.name],
+                          });
+                        }}
+                      />
+                      <span>{w.name}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      {w.description && (
+                        <span className="text-xs text-gray-500">{w.description}</span>
+                      )}
+                    </div>
+                  </label>
+                ))}
+              {availableSUTs
+                .filter((sut) => sut.name === currentDeployment.sut)
+                .flatMap((sut) => sut.workloads).length === 0 && (
+                  <p>Firstly select the SUT</p>
+                )}
             </div>
           </div>
 
@@ -445,7 +455,7 @@ const ControlsPage = () => {
               <div key={v.name} className="text-sm flex flex-col gap-1">
                 <p className="font-medium">Variant ({v.name})</p>
                 {currentDeployment.workloads.map((w) => (
-                  <span key={w}>- Workload ({w}): {workloadTime(w)} min</span>
+                  <span key={w}>- Workload ({w}): 3 min</span>
                 ))}
                 <p>
                   Total: {v.perIteration} min * {currentDeployment.iterations} iterations ={' '}

@@ -3,10 +3,13 @@ from pydantic import BaseModel
 
 class VariantEntry(BaseModel):
     """Single SUT variant entry with optional description"""
-
     name: str
     description: str | None = None
 
+class WorkloadEntry(BaseModel):
+    """Single SUT workload entry with optional description"""
+    name: str
+    description: str | None = None
 
 class Sut(BaseModel):
     '''
@@ -15,3 +18,4 @@ class Sut(BaseModel):
     '''
     name: str
     variants: list[VariantEntry]
+    workloads: list[WorkloadEntry]
