@@ -2,6 +2,7 @@ import io
 import json
 import os
 from pathlib import Path
+import shutil
 from typing import List, Optional
 import zipfile
 from fastapi import APIRouter, HTTPException
@@ -197,10 +198,68 @@ async def list_all_results():
     except Exception as e:
         logger.exception("Unexpected error while retrieving results.")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving results: {str(e)}")
+
+def find_experiment_directory_by_uuid(uuid: str, results_base_path: Path) -> Optional[Path]:
+    """Find the timestamp directory containing the experiment with the given UUID."""
+    try:
+        # Iterate through SUT directories
+        for sut_dir in results_base_path.iterdir():
+            if not sut_dir.is_dir():
+                continue
+                
+            # Iterate through timestamp directories within each SUT
+            for timestamp_dir in sut_dir.iterdir():
+                if not timestamp_dir.is_dir():
+                    continue
+                
+                experiment_file = timestamp_dir / "experiment.json"
+                
+                # Read experiment.json to check UUID
+                experiment_data = read_json_file(experiment_file)
+                if experiment_data and experiment_data.get("id") == uuid:
+                    return timestamp_dir
+                        
+    except Exception as e:
+        logger.error(f"Error searching for UUID {uuid}: {e}")
+        
+    return None
+
+@router.delete("/api/results/{uuid}")
+async def delete_result_by_uuid(uuid: str):
+    """Delete a specific experiment by UUID, removing the entire timestamp directory."""
+    results_base_path = Path(RESULTS_DIR)
     
-# @app.get("/api/results/{result_id}", response_model=Experiment)
-# async def get_single_result(result_id: str):
-#     """Get a single result by ID."""
+    # Check for results directory
+    if not results_base_path.is_dir():
+        logger.error(f"Results directory not found: {results_base_path}")
+        raise HTTPException(status_code=404, detail=f"Results directory not found: {results_base_path}")
+    
+    try:
+        # Find the experiment directory by UUID
+        experiment_dir = find_experiment_directory_by_uuid(uuid, results_base_path)
+        
+        if experiment_dir is None:
+            raise HTTPException(status_code=404, detail=f"Experiment with UUID {uuid} not found")
+        
+        # Delete the entire timestamp directory
+        shutil.rmtree(experiment_dir)
+        logger.info(f"Successfully deleted experiment {uuid} at {experiment_dir}")
+        
+        return {"message": f"Experiment {uuid} deleted successfully", "deleted_path": str(experiment_dir)}
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except PermissionError:
+        logger.exception("Permission error while deleting experiment directory.")
+        raise HTTPException(status_code=500, detail="Permission denied when deleting experiment.")
+    except Exception as e:
+        logger.exception(f"Unexpected error while deleting experiment {uuid}.")
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred while deleting experiment: {str(e)}")
+
+
+# @router.get("/api/results/assets/{result_id}")
+# async def get_results(result_id:str):
 #     results_base_path = Path(RESULTS_DIR)
     
 #     # Check for results directory
@@ -244,17 +303,17 @@ async def list_all_results():
 #                         exp_dir = branch_dir
 #                         if not exp_dir.is_dir():
 #                             continue
-                            
-#                         # Count iterations
-#                         iterations_count = sum(1 for item in exp_dir.iterdir() if item.is_dir())
                         
-#                         return Experiment(
-#                             id=result_id,
-#                             workload=workload_name,
-#                             branch_name=branch_name,
-#                             timestamp=timestamp,
-#                             n_iterations=iterations_count
-#                         )
+#                         exp_dir = exp_dir/"0"
+#                         with open(os.path.join(exp_dir, "metrics.json"), "r") as f:
+#                             metrics = json.load(f)
+
+#                         return {
+#                             "metrics": metrics,
+#                             "cpu_svg": read_svg("cpu_usage", exp_dir),
+#                             "memory_svg": read_svg("memory_usage", exp_dir),
+#                             "wattage_svg": read_svg("wattage_kepler", exp_dir),
+#                         }
         
 #         # If we get here, the result wasn't found
 #         raise HTTPException(status_code=404, detail=f"Result with ID '{result_id}' not found")
@@ -269,175 +328,59 @@ async def list_all_results():
 #         logger.exception(f"Unexpected error while retrieving result '{result_id}'.")
 #         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving result: {str(e)}")
 
-# @app.delete("/api/results/{result_id}")
-# async def delete_result(result_id: str):
-#     """Delete a specific result directory."""
+# @router.get("/api/results/{result_id}/download")
+# async def download_results(result_id: str):
+#     """Download a specific result as a zip file."""
 #     results_base_path = Path(RESULTS_DIR)
-
+    
+#     # Check for results directory
 #     if not results_base_path.exists():
-#         raise HTTPException(status_code=404, detail=f"Results directory {results_base_path} does not exist")
-
+#         raise HTTPException(status_code=404, detail=f"Results directory {results_base_path} does not exist. Did you run any experiments?")
+    
 #     try:
-#         # Locate the directory matching the provided ID by traversing
-#         for timestamp_dir in results_base_path.iterdir():
-#             if not timestamp_dir.is_dir():
-#                 continue
-#             timestamp = timestamp_dir.name.strip()
-
-#             for workload_dir in timestamp_dir.iterdir():
-#                 if not workload_dir.is_dir():
-#                     continue
-#                 workload_name = workload_dir.name.strip()
-
-#                 for branch_dir in workload_dir.iterdir():
-#                     if not branch_dir.is_dir():
-#                         continue
-#                     branch_name = branch_dir.name.strip()
-
-#                     expected_id = f"{timestamp}_{workload_name}_{branch_name}"
-#                     if expected_id == result_id:
-#                         # Remove the branch directory and clean up parents
-#                         shutil.rmtree(branch_dir)
-
-#                         if not any(workload_dir.iterdir()):
-#                             workload_dir.rmdir()
-#                             if not any(timestamp_dir.iterdir()):
-#                                 timestamp_dir.rmdir()
-
-#                         return {"message": f"Result {result_id} deleted"}
-
-#         # If we reach here, the result wasn't found
-#         raise HTTPException(status_code=404, detail=f"Result with ID '{result_id}' not found")
-
+#         # Parse the result ID to extract components
+#         # Expected format: timestamp_workload_branch_experiment_number
+#         id_parts = result_id.split('_')
+#         timestamp = f"{id_parts[0]}_{id_parts[1]}"
+#         timestamp_folder = results_base_path / timestamp
+        
+#         logger.info(timestamp_folder)
+        
+#         # Check if timestamp folder exists
+#         if not timestamp_folder.is_dir():
+#             raise HTTPException(status_code=404, detail=f"Timestamp folder '{timestamp}' not found")
+        
+#         # Create zip file with the entire timestamp folder
+#         zip_buffer = io.BytesIO()
+#         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+#             # Include the entire timestamp folder and all its contents
+#             for file_path in timestamp_folder.rglob("*"):
+#                 if file_path.is_file():
+#                     # Preserve the full directory structure starting from timestamp folder
+#                     # This creates: timestamp/workload/branch/experiment/files
+#                     relative_path = file_path.relative_to(timestamp_folder.parent)
+#                     zip_file.write(file_path, relative_path)
+        
+#         # Prepare the buffer for reading
+#         zip_buffer.seek(0)
+        
+#         # Create a descriptive filename using the timestamp
+#         safe_filename = f"{timestamp}.zip"
+        
+#         # Return the zip file as a streaming response
+#         return StreamingResponse(
+#             io.BytesIO(zip_buffer.read()),
+#             media_type="application/zip",
+#             headers={"Content-Disposition": f"attachment; filename={safe_filename}"}
+#         )
+        
 #     except HTTPException:
+#         # Re-raise HTTP exceptions
 #         raise
+#     except PermissionError:
+#         logger.exception("Permission error while accessing results directory.")
+#         raise HTTPException(status_code=500, detail="Permission denied when accessing results.")
 #     except Exception as e:
-#         logger.exception(f"Unexpected error while deleting result '{result_id}'.")
-#         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while deleting result: {str(e)}")
-
-@router.get("/api/results/assets/{result_id}")
-async def get_results(result_id:str):
-    results_base_path = Path(RESULTS_DIR)
-    
-    # Check for results directory
-    if not results_base_path.is_dir():
-        logger.error(f"Results directory not found: {results_base_path}")
-        raise HTTPException(status_code=404, detail=f"Results directory not found: {results_base_path}")
-    
-    try:
-        # Parse the result ID to extract components
-        # Expected format: timestamp_workload_branch_experiment_number
-        id_parts = result_id.split('_')
-        if len(id_parts) < 4:
-            raise HTTPException(status_code=400, detail="Invalid result ID format")
-        
-        # Join the remaining parts back (in case workload or branch names contain underscores)
-        remaining_parts = id_parts[:-1]
-        
-        # Find the result by searching through the directory structure
-        for results_dir in results_base_path.iterdir():
-            if not results_dir.is_dir():
-                continue
-                
-            timestamp = results_dir.name.strip()
-            
-            for workload_dir in results_dir.iterdir():
-                if not workload_dir.is_dir():
-                    continue
-                    
-                workload_name = workload_dir.name.strip()
-                
-                for branch_dir in workload_dir.iterdir():
-                    if not branch_dir.is_dir():
-                        continue
-                        
-                    branch_name = branch_dir.name.strip()
-                    
-                    # Check if this combination matches our ID
-                    expected_id = f"{timestamp}_{workload_name}_{branch_name}"
-                    if expected_id == result_id:
-                        # Verify the experiment directory exists
-                        exp_dir = branch_dir
-                        if not exp_dir.is_dir():
-                            continue
-                        
-                        exp_dir = exp_dir/"0"
-                        with open(os.path.join(exp_dir, "metrics.json"), "r") as f:
-                            metrics = json.load(f)
-
-                        return {
-                            "metrics": metrics,
-                            "cpu_svg": read_svg("cpu_usage", exp_dir),
-                            "memory_svg": read_svg("memory_usage", exp_dir),
-                            "wattage_svg": read_svg("wattage_kepler", exp_dir),
-                        }
-        
-        # If we get here, the result wasn't found
-        raise HTTPException(status_code=404, detail=f"Result with ID '{result_id}' not found")
-        
-    except HTTPException:
-        # Re-raise HTTP exceptions
-        raise
-    except PermissionError:
-        logger.exception("Permission error while accessing results directory.")
-        raise HTTPException(status_code=500, detail="Permission denied when accessing results.")
-    except Exception as e:
-        logger.exception(f"Unexpected error while retrieving result '{result_id}'.")
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving result: {str(e)}")
-
-@router.get("/api/results/{result_id}/download")
-async def download_results(result_id: str):
-    """Download a specific result as a zip file."""
-    results_base_path = Path(RESULTS_DIR)
-    
-    # Check for results directory
-    if not results_base_path.exists():
-        raise HTTPException(status_code=404, detail=f"Results directory {results_base_path} does not exist. Did you run any experiments?")
-    
-    try:
-        # Parse the result ID to extract components
-        # Expected format: timestamp_workload_branch_experiment_number
-        id_parts = result_id.split('_')
-        timestamp = f"{id_parts[0]}_{id_parts[1]}"
-        timestamp_folder = results_base_path / timestamp
-        
-        logger.info(timestamp_folder)
-        
-        # Check if timestamp folder exists
-        if not timestamp_folder.is_dir():
-            raise HTTPException(status_code=404, detail=f"Timestamp folder '{timestamp}' not found")
-        
-        # Create zip file with the entire timestamp folder
-        zip_buffer = io.BytesIO()
-        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-            # Include the entire timestamp folder and all its contents
-            for file_path in timestamp_folder.rglob("*"):
-                if file_path.is_file():
-                    # Preserve the full directory structure starting from timestamp folder
-                    # This creates: timestamp/workload/branch/experiment/files
-                    relative_path = file_path.relative_to(timestamp_folder.parent)
-                    zip_file.write(file_path, relative_path)
-        
-        # Prepare the buffer for reading
-        zip_buffer.seek(0)
-        
-        # Create a descriptive filename using the timestamp
-        safe_filename = f"{timestamp}.zip"
-        
-        # Return the zip file as a streaming response
-        return StreamingResponse(
-            io.BytesIO(zip_buffer.read()),
-            media_type="application/zip",
-            headers={"Content-Disposition": f"attachment; filename={safe_filename}"}
-        )
-        
-    except HTTPException:
-        # Re-raise HTTP exceptions
-        raise
-    except PermissionError:
-        logger.exception("Permission error while accessing results directory.")
-        raise HTTPException(status_code=500, detail="Permission denied when accessing results.")
-    except Exception as e:
-        logger.exception(f"Unexpected error while downloading result '{result_id}'.")
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred while downloading result: {str(e)}")
+#         logger.exception(f"Unexpected error while downloading result '{result_id}'.")
+#         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while downloading result: {str(e)}")
         
