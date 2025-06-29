@@ -17,8 +17,8 @@ const Card = ({
     button: string;
 }) => (
     <div className="w-72 h-72 bg-white rounded-xl shadow-md hover:shadow-lg transition flex flex-col justify-between p-6">
+        <div className="w-full flex justify-center text-xs font-medium">{title}</div>
         <div className="flex flex-col items-center gap-6">
-            <div className="text-xs font-medium">{title}</div>
             <div className="flex flex-col gap-2 justify-center align-center items-center h-full w-full">
                 <div>{icon}</div>
                 <div className="text-center font-semibold text-lg">{text}</div>
