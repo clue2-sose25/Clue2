@@ -1,5 +1,5 @@
 import os
-from fastapi import APIRouter, HTTPException, logger
+from fastapi import APIRouter, HTTPException
 import yaml
 
 from clue_deployer.src.configs.configs import ENV_CONFIG
