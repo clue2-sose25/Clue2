@@ -89,9 +89,6 @@ def read_status():
         deploying = bool(is_deploying.value)
         phase, message = StatusManager.get()
     return StatusResponse(is_deploying=deploying, phase=phase, message=message)
-    # TO-DO: Add multi-threaded status 
-    phase, msg = StatusManager.get()
-    return StatusResponse(phase=phase, message=msg or None)
 
 @app.get("/api/health", response_model=HealthResponse)
 def health():

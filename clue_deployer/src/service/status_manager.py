@@ -1,5 +1,5 @@
 import multiprocessing as mp
-from typing import Tuple
+from typing import Tuple, Union
 from clue_deployer.src.models.status_phase import StatusPhase
 
 class StatusManager:
@@ -9,7 +9,7 @@ class StatusManager:
     _lock = None
 
     @classmethod
-    def init(cls, status_dict: mp.managers.DictProxy | None = None, lock: mp.Lock | None = None) -> None:
+    def init(cls, status_dict: Union[mp.Manager, None] = None, lock: Union[mp.Lock, None] = None) -> None:
         """Initialise the shared status dictionary and lock.
         If ``status_dict`` and ``lock`` are not provided a new ``multiprocessing.Manager``
         will be created. When using multiple processes the parent process should
@@ -22,7 +22,7 @@ class StatusManager:
 
         manager = mp.Manager()
         cls._status = manager.dict({
-            "phase": StatusPhase.PREPARING_CLUSTER.value,
+            "phase": StatusPhase.NO_DEPLOYMENT.value,
             "detail": "",
         })
         cls._lock = manager.Lock()
