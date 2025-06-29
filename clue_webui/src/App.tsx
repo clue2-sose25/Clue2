@@ -16,7 +16,7 @@ function App() {
           <Route path="/control" element={<ControlsPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/results" element={<ResultsPage />} />
-          <Route path="/results/:resultEntryId" element={<ResultPage />} />
+          <Route path="/results/:uuid" element={<ResultPage />} />
         </Routes>
       </div>
     </div>

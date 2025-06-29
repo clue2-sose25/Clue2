@@ -61,7 +61,7 @@ async def list_sut():
             for workload in workloads:
                 if not isinstance(workload, dict) or 'name' not in workload:
                     raise HTTPException(status_code=500, detail=f"Invalid workload in SUT configuration file: {filename}")
-                parsed_variants.append(
+                parsed_workloads.append(
                     WorkloadEntry(name=workload.get('name'), description=workload.get('description'))
                 )
 

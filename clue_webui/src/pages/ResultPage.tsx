@@ -1,5 +1,5 @@
-import {Fragment, useEffect, useState} from "react";
-import type {Metric} from "../models/Metric";
+import { Fragment, useEffect, useState } from "react";
+import type { Metric } from "../models/Metric";
 import {
   ArrowLeftIcon,
   DownloadSimpleIcon,
@@ -7,113 +7,100 @@ import {
   GearIcon,
   RepeatIcon,
 } from "@phosphor-icons/react";
-import {Link, useParams} from "react-router";
-import type {ResultEntry} from "../models/ResultEntry";
-import ConfigInfo from "../components/ConfigInfo";
+import { Link, useParams } from "react-router";
+import type { ResultDetails } from "../models/ResultsDetails";
 
 // Define params type for useParams
 type ResultEntryParams = {
-  resultEntryId?: string;
+  uuid?: string;
 };
 
 const ResultPage = () => {
   // The ID of the results
-  const {resultEntryId} = useParams<ResultEntryParams>();
+  const { uuid } = useParams<ResultEntryParams>();
 
   const [metrics, setMetrics] = useState<Metric[]>([]);
-  const [resultEntry, setResultEntry] = useState<ResultEntry | null>(null);
+  const [resultDetails, setResultDetails] = useState<ResultDetails | null>(null);
 
-  const handleDownloadButton = async () => {
+  const handleResultsDownload = async (uuid: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     try {
-      // Extract just the timestamp from resultEntryId (assumes timestamp is first two parts)
-      if (!resultEntryId) {
-        return;
-      }
-      const parts = resultEntryId.split("_");
-      if (parts.length < 2) {
-        throw new Error("Invalid resultEntryId format");
-      }
-      const timestamp = `${parts[0]}_${parts[1]}`;
+      const res = await fetch(`/api/results/${uuid}/download`);
+      if (!res.ok) throw new Error("Failed to download");
 
-      const response = await fetch(`/api/results/${timestamp}/download`);
+      // Convert response to blob
+      const blob = await res.blob();
 
-      if (!response.ok) {
-        throw new Error(`Error downloading file: ${response.statusText}`);
-      }
-
-      const blob = await response.blob();
+      // Create download URL and trigger download
       const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `results-${uuid}.zip`; // Set filename
+      document.body.appendChild(link);
+      link.click();
 
-      const a = document.createElement("a");
-      a.href = url;
-
-      // Extract filename from headers, or use a fallback
-      const disposition = response.headers.get("Content-Disposition");
-      const match = disposition?.match(/filename="?(.+)"?/);
-      const filename = match?.[1] || "download.zip";
-
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      // Cleanup
+      document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Download failed:", error);
+    } catch (err) {
+      console.error(err);
     }
   };
+
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        if (!resultEntryId) {
+        if (!uuid) {
           throw new Error("No result ID provided");
         }
 
         // Fetch ResultEntry data
-        const resultRes = await fetch(`/api/results/${resultEntryId}`);
+        const resultRes = await fetch(`/api/results/${uuid}`);
         if (!resultRes.ok) {
           const errorData = await resultRes.json();
           throw new Error(errorData.detail || "Failed to fetch result");
         }
-        const resultData: ResultEntry = await resultRes.json();
-        setResultEntry(resultData);
+        const resultData: ResultDetails = await resultRes.json();
+        setResultDetails(resultData);
 
-        const res = await fetch(`/api/results/assets/${resultEntryId}`);
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.detail || "Failed to load result assets");
-        }
+        // const res = await fetch(`/api/results/assets/${uuid}`);
+        // if (!res.ok) {
+        //   const err = await res.json();
+        //   throw new Error(err.detail || "Failed to load result assets");
+        // }
 
-        const data = await res.json();
+        // const data = await res.json();
 
-        const entries = Object.entries(data.metrics) as [
-          string,
-          string | number | null | boolean
-        ][];
-        const metricsArr: Metric[] = entries.map(([label, value]) => ({
-          label,
-          value:
-            typeof value === "number"
-              ? Number(value.toFixed(2))
-              : typeof value === "string"
-              ? value
-              : JSON.stringify(value),
-        }));
-        setMetrics(metricsArr);
-        setSvgData({
-          cpu: data.cpu_svg,
-          memory: data.memory_svg,
-          wattage: data.wattage_svg,
-        });
+        // const entries = Object.entries(data.metrics) as [
+        //   string,
+        //   string | number | null | boolean
+        // ][];
+        // const metricsArr: Metric[] = entries.map(([label, value]) => ({
+        //   label,
+        //   value:
+        //     typeof value === "number"
+        //       ? Number(value.toFixed(2))
+        //       : typeof value === "string"
+        //         ? value
+        //         : JSON.stringify(value),
+        // }));
+        // setMetrics(metricsArr);
+        // setSvgData({
+        //   cpu: data.cpu_svg,
+        //   memory: data.memory_svg,
+        //   wattage: data.wattage_svg,
+        // });
       } catch (err) {
         console.error("Error fetching data:", err);
         setMetrics([]);
-        setResultEntry(null);
+        setResultDetails(null);
       }
     };
 
     fetchData();
-  }, [resultEntryId]);
+  }, [uuid]);
 
   const [svgData, setSvgData] = useState<{
     cpu: string;
@@ -137,7 +124,7 @@ const ResultPage = () => {
               <RepeatIcon size={20} /> Repeat benchmark
             </button>
             <button
-              onClick={handleDownloadButton}
+              onClick={(e) => handleResultsDownload(uuid!, e)}
               className="flex items-center gap-2 border px-4 py-2 rounded hover:bg-gray-200"
             >
               <DownloadSimpleIcon size={20} /> Download results
@@ -149,9 +136,9 @@ const ResultPage = () => {
         <div className="flex flex-col gap-4">
           <div className="flex gap-2 items-center">
             <GearIcon size="24" />
-            <p className="text-xl font-medium">Experiment Config</p>
+            <p className="text-xl font-medium">Experiment Details</p>
           </div>
-          <ConfigInfo resultEntry={resultEntry} />
+          {resultDetails?.id || "None"}
         </div>
 
         {/* Results Summary */}
@@ -184,15 +171,15 @@ const ResultPage = () => {
               <Fragment>
                 <div
                   className="w-32 h-32"
-                  dangerouslySetInnerHTML={{__html: svgData.cpu}}
+                  dangerouslySetInnerHTML={{ __html: svgData.cpu }}
                 />
                 <div
                   className="w-32 h-32"
-                  dangerouslySetInnerHTML={{__html: svgData.memory}}
+                  dangerouslySetInnerHTML={{ __html: svgData.memory }}
                 />
                 <div
                   className="w-32 h-32"
-                  dangerouslySetInnerHTML={{__html: svgData.wattage}}
+                  dangerouslySetInnerHTML={{ __html: svgData.wattage }}
                 />
               </Fragment>
             )}
