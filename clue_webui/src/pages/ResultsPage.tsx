@@ -4,8 +4,8 @@ import {
   RepeatIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
-import React, {useEffect, useState} from "react";
-import {Link} from "react-router";
+import React, { useEffect, useState } from "react";
+import { Link } from "react-router";
 import {
   Table,
   TableBody,
@@ -17,18 +17,18 @@ import {
   IconButton,
   Tooltip,
 } from "@mui/material";
-import type {ResultEntry} from "../models/ResultEntry";
+import type { ResultEntry } from "../models/ResultEntry";
 
-const ExperimentsResultsPage = () => {
+const ResultsPage = () => {
   const [results, setResults] = useState<ResultEntry[]>([]);
 
-  const handleDelete = async (id: string, e: React.MouseEvent) => {
+  const handleDelete = async (uuid: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     try {
-      const res = await fetch(`/api/results/${id}`, {method: "DELETE"});
+      const res = await fetch(`/api/results/${uuid}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete");
-      setResults((prev) => prev.filter((r) => r.id !== id));
+      setResults((prev) => prev.filter((r) => r.uuid !== uuid));
     } catch (err) {
       console.error(err);
     }
@@ -41,10 +41,24 @@ const ExperimentsResultsPage = () => {
         return res.json();
       })
       .then((data) => {
-        setResults(data.results);
+        setResults(data);
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
+
+  const getStatusColor = (status: string) => {
+    console.log(status)
+    switch (status) {
+      case "STARTED":
+        return "!text-orange-500";
+      case "FAILED":
+        return "!text-red-600";
+      case "COMPLETED":
+        return "!text-green-600";
+      default:
+        return "!text-gray-700";
+    }
+  };
 
   return (
     <div className="w-full h-full flex flex-col gap-6 p-6 pt-4">
@@ -61,47 +75,55 @@ const ExperimentsResultsPage = () => {
           <TableHead>
             <TableRow>
               <TableCell>
-                <p className="font-semibold">Timestamp</p>
+                <p className="font-semibold">SUT</p>
               </TableCell>
               <TableCell>
-                <p className="font-semibold">Workload</p>
+                <p className="font-semibold">TIMESTAMP</p>
               </TableCell>
               <TableCell>
-                <p className="font-semibold">Branch</p>
+                <p className="font-semibold">VARIANTS</p>
               </TableCell>
               <TableCell>
-                <p className="font-semibold">Iterations</p>
+                <p className="font-semibold">WORKLOADS</p>
+              </TableCell>
+              <TableCell>
+                <p className="font-semibold">ITERATIONS</p>
+              </TableCell>
+              <TableCell>
+                <p className="font-semibold">STATUS</p>
               </TableCell>
               <TableCell></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {results.map((result) => (
+            {results && results.map((result) => (
               <TableRow
-                key={result.id}
+                key={result.uuid}
                 component={Link}
-                to={`/results/${result.id}`}
-                style={{textDecoration: "none", color: "inherit"}}
+                to={`/results/${result.uuid}`}
+                style={{ textDecoration: "none", color: "inherit" }}
                 hover
               >
+                <TableCell>{result.sut}</TableCell>
                 <TableCell>{result.timestamp}</TableCell>
-                <TableCell>{result.workload}</TableCell>
-                <TableCell>{result.branch_name}</TableCell>
-                <TableCell>{result.iterations}</TableCell>
+                <TableCell>{result.variants}</TableCell>
+                <TableCell>{result.workloads}</TableCell>
+                <TableCell>{result.n_iterations}</TableCell>
+                <TableCell className={getStatusColor(result.status)}>{result.status}</TableCell>
                 <TableCell>
                   {/** Icons */}
                   <Tooltip title="Repeat experiment" arrow placement="top">
-                    <IconButton onClick={() => {}}>
+                    <IconButton onClick={() => { }}>
                       <RepeatIcon size={20} />
                     </IconButton>
                   </Tooltip>
                   <Tooltip title="Download results" arrow placement="top">
-                    <IconButton onClick={() => {}}>
+                    <IconButton onClick={() => { }}>
                       <DownloadSimpleIcon size={20} />
                     </IconButton>
                   </Tooltip>
                   <Tooltip title="Delete results" arrow placement="top">
-                    <IconButton onClick={(e) => handleDelete(result.id, e)}>
+                    <IconButton onClick={(e) => handleDelete(result.uuid, e)}>
                       <TrashIcon size={20} color="red" />
                     </IconButton>
                   </Tooltip>
@@ -115,4 +137,4 @@ const ExperimentsResultsPage = () => {
   );
 };
 
-export default ExperimentsResultsPage;
+export default ResultsPage;
