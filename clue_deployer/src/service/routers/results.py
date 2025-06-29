@@ -24,30 +24,12 @@ def read_svg(name, base_path):
 class ResultsEntry(BaseModel):
     uuid: str
     status: str
-    sut: str
-    timestamp: str
     workloads: str  # comma-separated list
     variants: str   # comma-separated list
     n_iterations: int
-    
+    sut: str
+    timestamp: str
 
-def find_deepest_directories(base_path: Path) -> List[Path]:
-    """Recursively find all directories that don't contain any subdirectories."""
-    deepest_dirs = []
-    
-    def _explore_directory(current_path: Path):
-        subdirs = [item for item in current_path.iterdir() if item.is_dir()]
-        
-        if not subdirs:
-            # This directory has no subdirectories, so it's a leaf
-            deepest_dirs.append(current_path)
-        else:
-            # This directory has subdirectories, explore them
-            for subdir in subdirs:
-                _explore_directory(subdir)
-    
-    _explore_directory(base_path)
-    return deepest_dirs
 
 def read_json_file(file_path: Path) -> Optional[dict]:
     """Safely read and parse a JSON file."""
@@ -64,10 +46,11 @@ def read_json_file(file_path: Path) -> Optional[dict]:
         logger.error(f"Error reading file {file_path}: {e}")
         return None
 
-def extract_results_entry(directory: Path) -> Optional[ResultsEntry]:
-    """Extract ResultsEntry from experiment.json and status.json in a directory."""
-    experiment_file = directory / "experiment.json"
-    status_file = directory / "status.json"
+
+def extract_results_entry(sut_dir: Path, timestamp_dir: Path) -> Optional[ResultsEntry]:
+    """Extract ResultsEntry from experiment.json and status.json in timestamp directory."""
+    experiment_file = timestamp_dir / "experiment.json"
+    status_file = timestamp_dir / "status.json"
     
     # Read both JSON files
     experiment_data = read_json_file(experiment_file)
@@ -75,7 +58,7 @@ def extract_results_entry(directory: Path) -> Optional[ResultsEntry]:
     
     # Check if both files were successfully read
     if experiment_data is None or status_data is None:
-        logger.warning(f"Missing or invalid JSON files in directory: {directory}")
+        logger.warning(f"Missing or invalid JSON files in directory: {timestamp_dir}")
         return None
     
     try:
@@ -83,13 +66,12 @@ def extract_results_entry(directory: Path) -> Optional[ResultsEntry]:
         uuid = experiment_data.get("id", "")
         sut = experiment_data.get("sut", "")
         n_iterations = experiment_data.get("n_iterations", 0)
-        timestamp = experiment_data.get("timestamp", "")
         
         # Extract workloads (comma-separated names)
         workloads_list = experiment_data.get("workloads", [])
         workloads = ",".join([workload.get("name", "") for workload in workloads_list])
         
-        # Extract variants (comma-separated names)
+        # Extract variants (comma-separated names)  
         variants_list = experiment_data.get("variants", [])
         variants = ",".join([variant.get("name", "") for variant in variants_list])
         
@@ -99,19 +81,20 @@ def extract_results_entry(directory: Path) -> Optional[ResultsEntry]:
         return ResultsEntry(
             uuid=uuid,
             status=status,
-            sut=sut,
-            timestamp=timestamp,
             workloads=workloads,
             variants=variants,
             n_iterations=n_iterations,
+            sut=sut,
+            timestamp=timestamp_dir.name
         )
     except Exception as e:
-        logger.error(f"Error processing data from directory {directory}: {e}")
+        logger.error(f"Error processing data from directory {timestamp_dir}: {e}")
         return None
+
 
 @router.get("/api/results", response_model=List[ResultsEntry])
 async def list_all_results():
-    """List all results by recursively searching through nested subfolders."""
+    """List all results by reading JSON files from timestamp directories."""
     results_base_path = Path(RESULTS_DIR)
     
     # Check for results directory
@@ -122,17 +105,27 @@ async def list_all_results():
     try:
         processed_results = []
         
-        # Find all deepest directories (directories without subdirectories)
-        deepest_dirs = find_deepest_directories(results_base_path)
+        # Iterate through SUT directories
+        for sut_dir in results_base_path.iterdir():
+            if not sut_dir.is_dir():
+                logger.debug(f"Skipping non-directory entry: {sut_dir.name}")
+                continue
+                
+            # Iterate through timestamp directories within each SUT
+            for timestamp_dir in sut_dir.iterdir():
+                if not timestamp_dir.is_dir():
+                    logger.debug(f"Skipping non-directory entry in SUT '{sut_dir.name}': {timestamp_dir.name}")
+                    continue
+                
+                # Try to extract ResultsEntry from this timestamp directory
+                results_entry = extract_results_entry(sut_dir, timestamp_dir)
+                if results_entry:
+                    processed_results.append(results_entry)
+                else:
+                    logger.debug(f"Skipping timestamp directory without valid JSON files: {timestamp_dir}")
         
-        for directory in deepest_dirs:
-            # Try to extract ResultsEntry from this directory
-            results_entry = extract_results_entry(directory)
-            if results_entry:
-                processed_results.append(results_entry)
-            else:
-                logger.debug(f"Skipping directory without valid JSON files: {directory}")
-        
+        # Sort by timestamp for consistent ordering
+        processed_results.sort(key=lambda x: x.timestamp)
         return processed_results
         
     except PermissionError:
@@ -140,7 +133,7 @@ async def list_all_results():
         raise HTTPException(status_code=500, detail="Permission denied when accessing results.")
     except Exception as e:
         logger.exception("Unexpected error while retrieving results.")
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving results: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred while 
 
 # @app.get("/api/results/{result_id}", response_model=Experiment)
 # async def get_single_result(result_id: str):

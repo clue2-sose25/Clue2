@@ -62,25 +62,26 @@ class ExperimentRunner:
         return sut_files
 
 
-    def create_experiment_files(self, results_path: str) -> None:
+    def create_experiment_files(self, results_path: str, results_parent_path: str) -> None:
         """
         Create experiment configuration and status files in the specified results path.
         
         Args:
-            results_path: The directory path where files should be created
+            results_path: The whole directory path where all data files will be stored. Only creating the directories here.
+            results_parent_path: The directory path where the parent files should be created: experiment.json and status.json
         """
-        # Create directories if they don't exist
+        # Create all directories if they don't exist
         logger.info(f"Creating the results folder: {results_path}")
         os.makedirs(results_path, exist_ok=False)
         # Create the full file path for experiment.json
         logger.info("Creating the experiment.json in the results folder")
-        experiment_file_path = path.join(results_path, 'experiment.json')
+        experiment_file_path = path.join(results_parent_path, 'experiment.json')
         # Copy the experiment object into json
         with open(experiment_file_path, 'w') as f:
             f.write(self.experiment.to_json())
         # Create status file
         logger.info("Creating the status.json in the results folder")
-        status_file_path = path.join(results_path, 'status.json')
+        status_file_path = path.join(results_parent_path, 'status.json')
         status_data = {"status": "STARTED"}
         with open(status_file_path, 'w') as f:
             json.dump(status_data, f, indent=2)
@@ -118,10 +119,12 @@ class ExperimentRunner:
             logger.info(f"Starting workload: {variant}/{workload.name}")
             # Iterate over workload types
             for iteration in range(num_iterations):
-                # Create the results path
+                # Create the results path for the individual runs
                 results_path = path.join("data", self.experiment.sut, self.experiment.timestamp, variant.name, workload.name, str(iteration))
+                # Create the results path for the experiment parent folder (inside the timestamp directory)
+                results_parent_path = path.join("data", self.experiment.sut, self.experiment.timestamp)
                 # Create experiment files
-                self.create_experiment_files(results_path)
+                self.create_experiment_files(results_path, results_parent_path)
                 # Iterate
                 logger.info(f"Starting iteration ({iteration + 1}/{num_iterations}) for {variant.name}/{workload.name})")
                 self.execute_single_run(variant, workload, results_path)
