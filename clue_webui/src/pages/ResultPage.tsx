@@ -138,7 +138,11 @@ const ResultPage = () => {
             <GearIcon size="24" />
             <p className="text-xl font-medium">Experiment Details</p>
           </div>
-          {resultDetails?.id || "None"}
+          <div className="mb-8">
+            <pre className="bg-gray-100 p-4 rounded overflow-auto text-sm">
+              {JSON.stringify(resultDetails, null, 2)}
+            </pre>
+          </div>
         </div>
 
         {/* Results Summary */}
