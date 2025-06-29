@@ -91,6 +91,69 @@ def extract_results_entry(sut_dir: Path, timestamp_dir: Path) -> Optional[Result
         logger.error(f"Error processing data from directory {timestamp_dir}: {e}")
         return None
 
+def find_experiment_by_uuid(uuid: str, results_base_path: Path) -> Optional[dict]:
+    """Find experiment data by UUID and return combined experiment.json and status.json."""
+    try:
+        # Iterate through SUT directories
+        for sut_dir in results_base_path.iterdir():
+            if not sut_dir.is_dir():
+                continue
+                
+            # Iterate through timestamp directories within each SUT
+            for timestamp_dir in sut_dir.iterdir():
+                if not timestamp_dir.is_dir():
+                    continue
+                
+                experiment_file = timestamp_dir / "experiment.json"
+                status_file = timestamp_dir / "status.json"
+                
+                # Read experiment.json to check UUID
+                experiment_data = read_json_file(experiment_file)
+                if experiment_data and experiment_data.get("id") == uuid:
+                    # Found the matching experiment, now read status.json
+                    status_data = read_json_file(status_file)
+                    if status_data:
+                        # Combine both JSON files
+                        combined_data = experiment_data.copy()
+                        combined_data.update(status_data)
+                        return combined_data
+                    else:
+                        # Return experiment data even if status is missing
+                        return experiment_data
+                        
+    except Exception as e:
+        logger.error(f"Error searching for UUID {uuid}: {e}")
+        
+    return None
+
+@router.get("/api/results/{uuid}")
+async def get_result_by_uuid(uuid: str):
+    """Get a specific result by UUID, returning combined experiment.json and status.json data."""
+    results_base_path = Path(RESULTS_DIR)
+    
+    # Check for results directory
+    if not results_base_path.is_dir():
+        logger.error(f"Results directory not found: {results_base_path}")
+        raise HTTPException(status_code=404, detail=f"Results directory not found: {results_base_path}")
+    
+    try:
+        # Find the experiment by UUID
+        experiment_data = find_experiment_by_uuid(uuid, results_base_path)
+        
+        if experiment_data is None:
+            raise HTTPException(status_code=404, detail=f"Experiment with UUID {uuid} not found")
+            
+        return experiment_data
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except PermissionError:
+        logger.exception("Permission error while accessing results directory.")
+        raise HTTPException(status_code=500, detail="Permission denied when accessing results.")
+    except Exception as e:
+        logger.exception(f"Unexpected error while retrieving experiment {uuid}.")
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving experiment: {str(e)}")
 
 @router.get("/api/results", response_model=List[ResultsEntry])
 async def list_all_results():
@@ -133,8 +196,8 @@ async def list_all_results():
         raise HTTPException(status_code=500, detail="Permission denied when accessing results.")
     except Exception as e:
         logger.exception("Unexpected error while retrieving results.")
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred while 
-
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving results: {str(e)}")
+    
 # @app.get("/api/results/{result_id}", response_model=Experiment)
 # async def get_single_result(result_id: str):
 #     """Get a single result by ID."""
