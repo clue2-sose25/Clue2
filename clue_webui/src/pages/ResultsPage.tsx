@@ -5,7 +5,7 @@ import {
   TrashIcon,
 } from "@phosphor-icons/react";
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import {
   Table,
   TableBody,
@@ -21,6 +21,7 @@ import type { ResultEntry } from "../models/ResultEntry";
 
 const ResultsPage = () => {
   const [results, setResults] = useState<ResultEntry[]>([]);
+  const navigate = useNavigate();
 
   const handleDelete = async (uuid: string, e: React.MouseEvent) => {
     e.preventDefault();
@@ -32,6 +33,10 @@ const ResultsPage = () => {
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const handleRowClick = (uuid: string) => {
+    navigate(`/results/${uuid}`);
   };
 
   useEffect(() => {
@@ -47,7 +52,6 @@ const ResultsPage = () => {
   }, []);
 
   const getStatusColor = (status: string) => {
-    console.log(status)
     switch (status) {
       case "STARTED":
         return "!text-orange-500";
@@ -99,10 +103,9 @@ const ResultsPage = () => {
             {results && results.map((result) => (
               <TableRow
                 key={result.uuid}
-                component={Link}
-                to={`/results/${result.uuid}`}
-                style={{ textDecoration: "none", color: "inherit" }}
                 hover
+                style={{ cursor: "pointer" }}
+                onClick={() => handleRowClick(result.uuid)}
               >
                 <TableCell>{result.sut}</TableCell>
                 <TableCell>{result.timestamp}</TableCell>
@@ -113,12 +116,12 @@ const ResultsPage = () => {
                 <TableCell>
                   {/** Icons */}
                   <Tooltip title="Repeat experiment" arrow placement="top">
-                    <IconButton onClick={() => { }}>
+                    <IconButton onClick={(e) => { e.stopPropagation(); }}>
                       <RepeatIcon size={20} />
                     </IconButton>
                   </Tooltip>
                   <Tooltip title="Download results" arrow placement="top">
-                    <IconButton onClick={() => { }}>
+                    <IconButton onClick={(e) => { e.stopPropagation(); }}>
                       <DownloadSimpleIcon size={20} />
                     </IconButton>
                   </Tooltip>
