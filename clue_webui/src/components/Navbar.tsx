@@ -7,7 +7,7 @@ import { NavLink } from "react-router";
 
 const Navbar = () => {
   const pages = [
-    { name: "CONTROL PANEL", href: "/control", icon: <CommandIcon size={20} /> },
+    { name: "NEW EXPERIMENT", href: "/control", icon: <CommandIcon size={20} /> },
     { name: "DASHBOARD", href: "/dashboard", icon: <GaugeIcon size={20} /> },
     { name: "RESULTS", href: "/results", icon: <FilesIcon size={20} /> },
   ];
@@ -31,8 +31,8 @@ const Navbar = () => {
             {({ isActive }) => (
               <div
                 className={`flex gap-1 ${isActive
-                    ? "border-b-1 border-black"
-                    : "border-b-1 border-transparent"
+                  ? "border-b-1 border-black"
+                  : "border-b-1 border-transparent"
                   }`}
               >
                 {page.icon} {page.name}

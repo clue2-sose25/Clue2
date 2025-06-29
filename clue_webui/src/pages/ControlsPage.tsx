@@ -141,12 +141,7 @@ const ControlsPage = () => {
   };
 
   return (
-    <div className="w-full h-full flex flex-col items-center gap-6 pt-4">
-      <div className="flex flex-col items-center">
-        <p className="text-xl font-medium">Deploy CLUE</p>
-        <p>Choose your parameters for the benchmark</p>
-      </div>
-
+    <div className="w-full h-full flex flex-col items-center gap-6">
       <div className="flex flex-col md:flex-row gap-4 w-full justify-center">
         {/* Progress Sidebar */}
         <div className="border rounded shadow p-4 flex flex-col gap-2 md:w-1/5">
