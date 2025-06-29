@@ -1,0 +1,422 @@
+# name: Build and Publish Docker Images
+
+# on:
+#   push:
+#     branches: [ "dev", "main" ]
+#   pull_request:
+#     branches: [ "dev" ]
+
+# permissions:
+#   contents: read            # for checkout
+#   packages: write           # needed to push to GHCR
+
+#   # 1. Determine which images need rebuilding based on changed files
+# jobs:
+#   check_changes:
+#     runs-on: ubuntu-latest
+#     outputs:
+#       clue_deployer: ${{ steps.filter.outputs.clue_deployer }}
+#       clue_webui: ${{ steps.filter.outputs.clue_webui }}
+#       clue_teastore: ${{ steps.filter.outputs.clue_teastore }}
+#       clue_toystore: ${{ steps.filter.outputs.clue_toystore }}
+#     steps:
+#       - uses: actions/checkout@v3
+#       - name: Detect changed directories
+#         id: filter
+#         uses: dorny/paths-filter@v3
+#         with:
+#           filters:  |
+#             clue_deployer: 
+#               - 'clue_deployer/**'
+#             clue_webui: 
+#               - 'clue_webui/**'
+#             clue_teastore: 
+#               - 'clue_builders/teastore/**'
+#             clue_toystore:
+#               - 'clue_builders/toystore/**'
+#             clue_ots:
+#               - 'clue_builders/ots/**'
+#             # (Add more builder folders here as needed)
+
+#   # 2. Job to build and push the clue_deployer image (if its folder changed)
+#   build_clue_deployer:
+#     runs-on: ubuntu-latest
+#     needs: check_changes
+#     if: ${{ needs.check_changes.outputs.clue_deployer == 'true' }}
+#     env:
+#       IMAGE_NAME: deployer    # used to form image tags
+#     steps:
+#       - uses: actions/checkout@v3
+
+#       - name: Set up Docker Buildx
+#         uses: docker/setup-buildx-action@v2
+
+#       - name: Log in to GitHub Container Registry
+#         uses: docker/login-action@v2
+#         with:
+#           registry: ghcr.io
+#           username: ${{ github.actor }}
+#           password: ${{ secrets.GITHUB_TOKEN }}
+
+#       - name: Lint Dockerfile (clue_deployer)
+# #        run: docker run --rm -i hadolint/hadolint --ignore DL3059  < clue_deployer/Dockerfile
+#         run: |
+#           docker run --rm -i hadolint/hadolint \
+#             hadolint --ignore DL3059 --ignore  DL3008 - < clue_deployer/Dockerfile
+
+
+#       - name: Compute short Git SHA
+#         id: vars
+#         run: |
+#           echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
+#           echo "::set-output name=short_sha::${GITHUB_SHA::7}"
+
+#       # Build & push on dev/main branches
+#       # also pr-test 
+#       - name: Build and push clue_deployer image
+#         if: ${{ github.event_name != 'pull_request' }}
+#         uses: docker/build-push-action@v3
+#         with:
+#           context: .
+#           file: clue_deployer/Dockerfile
+#           platforms: linux/amd64
+#           tags: |
+#             ghcr.io/issafadel/clue2-${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }}
+#             ghcr.io/issafadel/clue2-${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+#             ghcr.io/issafadel/clue2-${{ env.IMAGE_NAME }}:pr-test
+#             ${{ github.ref_name == 'main' && format('ghcr.io/issafadel/clue2-{0}:latest', env.IMAGE_NAME) || '' }}
+#           push: true
+#           cache-from: type=gha,scope=clue_deployer
+#           cache-to: type=gha,scope=clue_deployer,mode=max
+
+#       # Build (no push) on PRs for testing
+#       - name: Build clue_deployer image (no push, PR test)
+#         if: ${{ github.event_name == 'pull_request' }}
+#         uses: docker/build-push-action@v3
+#         with:
+#           context: .
+#           file: clue_deployer/Dockerfile
+#           platforms: linux/amd64
+#           tags: ghcr.io/issafadel/clue2-${{ env.IMAGE_NAME }}:pr-test
+#           push: true
+#           load: true
+#           cache-from: type=gha,scope=clue_deployer
+#           cache-to: type=gha,scope=clue_deployer,mode=max
+
+#       - name: Smoke test clue_deployer container
+#         run: |
+#           # Start the CLUE Deployer container as a service
+#           docker run -d --name test_clue_deployer \
+#             -e DEPLOY_AS_SERVICE=true -p 9001:8000 -e EXPERIMENT_NAME=baselin -e SUT_NAME=teastore -e DEPLOY_ONLY=true\
+#             ghcr.io/issafadel/clue2-${IMAGE_NAME}:pr-test
+#           sleep 15
+#           docker logs test_clue_deployer  || true
+#           curl --fail http://localhost:9001/api/health
+#           docker stop test_clue_deployer || true
+#           docker rm test_clue_deployer || true
+
+
+
+# #     - name: Compute short Git SHA
+# #       id: vars
+# #       run: |
+# #         echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
+# #         echo "::set-output name=short_sha::${GITHUB_SHA::7}"
+# #
+# #     - name: Show computed tags
+# #       run: |
+# #         echo "SHA: $SHORT_SHA"
+# #         echo "Branch: $GITHUB_REF_NAME"
+# #         echo "Tags:"
+# #         for tag in \
+# #           ghcr.io/mygithub/clue2-${IMAGE_NAME}:${SHORT_SHA} \
+# #           ghcr.io/mygithub/clue2-${IMAGE_NAME}:${GITHUB_REF_NAME} \
+# #           $( [ "${GITHUB_REF_NAME}" = "main" ] && echo ghcr.io/issafadel/clue2-${IMAGE_NAME}:latest ) \
+# #         ; do echo "  $tag"; done
+# #
+# #     # Build & push on dev/main branches
+# #     - name: Build and push clue_deployer image
+# #       if: ${{ github.event_name != 'pull_request' }}
+# #       uses: docker/build-push-action@v3
+# #       with:
+# #         context: .
+# #         file: clue_deployer/Dockerfile
+# #         platforms: linux/amd64
+# #         tags: |
+# #           ghcr.io/issafadel/clue-deployer:${{ steps.vars.outputs.short_sha }}
+# #           ghcr.io/issafadel/clue-${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }}
+# #           ghcr.io/issafadel/clue-${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+# #           ${{ github.ref_name == 'main' && format('ghcr.io/issafadel/clue-{0}:latest', env.IMAGE_NAME) || '' }}
+# #         # Tags include short SHA and branch; main also gets "latest"
+# #         push: true
+# #         cache-from: type=gha,scope=clue_deployer
+# #         cache-to: type=gha,scope=clue_deployer,mode=max  # Stores build layers in GitHub Actions cache for reuse in future builds
+# #
+# #     # Build (without push) on PRs for testing
+# #     - name: Build clue_deployer image (no push, PR test)
+# #       if: ${{ github.event_name == 'pull_request' }}
+# #       uses: docker/build-push-action@v3
+# #       with:
+# #         context: .
+# #         file: clue_deployer/Dockerfile
+# #         platforms: linux/amd64
+# #         tags: ghcr.io/issafadel/clue2-${{ env.IMAGE_NAME }}:pr-test   # tag locally
+# #         push: false
+# #         load: true    # load image into Docker engine for testing
+# #         cache-from: type=gha,scope=clue-deployer
+# #         cache-to: type=gha,scope=clue-deployer,mode=max
+# #
+# #     - name: Smoke test clue_deployer container
+# #       # Run the container (detached), check it runs, then stop it
+# #       if: ${{ github.event_name != 'pull_request' }}
+# #       run: |
+# #         docker run --rm -d --name=clue-deployer ghcr.io/issafadel/clue-${IMAGE_NAME}:latest /bin/sh -c "echo Clue Deployer OK"
+# #         sleep 5
+# #         docker logs clue-deployer  || true
+# #         docker stop clue-deployer
+# #     # Smoke test for PRs
+# #     - name: Smoke test clue_deployer container (PR)
+# #       if: ${{ github.event_name == 'pull_request' }}
+# #       run: |
+# #         docker run --rm -d --name=clue-deployer ghcr.io/issafadel/clue2-${IMAGE_NAME}:pr-test /bin/sh -c "echo Clue Deployer OK"
+# #         sleep 5
+# #         echo "Checking logs for clue-deployer container"
+# #         docker logs clue-deployer || true
+# #         docker stop clue-deployer
+
+          
+#   # 3. Job to build and push the clue_webui image (if changed)
+#   build_clue_webui:
+#     runs-on: ubuntu-latest
+#     needs: check_changes
+#     if: ${{ needs.check_changes.outputs.clue_webui == 'true' }}
+#     env:
+#       IMAGE_NAME: webui
+#     steps:
+#       - uses: actions/checkout@v3
+#       - name: Set up Docker Buildx
+#         uses: docker/setup-buildx-action@v2
+#       - name: Log in to GHCR
+#         uses: docker/login-action@v2
+#         with:
+#           registry: ghcr.io
+#           username: ${{ github.actor }}
+#           password: ${{ secrets.GITHUB_TOKEN }}
+#       - name: Lint Dockerfile (clue_webui)
+#         run: docker run --rm -i hadolint/hadolint < clue_webui/Dockerfile
+#       - name: Compute short Git SHA
+#         id: vars
+#         run: |
+#           echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
+#           echo "::set-output name=short_sha::${GITHUB_SHA::7}"
+#       # pre-test too
+#       - name: Build and push clue_webui image
+#         if: ${{ github.event_name != 'pull_request' }}
+#         uses: docker/build-push-action@v3
+#         with:
+#           context: ./clue_webui
+#           file: ./clue_webui/Dockerfile
+#           platforms: linux/amd64
+#           tags: |
+#             ghcr.io/issafadel/clue2-${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }}
+#             ghcr.io/issafadel/clue2-${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+#             ghcr.io/issafadel/clue2-${{ env.IMAGE_NAME }}:pr-test
+#             ${{ github.ref_name == 'main' && format('ghcr.io/issafadel/clue2-{0}:latest', env.IMAGE_NAME) || '' }}
+#           push: true
+#           cache-from: type=gha,scope=clue_webui
+#           cache-to: type=gha,scope=clue_webui,mode=max
+#      # targed if pull request
+#       - name: Build clue_webui image (no push, PR test)
+#         if: ${{ github.event_name == 'pull_request' }}
+#         uses: docker/build-push-action@v3
+#         with:
+#           context: ./clue_webui
+#           file: ./clue_webui/Dockerfile
+#           platforms: linux/amd64
+#           tags: ghcr.io/issafadel/clue2-${{ env.IMAGE_NAME }}:pr-test
+#           push: true
+#           load: true
+#           cache-from: type=gha,scope=clue_webui
+#           cache-to: type=gha,scope=clue_webui,mode=max
+#       - name: Smoke test clue_webui container
+#         run: |
+#           docker run -p 5001:80 -d --name=clue-webui ghcr.io/issafadel/clue2-${IMAGE_NAME}:pr-test 
+#           sleep 8
+#           curl -fs http://localhost:5001/ | grep -q "Clue Dashboard" && echo " webUI Up and running"
+#           docker logs clue-webui || true
+#           docker stop clue-webui
+
+#   # 4. Job to build and push the teastore builder image (if changed)
+#   build_clue_teastore:
+#     runs-on: ubuntu-latest
+#     needs: check_changes
+#     if: ${{ needs.check_changes.outputs.clue_teastore == 'true' }}
+#     env:
+#       IMAGE_NAME: teastore
+#     steps:
+#       - uses: actions/checkout@v3
+#       - name: Set up Docker Buildx
+#         uses: docker/setup-buildx-action@v2
+#       - name: Log in to GHCR
+#         uses: docker/login-action@v2
+#         with:
+#           registry: ghcr.io
+#           username: ${{ github.actor }}
+#           password: ${{ secrets.GITHUB_TOKEN }}
+#       - name: Lint Dockerfile (teastore builder)
+#         run: docker run --rm -i hadolint/hadolint < clue_builders/teastore/Dockerfile
+#       - name: Compute short Git SHA
+#         id: vars
+#         run: |
+#           echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
+#           echo "::set-output name=short_sha::${GITHUB_SHA::7}"
+#       - name: Build and push teastore image
+#         if: ${{ github.event_name != 'pull_request' }}
+#         uses: docker/build-push-action@v3
+#         with:
+#           context: .
+#           file: clue_builders/teastore/Dockerfile
+#           platforms: linux/amd64
+#           tags: |
+#             ghcr.io/issafadel/clue2-${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }}
+#             ghcr.io/issafadel/clue2-${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+#             ghcr.io/issafadel/clue2-${{ env.IMAGE_NAME }}:pr-test
+#             ${{ github.ref_name == 'main' && 'ghcr.io/issafadel/clue2-${{ env.IMAGE_NAME }}:latest' || '' }}
+#           push: true
+#           cache-from: type=gha,scope=clue_teastore
+#           cache-to: type=gha,scope=clue_teastore,mode=max
+#       - name: Build teastore image (no push, PR test)
+#         if: ${{ github.event_name == 'pull_request' }}
+#         uses: docker/build-push-action@v3
+#         with:
+#           context: .
+#           file: clue_builders/teastore/Dockerfile
+#           platforms: linux/amd64
+#           tags: ghcr.io/issafadel/clue2-${{ env.IMAGE_NAME }}:pr-test
+#           push: true
+#           load: true
+#           cache-from: type=gha,scope=clue_teastore
+#           cache-to: type=gha,scope=clue_teastore,mode=max
+#       - name: Smoke test teastore container
+#         run: |
+#           docker run -d --name=test_clue_teastore ghcr.io/issafadel/clue2-${IMAGE_NAME}:pr-test /bin/sh -c "echo Teastore OK"
+#           sleep 5
+#           docker logs test_clue_teastore || true
+#           docker stop test_clue_teastore
+
+
+# # 5. Job to build and push the toystore builder image (if changed)
+#   build_clue_toystore:
+#     runs-on: ubuntu-latest
+#     needs: check_changes
+#     if: ${{ needs.check_changes.outputs.clue_toystore == 'true' }}
+#     env:
+#       IMAGE_NAME: toystore
+#     steps:
+#       - uses: actions/checkout@v3
+#       - name: Set up Docker Buildx
+#         uses: docker/setup-buildx-action@v2
+#       - name: Log in to GHCR
+#         uses: docker/login-action@v2
+#         with:
+#           registry: ghcr.io
+#           username: ${{ github.actor }}
+#           password: ${{ secrets.GITHUB_TOKEN }}
+#       - name: Lint Dockerfile (toystore builder)
+#         run: docker run --rm -i hadolint/hadolint < clue_builders/toystore/Dockerfile
+#       - name: Compute short Git SHA
+#         id: vars
+#         run: |
+#           echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
+#           echo "::set-output name=short_sha::${GITHUB_SHA::7}"
+#       - name: Build and push toystore image
+#         if: ${{ github.event_name != 'pull_request' }}
+#         uses: docker/build-push-action@v3
+#         with:
+#           context: .
+#           file: clue_builders/toystore/Dockerfile
+#           platforms: linux/amd64
+#           tags: |
+#             ghcr.io/issafadel/clue2-${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }}
+#             ghcr.io/issafadel/clue2-${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+#             ghcr.io/issafadel/clue2-${{ env.IMAGE_NAME }}:pr-test
+#             ${{ github.ref_name == 'main' && 'ghcr.io/issafadel/clue2-${{ env.IMAGE_NAME }}:latest' || '' }}
+#           push: true
+#           cache-from: type=gha,scope=clue_toystore
+#           cache-to: type=gha,scope=clue_toystore,mode=max
+#       - name: Build toystore image (no push, PR test)
+#         if: ${{ github.event_name == 'pull_request' }}
+#         uses: docker/build-push-action@v3
+#         with:
+#           context: .
+#           file: clue_builders/toystore/Dockerfile
+#           platforms: linux/amd64
+#           tags: ghcr.io/issafadel/clue2-${{ env.IMAGE_NAME }}:pr-test
+#           push: true
+#           load: true
+#           cache-from: type=gha,scope=clue_toystore
+#           cache-to: type=gha,scope=clue_toystore,mode=max
+#       - name: Smoke test toystore container
+#         run: |
+#           docker run -d --name=test_clue_toystore ghcr.io/issafadel/clue2-${IMAGE_NAME}:pr-test /bin/sh -c "echo Toystore OK"
+#           sleep 5
+#           docker logs test_clue_toystore || true
+#           docker stop test_clue_toystore
+
+#   # 6. Job to build and push the ots builder image (if changed)
+#   build_clue_ots:
+#     runs-on: ubuntu-latest
+#     needs: check_changes
+#     if: ${{ needs.check_changes.outputs.clue_ots == 'true' }}
+#     env:
+#       IMAGE_NAME: ots
+#     steps:
+#       - uses: actions/checkout@v3
+#       - name: Set up Docker Buildx
+#         uses: docker/setup-buildx-action@v2
+#       - name: Log in to GHCR
+#         uses: docker/login-action@v2
+#         with:
+#           registry: ghcr.io
+#           username: ${{ github.actor }}
+#           password: ${{ secrets.GITHUB_TOKEN }}
+#       - name: Lint Dockerfile (ots builder)
+#         run: docker run --rm -i hadolint/hadolint < clue_builders/ots/Dockerfile
+#       - name: Compute short Git SHA
+#         id: vars
+#         run: |
+#           echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
+#           echo "::set-output name=short_sha::${GITHUB_SHA::7}"
+#       - name: Build and push ots image
+#         if: ${{ github.event_name != 'pull_request' }}
+#         uses: docker/build-push-action@v3
+#         with:
+#           context: .
+#           file: clue_builders/ots/Dockerfile
+#           platforms: linux/amd64
+#           tags: |
+#             ghcr.io/issafadel/clue2-${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }}
+#             ghcr.io/issafadel/clue2-${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+#             ghcr.io/issafadel/clue2-${{ env.IMAGE_NAME }}:pr-test
+#             ${{ github.ref_name == 'main' && 'ghcr.io/issafadel/clue2-${{ env.IMAGE_NAME }}:latest' || '' }}
+#           push: true
+#           cache-from: type=gha,scope=clue_ots
+#           cache-to: type=gha,scope=clue_ots,mode=max
+#       - name: Build ots image (no push, PR test)
+#         if: ${{ github.event_name == 'pull_request' }}
+#         uses: docker/build-push-action@v3
+#         with:
+#           context: .
+#           file: clue_builders/ots/Dockerfile
+#           platforms: linux/amd64
+#           tags: ghcr.io/issafadel/clue2-${{ env.IMAGE_NAME }}:pr-test
+#           push: true
+#           load: true
+#           cache-from: type=gha,scope=clue_ots
+#           cache-to: type=gha,scope=clue_ots,mode=max
+#       - name: Smoke test ots container
+#         run: |
+#           docker run -d --name=test_clue_ots ghcr.io/issafadel/clue2-${IMAGE_NAME}:pr-test /bin/sh -c "echo OTS OK"
+#           sleep 5
+#           docker logs test_clue_ots || true
+#           docker stop test_clue_ots

@@ -1,0 +1,70 @@
+# .github/workflows/build-toystore.yml
+name: Build and Push Toystore Image
+on:
+  push:
+    branches: [ "dev", "main" ]
+    paths:
+      - 'clue_builders/toystore/**'
+  pull_request:
+    branches: [ "dev" ]
+    paths:
+      - 'clue_builders/toystore/**'
+permissions:
+  contents: read            # for checkout
+  packages: write           # needed to push to GHCR
+
+jobs:
+  build_clue_toystore:
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_NAME: toystore
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Log in to GHCR
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Lint Dockerfile (toystore builder)
+        run: docker run --rm -i hadolint/hadolint < clue_builders/toystore/Dockerfile
+      - name: Compute short Git SHA
+        id: vars
+        run: |
+          echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
+          echo "::set-output name=short_sha::${GITHUB_SHA::7}"
+      - name: Build and push toystore image
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: clue_builders/toystore/Dockerfile
+          platforms: linux/amd64
+          tags: |
+            ghcr.io/clue2-sose25/clue2-${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }}
+            ghcr.io/clue2-sose25/clue2-${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+            ghcr.io/clue2-sose25/clue2-${{ env.IMAGE_NAME }}:pr-test
+            ${{ github.ref_name == 'main' && format('ghcr.io/clue2-sose25/clue2-{0}:latest', env.IMAGE_NAME) || '' }}
+          push: true
+          cache-from: type=gha,scope=clue_toystore
+          cache-to: type=gha,scope=clue_toystore,mode=max
+      - name: Build toystore image (no push, PR test)
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: clue_builders/toystore/Dockerfile
+          platforms: linux/amd64
+          tags: ghcr.io/clue2-sose25/clue2-${{ env.IMAGE_NAME }}:pr-test
+          push: true
+          load: true
+          cache-from: type=gha,scope=clue_toystore
+          cache-to: type=gha,scope=clue_toystore,mode=max
+      - name: Smoke test toystore container
+        run: |
+          docker run -d --name=test_clue_toystore ghcr.io/clue2-sose25/clue2-${IMAGE_NAME}:pr-test /bin/sh -c "echo Toystore OK"
+          sleep 5
+          docker logs test_clue_toystore || true
+          docker stop test_clue_toystore
