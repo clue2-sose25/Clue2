@@ -1,8 +1,8 @@
 from pydantic import BaseModel
 
 
-class ExperimentEntry(BaseModel):
-    """Single experiment entry with optional description"""
+class VariantEntry(BaseModel):
+    """Single SUT variant entry with optional description"""
 
     name: str
     description: str | None = None
@@ -11,7 +11,7 @@ class ExperimentEntry(BaseModel):
 class Sut(BaseModel):
     '''
     A single SUT object, correlated to one SUT config file. 
-    Contains the name and the experiments list of the SUT.
+    Contains the name and the variants list of the SUT.
     '''
     name: str
-    experiments: list[ExperimentEntry]
+    variants: list[VariantEntry]

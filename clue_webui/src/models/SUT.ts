@@ -1,9 +1,9 @@
-export interface Experiment {
+export interface Variant {
   name: string;
   description?: string;
 }
 
 export interface SUT {
   name: string;
-  experiments: Experiment[];
+  variants: Variant[];
 }

@@ -63,14 +63,16 @@ const ControlsPage = () => {
 
   useEffect(() => {
     fetch("/api/suts")
-      .then(async (r) => {
-        if (!r.ok) {
-          throw new Error(`API responded with status ${r.status}`);
+      .then(async (res) => {
+        if (!res.ok) {
+          throw new Error(`API responded with status ${res.status}`);
         }
-        const data = await r.json();
-        return data;
+        return res.json();
       })
-      .then((d) => setAvailableSUTs(d.suts ?? []))
+      .then((data) => {
+        console.log(data)
+        setAvailableSUTs(data ?? [])
+      })
       .catch((err) => {
         console.error("Failed to fetch SUTs:", err);
         setAvailableSUTs([]);
@@ -79,7 +81,7 @@ const ControlsPage = () => {
 
   const variantsOptions = availableSUTs
     .filter((sut) => sut.name === currentDeployment.sut)
-    .flatMap((sut) => sut.experiments);
+    .flatMap((sut) => sut.variants);
 
   const allExperimentsSelected =
     variantsOptions.length > 0 &&
@@ -245,7 +247,7 @@ const ControlsPage = () => {
               </label>
               {availableSUTs
                 .filter((sut) => sut.name === currentDeployment.sut)
-                .flatMap((sut) => sut.experiments)
+                .flatMap((sut) => sut.variants)
                 .map((exp) => (
                   <label
                     key={exp.name}
@@ -286,7 +288,7 @@ const ControlsPage = () => {
                 ))}
               {availableSUTs
                 .filter((sut) => sut.name === currentDeployment.sut)
-                .flatMap((sut) => sut.experiments).length === 0 && (
+                .flatMap((sut) => sut.variants).length === 0 && (
                   <p>Firstly select the SUT</p>
                 )}
             </div>

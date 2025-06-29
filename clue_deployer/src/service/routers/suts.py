@@ -1,11 +1,10 @@
 import os
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, logger
 import yaml
 
 from clue_deployer.src.configs.configs import ENV_CONFIG
 from clue_deployer.src.configs.sut_config import SUTConfig
-from clue_deployer.src.models.sut import ExperimentEntry, Sut
-from clue_deployer.src.models.suts_response import SutsResponse
+from clue_deployer.src.models.sut import VariantEntry, Sut
 
 SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
 RESULTS_DIR = ENV_CONFIG.RESULTS_PATH
@@ -13,7 +12,7 @@ CLUE_CONFIG_PATH = ENV_CONFIG.CLUE_CONFIG_PATH
 
 router = APIRouter()
 
-@router.get("/api/suts", response_model=SutsResponse)
+@router.get("/api/suts", response_model=list[Sut])
 async def list_sut():
     """
     List all SUTs with their experiments.
@@ -24,7 +23,6 @@ async def list_sut():
 
         # Get list of YAML files in the SUT configurations directory
         files = [f for f in os.listdir(SUT_CONFIGS_DIR) if f.endswith(('.yaml', '.yml')) and os.path.isfile(os.path.join(SUT_CONFIGS_DIR, f))]
-
         suts = []
         for filename in files:
             # Extract SUT name from filename (without extension)
@@ -39,25 +37,25 @@ async def list_sut():
             if not isinstance(data, dict):
                 raise HTTPException(status_code=500, detail=f"Invalid SUT configuration file: {filename} is not a valid YAML dictionary")
 
-            # Get experiments section, default to empty list if missing
-            experiments = data.get('experiments', [])
-            if not isinstance(experiments, list):
-                raise HTTPException(status_code=500, detail=f"Invalid SUT configuration file: {filename} has 'experiments' that is not a list")
+            # Get variants section, default to empty list if missing
+            variants = data.get('variants', [])
+            if not isinstance(variants, list):
+                raise HTTPException(status_code=500, detail=f"Invalid SUT configuration file: {filename} has 'variants' that is not a list")
 
             # Extract experiments with optional description
-            parsed_experiments = []
-            for exp in experiments:
-                if not isinstance(exp, dict) or 'name' not in exp:
+            parsed_variants = []
+            for variant in variants:
+                if not isinstance(variant, dict) or 'name' not in variant:
                     raise HTTPException(status_code=500, detail=f"Invalid experiment in SUT configuration file: {filename}")
-                parsed_experiments.append(
-                    ExperimentEntry(name=exp['name'], description=exp.get('description'))
+                parsed_variants.append(
+                    VariantEntry(name=variant.get('name'), description=variant.get('description'))
                 )
 
             # Create Sut object and add to list
-            sut = Sut(name=sut, experiments=parsed_experiments)
+            sut = Sut(name=sut, variants=parsed_variants)
             suts.append(sut)
 
-        return SutsResponse(suts=suts)
+        return suts
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while listing SUTs: {str(e)}")
