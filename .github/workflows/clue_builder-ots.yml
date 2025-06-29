@@ -9,6 +9,10 @@ on:
     paths:
       - 'clue_builders/ots/**'
 
+permissions:
+  contents: read            # for checkout
+  packages: write           # needed to push to GHCR
+
 jobs:
   build_clue_ots:
     runs-on: ubuntu-latest
