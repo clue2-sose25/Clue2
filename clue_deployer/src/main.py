@@ -32,20 +32,22 @@ class ExperimentRunner:
                 workloads: str = ENV_CONFIG.WORKLOADS,
                 deploy_only = ENV_CONFIG.DEPLOY_ONLY,
                 sut: str = ENV_CONFIG.SUT,
-                n_iterations: int = ENV_CONFIG.N_ITERATIONS) -> None:
+                n_iterations: int = ENV_CONFIG.N_ITERATIONS,
+                uuid = uuid.uuid4(),
+                timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")) -> None:
         # Prepare the variants
         final_variants: List[Variant] = [variant for variant in configs.sut_config.variants if variant.name in variants]
         # Prepare the workloads
         final_workloads: List[Workload] = [workload for workload in configs.sut_config.workloads if workload.name in workloads]
         # Create the final experiment object
         self.experiment = Experiment(
-            id = uuid.uuid4(),
+            id = uuid,
             configs = configs,
             sut = sut,
             variants = final_variants,
             workloads = final_workloads,
             n_iterations = n_iterations,
-            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S"),
+            timestamp = timestamp,
             deploy_only= deploy_only
         )
 

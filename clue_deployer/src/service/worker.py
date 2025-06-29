@@ -9,29 +9,63 @@ from fastapi import HTTPException
 SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
 CLUE_CONFIG_PATH = ENV_CONFIG.CLUE_CONFIG_PATH
 
+
+class WorkerManager(mp.BaseManager):
+    pass
+
+WorkerManager.register('ExperimentQueue', ExperimentQueue)
+WorkerManager.register('DeployRequest', DeployRequest)
+
 class Worker:
     def __init__(self):
         self.shared_flag = mp.Value('b', True)
         self.state_lock = mp.Lock()
         self.is_deploying = mp.Value('i', 0)
-        self.process = mp.Process(target=self._worker_loop, args=(self.shared_flag,))
+        
+        
         self.process_logger = get_child_process_logger(f"NO_SUT", shared_log_buffer)
+        
         self.condition = mp.Condition()
-        self.experiment_queue = ExperimentQueue(condition=self.condition)
+        
+        self.manager = WorkerManager()
+        self.manager.start()
+        
+        self.current_deploy_request = WorkerManager.DeployRequest
+        self.experiment_queue = WorkerManager.ExperimentQueue(condition=self.condition)
 
-    def _worker_loop(self, shared_flag):
+        self.process = mp.Process(
+            target=self._worker_loop,
+            args=(
+                self.shared_flag,
+                self.state_lock,
+                self.is_deploying,
+                self.condition,
+                self.experiment_queue,
+                shared_log_buffer
+            )
+        )
+        
+        
+
+
+    def _worker_loop(self, shared_flag, 
+                     state_lock, 
+                     is_deploying, 
+                     condition, 
+                     experiment_queue, 
+                     log_buffer):
         with self.state_lock:
-            if self.is_deploying.value == 1:
+            if is_deploying.value == 1:
                 raise HTTPException(
                     status_code=409,
                     detail="A deployment is already running."
                 )
-            self.is_deploying.value = 1
+            is_deploying.value = 1
         self.process_logger.info("Worker process started and ready to deploy experiments.")
-        while self.shared_flag.value:
-            with self.condition:
+        while shared_flag.value:
+            with condition:
                 # Wait until the queue is not empty or shared_flag is False
-                while self.experiment_queue.is_empty() and shared_flag.value:
+                while experiment_queue.is_empty() and shared_flag.value:
                     self.condition.wait()
 
                 # Exit if shared_flag is no longer True
@@ -51,8 +85,8 @@ class Worker:
                 sut_path = SUT_CONFIGS_DIR.joinpath(sut_filename)
                 
                 if not sut_path.exists():
-                    with self.state_lock:
-                        self.is_deploying.value = 0
+                    with state_lock:
+                        is_deploying.value = 0
                     self.process_logger.error(f"SUT configuration file {sut_filename} does not exist.")
                     continue
                 
@@ -72,8 +106,8 @@ class Worker:
                 self.process_logger.error(f"Deployment process failed for SUT {experiment.sut}: {str(e)}")
         
         # Clean up the deployment state
-        with self.state_lock:
-            self.is_deploying.value = 0
+        with state_lock:
+            is_deploying.value = 0
         self.process_logger.info(f"Deployment process for SUT {experiment.sut} finished")
     
     def start(self):
