@@ -1,0 +1,29 @@
+# .github/actions/clue-deploy/action.yml
+# but first do the registery setup and builder setup, bevor using clue_deployer 
+name: CLUE Deploy Action
+description: Deploys the SUT via Helm in a Kubernetes cluster
+inputs:
+  clue-config-path:
+    description: 'Path to the Helm chart directory'
+    required: true
+  sut-cofig-path:
+    description: 'Path to the sut_configs/sut-config.yaml file shell had same value as clue2-sose25/sut-configs/teastore.yml for example'
+    required: true
+  image-registery:
+    description: 'Path to the Docker image to deploy'
+    required: true  
+  experiment-name:
+    description: 'the tag and experiment inside the sut-cofig'
+    required: true  
+runs: |
+ # Start the CLUE Deployer container as a service
+ docker run -d --name test_clue_deployer \
+   -v ${{ clue-config-path }}:/app/clue-config.yaml \
+   -v ${{ sut-cofig-path  }}:/app/sut-configs/${{ sut-cofig-path  }}\
+   -e DEPLOY_AS_SERVICE=false -p 9001:8000 -e EXPERIMENT_NAME=baselin -e SUT_NAME=${{ sut-cofig-path  }} -e DEPLOY_ONLY=false\
+   ghcr.io/clue2-sose25/clue2-deployer:pr-test
+ sleep 15
+ docker logs test_clue_deployer  || true
+ curl --fail http://localhost:9001/api/health
+ docker stop test_clue_deployer || true
+ docker rm test_clue_deployer || true
