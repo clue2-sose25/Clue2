@@ -4,7 +4,7 @@ set -e
 : "${DEPLOY_AS_SERVICE:=false}"
 : "${DEPLOY_ONLY:=false}"
 
-# Print configs
+# Print configs 
 echo "[ENTRYPOINT.SH] Starting CLUE Deployer container"
 echo "[ENTRYPOINT.SH] Deploying as a service: $DEPLOY_AS_SERVICE"
 echo "[ENTRYPOINT.SH] Deploy without benchmarking: $DEPLOY_ONLY"

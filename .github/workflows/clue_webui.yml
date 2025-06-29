@@ -1,0 +1,70 @@
+name: Build and Push WebUI Image
+on:
+  push:
+    branches: [ "dev", "main" ]
+    paths:
+      - 'clue_webui/**'
+  pull_request:
+    branches: [ "dev" ]
+    paths:
+      - 'clue_webui/**'
+permissions:
+  contents: read            # for checkout
+  packages: write           # needed to push to GHCR
+  
+jobs:
+  build_clue_webui:
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_NAME: webui
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Log in to GHCR
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Lint Dockerfile (clue_webui)
+        run: docker run --rm -i hadolint/hadolint < clue_webui/Dockerfile
+      - name: Compute short Git SHA
+        id: vars
+        run: |
+          echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
+          echo "::set-output name=short_sha::${GITHUB_SHA::7}"
+      - name: Build and push clue_webui image
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: docker/build-push-action@v3
+        with:
+          context: ./clue_webui
+          file: ./clue_webui/Dockerfile
+          platforms: linux/amd64
+          tags: |
+            ghcr.io/clue2-sose25/clue2-${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }}
+            ghcr.io/clue2-sose25/clue2-${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+            ghcr.io/clue2-sose25/clue2-${{ env.IMAGE_NAME }}:pr-test
+            ${{ github.ref_name == 'main' && format('ghcr.io/clue2-sose25/clue2-{0}:latest', env.IMAGE_NAME) || '' }}
+          push: true
+          cache-from: type=gha,scope=clue_webui
+          cache-to: type=gha,scope=clue_webui,mode=max
+      - name: Build clue_webui image (no push, PR test)
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: docker/build-push-action@v3
+        with:
+          context: ./clue_webui
+          file: ./clue_webui/Dockerfile
+          platforms: linux/amd64
+          tags: ghcr.io/clue2-sose25/clue2-${{ env.IMAGE_NAME }}:pr-test
+          push: true
+          load: true
+          cache-from: type=gha,scope=clue_webui
+          cache-to: type=gha,scope=clue_webui,mode=max
+      - name: Smoke test clue_webui container
+        run: |
+          docker run -p 5001:80 -d --name=clue-webui ghcr.io/clue2-sose25/clue2-${IMAGE_NAME}:pr-test
+          sleep 8
+          curl -fs http://localhost:5001/ | grep -q "Clue Dashboard" && echo " webUI Up and running"
+          docker logs clue-webui || true
+          docker stop clue-webui
