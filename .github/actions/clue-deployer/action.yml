@@ -23,7 +23,7 @@ runs:
   using: "composite"
   steps:
   - run: |
-     # Start the CLUE Deployer container as a service
+     # start clue with the main Python program without as service
      docker run -d --name test_clue_deployer \
        -v ${{ inputs['clue-config-path']  }}:/app/clue-config.yaml \
        -v ${{ inputs['sut-config-path'] }}:/app/sut-config.yaml \
