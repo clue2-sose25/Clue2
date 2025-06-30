@@ -17,4 +17,4 @@ for i in "${FILES[@]}"; do
   LOCUST_FILE_ARGS+=" -f $i"
 done
 
-locust $LOCUST_FILE_ARGS --csv $SUT_NAME --csv-full-history --headless --only-summary 1>/dev/null 2>erros.log || tar zcf - ${SUT_NAME}_stats.csv ${SUT_NAME}_failures.csv ${SUT_NAME}_stats_history.csv erros.log | base64 -w 0
+locust $LOCUST_FILE_ARGS --csv $SUT_NAME --csv-full-history --headless --only-summary 1>/dev/null 2>erros.log && tar zcf - ${SUT_NAME}_stats.csv ${SUT_NAME}_failures.csv ${SUT_NAME}_stats_history.csv erros.log | base64 -w 0
