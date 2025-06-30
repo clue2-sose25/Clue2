@@ -241,7 +241,7 @@ class WorkloadRunner:
                     containers=[
                         client.V1Container(
                             name="loadgenerator",
-                            image=f"{CLUE_CONFIG.docker_registry_address}/loadgenerator:latest",
+                            image=f"{CLUE_CONFIG.docker_registry_address}/clue-loadgenerator:latest",
                             env=container_env,
                             command=["/bin/bash", "-c", "./entrypoint.sh"],
                             working_dir="/app",

@@ -57,7 +57,7 @@ def build():
     if build_result != 0:
         raise RuntimeError("Failed to build the load generator")
 
-    print(f"Built cliue load generator for platform {remote_platform_arch} and pushed to {tag}")
+    print(f"Built clue load generator for platform {remote_platform_arch} and pushed to {tag}")
 
 if __name__ == "__main__":
     build()

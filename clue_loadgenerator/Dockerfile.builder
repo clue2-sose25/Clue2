@@ -5,6 +5,8 @@ RUN apk update     && apk add --no-cache     dos2unix     python3     py3-pip   
 WORKDIR /app
 
 COPY clue_loadgenerator/requirements.txt .
+COPY clue_loadgenerator/entrypoint.sh .
+
 RUN pip install --no-cache-dir --break-system-packages pyyaml docker
 
 COPY clue_loadgenerator/build.py .
