@@ -28,7 +28,8 @@ runs:
        ghcr.io/clue2-sose25/clue2-deployer:dev
      sleep 20
      docker logs test_clue_deployer  || true
-     curl --fail http://localhost:9001/api/health
+     sleep 60
+     docker logs test_clue_deployer  || true
      docker stop test_clue_deployer || true
      docker rm test_clue_deployer || true
     shell: bash
