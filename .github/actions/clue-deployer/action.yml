@@ -25,8 +25,8 @@ runs:
        -v ${{ inputs['clue-config-path']  }}:/app/clue-config.yaml \
        -v ${{ inputs['sut-config-path'] }}:/app/sut-config.yaml\
        -e DEPLOY_AS_SERVICE=false -p 9001:8000 -e EXPERIMENT_NAME=${{ inputs.variants-name }} -e SUT=${{ inputs['sut-config-path'] }} -e DEPLOY_ONLY=false -e N_ITERATIONS=1\
-       ghcr.io/clue2-sose25/clue2-deployer:pr-test
-     sleep 15
+       ghcr.io/clue2-sose25/clue2-deployer:latest
+     sleep 20
      docker logs test_clue_deployer  || true
      curl --fail http://localhost:9001/api/health
      docker stop test_clue_deployer || true
