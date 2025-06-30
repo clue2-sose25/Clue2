@@ -9,6 +9,7 @@ class Workload(BaseModel):
     description: str
     timeout_duration: int
     workload_settings: Dict
+    locust_files: list[str]
 
     def __str__(self) -> str:
         return self.name
