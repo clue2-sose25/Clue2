@@ -8,7 +8,7 @@ from os import path
 from tempfile import TemporaryFile
 import docker
 import logging
-from kubernetes import client, watch
+from kubernetes import client, watch, stream
 from kubernetes.client.rest import ApiException
 from clue_deployer.src.configs.configs import CLUE_CONFIG, SUT_CONFIG
 from clue_deployer.src.models.variant import Variant
@@ -23,7 +23,7 @@ class WorkloadRunner:
     def __init__(self, variant: Variant, workload: Workload):
         self.variant = variant
         self.workload = workload
-        self.result_filenames = ResultFiles(sut=self.sut)
+        self.result_filenames = ResultFiles(sut=SUT_CONFIG.sut)
         self._core_api = None
         self._observations_path = None
         self._port_forward_process = None
@@ -39,8 +39,7 @@ class WorkloadRunner:
         """Cancel remote workload running in Kubernetes"""
         logger.info("Workload cancelled, stopping remote workload and deleting pod")
         # attempt to download results before deleting the pod
-        if self._observations_path:
-            self._download_results("loadgenerator", self._observations_path)
+        self._download_results("loadgenerator", self._observations_path)
         
         # (force) delete the running pod to stop the workload
         if self._core_api:
@@ -80,49 +79,51 @@ class WorkloadRunner:
         try:
             self._deploy_remote_workload(self._core_api)
             self._wait_for_workload(self._core_api, self._observations_path)
-            logger.info("Deleting loadgenerator pod in namespace %s", SUT_CONFIG.namespace)
-            self._core_api.delete_namespaced_pod(name="loadgenerator", namespace=SUT_CONFIG.namespace)
         except WorkloadCancelled:
             logging.info("Remote workload stopped due to cancellation")
+        finally:
+            logger.info("Deleting loadgenerator pod in namespace %s", SUT_CONFIG.namespace)
+            self._core_api.delete_namespaced_pod(name="loadgenerator", namespace=SUT_CONFIG.namespace)
+            for config_map_name in config_map_names:
+                try:
+                    self._core_api.delete_namespaced_config_map(name=config_map_name, namespace=SUT_CONFIG.namespace)
+                    logger.info(f"Deleted ConfigMap {config_map_name}")
+                except ApiException as e:
+                    if e.status != 404:
+                        logger.error(f"Failed to delete ConfigMap {config_map_name}: {e}")
 
     def _wait_for_workload(self, core: client.CoreV1Api, observations: str):
         """
-            This continuesly watches the pod until it is finished in 60s intervals.
-            Should the pod disappear before it finishes, we stop waiting.
+            This watches the pod events until it is finished.
         """
-        finished = False
         logger.info("The experiment is running now. Waiting until the loadgenerator is finished...")
-        while not finished:
-            w = watch.Watch()
-            for event in w.stream(
-                    core.list_namespaced_pod,
-                    SUT_CONFIG.namespace,
-                    label_selector="app=loadgenerator",
-                    timeout_seconds=60,
+        w = watch.Watch()
+        
+        for event in w.stream(
+                core.list_namespaced_pod,
+                SUT_CONFIG.namespace,
+                label_selector="app=loadgenerator",
+                timeout_seconds=self.workload.timeout_duration,
             ):
-                pod = event["object"]
-                if pod.status.phase == "Succeeded" or pod.status.phase == "Completed":
-                    logger.info("Loadgenerator container finished!")
-                    try:
-                        self._download_results("loadgenerator", observations)
-                    finally:
-                        w.stop()
-                        finished = True
-                elif pod.status.phase == "Failed":
-                    logger.error(f"loadgenerator could not be started... {pod}")
-                    try:
-                        logger.info(f"Attempting to download results from failed pod, just in case")
-                        self._download_results("loadgenerator", observations)
-                    finally:
-                        w.stop()
-                        finished = True
+            pod = event["object"]
+            if pod.status.container_statuses and pod.status.container_statuses[0].state.terminated:
+                logger.info("Loadgenerator container terminated!")
+                try:
+                    self._download_results("loadgenerator", observations)
+                finally:
+                    w.stop()
+                    return
+            elif pod.status.phase == "Failed":
+                logger.error(f"loadgenerator pod failed! {pod}")
+                try:
+                    logger.info(f"Attempting to download results from failed pod, just in case")
+                    self._download_results("loadgenerator", observations)
+                finally:
+                    w.stop()
+                    return
 
-            if not finished:
-                # workload did not finish during the watch repeat
-                pod_list = core.list_namespaced_pod(SUT_CONFIG.namespace, label_selector="app=loadgenerator")
-                if len(pod_list.items) == 0:
-                    logger.error("workload pod was not found, did it fail to start?, can't download results")
-                    finished = True
+        # workload did not finish during the defined timeout
+        logger.error("Workload pod did not finish within the timeout period, can not download results")
 
     def _deploy_remote_workload(self, core: client.CoreV1Api):
         def k8s_env_pair(k, v):
