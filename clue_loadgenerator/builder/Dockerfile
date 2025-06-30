@@ -9,8 +9,9 @@ COPY clue_loadgenerator/entrypoint.sh .
 
 RUN pip install --no-cache-dir --break-system-packages pyyaml docker
 
-COPY clue_loadgenerator/build.py .
-COPY clue_loadgenerator/entrypoint.builder.sh .
+COPY clue_loadgenerator/builder/build.py ./build.py
+COPY clue_loadgenerator/builder/entrypoint.sh ./entrypoint.builder.sh
+
 COPY clue-config.yaml .
 COPY sut_configs ./sut_configs
 

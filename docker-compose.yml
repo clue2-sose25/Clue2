@@ -124,7 +124,7 @@ services:
     image: ghcr.io/clue2-sose25/clue2/loadgenerator-builder:latest
     build:
       context: .
-      dockerfile: ./clue_loadgenerator/Dockerfile.builder
+      dockerfile: ./clue_loadgenerator/builder/Dockerfile
     container_name: loadgenerator-builder
     privileged: true
     depends_on:
