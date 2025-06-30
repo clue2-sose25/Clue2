@@ -10,11 +10,22 @@ if [ -z "$SUT_NAME" ]; then
   exit 1
 fi
 
-# Build the -f arguments for Locust carrying locust files
+# Build the -f arguments for Locust carrying all locust files
 LOCUST_FILE_ARGS=""
+ALL_LOCUST_FILES=""
 IFS=',' read -ra FILES <<< "$LOCUST_FILE"
 for i in "${FILES[@]}"; do
-  LOCUST_FILE_ARGS+=" -f $i"
+  if [ -z "$ALL_LOCUST_FILES" ]; then
+    ALL_LOCUST_FILES="$(basename $i)"
+  else
+    ALL_LOCUST_FILES+=",$(basename $i)"
+  fi
 done
+LOCUST_FILE_ARGS="-f $ALL_LOCUST_FILES"
 
-locust $LOCUST_FILE_ARGS --csv $SUT_NAME --csv-full-history --headless --only-summary 1>/dev/null 2>erros.log && tar zcf - ${SUT_NAME}_stats.csv ${SUT_NAME}_failures.csv ${SUT_NAME}_stats_history.csv erros.log | base64 -w 0
+cd /app/locustfiles/
+
+locust $LOCUST_FILE_ARGS --csv $SUT_NAME --csv-full-history --headless --only-summary 1>/dev/null 2>erros.log 
+
+# Tar and base64 encode the results so they can get pulled by the deployer
+tar zcf - ${SUT_NAME}_stats.csv ${SUT_NAME}_failures.csv ${SUT_NAME}_stats_history.csv erros.log | base64 -w 0

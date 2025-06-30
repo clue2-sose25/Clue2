@@ -168,19 +168,21 @@ class WorkloadRunner:
             config_map_name = f"locustfile-{self.workload.name}-{idx}"
             config_map_names.append(config_map_name)
             
+            # Get the original filename
+            original_filename = os.path.basename(file_path_relative)
+
             # Create the ConfigMap containing the locust file
             config_map_body = client.V1ConfigMap(
                 api_version="v1",
                 kind="ConfigMap",
                 metadata=client.V1ObjectMeta(name=config_map_name, namespace=SUT_CONFIG.namespace),
-                data={"locustfile.py": locust_file_content} # Use a universal key for the locust file content
+                data={original_filename: locust_file_content} # Use original filename as key
             )
             core.create_namespaced_config_map(namespace=SUT_CONFIG.namespace, body=config_map_body)
-            logger.info(f"Created ConfigMap {config_map_name} for {file_path_relative}")
+            logger.info(f"Created ConfigMap {config_map_name} for {original_filename}")
 
             # Define the mount path inside the loadgenerator container
-            mounted_file_name = f"{idx}_{os.path.basename(file_path_relative)}"
-            mount_path_in_container = f"/app/locustfiles/{mounted_file_name}"
+            mount_path_in_container = f"/app/locustfiles/{original_filename}"
             locust_file_paths_in_container.append(mount_path_in_container)
 
             # Add volume for the ConfigMap
@@ -196,7 +198,7 @@ class WorkloadRunner:
                 client.V1VolumeMount(
                     name=f"locustfile-volume-{idx}",
                     mount_path=mount_path_in_container,
-                    sub_path="locustfile.py" # Universal key in the ConfigMap's data
+                    sub_path=original_filename # Locustfile is saved with its original name in the config map
                 )
             )
         
@@ -333,8 +335,8 @@ class WorkloadRunner:
             full_locust_file_path_in_deployer = os.path.join("/app", file_path_relative)
             
             # Define the mount path inside the loadgenerator container
-            mounted_file_name = f"{idx}_{os.path.basename(file_path_relative)}"
-            mount_path_in_container = f"/app/locustfiles/{mounted_file_name}"
+            original_filename = os.path.basename(file_path_relative)
+            mount_path_in_container = f"/app/locustfiles/{original_filename}"
             locust_file_paths_in_container.append(mount_path_in_container)
 
             mounts[os.path.abspath(full_locust_file_path_in_deployer)] = { # Use full_locust_file_path_in_deployer as key
