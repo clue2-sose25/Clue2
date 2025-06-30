@@ -8,7 +8,7 @@ KUBECONFIG_PATCHED = "/app/clue_deployer/kubeconfig_patched"
 
 def load_config():
     kube_b64 = os.getenv("KUBE_CONFIG")
-    kube_path = os.getenv("KUBECONFIG_PATH", DEFAULT_KUBECONFIG)
+    kube_path = os.getenv("KUBECONFIG_FILE", DEFAULT_KUBECONFIG)
 
     if kube_b64:
         try:
