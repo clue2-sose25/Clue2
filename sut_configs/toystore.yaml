@@ -22,7 +22,13 @@ workloads:
   - name: "shaped"
     description: "Workload with custom load shape behavior."
     timeout_duration: 120
-    workload_settings: {}
+    workload_settings: {
+      "LOCUST_RUN_TIME": "64s"
+    }
+    locust_files:
+      - "sut_configs/workloads/toystore/locustfile.py"
+
+resource_limits: []
 
 variants:
   - name: "baseline"
