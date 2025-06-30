@@ -15,7 +15,10 @@ inputs:
     required: true  
   variants-name:
     description: 'Name of the variant or experiment, e.g., "baseline", which targets the main branch and is also specified in the sut-config.'
-    required: true  
+    required: true
+  results-path:
+    description: 'Directory on the runner to store CLUE results'
+    default: clue_results
 runs:
   using: "composite"
   steps:
