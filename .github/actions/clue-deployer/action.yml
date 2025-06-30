@@ -19,6 +19,12 @@ inputs:
 runs:
   using: "composite"
   steps:
+  - name: Log in to GHCR
+    uses: docker/login-action@v2
+    with:
+      registry: ghcr.io
+      username: ${{ github.actor }}
+      password: ${{ secrets.GITHUB_TOKEN }}
   - run: |
      # Start the CLUE Deployer container as a service
      docker run -d --name test_clue_deployer \
