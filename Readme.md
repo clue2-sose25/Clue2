@@ -13,6 +13,33 @@ Moreover, we are currently focusing on Kubernetes as the orchestrator, so as lon
 
 This Readme describes the process of running CLUE experiments on the selected SUT.
 
+## 📦 ⛓ Using CLUE as a GitHub Action
+
+CLUE can also run directly in your CI pipeline through the `clue-deployer` action.
+The action writes all collected metrics to the directory specified by the
+`results-path` input and uploads those files as an artifact called
+`clue-results`.
+
+The artifact is available for download from the Actions UI or it can be fetched
+in later jobs with `actions/download-artifact`.
+
+example for using
+```yaml
+jobs:
+  run-clue:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: clue2-sose25/Clue2/.github/actions/clue-deployer@latest
+        with:
+          clue-config-path: ./clue/clue-config.yaml
+          sut-config-path: ./clue/toystore-config.yaml
+          image-registry: ghcr.io/clue2-sose25/sustainable_toystore
+          variants-name: main
+          results-path: clue_results
+```
+
+
 ## 📦 Prerequisites
 
 - Docker, e.g. 20.10
