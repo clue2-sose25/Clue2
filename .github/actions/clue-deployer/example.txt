@@ -1,0 +1,15 @@
+# example of ise
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Runs CLUE to test the ...
+        uses: issafadel/test1/.github/actions/clue-deployer@v1
+        with:
+          clue-config-path: ./clue/clue-config.yaml
+          sut-config-path: ./clue/toystore-config.yaml
+          image-registry: ghcr.io/clue2-sose25/sustainable_toystore
+          variants-name: main
+          results-path: clue_results
+          #threshold: total_energy_consuption > 500
