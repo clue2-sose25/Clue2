@@ -32,7 +32,7 @@ def load_configs():
         })(),
         'sut_config': type('SutConfig', (), {
             'sut_path': sut_config['config']['sut_path'],
-            'experiments': sut_config.get('experiments', [])
+            'experiments': sut_config.get('variants', [])
         })()
     })()
     
