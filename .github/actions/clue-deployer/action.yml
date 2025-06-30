@@ -30,3 +30,8 @@ runs:
      sleep 60
      docker logs test_clue_deployer  || true
     shell: bash
+  - name: Upload CLUE results
+    uses: actions/upload-artifact@v3
+    with:
+      name: clue-results
+      path: ${{ inputs['results-path'] }}
