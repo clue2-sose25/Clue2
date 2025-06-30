@@ -49,12 +49,13 @@ services:
       N_ITERATIONS: ${N_ITERATIONS}
       DEPLOY_ONLY: ${DEPLOY_ONLY}
       DEPLOY_AS_SERVICE: ${DEPLOY_AS_SERVICE}
+      KUBE_CONFIG: ${KUBE_CONFIG}
     volumes:
       # CLUE Configs
       - ./clue-config.yaml:/app/clue-config.yaml
       - ./sut_configs:/app/sut_configs
       # Cluster configs
-      - ~/.kube:/root/.kube:ro
+      - ${KUBECONFIG_FILE:-~/.kube/config}:/root/.kube/config:ro
       # Results
       - results-deployer-data:/app/data
     networks:
