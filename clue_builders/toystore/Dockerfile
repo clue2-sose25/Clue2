@@ -19,7 +19,7 @@ RUN pip install --no-cache-dir --break-system-packages -r requirements.txt
 # Copy the rest of the files
 COPY clue_builders/toystore/ .
 
-# Convert line endings and make executable
+# Convert line endings and make executable 
 RUN dos2unix /app/entrypoint.sh \
      && chmod +x /app/entrypoint.sh
 
