@@ -19,7 +19,7 @@ RUN pip install --no-cache-dir --break-system-packages -r requirements.txt
 
 COPY ./sut_configs/otel-demo.yaml /app/sut_configs/otel-demo.yaml
 COPY ./clue-config.yaml /app/clue-configs/
-# Convert line endings and make executable
+# Convert line endings and make executable 
 RUN dos2unix /app/entrypoint.sh \
     && chmod +x /app/entrypoint.sh
 
