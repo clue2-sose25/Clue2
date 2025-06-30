@@ -53,6 +53,8 @@ services:
       # CLUE Configs
       - ./clue-config.yaml:/app/clue-config.yaml
       - ./sut_configs:/app/sut_configs
+      # CLUE Builders (for accessing locust files)
+      - ./clue_builders:/app/clue_builders
       # Cluster configs
       - ~/.kube:/root/.kube:ro
       # Results
