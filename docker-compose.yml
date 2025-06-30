@@ -53,8 +53,6 @@ services:
       # CLUE Configs
       - ./clue-config.yaml:/app/clue-config.yaml
       - ./sut_configs:/app/sut_configs
-      # CLUE Builders (for accessing locust files)
-      - ./clue_builders:/app/clue_builders
       # Cluster configs
       - ~/.kube:/root/.kube:ro
       # Results
@@ -122,12 +120,12 @@ services:
     networks:
       - clue2
 
-  unified-loadgenerator-builder:
-    image: ghcr.io/clue2-sose25/clue2/unified-loadgenerator-builder:latest
+  clue-loadgenerator-builder:
+    image: ghcr.io/clue2-sose25/clue2/loadgenerator-builder:latest
     build:
       context: .
-      dockerfile: ./clue_unified_loadgenerator/Dockerfile.builder
-    container_name: unified-loadgenerator-builder
+      dockerfile: ./clue_loadgenerator/Dockerfile.builder
+    container_name: loadgenerator-builder
     privileged: true
     depends_on:
       - registry
@@ -136,7 +134,7 @@ services:
     volumes:
       - ./clue-config.yaml:/app/clue-config.yaml
       - ./sut_configs:/app/sut_configs
-      - ./clue_unified_loadgenerator:/app/clue_unified_loadgenerator
+      - ./clue_loadgenerator:/app/clue_loadgenerator
     networks:
       - clue2
 
