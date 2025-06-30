@@ -8,7 +8,7 @@ jobs:
     steps:
 
       - name: Runs CLUE to test the ...
-        uses: issafadel/test1/.github/actions/clue-deployer@v1
+        uses: clue2-sose25/Clue2/.github/actions/clue-deployer@v1
         with:
           clue-config-path: ./clue/clue-config.yaml
           sut-config-path: ./clue/toystore-config.yaml

@@ -21,7 +21,7 @@ The action writes all collected metrics to the directory specified by the
 `clue-results`.
 
 The artifact is available for download from the Actions UI or it can be fetched
-in later jobs with `actions/download-artifact`.
+in later jobs with `actions/download-artifact`. Try it !
 
 example for using
 ```yaml
