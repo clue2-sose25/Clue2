@@ -241,7 +241,7 @@ class WorkloadRunner:
                     containers=[
                         client.V1Container(
                             name="loadgenerator",
-                            image=f"{CLUE_CONFIG.docker_registry_address}/unified-loadgenerator:latest",
+                            image=f"{CLUE_CONFIG.docker_registry_address}/loadgenerator:latest",
                             env=container_env,
                             command=["/bin/bash", "-c", "./entrypoint.sh"],
                             working_dir="/app",
@@ -356,7 +356,7 @@ class WorkloadRunner:
         try:
             print("Running the workload generator")
             workload = self._docker_client.containers.run(
-                image=f"{CLUE_CONFIG.docker_registry_address}/unified-loadgenerator:latest",
+                image=f"{CLUE_CONFIG.docker_registry_address}/loadgenerator:latest",
                 auto_remove=True,
                 environment={
                     **self.workload.workload_settings,
