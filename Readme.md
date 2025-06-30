@@ -42,6 +42,14 @@ jobs:
 ```
 
 
+A sample kubeconfig is provided at `.github/actions/mock-kubeconfig.yaml`. Encode the
+file and store the result as the `KUBECONFIG_B64` GitHub secret:
+
+```bash
+base64 -w0 .github/actions/mock-kubeconfig.yaml
+```
+
+
 ## 📦 Prerequisites
 
 - Docker, e.g. 20.10
