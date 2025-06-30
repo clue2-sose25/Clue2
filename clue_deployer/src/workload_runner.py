@@ -327,6 +327,21 @@ class WorkloadRunner:
             },
         }
 
+        locust_file_paths_in_container = []
+        for idx, file_path_relative in enumerate(self.workload.locust_files):
+            # Construct the full path to the locust file inside the deployer container
+            full_locust_file_path_in_deployer = os.path.join("/app", file_path_relative)
+            
+            # Define the mount path inside the loadgenerator container
+            mounted_file_name = f"{idx}_{os.path.basename(file_path_relative)}"
+            mount_path_in_container = f"/app/locustfiles/{mounted_file_name}"
+            locust_file_paths_in_container.append(mount_path_in_container)
+
+            mounts[os.path.abspath(full_locust_file_path_in_deployer)] = { # Use full_locust_file_path_in_deployer as key
+                "bind": mount_path_in_container,
+                "mode": "ro",
+            }
+
         # create files for the mounts if they do not exist
         for f in mounts.keys():
             if not os.path.isfile(f):
@@ -339,9 +354,14 @@ class WorkloadRunner:
         try:
             print("Running the workload generator")
             workload = self._docker_client.containers.run(
-                image=f"{CLUE_CONFIG.docker_registry_address}/loadgenerator",
+                image=f"{CLUE_CONFIG.docker_registry_address}/unified-loadgenerator:latest",
                 auto_remove=True,
-                environment=self.workload.workload_settings,
+                environment={
+                    **self.workload.workload_settings,
+                    "LOCUST_FILE": ",".join(locust_file_paths_in_container),
+                    "LOCUST_HOST": SUT_CONFIG.target_host,
+                    "SUT_NAME": SUT_CONFIG.sut
+                },
                 stdout=True,
                 stderr=True,
                 volumes=mounts,
