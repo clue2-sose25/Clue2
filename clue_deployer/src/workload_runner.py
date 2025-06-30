@@ -76,8 +76,9 @@ class WorkloadRunner:
         if platform.system() != "Windows":
             signal.signal(signal.SIGUSR1, self._cancel_remote_workload)
 
+        config_map_names = []
         try:
-            self._deploy_remote_workload(self._core_api)
+            config_map_names = self._deploy_remote_workload(self._core_api)
             self._wait_for_workload(self._core_api, self._observations_path)
         except WorkloadCancelled:
             logging.info("Remote workload stopped due to cancellation")
@@ -133,11 +134,77 @@ class WorkloadRunner:
             )
 
         container_env = [k8s_env_pair(k, v) for k, v in self.workload.workload_settings.items()]
+        
         # Ensure that the host reflects the colocated case
         container_env.append(
             client.V1EnvVar(
                 name="LOCUST_HOST",
                 value= SUT_CONFIG.target_host
+            )
+        )
+        
+        # Ensure that the SUT name is set in the environment
+        container_env.append(
+            client.V1EnvVar(
+                name="SUT_NAME",
+                value= SUT_CONFIG.sut
+            )
+        )
+
+        locust_volumes = []
+        locust_volume_mounts = []
+        locust_file_paths_in_container = []
+        config_map_names = []
+
+        # Create a ConfigMap for each locust file and its corresponding volume mount
+        for idx, file_path_relative in enumerate(self.workload.locust_files):
+            full_locust_file_path_in_deployer = os.path.join("/app", file_path_relative)
+            
+            # Read the content of the locust file
+            with open(full_locust_file_path_in_deployer, 'r') as f:
+                locust_file_content = f.read()
+
+            # Create a unique name for the ConfigMap
+            config_map_name = f"locustfile-{self.workload.name}-{idx}"
+            config_map_names.append(config_map_name)
+            
+            # Create the ConfigMap containing the locust file
+            config_map_body = client.V1ConfigMap(
+                api_version="v1",
+                kind="ConfigMap",
+                metadata=client.V1ObjectMeta(name=config_map_name, namespace=SUT_CONFIG.namespace),
+                data={"locustfile.py": locust_file_content} # Use a universal key for the locust file content
+            )
+            core.create_namespaced_config_map(namespace=SUT_CONFIG.namespace, body=config_map_body)
+            logger.info(f"Created ConfigMap {config_map_name} for {file_path_relative}")
+
+            # Define the mount path inside the loadgenerator container
+            mounted_file_name = f"{idx}_{os.path.basename(file_path_relative)}"
+            mount_path_in_container = f"/app/locustfiles/{mounted_file_name}"
+            locust_file_paths_in_container.append(mount_path_in_container)
+
+            # Add volume for the ConfigMap
+            locust_volumes.append(
+                client.V1Volume(
+                    name=f"locustfile-volume-{idx}",
+                    config_map=client.V1ConfigMapVolumeSource(name=config_map_name)
+                )
+            )
+
+            # Add volume mount for the ConfigMap
+            locust_volume_mounts.append(
+                client.V1VolumeMount(
+                    name=f"locustfile-volume-{idx}",
+                    mount_path=mount_path_in_container,
+                    sub_path="locustfile.py" # Universal key in the ConfigMap's data
+                )
+            )
+        
+        # Pass locust files location to container via LOCUST_FILE environment variable
+        container_env.append(
+            client.V1EnvVar(
+                name="LOCUST_FILE",
+                value=",".join(locust_file_paths_in_container)
             )
         )
 
@@ -172,16 +239,14 @@ class WorkloadRunner:
                     containers=[
                         client.V1Container(
                             name="loadgenerator",
-                            image=f"{CLUE_CONFIG.docker_registry_address}/loadgenerator:{self.variant.target_branch}",
+                            image=f"{CLUE_CONFIG.docker_registry_address}/unified-loadgenerator:latest",
                             env=container_env,
-                            command=[
-                                "sh",
-                                "-c",
-                                f"locust --csv {SUT_CONFIG.sut} --csv-full-history --headless --only-summary 1>/dev/null 2>errors.log; tar zcf - {self.result_filenames.stats_csv} {self.result_filenames.failures_csv} {self.result_filenames.stats_history_csv} errors.log | base64 -w 0",
-                            ],
-                            working_dir="/loadgenerator",
+                            command=["/bin/bash", "-c", "./entrypoint.sh"],
+                            working_dir="/app",
+                            volume_mounts=locust_volume_mounts,
                         )
                     ],
+                    volumes=locust_volumes,
                     # Run this on a different node
                     affinity=affinity,
                     restart_policy="Never",
@@ -189,6 +254,7 @@ class WorkloadRunner:
             ),
         )
         logger.info("Deployed loadgenerator to cluster!")
+        return config_map_names
 
     def _download_results(self, pod_name: str, results_path: str):
         """
