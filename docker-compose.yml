@@ -120,6 +120,24 @@ services:
     networks:
       - clue2
 
+  unified-loadgenerator-builder:
+    image: ghcr.io/clue2-sose25/clue2/unified-loadgenerator-builder:latest
+    build:
+      context: .
+      dockerfile: ./clue_unified_loadgenerator/Dockerfile.builder
+    container_name: unified-loadgenerator-builder
+    privileged: true
+    depends_on:
+      - registry
+    environment:
+      DOCKER_BUILDKIT: 1
+    volumes:
+      - ./clue-config.yaml:/app/clue-config.yaml
+      - ./sut_configs:/app/sut_configs
+      - ./clue_unified_loadgenerator:/app/clue_unified_loadgenerator
+    networks:
+      - clue2
+
 volumes:
   registry-data:
   results-deployer-data:
