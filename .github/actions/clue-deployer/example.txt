@@ -1,4 +1,7 @@
-# example of ise
+# example of uses
+# How can you retrieve the results?
+# After the workflow completes, navigate to the run in the GitHub Actions tab and download the clue-results artifact. You may also add an additional step using actions/download-artifact in a subsequent job to retrieve the artifact programmatically.
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
