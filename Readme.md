@@ -37,6 +37,8 @@ jobs:
           image-registry: ghcr.io/clue2-sose25/sustainable_toystore
           variants-name: main
           results-path: clue_results
+          kubeconfig: ${{ secrets.KUBECONFIG_B64 }}
+          patch-local-cluster: 'true'
 ```
 
 
@@ -77,6 +79,10 @@ If `DEPLOY_AS_SERVICE` is enabled and no kubeconfig is provided, the backend
 starts without a cluster connection. You can then upload the configuration from
 the Web UI at `/cluster`. The local cluster patching can be disabled by setting
 `PATCH_LOCAL_CLUSTER=false`.
+
+When running as a service without a SUT configuration the backend still
+starts. Provide the SUT name through the `SUT` environment variable when
+launching a deployment request.
 
 1. Setting up a local `Kind` cluster
 

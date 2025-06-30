@@ -21,18 +21,23 @@ from clue_deployer.src.logger import logger
 # Disable SSL verification
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# Load K8s config
-kube_config.load_kube_config()
 
 
 class ExperimentRunner:
-    def __init__(self, 
-                configs: Configs = CONFIGS, 
+    def __init__(self,
+                configs: Configs = CONFIGS,
                 variants: str = ENV_CONFIG.VARIANTS,
                 workloads: str = ENV_CONFIG.WORKLOADS,
                 deploy_only = ENV_CONFIG.DEPLOY_ONLY,
                 sut: str = ENV_CONFIG.SUT,
                 n_iterations: int = ENV_CONFIG.N_ITERATIONS) -> None:
+        try:
+            kube_config.load_kube_config()
+        except Exception as exc:
+            if os.getenv("DEPLOY_AS_SERVICE", "false").lower() == "true":
+                logger.warning(f"Failed to load kubeconfig: {exc}")
+            else:
+                raise
         # Prepare the variants
         final_variants: List[Variant] = [variant for variant in configs.sut_config.variants if variant.name in variants]
         # Prepare the workloads
