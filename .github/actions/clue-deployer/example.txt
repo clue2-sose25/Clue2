@@ -16,4 +16,5 @@ jobs:
           variants-name: main
           results-path: clue_results
           kubeconfig: ${{ secrets.KUBECONFIG_B64 }}
+          patch-local-cluster: 'true'
           #threshold: total_energy_consuption > 500

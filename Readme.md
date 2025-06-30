@@ -68,7 +68,15 @@ In order to use CLUE to benchmark the SUT of choice, CLUE needs an access to a K
 - `Prometheus Node Exporter` - we recommend the Kube Prometheus Stack helm chart, which includes e.g. Node Exporter and Grafana resources.
 - `Kepler` - we recommend to deploy the official `Kepler Helm chart` by following the official [Kepler docs](https://sustainable-computing.io/installation/kepler-helm/). If the `Prometheus Node Exporter` was setup before, one can skip the corresponding steps in the `Kepler` guide.
 
-When deploying CLUE service, docker mounts the current kube config of the host machine to the CLUE deployer container. Therefore, to specify a specific k8s cluster for CLUE, be sure that your current `.kube` context is selected to the cluster of your choice.
+When deploying CLUE service the kubeconfig can be provided in multiple ways. By default
+`docker-compose` mounts `~/.kube/config` into the deployer container. Alternatively you can
+set `KUBECONFIG_FILE` to mount a different file or pass a base64 encoded configuration via
+the `KUBE_CONFIG` environment variable (useful for CI environments).
+
+If `DEPLOY_AS_SERVICE` is enabled and no kubeconfig is provided, the backend
+starts without a cluster connection. You can then upload the configuration from
+the Web UI at `/cluster`. The local cluster patching can be disabled by setting
+`PATCH_LOCAL_CLUSTER=false`.
 
 1. Setting up a local `Kind` cluster
 

@@ -2,6 +2,7 @@ import {
   CommandIcon,
   FilesIcon,
   GaugeIcon,
+  WrenchIcon,
 } from "@phosphor-icons/react/dist/ssr";
 import { NavLink } from "react-router";
 
@@ -10,6 +11,7 @@ const Navbar = () => {
     { name: "CONTROL PANEL", href: "/control", icon: <CommandIcon size={20} /> },
     { name: "DASHBOARD", href: "/dashboard", icon: <GaugeIcon size={20} /> },
     { name: "RESULTS", href: "/results", icon: <FilesIcon size={20} /> },
+    { name: "CLUSTER", href: "/cluster", icon: <WrenchIcon size={20} /> },
   ];
 
   return (

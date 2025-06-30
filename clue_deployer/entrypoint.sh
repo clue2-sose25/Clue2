@@ -3,6 +3,8 @@ set -e
 # Environment variable fallbacks
 : "${DEPLOY_AS_SERVICE:=false}"
 : "${DEPLOY_ONLY:=false}"
+: "${PATCH_LOCAL_CLUSTER:=true}"
+
 
 # Print configs 
 echo "[ENTRYPOINT.SH] Starting CLUE Deployer container"

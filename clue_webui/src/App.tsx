@@ -5,6 +5,8 @@ import ExperimentsResultsPage from "./pages/ExperimentsResultsPage";
 import ResultPage from "./pages/ResultPage";
 import DashboardPage from "./pages/DashboardPage";
 import HomePage from "./pages/HomePage";
+import ClusterConfigPage from "./pages/ClusterConfigPage";
+
 
 function App() {
   return (
@@ -17,6 +19,7 @@ function App() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/results" element={<ExperimentsResultsPage />} />
           <Route path="/results/:resultEntryId" element={<ResultPage />} />
+          <Route path="/cluster" element={<ClusterConfigPage />} />
         </Routes>
       </div>
     </div>

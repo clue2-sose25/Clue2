@@ -50,6 +50,7 @@ services:
       DEPLOY_ONLY: ${DEPLOY_ONLY}
       DEPLOY_AS_SERVICE: ${DEPLOY_AS_SERVICE}
       KUBE_CONFIG: ${KUBE_CONFIG}
+      PATCH_LOCAL_CLUSTER: ${PATCH_LOCAL_CLUSTER:-true}
     volumes:
       # CLUE Configs
       - ./clue-config.yaml:/app/clue-config.yaml
