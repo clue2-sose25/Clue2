@@ -30,6 +30,4 @@ runs:
      docker logs test_clue_deployer  || true
      sleep 60
      docker logs test_clue_deployer  || true
-     docker stop test_clue_deployer || true
-     docker rm test_clue_deployer || true
     shell: bash
