@@ -31,3 +31,4 @@ runs:
      curl --fail http://localhost:9001/api/health
      docker stop test_clue_deployer || true
      docker rm test_clue_deployer || true
+    shell: bash
