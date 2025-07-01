@@ -19,7 +19,9 @@ const ResultPage = () => {
   const { uuid } = useParams<ResultEntryParams>();
 
   const [metrics, setMetrics] = useState<Metric[]>([]);
-  const [resultDetails, setResultDetails] = useState<ResultDetails | null>(null);
+  const [resultDetails, setResultDetails] = useState<ResultDetails | null>(
+    null
+  );
 
   const handleResultsDownload = async (uuid: string, e: React.MouseEvent) => {
     e.preventDefault();
@@ -33,7 +35,7 @@ const ResultPage = () => {
 
       // Create download URL and trigger download
       const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
       link.download = `results-${uuid}.zip`; // Set filename
       document.body.appendChild(link);
@@ -46,7 +48,6 @@ const ResultPage = () => {
       console.error(err);
     }
   };
-
 
   useEffect(() => {
     const fetchData = async () => {
@@ -110,7 +111,6 @@ const ResultPage = () => {
   return (
     <div className="w-full h-full flex flex-col gap-6 p-6 pt-4">
       <div className="flex flex-col gap-4">
-
         {/* Top Bar with Back-Link and Buttons */}
         <div className="flex justify-between items-center">
           <Link

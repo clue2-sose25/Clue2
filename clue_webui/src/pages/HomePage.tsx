@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
-import { PauseIcon, ClockIcon, FilesIcon, RocketLaunchIcon, StackIcon } from "@phosphor-icons/react";
+import {
+  PauseIcon,
+  ClockIcon,
+  FilesIcon,
+  RocketLaunchIcon,
+  StackIcon,
+} from "@phosphor-icons/react";
 import Card from "../components/Card";
 
 const HomePage = () => {
@@ -66,7 +72,11 @@ const HomePage = () => {
         <Card
           title="EXPERIMENTS QUEUE"
           icon={<StackIcon size={60} />}
-          text={queueCount === 0 ? "The queue is empty" : `${queueCount} experiments in the queue`}
+          text={
+            queueCount === 0
+              ? "The queue is empty"
+              : `${queueCount} experiments in the queue`
+          }
           subText={queueCount === 0 ? "" : "Estimated time: -"}
           link="/control"
           button="Add a new experiment"

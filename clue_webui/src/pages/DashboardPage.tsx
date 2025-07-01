@@ -144,9 +144,7 @@ const DashboardPage = () => {
                 <div className="pb-2">
                   <p className="flex gap-2 text-xl items-center pt-2 pb-2">
                     <RocketLaunchIcon size={24} /> Deploying{" "}
-                    <span className="font-medium">
-                      {currentDeployment.sut}
-                    </span>
+                    <span className="font-medium">{currentDeployment.sut}</span>
                     !
                   </p>
                   Your current experiment is being deployed. Please grab a
@@ -179,7 +177,7 @@ const DashboardPage = () => {
                 </div>
                 <button
                   className="rounded p-2 bg-green-400 text-white hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                  onClick={() => { }}
+                  onClick={() => {}}
                   disabled={true}
                 >
                   <div className="flex items-center justify-center gap-2">
@@ -189,7 +187,7 @@ const DashboardPage = () => {
                 </button>
                 <button
                   className="rounded p-2 bg-red-400 text-white hover:bg-red-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                  onClick={() => { }}
+                  onClick={() => {}}
                   disabled={
                     !currentDeployment.sut ||
                     currentDeployment.variants.length === 0
@@ -212,8 +210,11 @@ const DashboardPage = () => {
               <WarningIcon size={90} /> The queue is empty!
             </span>{" "}
             <span>
-              Add a {" "}
-              <Link className="font-medium text-sm text-blue-500" to={"/experiment"}>
+              Add a{" "}
+              <Link
+                className="font-medium text-sm text-blue-500"
+                to={"/experiment"}
+              >
                 new experiment
               </Link>{" "}
               to the queue!
