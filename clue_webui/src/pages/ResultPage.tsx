@@ -1,14 +1,13 @@
-import { Fragment, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import type { Metric } from "../models/Metric";
 import {
   ArrowLeftIcon,
   DownloadSimpleIcon,
-  FilesIcon,
-  GearIcon,
   RepeatIcon,
 } from "@phosphor-icons/react";
 import { Link, useParams } from "react-router";
 import type { ResultDetails } from "../models/ResultsDetails";
+import ResultDetailsDisplay from "../components/results/ResultDetailsDisplay";
 
 // Define params type for useParams
 type ResultEntryParams = {
@@ -102,16 +101,17 @@ const ResultPage = () => {
     fetchData();
   }, [uuid]);
 
-  const [svgData, setSvgData] = useState<{
-    cpu: string;
-    memory: string;
-    wattage: string;
-  } | null>(null);
+  // const [svgData, setSvgData] = useState<{
+  //   cpu: string;
+  //   memory: string;
+  //   wattage: string;
+  // } | null>(null);
 
   return (
     <div className="w-full h-full flex flex-col gap-6 p-6 pt-4">
-      {/* Top Bar with Back-Link and Buttons */}
       <div className="flex flex-col gap-4">
+
+        {/* Top Bar with Back-Link and Buttons */}
         <div className="flex justify-between items-center">
           <Link
             to="/results"
@@ -132,63 +132,7 @@ const ResultPage = () => {
           </div>
         </div>
 
-        {/* Configuration Details */}
-        <div className="flex flex-col gap-4">
-          <div className="flex gap-2 items-center">
-            <GearIcon size="24" />
-            <p className="text-xl font-medium">Experiment Details</p>
-          </div>
-          <div className="mb-8">
-            <pre className="bg-gray-100 p-4 rounded overflow-auto text-sm">
-              {JSON.stringify(resultDetails, null, 2)}
-            </pre>
-          </div>
-        </div>
-
-        {/* Results Summary */}
-        <div className="flex flex-col gap-4">
-          <div className="flex gap-2 items-center">
-            <FilesIcon size="24" />
-            <p className="text-xl font-medium">Results summary</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {metrics.length > 0 ? (
-              metrics.map((m) => (
-                <div
-                  key={m.label}
-                  className="border rounded-xl shadow bg-white py-1 px-3"
-                >
-                  <span className="text-sm">{m.label}: </span>
-                  <span className="text-md font-bold text-center">
-                    {m.value}
-                  </span>
-                </div>
-              ))
-            ) : (
-              <div>
-                No metrics available. Did the experiment finish running?
-              </div>
-            )}
-          </div>
-          <div className="w-full max-w-full grid grid-cols-1 md:grid-cols-3 gap-4">
-            {svgData && (
-              <Fragment>
-                <div
-                  className="w-32 h-32"
-                  dangerouslySetInnerHTML={{ __html: svgData.cpu }}
-                />
-                <div
-                  className="w-32 h-32"
-                  dangerouslySetInnerHTML={{ __html: svgData.memory }}
-                />
-                <div
-                  className="w-32 h-32"
-                  dangerouslySetInnerHTML={{ __html: svgData.wattage }}
-                />
-              </Fragment>
-            )}
-          </div>
-        </div>
+        {resultDetails && <ResultDetailsDisplay data={resultDetails} />}
       </div>
     </div>
   );
