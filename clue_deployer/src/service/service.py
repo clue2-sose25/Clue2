@@ -658,7 +658,7 @@ def deploy_kill():
     
     # Terminate the worker process
     try:
-        worker.terminate()
+        worker.kill()
     except Exception as e:
         logger.error(f"Failed to terminate deployment process: {str(e)}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
