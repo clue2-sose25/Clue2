@@ -113,7 +113,7 @@ const DashboardPage = () => {
   };
 
   return (
-    <div className="w-full h-full flex flex-col gap-2 pt-2 p-6">
+    <div className="w-full h-full flex flex-col gap-2">
       {ifDeploying && (
         <div className="w-full h-full flex items-center justify-center gap-2">
           <IconButton
@@ -205,7 +205,7 @@ const DashboardPage = () => {
             </div>
           </div>
         ) : (
-          <div className="flex flex-col items-center w-full h-[500px] justify-center">
+          <div className="flex flex-col items-center w-full h-full justify-center">
             <span className="flex flex-col font-semibold text-xl items-center pb-2 gap-2">
               <WarningIcon size={90} /> The queue is empty!
             </span>{" "}

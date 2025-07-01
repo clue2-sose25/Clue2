@@ -1,15 +1,16 @@
+from multiprocessing.sharedctypes import Synchronized
 import os
 from contextlib import asynccontextmanager
+from threading import Lock
+from typing import Any
 from fastapi import FastAPI, HTTPException, status
-from fastapi.responses import JSONResponse, StreamingResponse, RedirectResponse
-from pathlib import Path
+from fastapi.responses import JSONResponse, RedirectResponse
 import multiprocessing
-from clue_deployer.src.models.experiment import Experiment
 from clue_deployer.src.models.deploy_request import DeployRequest
 from clue_deployer.src.models.health_response import HealthResponse
 from clue_deployer.src.models.status_response import StatusResponse
 from clue_deployer.src.service.status_manager import StatusManager
-from clue_deployer.src.logger import get_child_process_logger, logger, shared_log_buffer
+from clue_deployer.src.logger import SharedLogBuffer, get_child_process_logger, logger, shared_log_buffer
 from clue_deployer.src.configs.configs import ENV_CONFIG, Configs
 from clue_deployer.src.main import ExperimentRunner
 from clue_deployer.src.service.worker import Worker
@@ -44,8 +45,8 @@ SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
 RESULTS_DIR = ENV_CONFIG.RESULTS_PATH
 CLUE_CONFIG_PATH = ENV_CONFIG.CLUE_CONFIG_PATH
 
-def run_deployment(configs, deploy_request: DeployRequest,
-                  state_lock, is_deploying, shared_log_buffer):
+def run_deployment(configs: Configs, deploy_request: DeployRequest,
+                  state_lock: Lock, is_deploying, shared_log_buffer: SharedLogBuffer):
     """Function to run the deployment in a separate process."""
     # Setup logger for this child process
     process_logger = get_child_process_logger(f"DEPLOY_{deploy_request.sut}", shared_log_buffer)
