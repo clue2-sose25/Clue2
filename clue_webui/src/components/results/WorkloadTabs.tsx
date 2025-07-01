@@ -43,11 +43,17 @@ const WorkloadTabs: React.FC<{
         {workloads.map((workload, index) => (
           <div key={index} className={activeTab === index ? "block" : "hidden"}>
             <div className="bg-white border rounded-lg p-4 space-y-4">
-              <div className="flex flex-col gap-1 pb-4">
+              <div className="flex flex-col gap-1">
                 <div className="text-lg font-medium">
                   Workload: {workload.name}
                 </div>
                 <p className="text-xs text-gray-500">{workload.description}</p>
+              </div>
+              <div>
+                <div className="block mb-2">
+                  <strong>Timeout Duration: </strong>
+                  {workload.timeout_duration} seconds
+                </div>
               </div>
 
               <div>
@@ -56,7 +62,6 @@ const WorkloadTabs: React.FC<{
                   {JSON.stringify(workload.workload_settings, null, 2)}
                 </pre>
               </div>
-
               <div>
                 <strong className="block mb-3">Variants:</strong>
                 <div className="space-y-3">
