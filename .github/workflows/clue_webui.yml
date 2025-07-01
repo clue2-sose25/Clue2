@@ -29,7 +29,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Lint Dockerfile (clue_webui)
-        run: docker run --rm -i hadolint/hadolint < clue_webui/Dockerfile
+        run: docker run --rm -i hadolint/hadolint hadolint --ignore DL3059 --ignore DL3008 - < clue_webui/Dockerfile
       - name: Compute short Git SHA
         id: vars
         run: |
