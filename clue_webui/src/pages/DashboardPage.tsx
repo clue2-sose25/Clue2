@@ -115,7 +115,7 @@ const DashboardPage = () => {
   return (
     <div className="w-full h-full flex flex-col gap-2 pt-2 p-6">
       {ifDeploying && (
-        <div className="w-full flex items-center justify-center gap-2">
+        <div className="w-full h-full flex items-center justify-center gap-2">
           <IconButton
             disabled={currentQueueIndex <= 0}
             onClick={decreaseIndexInQueue}
@@ -136,7 +136,7 @@ const DashboardPage = () => {
           </IconButton>
         </div>
       )}
-      <div className="bg-white p-6 rounded-lg shadow-md w-full">
+      <div className="bg-white p-6 rounded-lg shadow-md w-full h-full">
         {ifDeploying ? (
           <div className="flex gap-6 ">
             <div className="w-1/3">
@@ -209,14 +209,14 @@ const DashboardPage = () => {
         ) : (
           <div className="flex flex-col items-center w-full h-[500px] justify-center">
             <span className="flex flex-col font-semibold text-xl items-center pb-2 gap-2">
-              <WarningIcon size={90} /> The experiments queue is empty!
+              <WarningIcon size={90} /> The queue is empty!
             </span>{" "}
             <span>
-              Visit the{" "}
-              <Link className="font-medium text-sm text-blue-500" to={"/control"}>
-                Control Panel
+              Add a {" "}
+              <Link className="font-medium text-sm text-blue-500" to={"/experiment"}>
+                new experiment
               </Link>{" "}
-              to add an experiment to the queue!
+              to the queue!
             </span>
           </div>
         )}
