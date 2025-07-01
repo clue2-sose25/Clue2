@@ -1,12 +1,12 @@
 import { useContext, useEffect, useState, useRef } from "react";
 import { DeploymentContext } from "../contexts/DeploymentContext";
-import { InfoIcon, RocketLaunchIcon, StackPlusIcon } from "@phosphor-icons/react";
+import { PlusCircleIcon, RocketLaunchIcon, StackPlusIcon } from "@phosphor-icons/react";
 import type { SUT } from "../models/SUT";
-import { Tooltip } from "@mui/material";
+import { IconButton, Tooltip } from "@mui/material";
 import { useNavigate } from "react-router";
 import { QueueContext } from "../contexts/QueueContext";
 
-const ControlsPage = () => {
+const ExperimentPage = () => {
   const { currentDeployment, setCurrentDeployment, setIfDeploying } =
     useContext(DeploymentContext);
 
@@ -17,13 +17,13 @@ const ControlsPage = () => {
   const variantSelectAllRef = useRef<HTMLInputElement>(null);
   const workloadSelectAllRef = useRef<HTMLInputElement>(null);
 
+  // System Under Test - Progress
+  const sutConfigProgress = !!currentDeployment.sut && currentDeployment.variants.length > 0 && currentDeployment.workloads.length > 0
 
-  const sutSelected = !!currentDeployment.sut;
-  const benchmarkingSelected =
-    currentDeployment.variants.length > 0 &&
-    currentDeployment.workloads.length > 0 &&
+
+  const benchmarkingConfigProgress =
     currentDeployment.iterations > 0;
-  const deployEnabled = sutSelected && benchmarkingSelected;
+  const deployEnabled = sutConfigProgress && benchmarkingConfigProgress;
 
   /**
    * On the component load
@@ -138,20 +138,20 @@ const ControlsPage = () => {
   };
 
   return (
-    <div className="w-full h-full flex flex-col items-center gap-6">
-      <div className="flex flex-col md:flex-row gap-4 w-full justify-center">
+    <div className="w-full h-full flex flex-col items-center ">
+      <div className="h-[calc(100%-3.5rem)] flex flex-col md:flex-row gap-4 w-full justify-center">
         {/* Progress Sidebar */}
-        <div className="border rounded shadow p-4 flex flex-col gap-2 md:w-1/5">
-          <p className="font-medium">Progress</p>
+        <div className="h-full border-x border-t rounded shadow p-4 flex flex-col gap-2 md:w-1/5">
+          <p className="font-medium">Configuration Progress</p>
           <label className="flex gap-2 items-center">
-            <input type="checkbox" readOnly checked={sutSelected} className="w-5 h-5" />
-            <span>System under test</span>
+            <input type="checkbox" readOnly checked={sutConfigProgress} className="w-5 h-5" />
+            <span>System Under Test</span>
           </label>
           <label className="flex gap-2 items-center">
             <input
               type="checkbox"
               readOnly
-              checked={benchmarkingSelected}
+              checked={benchmarkingConfigProgress}
               className="w-5 h-5"
             />
             <span>Benchmarking Options</span>
@@ -159,21 +159,24 @@ const ControlsPage = () => {
         </div>
 
         {/* Parameter Selection */}
-        <div className="flex flex-col gap-4 border rounded shadow p-4 md:w-2/5 w-3/4 flex-grow">
+        <div className="h-full overflow-y-auto flex flex-col gap-4 border-x border-t rounded shadow p-4 md:w-2/5 w-3/4 flex-grow">
           {/* SUT Dropdown */}
           <div className="flex flex-col gap-2">
             <label
               htmlFor="sut-select"
-              className="flex gap-2 items-center text-sm font-medium"
+              className="flex flex-col gap-2  text-sm font-medium"
             >
-              SUT
-              <Tooltip
-                title="The selected System Under Test to deploy"
-                placement="right"
-                arrow
-              >
-                <InfoIcon size={18} />
-              </Tooltip>
+              <div className="flex justify-start w-full items-center">
+                <span>System Under Test (SUT)</span>
+                <Tooltip title="Add a custom SUT config" arrow placement="top" >
+                  <IconButton>
+                    <PlusCircleIcon size={20} />
+                  </IconButton>
+                </Tooltip>
+              </div>
+              <p className="text-xs text-gray-500">
+                Select the SUT config to deploy. To deploy a custom SUT config, click the plus button.
+              </p>
             </label>
             <select
               id="sut-select"
@@ -203,16 +206,9 @@ const ControlsPage = () => {
             <label className="flex flex-col gap-2  text-sm font-medium">
               <div className="flex justify-start w-full gap-2 items-center">
                 Variants
-                <Tooltip
-                  title="Select one or more experiments to run sequentially"
-                  placement="right"
-                  arrow
-                >
-                  <InfoIcon size={18} />
-                </Tooltip>
               </div>
               <p className="text-xs text-gray-500">
-                You can select multiple variants; they will run sequentially.
+                A list of possible SUT variants, corresponding to specific GIT branches. You can select multiple variants; they will run sequentially.
               </p>
             </label>
             <div
@@ -291,16 +287,9 @@ const ControlsPage = () => {
             <label className="flex flex-col gap-2  text-sm font-medium">
               <div className="flex justify-start w-full gap-2 items-center">
                 Workloads
-                <Tooltip
-                  title="Select one or more workloads to run sequentially"
-                  placement="right"
-                  arrow
-                >
-                  <InfoIcon size={18} />
-                </Tooltip>
               </div>
               <p className="text-xs text-gray-500">
-                You can select multiple workloads; they will run sequentially.
+                A list of possible workload types. You can select multiple workloads; they will run sequentially.
               </p>
             </label>
             <div
@@ -365,18 +354,13 @@ const ControlsPage = () => {
 
           {/* Iterations Input */}
           <div className="flex flex-col gap-2">
-            <label
-              htmlFor="iterations-input"
-              className="flex gap-2 items-center text-sm font-medium"
-            >
-              Iterations
-              <Tooltip
-                title="The number of iterations for the experiment"
-                placement="right"
-                arrow
-              >
-                <InfoIcon size={18} />
-              </Tooltip>
+            <label className="flex flex-col gap-2  text-sm font-medium">
+              <div className="flex justify-start w-full gap-2 items-center">
+                Number of iterations
+              </div>
+              <p className="text-xs text-gray-500">
+                The number of iterations for each of the runs (variant + workload); more iterations the consistency of the results metrics.
+              </p>
             </label>
             <input
               id="iterations-input"
@@ -394,24 +378,19 @@ const ControlsPage = () => {
           </div>
 
           {/* Deploy Only Checkbox */}
-          <div className="flex items-center py-2 justify-between gap-2">
-            <label
-              htmlFor="deploy-only-checkbox"
-              className="flex gap-2 items-center text-sm font-medium"
-            >
-              Deploy only
-              <Tooltip
-                title="If selected the SUT will be deployed without running the actual benchmark. For testing purposes."
-                placement="right"
-                arrow
-              >
-                <InfoIcon size={18} />
-              </Tooltip>
+          <div className="flex items-center py-2 justify-between gap-2 ">
+            <label className="flex flex-col gap-2 text-sm font-medium">
+              <div className="flex justify-start w-full gap-2 items-center">
+                Deploy only
+              </div>
+              <p className="text-xs text-gray-500">
+                If selected the SUT will be deployed without running the actual benchmark. For testing purposes.
+              </p>
             </label>
             <input
               id="deploy-only-checkbox"
               type="checkbox"
-              className="border w-5 h-5 bg-white"
+              className="border w-6 h-6 bg-white"
               checked={currentDeployment.deploy_only}
               onChange={(e) =>
                 setCurrentDeployment({
@@ -421,35 +400,13 @@ const ControlsPage = () => {
               }
             />
           </div>
-
-          {/* Deploy Button */}
-          <button
-            className={`rounded p-2  ${!deployEnabled
-              ? "bg-gray-300 text-gray-500"
-              : "bg-blue-500 text-white hover:bg-blue-700"
-              }`}
-            onClick={deploySUT}
-            disabled={!deployEnabled}
-          >
-            {currentQueue ? (
-              <div className="flex items-center justify-center gap-2">
-                <RocketLaunchIcon size={24} className="inline-block" />
-                <span className="font-medium">Deploy experiment</span>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center gap-2">
-                <StackPlusIcon size={24} className="inline-block" />
-                <span className="font-medium">Queue experiment</span>
-              </div>
-            )}
-          </button>
         </div>
 
         {/* Estimated Benchmarking Time */}
-        <div className="border rounded shadow p-4 flex flex-col gap-2 md:w-1/5">
+        <div className="h-full border-x border-t rounded shadow p-4 flex flex-col gap-2 md:w-1/5">
           <p className="font-medium">Estimated Benchmarking Time</p>
           {variantTotals.length === 0 ? (
-            <p className="text-sm text-gray-500">No options selected</p>
+            <p className="text-sm text-gray-500">Configure the experiment to see the total estimated benchmarking time</p>
           ) : (
             variantTotals.map((v) => (
               <div key={v.name} className="text-sm flex flex-col gap-1">
@@ -468,9 +425,32 @@ const ControlsPage = () => {
             <p className="font-medium pt-2">Total: {overallTotal} min</p>
           )}
         </div>
+      </div >
+      <div className="flex w-full justify-start h-[3.5rem] p-2 border rounded shadow gap-2">{/* Deploy Button */}
+        <div className="h-full p-4 flex flex-col gap-2 md:w-1/5"></div>
+        <button
+          className={` rounded py-2 px-4  ${!deployEnabled
+            ? "bg-gray-300 text-gray-500"
+            : "bg-blue-500 text-white hover:bg-blue-700"
+            }`}
+          onClick={deploySUT}
+          disabled={!deployEnabled}
+        >
+          {currentQueue ? (
+            <div className="flex items-center justify-center gap-2">
+              <RocketLaunchIcon size={24} className="inline-block" />
+              <span className="font-medium">Add experiment to the queue</span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center gap-2">
+              <StackPlusIcon size={24} className="inline-block" />
+              <span className="font-medium">Queue experiment</span>
+            </div>
+          )}
+        </button>
       </div>
-    </div>
+    </div >
   );
 };
 
-export default ControlsPage;
+export default ExperimentPage;
