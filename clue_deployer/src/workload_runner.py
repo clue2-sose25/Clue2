@@ -133,7 +133,7 @@ class WorkloadRunner:
                 value=str(v)
             )
 
-        container_env = [k8s_env_pair(k, v) for k, v in self.workload.workload_settings.items()]
+        container_env = [k8s_env_pair(k, v) for k, v in self.workload.workload_settings.items() if k != "LOCUST_RUN_TIME"]
         
         # Ensure that the host reflects the colocated case
         container_env.append(
@@ -203,6 +203,12 @@ class WorkloadRunner:
             )
         
         # Pass locust files location to container via LOCUST_FILE environment variable
+        container_env.append(
+            client.V1EnvVar(
+                name="LOCUST_RUN_TIME",
+                value=f"{self.workload.workload_runtime}s"
+            )
+        )
         container_env.append(
             client.V1EnvVar(
                 name="LOCUST_FILE",
@@ -359,7 +365,8 @@ class WorkloadRunner:
                 image=f"{CLUE_CONFIG.docker_registry_address}/loadgenerator:latest",
                 auto_remove=True,
                 environment={
-                    **self.workload.workload_settings,
+                    **{k: v for k, v in self.workload.workload_settings.items() if k != "LOCUST_RUN_TIME"},
+                    "LOCUST_RUN_TIME": f"{self.workload.workload_runtime}s",
                     "LOCUST_FILE": ",".join(locust_file_paths_in_container),
                     "LOCUST_HOST": SUT_CONFIG.target_host,
                     "SUT_NAME": SUT_CONFIG.sut

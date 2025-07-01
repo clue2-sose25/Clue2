@@ -7,6 +7,7 @@ class Workload(BaseModel):
     """
     name: str
     description: str
+    workload_runtime: int
     timeout_duration: int
     workload_settings: Dict
     locust_files: list[str]
