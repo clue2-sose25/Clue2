@@ -10,7 +10,7 @@ function App() {
   return (
     <div className="w-full h-full">
       <Navbar />
-      <div className="p-4">
+      <div className="p-4 w-full h-[calc(100vh-64px)] bg-gray-50">
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/control" element={<ControlsPage />} />

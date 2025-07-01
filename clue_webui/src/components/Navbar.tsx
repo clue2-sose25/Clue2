@@ -13,7 +13,7 @@ const Navbar = () => {
   ];
 
   return (
-    <div className="flex w-full h-full border-b justify-start gap-10 shadow-sm px-4 py-2">
+    <div className="flex w-full h-16 border-b justify-start gap-10 shadow-sm px-4 py-2">
       <NavLink key={"home"} to="/">
         <div className="font-semibold flex flex-col">
           <div className="text-xl">CLUE2</div>

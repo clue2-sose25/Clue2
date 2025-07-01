@@ -67,7 +67,7 @@ const HomePage = () => {
           title="EXPERIMENTS QUEUE"
           icon={<StackIcon size={60} />}
           text={queueCount === 0 ? "The queue is empty" : `${queueCount} experiments in the queue`}
-          subText="Estimated time: -"
+          subText={queueCount === 0 ? "" : "Estimated time: -"}
           link="/control"
           button="Add a new experiment"
         />
