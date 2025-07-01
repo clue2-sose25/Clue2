@@ -627,10 +627,10 @@ def enqueue_experiment(request: list[DeployRequest]):
     logger.info(f"Enqueued {len(request)} deployment requests.")
     return {"message": f"Enqueued {len(request)} deployment requests."}
 
-@app.get("/api/deploy/current", status_code=status.HTTP_200_OK)
+@app.get("/api/experiment/current", status_code=status.HTTP_200_OK)
 async def get_current_deployment():
     logger.info("Fetching current deployment status.")
-    return worker.current_deployment
+    return worker.current_experiment
 
 @app.post("/api/deploy/start", status_code=status.HTTP_202_ACCEPTED)
 def deploy_from_queue():
@@ -649,7 +649,7 @@ def deploy_from_queue():
     
     
 
-@app.delete("api/deploy/kill", status_code=status.HTTP_204_NO_CONTENT)
+@app.delete("/api/deploy/kill", status_code=status.HTTP_204_NO_CONTENT)
 def deploy_kill():
     """
     Kill the current deployment process.
@@ -667,7 +667,7 @@ def deploy_kill():
     logger.info("Deployment process terminated.")
     return JSONResponse(status_code=status.HTTP_204_NO_CONTENT, content=None)
 
-@app.delete("api/deploy/stop", status_code=status.HTTP_204_NO_CONTENT)
+@app.delete("/api/deploy/stop", status_code=status.HTTP_204_NO_CONTENT)
 def stop_deployment():
     """
     Stop the current deployment process gracefully.

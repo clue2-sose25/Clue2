@@ -23,7 +23,7 @@ class StatusManager:
         manager = mp.Manager()
         cls._status = manager.dict({
             "phase": StatusPhase.NO_DEPLOYMENT.value,
-            "detail": "",
+            "detail": "No deployment in progress",
         })
         cls._lock = manager.Lock()
 

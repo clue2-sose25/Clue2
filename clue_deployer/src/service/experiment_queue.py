@@ -37,7 +37,7 @@ class ExperimentQueue:
         return self.queue.empty()
 
     def size(self):
-        return self.queue.qsize()
+        return self._mirror.__len__()
 
     def flush(self):
         self.queue = Queue()

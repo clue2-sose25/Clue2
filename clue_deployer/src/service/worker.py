@@ -3,9 +3,12 @@ from multiprocessing.managers import BaseManager
 from clue_deployer.src.service.experiment_queue import ExperimentQueue
 from clue_deployer.src.logger import get_child_process_logger, logger, shared_log_buffer
 from clue_deployer.src.models.deploy_request import DeployRequest
+from clue_deployer.src.models.experiment import Experiment
 from clue_deployer.src.main import ExperimentRunner
 from clue_deployer.src.configs.configs import ENV_CONFIG, Configs
 from fastapi import HTTPException
+from kubernetes.client import CoreV1Api, V1Namespace, V1ObjectMeta, AppsV1Api
+from kubernetes.client.exceptions import ApiException   
 
 SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
 CLUE_CONFIG_PATH = ENV_CONFIG.CLUE_CONFIG_PATH
@@ -20,7 +23,7 @@ class Worker:
         self.shared_container = self.manager.dict()
         self.experiment_queue = ExperimentQueue(condition=mp.Condition())
         self.condition = self.manager.Condition()
-        self.shared_container['current_deployment'] = None
+        self.shared_container['current_experiment'] = None
 
         self.process_logger = get_child_process_logger(
             "NO_SUT",
@@ -40,12 +43,18 @@ class Worker:
         )
     
     @property
-    def current_deployment(self):
+    def current_experiment(self):
         """
         Get the current deployment from the shared container.
         """
-        return self.shared_container.get('current_deployment', None)
+        return self.shared_container.get('current_experiment', None)
 
+    @current_experiment.setter
+    def current_experiment(self, experiment: Experiment):
+        """
+        Set the current deployment in the shared container.
+        """
+        self.shared_container['current_experiment'] = experiment
         
     def _worker_loop(self, 
                      shared_flag, 
@@ -106,6 +115,8 @@ class Worker:
                     deploy_only=experiment.deploy_only,
                     n_iterations=experiment.n_iterations,
                 )
+                self.current_experiment = runner.experiment
+
                 runner.main()
                 process_logger.info(f"Successfully completed deployment for SUT {experiment.sut}")
             except Exception as e:
@@ -140,4 +151,26 @@ class Worker:
         self.process.terminate()
         self.process.join()
         logger.info("Worker killed.")
+        self._cleanup()
+    
+    def _cleanup(self):
+        """Clean up the worker resources."""
+        #TODO write the deployment status to the status file
+        logger.info("Cleaning up worker resources...")
+        if not self.current_experiment:
+            logger.warning("No current experiment to clean up.")
+            return
+        namespace = self.current_experiment.configs.sut_config.namespace
+        
+        # Clean up the namespace if it exists
+        try:
+            self.core_v1_api.read_namespace(name=namespace)
+            logger.info(f"Namespace '{namespace}' exits. Deleting it...")
+            self.core_v1_api.delete_namespace(name=namespace)
+        except ApiException as e:
+            logger.error(f"Failed to read namespace '{namespace}': {e}")
+        
+
+    
+    
 
