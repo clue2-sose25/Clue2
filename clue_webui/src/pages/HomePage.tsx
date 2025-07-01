@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
-import { PauseIcon, ClockIcon, FilesIcon, RocketLaunchIcon, StackIcon } from "@phosphor-icons/react";
+import {
+  PauseIcon,
+  ClockIcon,
+  FilesIcon,
+  RocketLaunchIcon,
+  StackIcon,
+} from "@phosphor-icons/react";
 import Card from "../components/Card";
 
 const HomePage = () => {
@@ -38,11 +44,12 @@ const HomePage = () => {
       })
       .catch(() => setQueueCount(0));
 
+    // Fetch the number of results
     fetch("/api/results")
       .then((res) => res.json())
       .then((data) => {
-        if (data && Array.isArray(data.results)) {
-          setResultsCount(data.results.length);
+        if (data && Array.isArray(data)) {
+          setResultsCount(data.length);
         } else {
           setResultsCount(0);
         }
@@ -65,13 +72,17 @@ const HomePage = () => {
         <Card
           title="EXPERIMENTS QUEUE"
           icon={<StackIcon size={60} />}
-          text={queueCount === 0 ? "No experiments in the queue" : `${queueCount} experiments waiting`}
-          subText="Estimated time: XXX"
+          text={
+            queueCount === 0
+              ? "The queue is empty"
+              : `${queueCount} experiments in the queue`
+          }
+          subText={queueCount === 0 ? "" : "Estimated time: -"}
           link="/control"
           button="Add a new experiment"
         />
         <Card
-          title="STATUS"
+          title="DEPLOYER STATUS"
           icon={statusIcon}
           text={statusText}
           link="/dashboard"
@@ -80,7 +91,7 @@ const HomePage = () => {
         <Card
           title="RESULTS"
           icon={<FilesIcon size={60} />}
-          text={`${resultsCount} run${resultsCount === 1 ? "" : "s"}`}
+          text={`Results: ${resultsCount}`}
           link="/results"
           button="View all results"
         />

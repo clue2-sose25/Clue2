@@ -1,21 +1,16 @@
-import {
-  CommandIcon,
-  FilesIcon,
-  GaugeIcon,
-  WrenchIcon,
-} from "@phosphor-icons/react/dist/ssr";
+import { FilesIcon, GaugeIcon, StackPlusIcon, WrenchIcon } from "@phosphor-icons/react";
 import { NavLink } from "react-router";
 
 const Navbar = () => {
   const pages = [
-    { name: "CONTROL PANEL", href: "/control", icon: <CommandIcon size={20} /> },
+    { name: "NEW EXPERIMENT", href: "/experiment", icon: <StackPlusIcon size={20} /> },
     { name: "DASHBOARD", href: "/dashboard", icon: <GaugeIcon size={20} /> },
     { name: "RESULTS", href: "/results", icon: <FilesIcon size={20} /> },
     { name: "CLUSTER", href: "/cluster", icon: <WrenchIcon size={20} /> },
   ];
 
   return (
-    <div className="flex w-full h-full border-b justify-start gap-10 shadow-sm px-4 py-2">
+    <div className="flex w-full h-16 border-b justify-start gap-10 shadow-sm px-4 py-2">
       <NavLink key={"home"} to="/">
         <div className="font-semibold flex flex-col">
           <div className="text-xl">CLUE2</div>
@@ -33,8 +28,8 @@ const Navbar = () => {
             {({ isActive }) => (
               <div
                 className={`flex gap-1 ${isActive
-                    ? "border-b-1 border-black"
-                    : "border-b-1 border-transparent"
+                  ? "border-b-1 border-black"
+                  : "border-b-1 border-transparent"
                   }`}
               >
                 {page.icon} {page.name}

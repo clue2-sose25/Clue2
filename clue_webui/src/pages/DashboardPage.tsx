@@ -1,6 +1,6 @@
-import {useContext, useEffect, useState} from "react";
-import {DeploymentContext} from "../contexts/DeploymentContext";
-import {Link} from "react-router";
+import { useContext, useEffect, useState } from "react";
+import { DeploymentContext } from "../contexts/DeploymentContext";
+import { Link } from "react-router";
 import {
   CaretLeftIcon,
   CaretRightIcon,
@@ -16,15 +16,15 @@ import {
   RepeatIcon,
   WrenchIcon,
 } from "@phosphor-icons/react/dist/ssr";
-import {QueueContext} from "../contexts/QueueContext";
-import {IconButton} from "@mui/material";
+import { QueueContext } from "../contexts/QueueContext";
+import { IconButton } from "@mui/material";
 
 const DashboardPage = () => {
-  const {ifDeploying, setIfDeploying, currentDeployment} =
+  const { ifDeploying, setIfDeploying, currentDeployment } =
     useContext(DeploymentContext);
 
   // The experiments queue
-  const {currentQueue, setCurrentQueue} = useContext(QueueContext);
+  const { currentQueue, setCurrentQueue } = useContext(QueueContext);
   // The currently displayed index from queue
   const [currentQueueIndex, setCurrentQueueIndex] = useState<number>(0);
 
@@ -56,12 +56,12 @@ const DashboardPage = () => {
   const configItems = [
     {
       label: "SUT (System Under Test)",
-      value: currentDeployment.SutName,
+      value: currentDeployment.sut,
       icon: <WrenchIcon size={24} />,
     },
     {
       label: "Experiments",
-      value: currentDeployment.experimentNames.join(", "),
+      value: currentDeployment.variants.join(", "),
       icon: <FlaskIcon size={24} />,
     },
     {
@@ -113,9 +113,9 @@ const DashboardPage = () => {
   };
 
   return (
-    <div className="w-full h-full flex flex-col gap-2 pt-2 p-6">
+    <div className="w-full h-full flex flex-col gap-2">
       {ifDeploying && (
-        <div className="w-full flex items-center justify-center gap-2">
+        <div className="w-full h-full flex items-center justify-center gap-2">
           <IconButton
             disabled={currentQueueIndex <= 0}
             onClick={decreaseIndexInQueue}
@@ -136,7 +136,7 @@ const DashboardPage = () => {
           </IconButton>
         </div>
       )}
-      <div className="bg-white p-6 rounded-lg shadow-md w-full">
+      <div className="bg-white p-6 rounded-lg shadow-md w-full h-full">
         {ifDeploying ? (
           <div className="flex gap-6 ">
             <div className="w-1/3">
@@ -144,9 +144,7 @@ const DashboardPage = () => {
                 <div className="pb-2">
                   <p className="flex gap-2 text-xl items-center pt-2 pb-2">
                     <RocketLaunchIcon size={24} /> Deploying{" "}
-                    <span className="font-medium">
-                      {currentDeployment.SutName}
-                    </span>
+                    <span className="font-medium">{currentDeployment.sut}</span>
                     !
                   </p>
                   Your current experiment is being deployed. Please grab a
@@ -191,8 +189,8 @@ const DashboardPage = () => {
                   className="rounded p-2 bg-red-400 text-white hover:bg-red-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
                   onClick={() => {}}
                   disabled={
-                    !currentDeployment.SutName ||
-                    currentDeployment.experimentNames.length === 0
+                    !currentDeployment.sut ||
+                    currentDeployment.variants.length === 0
                   }
                 >
                   <div className="flex items-center justify-center gap-2">
@@ -207,16 +205,19 @@ const DashboardPage = () => {
             </div>
           </div>
         ) : (
-          <div className="flex flex-col items-center w-full h-[500px] justify-center">
+          <div className="flex flex-col items-center w-full h-full justify-center">
             <span className="flex flex-col font-semibold text-xl items-center pb-2 gap-2">
-              <WarningIcon size={90} /> The experiments queue is empty!
+              <WarningIcon size={90} /> The queue is empty!
             </span>{" "}
             <span>
-              Visit the{" "}
-              <Link className="font-medium text-sm text-blue-500" to={"/control"}>
-                Control Panel
+              Add a{" "}
+              <Link
+                className="font-medium text-sm text-blue-500"
+                to={"/experiment"}
+              >
+                new experiment
               </Link>{" "}
-              to add an experiment to the queue!
+              to the queue!
             </span>
           </div>
         )}

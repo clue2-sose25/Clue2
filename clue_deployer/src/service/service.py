@@ -1,15 +1,16 @@
+from multiprocessing.sharedctypes import Synchronized
 import os
 from contextlib import asynccontextmanager
+from threading import Lock
+from typing import Any
 from fastapi import FastAPI, HTTPException, status
-from fastapi.responses import JSONResponse, StreamingResponse, RedirectResponse
-from pathlib import Path
+from fastapi.responses import JSONResponse, RedirectResponse
 import multiprocessing
-from clue_deployer.src.models.experiment import Experiment
 from clue_deployer.src.models.deploy_request import DeployRequest
 from clue_deployer.src.models.health_response import HealthResponse
 from clue_deployer.src.models.status_response import StatusResponse
 from clue_deployer.src.service.status_manager import StatusManager
-from clue_deployer.src.logger import get_child_process_logger, logger, shared_log_buffer
+from clue_deployer.src.logger import SharedLogBuffer, get_child_process_logger, logger, shared_log_buffer
 from clue_deployer.src.configs.configs import ENV_CONFIG, Configs
 from clue_deployer.src.main import ExperimentRunner
 from clue_deployer.src.service.worker import Worker
@@ -46,35 +47,25 @@ SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
 RESULTS_DIR = ENV_CONFIG.RESULTS_PATH
 CLUE_CONFIG_PATH = ENV_CONFIG.CLUE_CONFIG_PATH
 
-def run_deployment(configs, deploy_request,
-                  state_lock, is_deploying, shared_log_buffer):
+def run_deployment(configs: Configs, deploy_request: DeployRequest,
+                  state_lock: Lock, is_deploying, shared_log_buffer: SharedLogBuffer):
     """Function to run the deployment in a separate process."""
     # Setup logger for this child process
-    process_logger = get_child_process_logger(f"DEPLOY_{sut}", shared_log_buffer)
+    process_logger = get_child_process_logger(f"DEPLOY_{deploy_request.sut}", shared_log_buffer)
     
-    deploy_only = deploy_request.deploy_only
-    variants = deploy_request.variants
-    n_iterations = deploy_request.n_iterations
-    sut = deploy_request.sut
-
     try:
-        process_logger.info(f"Starting deployment for SUT {sut}")
-        runner = ExperimentRunner(configs, variants=variants, sut=sut, 
-                           deploy_only=deploy_only, n_iterations=n_iterations)
-        
-        # You might want to pass the process_logger to ClueRunner if it accepts a logger parameter
-        # runner = ClueRunner(config, variants=variants, sut=sut, 
-        #                    deploy_only=deploy_only, n_iterations=n_iterations, logger=process_logger)
-        
+        process_logger.info(f"Starting deployment for SUT {deploy_request.sut}")
+        runner = ExperimentRunner(configs, variants=deploy_request.variants, sut=deploy_request.sut, 
+                           deploy_only=deploy_request.deploy_only, n_iterations=deploy_request.n_iterations)
         runner.main()
-        process_logger.info(f"Successfully completed deployment for SUT {sut}")
+        process_logger.info(f"Successfully completed deployment for SUT {deploy_request.sut}")
         
     except Exception as e:
-        process_logger.error(f"Deployment process failed for SUT {sut}: {str(e)}")
+        process_logger.error(f"Deployment process failed for SUT {deploy_request.sut}: {str(e)}")
     finally:
         with state_lock:
             is_deploying.value = 0
-        process_logger.info(f"Deployment process for SUT {sut} finished")
+        process_logger.info(f"Deployment process for SUT {deploy_request.sut} finished")
 
 @app.get("/api/status", response_model=StatusResponse)
 def read_status():
@@ -109,7 +100,7 @@ async def deploy_sut(request: DeployRequest):
             is_deploying.value = 0
         raise HTTPException(status_code=404, detail=f"SUT configuration not found: {request.sut}")
     
-    configs = Configs(sut_config=sut_path, clue_config=CLUE_CONFIG_PATH)
+    configs = Configs(sut_path, CLUE_CONFIG_PATH)
     
     try:
         # Pass the shared buffer to the child process

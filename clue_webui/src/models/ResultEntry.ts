@@ -1,7 +1,9 @@
 export interface ResultEntry {
-  id: string;
-  workload: string;
-  branch_name: string;
+  uuid: string;
+  status: string;
+  sut: string;
+  workloads: string;
+  variants: string;
   timestamp: string;
-  iterations: number;
+  n_iterations: number;
 }
