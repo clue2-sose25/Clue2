@@ -16,7 +16,7 @@ COPY clue_builders/toystore/requirements.txt ./requirements.txt
 # Create a venv, install deps (ignoring PEP668)
 RUN pip install --no-cache-dir --break-system-packages -r requirements.txt
 
-# Copy the rest of the files
+# Copy the rest of the files 
 COPY clue_builders/toystore/ .
 
 # Convert line endings and make executable 
