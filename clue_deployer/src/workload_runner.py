@@ -97,7 +97,7 @@ class WorkloadRunner:
         """
             This watches the pod events until it is finished.
         """
-        logger.info("The experiment is running now. Waiting until the loadgenerator is finished...")
+        logger.info("The experiment is running now. Waiting for it to finish which will take approximately %d seconds", self.workload.workload_runtime)
         w = watch.Watch()
         
         for event in w.stream(
