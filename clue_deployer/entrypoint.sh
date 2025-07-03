@@ -10,10 +10,12 @@ set -e
 echo "[ENTRYPOINT.SH] Starting CLUE Deployer container"
 echo "[ENTRYPOINT.SH] Deploying as a service: $DEPLOY_AS_SERVICE"
 echo "[ENTRYPOINT.SH] Deploy without benchmarking: $DEPLOY_ONLY"
+echo "[ENTRYPOINT.SH] Patch kubeconfig: $PATCH_LOCAL_CLUSTER"
 echo "[ENTRYPOINT.SH] Bechmark config: SUT: $SUT, experiment: $VARIANTS"
 
-# Patch the kubeconfig to allow access to clusters running on the host
-python3 /app/clue_deployer/patch_kubeconfig.py
+# Prepare the kubeconfig to allow access to clusters running on the host
+echo "[ENTRYPOINT.SH] Preparing kubeconfig..."
+python3 /app/clue_deployer/prepare_kubeconfig.py
 if [ -f /app/clue_deployer/kubeconfig_patched ]; then
     chmod 600 /app/clue_deployer/kubeconfig_patched
     export KUBECONFIG=/app/clue_deployer/kubeconfig_patched

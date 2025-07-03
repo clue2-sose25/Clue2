@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import {useEffect, useState} from "react";
 import {
   PauseIcon,
   ClockIcon,
@@ -78,7 +78,7 @@ const HomePage = () => {
               : `${queueCount} experiments in the queue`
           }
           subText={queueCount === 0 ? "" : "Estimated time: -"}
-          link="/control"
+          link="/experiment"
           button="Add a new experiment"
         />
         <Card
