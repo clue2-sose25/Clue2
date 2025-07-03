@@ -1,14 +1,14 @@
-name: Build and Push Deployer Image
+name: Build and Push Teastore Image
 
 on:
   push:
     branches: ["dev", "main"]
     paths:
-      - "clue_deployer/**"
+      - "clue_builders/teastore/**"
   pull_request:
     branches: ["dev"]
     paths:
-      - "clue_deployer/**"
+      - "clue_builders/teastore/**"
 
 permissions:
   # For checkout
@@ -17,31 +17,37 @@ permissions:
   packages: write
 
 jobs:
-  build_clue_deployer:
+  build_clue_teastore:
     runs-on: ubuntu-latest
     env:
-      IMAGE_NAME: deployer
+      IMAGE_NAME: teastore_builder
     steps:
-      - uses: actions/checkout@v3
+      # Checkout the repository
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      # Setup buildx
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
+      # Login to GHCR
       - name: Log in to GHCR
         uses: docker/login-action@v2
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      # Compute the short SHA
       - name: Compute short Git SHA
         id: vars
         run: |
           echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
           echo "::set-output name=short_sha::${GITHUB_SHA::7}"
-      - name: Build and push clue_deployer image
+      # Build and push when merged to dev or main
+      - name: Build and push teastore image
         if: ${{ github.event_name != 'pull_request' }}
         uses: docker/build-push-action@v3
         with:
           context: .
-          file: clue_deployer/Dockerfile
+          file: clue_builders/teastore/Dockerfile
           platforms: linux/amd64
           tags: |
             ghcr.io/clue2-sose25/clue2-${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }}
@@ -49,17 +55,18 @@ jobs:
             ghcr.io/clue2-sose25/clue2-${{ env.IMAGE_NAME }}:pr-test
             ${{ github.ref_name == 'main' && format('ghcr.io/clue2-sose25/clue2-{0}:latest', env.IMAGE_NAME) || '' }}
           push: true
-          cache-from: type=gha,scope=clue_deployer
-          cache-to: type=gha,scope=clue_deployer,mode=max
-      - name: Build clue_deployer image (no push, PR test)
+          cache-from: type=gha,scope=clue_teastore
+          cache-to: type=gha,scope=clue_teastore,mode=max
+      # Only build when on PR
+      - name: Build teastore image (no push, PR test)
         if: ${{ github.event_name == 'pull_request' }}
         uses: docker/build-push-action@v3
         with:
           context: .
-          file: clue_deployer/Dockerfile
+          file: clue_builders/teastore/Dockerfile
           platforms: linux/amd64
           tags: ghcr.io/clue2-sose25/clue2-${{ env.IMAGE_NAME }}:pr-test
           push: true
           load: true
-          cache-from: type=gha,scope=clue_deployer
-          cache-to: type=gha,scope=clue_deployer,mode=max
+          cache-from: type=gha,scope=clue_teastore
+          cache-to: type=gha,scope=clue_teastore,mode=max

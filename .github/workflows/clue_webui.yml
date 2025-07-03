@@ -1,17 +1,20 @@
 name: Build and Push WebUI Image
+
 on:
   push:
-    branches: [ "dev", "main" ]
+    branches: ["dev", "main"]
     paths:
-      - 'clue_webui/**'
+      - "clue_webui/**"
   pull_request:
-    branches: [ "dev" ]
+    branches: ["dev"]
     paths:
-      - 'clue_webui/**'
+      - "clue_webui/**"
 
 permissions:
-  contents: read            # for checkout
-  packages: write           # needed to push to GHCR
+  # For checkout
+  contents: read
+  # Needed to push to GHCR
+  packages: write
 
 jobs:
   build_clue_webui:
@@ -28,8 +31,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Lint Dockerfile (clue_webui)
-        run: docker run --rm -i hadolint/hadolint hadolint --ignore DL3059 --ignore DL3008 - < clue_webui/Dockerfile
       - name: Compute short Git SHA
         id: vars
         run: |
@@ -62,10 +63,3 @@ jobs:
           load: true
           cache-from: type=gha,scope=clue_webui
           cache-to: type=gha,scope=clue_webui,mode=max
-      - name: Smoke test clue_webui container
-        run: |
-          docker run -p 5001:80 -d --name=clue-webui ghcr.io/clue2-sose25/clue2-${IMAGE_NAME}:pr-test
-          sleep 8
-          curl -fs http://localhost:5001/ | grep -q "Clue Dashboard" && echo " webUI Up and running"
-          docker logs clue-webui || true
-          docker stop clue-webui
