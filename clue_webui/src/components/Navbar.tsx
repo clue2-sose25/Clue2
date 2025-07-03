@@ -1,12 +1,21 @@
-import { FilesIcon, GaugeIcon, StackPlusIcon, WrenchIcon } from "@phosphor-icons/react";
-import { NavLink } from "react-router";
+import {
+  FilesIcon,
+  GaugeIcon,
+  GearSixIcon,
+  StackPlusIcon,
+} from "@phosphor-icons/react";
+import {NavLink} from "react-router";
 
 const Navbar = () => {
   const pages = [
-    { name: "NEW EXPERIMENT", href: "/experiment", icon: <StackPlusIcon size={20} /> },
-    { name: "DASHBOARD", href: "/dashboard", icon: <GaugeIcon size={20} /> },
-    { name: "RESULTS", href: "/results", icon: <FilesIcon size={20} /> },
-    { name: "CLUSTER", href: "/cluster", icon: <WrenchIcon size={20} /> },
+    {
+      name: "NEW EXPERIMENT",
+      href: "/experiment",
+      icon: <StackPlusIcon size={20} />,
+    },
+    {name: "DASHBOARD", href: "/dashboard", icon: <GaugeIcon size={20} />},
+    {name: "RESULTS", href: "/results", icon: <FilesIcon size={20} />},
+    {name: "SETTINGS", href: "/settings", icon: <GearSixIcon size={20} />},
   ];
 
   return (
@@ -25,12 +34,13 @@ const Navbar = () => {
             className="flex h-full items-center gap-1 text-sm font-medium"
             end
           >
-            {({ isActive }) => (
+            {({isActive}) => (
               <div
-                className={`flex gap-1 ${isActive
-                  ? "border-b-1 border-black"
-                  : "border-b-1 border-transparent"
-                  }`}
+                className={`flex gap-1 ${
+                  isActive
+                    ? "border-b-1 border-black"
+                    : "border-b-1 border-transparent"
+                }`}
               >
                 {page.icon} {page.name}
               </div>
