@@ -4,7 +4,6 @@ import {ArrowLeftIcon, UploadSimpleIcon} from "@phosphor-icons/react";
 
 // React Syntax Highlighter imports
 import SyntaxHighlighter from "react-syntax-highlighter";
-import {github} from "react-syntax-highlighter/dist/esm/styles/hljs";
 
 const AddSutPage = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -82,9 +81,7 @@ const AddSutPage = () => {
 
   // Custom theme for YAML syntax highlighting
   const customYamlTheme = {
-    ...github,
     hljs: {
-      ...github["hljs"],
       background: "transparent",
       padding: "0",
       fontFamily:
