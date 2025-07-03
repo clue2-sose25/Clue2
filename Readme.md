@@ -13,11 +13,10 @@ The framework is designed to be extensible and can be easily integrated with exi
 ## 📦 Prerequisites
 
 - Docker, e.g. 20.10
-- Kubernetes, e.g. 1.29 (for testing purposes, [minikube](https://minikube.sigs.k8s.io/docs/) works)
-  - at least one Kubernetes node running Scaphandra/[Kepler](https://sustainable-computing.io/installation/kepler-helm/), and a [NodeExporter](https://observability.thomasriley.co.uk/monitoring-kubernetes/metrics/node-exporter/). If the tracker does not find any energy data, the experiment will start, but the script will stop due to lack of usable insights
-  - for the serverless variant, knative installed
-  - for external power meters, connect e.g. a Tapo device (out of scope of this Readme)
-- [Kind](https://kind.sigs.k8s.io/), e.g. 0.29.0
+- Kubernetes Cluster, e.g. 1.29 (for local testing purposes: [kind](https://kind.sigs.k8s.io/), e.g. 0.29.0), with:
+  - at least one node running [Kepler](https://sustainable-computing.io/installation/kepler-helm/), and a [NodeExporter](https://observability.thomasriley.co.uk/monitoring-kubernetes/metrics/node-exporter/). If the tracker does not find any energy data, the experiment will start, but not generate any meaningful metrics.
+  - for the serverless variant, `knative` installed
+  - for external power meters, connect e.g. a Tapo device (out of scope of this Readme, read the [CLUE scientific paper](https://ieeexplore.ieee.org/abstract/document/10978924/))
 
 ## 🚀 System setup
 
