@@ -1,5 +1,8 @@
 import os
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import PlainTextResponse
+from pydantic import BaseModel
+import base64
 import yaml
 
 from clue_deployer.src.configs.configs import ENV_CONFIG
@@ -22,7 +25,13 @@ async def list_sut():
             raise HTTPException(status_code=404, detail=f"SUT configurations directory not found: {SUT_CONFIGS_DIR}")
 
         # Get list of YAML files in the SUT configurations directory
-        files = [f for f in os.listdir(SUT_CONFIGS_DIR) if f.endswith(('.yaml', '.yml')) and os.path.isfile(os.path.join(SUT_CONFIGS_DIR, f))]
+        files = [
+            f
+            for f in os.listdir(SUT_CONFIGS_DIR)
+            if f.endswith((".yaml", ".yml"))
+            and os.path.isfile(os.path.join(SUT_CONFIGS_DIR, f))
+            and os.path.splitext(f)[0] != "default_sut"
+        ]
         suts = []
         for filename in files:
             # Extract SUT name from filename (without extension)
@@ -87,3 +96,47 @@ async def get_sut_config(sut: str):
         return sut_config
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving SUT configuration: {str(e)}")
+    
+
+@router.get("/api/suts/raw/{sut}", response_class=PlainTextResponse)
+async def get_sut_yaml(sut: str):
+    """Return the raw YAML configuration for a SUT."""
+    cleaned_sut = sut.strip().lower()
+    sut_filename = f"{cleaned_sut}.yaml"
+    sut_path = os.path.join(SUT_CONFIGS_DIR, sut_filename)
+    if not os.path.isfile(sut_path):
+        raise HTTPException(status_code=404, detail=f"SUT configuration not found: {sut}")
+    try:
+        with open(sut_path, "r") as f:
+            return f.read()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to read SUT configuration: {exc}")
+
+
+class SutUpload(BaseModel):
+    """Request model for uploading a new SUT configuration."""
+    sut_config: str
+
+
+@router.post("/api/suts")
+async def upload_sut(req: SutUpload):
+    """Upload a new SUT configuration file."""
+    try:
+        decoded = base64.b64decode(req.sut_config).decode()
+        data = yaml.safe_load(decoded)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Failed to decode SUT config: {exc}")
+
+    sut_name = data.get("config", {}).get("sut")
+    if not sut_name:
+        raise HTTPException(status_code=400, detail="SUT name not found in configuration")
+    sut_filename = f"{sut_name}.yaml"
+    sut_path = os.path.join(SUT_CONFIGS_DIR, sut_filename)
+
+    try:
+        with open(sut_path, "w") as f:
+            f.write(decoded)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to save SUT configuration: {exc}")
+
+    return {"message": "SUT configuration uploaded"}
