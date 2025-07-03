@@ -1,4 +1,4 @@
-import {useEffect, useState} from "react";
+import {useEffect, useState, useRef} from "react";
 import {Link, useNavigate} from "react-router";
 import {ArrowLeftIcon, UploadSimpleIcon} from "@phosphor-icons/react";
 
@@ -11,6 +11,10 @@ const AddSutPage = () => {
   const [sutName, setSutName] = useState<string>("");
   const [displayName, setDisplayName] = useState<string>("");
   const navigate = useNavigate();
+
+  // Refs for scroll synchronization
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const highlightRef = useRef<HTMLDivElement>(null);
 
   const parseSutName = (yaml: string) => {
     const match = yaml.match(/^\s*sut:\s*"?([A-Za-z0-9-_]+)"?/m);
@@ -78,6 +82,37 @@ const AddSutPage = () => {
       navigate("/experiment");
     }
   };
+
+  // Sync scroll positions between textarea and highlight layer
+  const syncScroll = (source: HTMLElement, target: HTMLElement) => {
+    if (source && target) {
+      target.scrollTop = source.scrollTop;
+      target.scrollLeft = source.scrollLeft;
+    }
+  };
+
+  // Handle textarea scroll
+  const handleTextareaScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
+    const textarea = e.target as HTMLTextAreaElement;
+    if (highlightRef.current) {
+      syncScroll(textarea, highlightRef.current);
+    }
+  };
+
+  // Handle highlight layer scroll (in case it gets scrolled somehow)
+  const handleHighlightScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const highlight = e.target as HTMLDivElement;
+    if (textareaRef.current) {
+      syncScroll(highlight, textareaRef.current);
+    }
+  };
+
+  // Sync scroll after content changes
+  useEffect(() => {
+    if (textareaRef.current && highlightRef.current) {
+      syncScroll(textareaRef.current, highlightRef.current);
+    }
+  }, [content]);
 
   // Custom theme for YAML syntax highlighting
   const customYamlTheme = {
@@ -192,7 +227,15 @@ const AddSutPage = () => {
           <label className="text-sm font-medium">Configuration (YAML)</label>
           <div className="flex-1 relative border border-gray-300 rounded-lg overflow-hidden bg-white">
             {/* Syntax Highlighted Background */}
-            <div className="absolute inset-0 p-3 pointer-events-none overflow-auto">
+            <div
+              ref={highlightRef}
+              className="absolute inset-0 p-3 pointer-events-none overflow-auto scrollbar-hidden"
+              onScroll={handleHighlightScroll}
+              style={{
+                scrollbarWidth: "none", // Firefox
+                msOverflowStyle: "none", // IE/Edge
+              }}
+            >
               <SyntaxHighlighter
                 language="yaml"
                 style={customYamlTheme}
@@ -204,9 +247,12 @@ const AddSutPage = () => {
                   lineHeight: "1.5",
                   fontFamily:
                     'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+                  whiteSpace: "pre-wrap",
+                  wordWrap: "break-word",
+                  width: "100%",
                 }}
                 showLineNumbers={false}
-                wrapLines={false}
+                wrapLines={true}
                 PreTag="div"
                 CodeTag="div"
               >
@@ -216,9 +262,11 @@ const AddSutPage = () => {
 
             {/* Actual textarea */}
             <textarea
+              ref={textareaRef}
               className="absolute inset-0 w-full h-full p-3 font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset bg-transparent caret-black"
               value={content}
               onChange={(e) => setContent(e.target.value)}
+              onScroll={handleTextareaScroll}
               placeholder="Enter your YAML configuration here..."
               spellCheck={false}
               style={{
@@ -227,19 +275,19 @@ const AddSutPage = () => {
                 lineHeight: "1.5",
                 tabSize: 2,
                 color: "rgba(0, 0, 0, 0.01)", // Almost transparent so highlighting shows through
-              }}
-              onScroll={(e) => {
-                // Sync scroll position with highlight layer
-                const target = e.target as HTMLTextAreaElement;
-                const highlightLayer =
-                  target.previousElementSibling as HTMLDivElement;
-                if (highlightLayer) {
-                  highlightLayer.scrollTop = target.scrollTop;
-                  highlightLayer.scrollLeft = target.scrollLeft;
-                }
+                scrollbarWidth: "none", // Firefox
+                msOverflowStyle: "none", // IE/Edge
               }}
             />
           </div>
+          <style jsx>{`
+            .scrollbar-hidden::-webkit-scrollbar {
+              display: none;
+            }
+            textarea::-webkit-scrollbar {
+              display: none;
+            }
+          `}</style>
         </div>
       </div>
     </div>
