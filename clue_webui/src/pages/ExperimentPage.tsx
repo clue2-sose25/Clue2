@@ -7,7 +7,7 @@ import {
 } from "@phosphor-icons/react";
 import type {SUT} from "../models/SUT";
 import {IconButton, Tooltip} from "@mui/material";
-import {useNavigate} from "react-router";
+import {Link, useNavigate} from "react-router";
 import {QueueContext} from "../contexts/QueueContext";
 
 const ExperimentPage = () => {
@@ -178,7 +178,7 @@ const ExperimentPage = () => {
               <div className="flex justify-start w-full items-center">
                 <span>System Under Test (SUT)</span>
                 <Tooltip title="Add a custom SUT config" arrow placement="top">
-                  <IconButton>
+                  <IconButton component={Link} to="/experiment/add-sut">
                     <PlusCircleIcon size={20} />
                   </IconButton>
                 </Tooltip>
