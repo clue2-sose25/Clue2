@@ -23,19 +23,19 @@ const mockPlots: Plot[] = [
     id: "response-time",
     name: "Response Time Over Time",
     description: "Shows response time trends during the test",
-    image_url: "./default_plot.png",
+    image_url: "/default_plot.png",
   },
   {
     id: "throughput",
     name: "Throughput Analysis",
     description: "Requests per second over time",
-    image_url: "./default_plot.png",
+    image_url: "/default_plot.png",
   },
   {
     id: "resource-usage",
     name: "Resource Utilization",
     description: "CPU and memory usage during test",
-    image_url: "./default_plot.png",
+    image_url: "/default_plot.png",
   },
 ];
 
@@ -381,15 +381,18 @@ const ResultsSection: React.FC<{
                   <ChartBarIcon className="w-4 h-4" />
                   <span className="font-medium text-sm">Plots</span>
                 </div>
-                <div className="space-y-2">
+                <div className="flex flex-wrap gap-2">
                   {(panelPlots[panel.id] || []).map((p) => (
-                    <div key={p.id} className="border rounded p-2 text-xs">
+                    <div
+                      key={p.id}
+                      className="border rounded p-2 text-xs flex-1 min-w-[335px] max-w-[250px]"
+                    >
                       <div className="font-medium mb-1">{p.name}</div>
                       <div className="mb-2 text-gray-600">{p.description}</div>
                       <img
                         src={p.image_url}
                         alt={p.name}
-                        className="w-full h-32 object-cover rounded"
+                        className="w-full h-auto max-h-128 object-cover rounded"
                       />
                     </div>
                   ))}
