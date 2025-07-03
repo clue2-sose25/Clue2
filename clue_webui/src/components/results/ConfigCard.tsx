@@ -1,9 +1,6 @@
-import { useState } from "react";
+import {useState} from "react";
 
-const ConfigSection: React.FC<{ title: string; data: any }> = ({
-  title,
-  data,
-}) => {
+const ConfigCard: React.FC<{title: string; data: any}> = ({title, data}) => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -26,4 +23,4 @@ const ConfigSection: React.FC<{ title: string; data: any }> = ({
   );
 };
 
-export default ConfigSection;
+export default ConfigCard;
