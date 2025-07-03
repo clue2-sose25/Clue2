@@ -13,43 +13,6 @@ Moreover, we are currently focusing on Kubernetes as the orchestrator, so as lon
 
 This Readme describes the process of running CLUE experiments on the selected SUT.
 
-## 📦 ⛓ Using CLUE as a GitHub Action
-
-CLUE can also run directly in your CI pipeline through the `clue-deployer` action.
-The action writes all collected metrics to the directory specified by the
-`results-path` input and uploads those files as an artifact called
-`clue-results`.
-
-The artifact is available for download from the Actions UI or it can be fetched
-in later jobs with `actions/download-artifact`. Try it !
-
-example for using
-```yaml
-jobs:
-  run-clue:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: clue2-sose25/Clue2/.github/actions/clue-deployer@latest
-        with:
-          clue-config-path: ./clue/clue-config.yaml
-          sut-config-path: ./clue/toystore-config.yaml
-          image-registry: ghcr.io/clue2-sose25/sustainable_toystore
-          variants-name: main
-          results-path: clue_results
-          kubeconfig: ${{ secrets.KUBECONFIG_B64 }}
-          patch-local-cluster: 'true'
-```
-
-
-A sample kubeconfig is provided at `.github/actions/mock-kubeconfig.yaml`. Encode the
-file and store the result as the `KUBECONFIG_B64` GitHub secret:
-
-```bash
-base64 -w0 .github/actions/mock-kubeconfig.yaml
-```
-
-
 ## 📦 Prerequisites
 
 - Docker, e.g. 20.10
@@ -64,17 +27,62 @@ base64 -w0 .github/actions/mock-kubeconfig.yaml
 > [!CAUTION]
 > Please note that this repository also contains work in progress parts -- not all CLUE features and experiment branches that are not mentioned in the paper might be thoroughly tested.
 
-### 1. 🏁 Setting up the image registry
+### 💻 CLUE Console
+
+The easiest and recommended way to deploy CLUE on your local machine is to interact with our custom Web UI. To deploy all necessary CLUE container use:
+
+```bash
+docker compose up -d --build
+```
+
+CLUE Web UI should be available on the [localhost:5001](http://localhost:5001). Before running experiments, make sure all necessary System Under Test (SUT) docker images are provided in the specified repository.
+
+### ⛓️ CLUE CLI
+
+For headless deployment of CLUE we support deploying CLUE as a standalone deployer docker container
+
+### 📦 CLUE GitHub Integration
+
+CLUE can also be easily integrated to any existing GitHub CI-CD Pipeline, taking use of our public `clue-deployer` action.
+To successfully run CLUE action, several parameters need to be provided, including the cluster config.
+All collected metrics to the directory specified by the `results-path` input and uploads those files as an artifact called
+`clue-results`.
+
+The artifact is available for download from the Actions UI or it can be fetched in later jobs with `actions/download-artifact`.
+
+```yaml
+jobs:
+  run-clue:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: clue2-sose25/Clue2/.github/actions/clue-deployer@latest
+        with:
+          clue-config-path: ./clue/clue-config.yaml
+          sut-config-path: ./clue/toystore-config.yaml
+          image-registry: ghcr.io/clue2-sose25/sustainable_toystore
+          variants-name: main
+          results-path: clue_results
+          kubeconfig: ${{ secrets.KUBECONFIG_B64 }}
+          patch-local-cluster: "true"
+```
+
+A sample kubeconfig is provided at `.github/actions/mock-kubeconfig.yaml`. Encode the file and store the result as the `KUBECONFIG_B64` GitHub secret:
+
+```bash
+base64 -w0 .github/actions/mock-kubeconfig.yaml
+```
+
+## CLUE Configuration
+
+### 🏁 Image registry
 
 The docker image registry used by CLUE can be specified in the `clue-config.yaml` file (`docker_registry_address` parameter). By default, CLUE supports deploying a local image registry listed below. To deploy the local registry, make sure `Docker` (with `Docker Compose` support) is installed and running. For a custom registry, make sure to run `docker login` in case authentication is needed.
 
-```bash
-docker compose up -d registry
-```
-
-### 2. ✨ Cluster preparation
+### ✨ Cluster preparation
 
 In order to use CLUE to benchmark the SUT of choice, CLUE needs an access to a K8s cluster pre-prepared to run the benchmarks. The requirements include:
+
 - `Prometheus Node Exporter` - we recommend the Kube Prometheus Stack helm chart, which includes e.g. Node Exporter and Grafana resources.
 - `Kepler` - we recommend to deploy the official `Kepler Helm chart` by following the official [Kepler docs](https://sustainable-computing.io/installation/kepler-helm/). If the `Prometheus Node Exporter` was setup before, one can skip the corresponding steps in the `Kepler` guide.
 
@@ -100,7 +108,7 @@ For local testing, we recommend using a `Kind` cluster, simply deployable by pro
 sh create-kind-cluster.sh
 ```
 
-### 3. 🧱 Built the image for the clue loadgenerator
+### 🧱 Built the image for the clue loadgenerator
 
 As Clue comes with an integrated loadgenerator and developer just have to bringt their config + locustfiles along with their SUT, it is required to once build the image for it and push it in the image registry.
 
@@ -108,7 +116,7 @@ As Clue comes with an integrated loadgenerator and developer just have to bringt
 docker compose up -d clue-loadgenerator-builder
 ```
 
-### 4. 🧱 (Optional) Build Images for the selected SUT
+### 🧱 (Optional) Build Images for the selected SUT
 
 This step will differ based on the selected SUT. We provide a support for several SUTs listed in the `sut_configs` folder. Before running the CLUE deployer, all images of the selected SUT have to be built and stored in the specified image registry. The image registry path `docker_registry_address` can be changed in the main config (by default, CLUE uses the registry deployed in previous steps).
 
@@ -135,7 +143,7 @@ To build images for the selected SUT, use one of the commands listed below.
 
 Wait for the selected builder to be finished, indicated by its container showing a status `Exited`. To check if the images have been successfully stored in the registry, visit the `http://localhost:9000/v2/_catalog` page.
 
-### 5. 🧪 SUT Test Deployment (without running the benchmark)
+### 🧪 SUT Test Deployment (without running the benchmark)
 
 For a test deployment of the SUT, without running the benchmark itself, open the `.env` file and change the `DEPLOY_ONLY` value to `true`. Make sure that all required images are present in the specified image registry. Next, run the deployer:
 
@@ -153,7 +161,7 @@ kubectl port-forward service/teastore-webui 8080:80 --namespace=tea-bench
 
 Some SUT may run some initial tasks on the startup, so before accessing the SUT, make sure to wait a minute to compensate for slow / unavailable SUTs.
 
-### 6. 💨 CLUE2 Deployment
+### 💨 CLUE2 Deployment
 
 To run the main CLUE2, run the task below. Make sure that all required images are present in the specified image registry.
 
@@ -163,15 +171,15 @@ docker compose up -d --build clue-deployer
 
 ![Running the Experiments](public/running_experiments.png)
 
-### 7. 📋 (Optional) CLUE2 Deployment with local changes
+### 📋 (Optional) CLUE2 Deployment with local changes
 
 If you create your own variants or make changes to the SUT, the images need to be rebuilt and pushed to the image registry specified in the config. Make sure to run `docker login` in case authentication is needed.
 
 If all the preliminaries for data collection are installed, Clue will fetch the relevant measuremens from Prometheus and save them into the data folder. For data analysis, we provide Python notebooks seperately.
 
-## 💻 Troubleshooting / Known Issues
+### 💻 Troubleshooting / Known Issues
 
 - When using docker desktop, enable in settings > advanced: _Allow the default Docker socket to be used_
 - Ensure that you have a sufficient amount of memory alocated for docker, at least 12 GB
 - Run `minikube dashboard` to monitor deployment errors, e.g. missing node labels or insufficient memory
-- The monolith app has some specific handles, e.g. a different set name. If a a set is not found, especially when skipping builds, this can cause probelems
+- The monolith app has some specific handles, e.g. a different set name. If a a set is not found, especially when skipping builds, this can cause problems.
