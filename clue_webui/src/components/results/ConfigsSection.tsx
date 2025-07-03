@@ -10,9 +10,21 @@ const ConfigsSection: React.FC<{data: ResultDetails}> = ({data}) => {
           All configs and variables used for the deployment of the experiment.
         </p>
       </div>
-      <ConfigCard title="Environment Config" data={data.configs.env_config} />
-      <ConfigCard title="Clue Config" data={data.configs.clue_config} />
-      <ConfigCard title="SUT Config" data={data.configs.sut_config} />
+      <ConfigCard
+        title="Environment Config"
+        data={data.configs.env_config}
+        subtext={"The environment variables used during the experiment."}
+      />
+      <ConfigCard
+        title="Clue Config"
+        data={data.configs.clue_config}
+        subtext={"The CLUE config file used during the experiment."}
+      />
+      <ConfigCard
+        title="SUT Config"
+        data={data.configs.sut_config}
+        subtext={"The SUT config file used during the experiment."}
+      />
     </div>
   );
 };

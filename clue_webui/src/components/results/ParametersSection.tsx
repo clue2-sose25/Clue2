@@ -22,6 +22,14 @@ const ParametersSection: React.FC<{data: ResultDetails}> = ({data}) => {
               <strong>SUT:</strong> {data.sut}
             </div>
             <div>
+              <strong>Variants:</strong>{" "}
+              {data.variants.map((variant) => variant.name).join(", ")}
+            </div>
+            <div>
+              <strong>Workloads:</strong>{" "}
+              {data.workloads.map((workload) => workload.name).join(", ")}
+            </div>
+            <div>
               <strong>Status:</strong>
               <span
                 className={`ml-2 px-2 py-1 rounded text-sm font-medium ${

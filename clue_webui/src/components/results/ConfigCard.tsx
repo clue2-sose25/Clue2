@@ -9,8 +9,17 @@ import {
   Box,
 } from "@mui/material";
 import {MagnifyingGlassPlusIcon, XIcon} from "@phosphor-icons/react";
+import type {
+  ClueConfig,
+  EnvConfig,
+  SutConfig,
+} from "../../models/ResultsDetails";
 
-const ConfigCard: React.FC<{title: string; data: any}> = ({title, data}) => {
+const ConfigCard: React.FC<{
+  title: string;
+  data: EnvConfig | ClueConfig | SutConfig;
+  subtext: string;
+}> = ({title, data, subtext}) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleOpenModal = () => {
@@ -23,14 +32,17 @@ const ConfigCard: React.FC<{title: string; data: any}> = ({title, data}) => {
 
   return (
     <>
-      <div className="border rounded mb-2 bg-white border rounded-sm p-1">
+      <div className="border rounded-md mb-2 p-1 shadow-sm">
         <button
           onClick={handleOpenModal}
-          className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 font-medium flex justify-between items-center"
+          className="w-full text-left p-2 bg-gray-50 hover:bg-gray-100 font-medium flex justify-between items-center transition-colors"
         >
-          {title}
-          <div className="flex gap-2 items-center">
-            <MagnifyingGlassPlusIcon size={20} />
+          <div>
+            <span>{title}</span>
+            {subtext && <p className="text-xs text-gray-500">{subtext}</p>}
+          </div>
+          <div className="flex items-center">
+            <MagnifyingGlassPlusIcon size={20} className="text-gray-600" />
           </div>
         </button>
       </div>
@@ -41,55 +53,31 @@ const ConfigCard: React.FC<{title: string; data: any}> = ({title, data}) => {
         maxWidth="md"
         fullWidth
         PaperProps={{
-          sx: {
-            minHeight: "60vh",
-            maxHeight: "80vh",
-          },
+          className: "max-h-[80vh] rounded-lg shadow-xl",
         }}
       >
-        <DialogTitle
-          sx={{
-            m: 0,
-            p: 2,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          {title}
+        <DialogTitle className="flex justify-between items-center p-4 border-b border-gray-200">
+          <div>
+            <span className="mb-2">{title}</span>
+            {subtext && <p className="text-xs text-gray-500">{subtext}</p>}
+          </div>
           <IconButton
             aria-label="close"
             onClick={handleCloseModal}
-            sx={{color: (theme) => theme.palette.grey[500]}}
+            className="text-gray-500 hover:text-gray-700 transition-colors"
           >
             <XIcon size={24} />
           </IconButton>
         </DialogTitle>
 
-        <DialogContent dividers sx={{p: 3}}>
+        <DialogContent className="p-6">
           <Box
             component="pre"
-            sx={{
-              fontSize: "0.875rem",
-              overflow: "auto",
-              backgroundColor: "grey.50",
-              p: 2,
-              borderRadius: 1,
-              fontFamily: "monospace",
-              whiteSpace: "pre-wrap",
-              wordBreak: "break-word",
-              margin: 0,
-            }}
+            className="bg-gray-50 p-4 rounded-md font-mono text-sm text-gray-800 whitespace-pre-wrap break-words overflow-auto"
           >
             {JSON.stringify(data, null, 2)}
           </Box>
         </DialogContent>
-
-        <DialogActions sx={{p: 2}}>
-          <Button onClick={handleCloseModal} color="primary">
-            Close
-          </Button>
-        </DialogActions>
       </Dialog>
     </>
   );
