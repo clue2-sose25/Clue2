@@ -1,4 +1,4 @@
-import { FilesIcon, GaugeIcon, StackPlusIcon } from "@phosphor-icons/react";
+import { FilesIcon, GaugeIcon, StackPlusIcon, WrenchIcon } from "@phosphor-icons/react";
 import { NavLink } from "react-router";
 
 const Navbar = () => {
@@ -6,6 +6,7 @@ const Navbar = () => {
     { name: "NEW EXPERIMENT", href: "/experiment", icon: <StackPlusIcon size={20} /> },
     { name: "DASHBOARD", href: "/dashboard", icon: <GaugeIcon size={20} /> },
     { name: "RESULTS", href: "/results", icon: <FilesIcon size={20} /> },
+    { name: "CLUSTER", href: "/cluster", icon: <WrenchIcon size={20} /> },
   ];
 
   return (

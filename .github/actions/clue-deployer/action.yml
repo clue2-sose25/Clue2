@@ -19,6 +19,12 @@ inputs:
   results-path:
     description: 'Directory on the runner to store CLUE results'
     default: clue_results
+  kubeconfig:
+    description: 'Base64 encoded kubeconfig to access the cluster'
+    required: false
+  patch-local-cluster:
+    description: 'Patch localhost addresses in the kubeconfig'
+    default: 'true'
 runs:
   using: "composite"
   steps:
@@ -28,6 +34,8 @@ runs:
        -v ${{ inputs['clue-config-path']  }}:/app/clue-config.yaml \
        -v ${{ inputs['sut-config-path'] }}:/app/sut-config.yaml \
        -v ${{ inputs['results-path'] }}:/app/results \
+       -e KUBE_CONFIG=${{ inputs['kubeconfig'] }} \
+       -e PATCH_LOCAL_CLUSTER=${{ inputs['patch-local-cluster'] }}\
        -e DEPLOY_AS_SERVICE=false -p 9001:8000 -e EXPERIMENT_NAME=${{ inputs.variants-name }} -e SUT=${{ inputs['sut-config-path'] }} -e DEPLOY_ONLY=false -e N_ITERATIONS=1\
        ghcr.io/clue2-sose25/clue2-deployer:dev
      sleep 60

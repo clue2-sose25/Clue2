@@ -14,7 +14,7 @@ from clue_deployer.src.logger import SharedLogBuffer, get_child_process_logger, 
 from clue_deployer.src.configs.configs import ENV_CONFIG, Configs
 from clue_deployer.src.main import ExperimentRunner
 from clue_deployer.src.service.worker import Worker
-from .routers import logs, suts, results, plots
+from .routers import logs, suts, results, plots, cluster
 
 
 # Initialize multiprocessing lock and value for deployment synchronization. Used for deployments.
@@ -40,6 +40,8 @@ app.include_router(logs.router)
 app.include_router(suts.router)
 app.include_router(results.router)
 app.include_router(plots.router)
+app.include_router(cluster.router)
+
 
 SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
 RESULTS_DIR = ENV_CONFIG.RESULTS_PATH
