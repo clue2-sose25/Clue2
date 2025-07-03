@@ -1,10 +1,10 @@
-import {
-  ChartBarIcon,
-  PlusIcon,
-  TrendUpIcon,
-  XIcon,
-} from "@phosphor-icons/react";
 import {useState, useEffect} from "react";
+import {
+  XIcon,
+  PlusIcon,
+  ChartBarIcon,
+  TrendUpIcon,
+} from "@phosphor-icons/react";
 
 // Types based on your models
 interface WorkloadSettings {
@@ -182,6 +182,10 @@ const ResultsSection: React.FC<{
     {}
   );
   const [panelPlots, setPanelPlots] = useState<{[key: string]: Plot[]}>({});
+  const [editingPanel, setEditingPanel] = useState<{
+    panelId: string;
+    field: "workload" | "variant" | "iteration";
+  } | null>(null);
 
   // Initialize with first workload and up to 3 variants
   useEffect(() => {
@@ -261,6 +265,30 @@ const ResultsSection: React.FC<{
     }
   };
 
+  const updatePanel = (
+    panelId: string,
+    field: "workload" | "variant" | "iteration",
+    value: any
+  ) => {
+    setComparisonPanels((prev) =>
+      prev.map((panel) => {
+        if (panel.id === panelId) {
+          const updatedPanel = {...panel};
+          if (field === "workload") {
+            updatedPanel.workload = value;
+          } else if (field === "variant") {
+            updatedPanel.variant = value;
+          } else if (field === "iteration") {
+            updatedPanel.iteration = value;
+          }
+          updatedPanel.id = `${updatedPanel.workload.name}-${updatedPanel.variant.name}-${updatedPanel.iteration}`;
+          return updatedPanel;
+        }
+        return panel;
+      })
+    );
+    setEditingPanel(null);
+  };
   const removePanel = (panelId: string) => {
     setComparisonPanels(
       comparisonPanels.filter((panel) => panel.id !== panelId)
@@ -293,7 +321,7 @@ const ResultsSection: React.FC<{
             onClick={() => setShowAddPanel(true)}
             className="flex items-center gap-1 px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
           >
-            <PlusIcon size={16} />
+            <PlusIcon className="w-4 h-4" />
             Add Panel
           </button>
         </div>
@@ -305,8 +333,8 @@ const ResultsSection: React.FC<{
 
       {/* Add Panel Modal */}
       {showAddPanel && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
             <h3 className="text-lg font-medium mb-4">Add Comparison Panel</h3>
 
             <div className="space-y-4">
@@ -393,6 +421,120 @@ const ResultsSection: React.FC<{
         </div>
       )}
 
+      {/* Edit Panel Modal */}
+      {editingPanel && (
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+            <h3 className="text-lg font-medium mb-4">
+              Edit{" "}
+              {editingPanel.field === "workload"
+                ? "Workload"
+                : editingPanel.field === "variant"
+                ? "Variant"
+                : "Iteration"}
+            </h3>
+
+            <div className="space-y-4">
+              {editingPanel.field === "workload" && (
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Workload
+                  </label>
+                  <select
+                    defaultValue={
+                      comparisonPanels.find(
+                        (p) => p.id === editingPanel.panelId
+                      )?.workload.name
+                    }
+                    onChange={(e) => {
+                      const workload = workloads.find(
+                        (w) => w.name === e.target.value
+                      );
+                      if (workload)
+                        updatePanel(editingPanel.panelId, "workload", workload);
+                    }}
+                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
+                  >
+                    {workloads.map((workload) => (
+                      <option key={workload.name} value={workload.name}>
+                        {workload.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {editingPanel.field === "variant" && (
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Variant
+                  </label>
+                  <select
+                    defaultValue={
+                      comparisonPanels.find(
+                        (p) => p.id === editingPanel.panelId
+                      )?.variant.name
+                    }
+                    onChange={(e) => {
+                      const variant = variants.find(
+                        (v) => v.name === e.target.value
+                      );
+                      if (variant)
+                        updatePanel(editingPanel.panelId, "variant", variant);
+                    }}
+                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
+                  >
+                    {variants.map((variant) => (
+                      <option key={variant.name} value={variant.name}>
+                        {variant.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {editingPanel.field === "iteration" && (
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Iteration
+                  </label>
+                  <select
+                    defaultValue={
+                      comparisonPanels.find(
+                        (p) => p.id === editingPanel.panelId
+                      )?.iteration
+                    }
+                    onChange={(e) => {
+                      updatePanel(
+                        editingPanel.panelId,
+                        "iteration",
+                        parseInt(e.target.value)
+                      );
+                    }}
+                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
+                  >
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <option key={i} value={i}>
+                        Iteration {i}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end space-x-2 mt-6">
+              <button
+                onClick={() => setEditingPanel(null)}
+                className="px-4 py-2 text-sm border rounded hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Comparison Panels */}
       {comparisonPanels.length > 0 && (
         <div className={`grid ${gridCols} gap-4`}>
@@ -403,50 +545,73 @@ const ResultsSection: React.FC<{
             >
               {/* Panel Header */}
               <div className="bg-gray-50 p-3 border-b">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-medium text-sm">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() =>
+                        setEditingPanel({panelId: panel.id, field: "workload"})
+                      }
+                      className="text-sm font-medium text-blue-600 hover:text-blue-800 underline"
+                    >
                       {panel.workload.name}
-                    </h3>
-                    <p className="text-xs text-gray-600">
-                      {panel.variant.name} - Iteration {panel.iteration}
-                    </p>
+                    </button>
+                    <span className="text-sm text-gray-400">/</span>
+                    <button
+                      onClick={() =>
+                        setEditingPanel({panelId: panel.id, field: "variant"})
+                      }
+                      className="text-sm font-medium text-blue-600 hover:text-blue-800 underline"
+                    >
+                      {panel.variant.name}
+                    </button>
+                    <span className="text-sm text-gray-400">/</span>
+                    <button
+                      onClick={() =>
+                        setEditingPanel({panelId: panel.id, field: "iteration"})
+                      }
+                      className="text-sm font-medium text-blue-600 hover:text-blue-800 underline"
+                    >
+                      Iteration {panel.iteration}
+                    </button>
                   </div>
                   <button
                     onClick={() => removePanel(panel.id)}
                     className="text-gray-400 hover:text-red-500"
                   >
-                    <XIcon size={16} />
+                    <XIcon className="w-4 h-4" />
                   </button>
                 </div>
               </div>
 
               {/* Panel Content */}
               <div className="p-4 space-y-4">
-                {/* Workload Info */}
-                <div className="text-xs">
-                  <div className="font-medium mb-1">Workload Details</div>
-                  <p className="text-gray-600 mb-2">
-                    {panel.workload.description}
-                  </p>
-                  <div className="text-gray-500">
-                    Timeout: {panel.workload.timeout_duration}s
+                {/* Workload and Variant Info Side by Side */}
+                <div className="grid grid-cols-2 gap-4 text-xs">
+                  {/* Workload Info */}
+                  <div>
+                    <div className="font-medium mb-1">Workload Details</div>
+                    <p className="text-gray-600 mb-2">
+                      {panel.workload.description}
+                    </p>
+                    <div className="text-gray-500">
+                      Timeout: {panel.workload.timeout_duration}s
+                    </div>
                   </div>
-                </div>
 
-                {/* Variant Info */}
-                <div className="text-xs">
-                  <div className="font-medium mb-1">Variant Details</div>
-                  <p className="text-gray-600 mb-2">
-                    {panel.variant.description}
-                  </p>
-                  <div className="grid grid-cols-2 gap-2 text-gray-500">
-                    <div>Branch: {panel.variant.target_branch}</div>
-                    <div>Autoscaling: {panel.variant.autoscaling}</div>
-                    <div>Max Scale: {panel.variant.max_autoscale}</div>
-                    <div>
-                      Colocated:{" "}
-                      {panel.variant.colocated_workload ? "Yes" : "No"}
+                  {/* Variant Info */}
+                  <div>
+                    <div className="font-medium mb-1">Variant Details</div>
+                    <p className="text-gray-600 mb-2">
+                      {panel.variant.description}
+                    </p>
+                    <div className="space-y-1 text-gray-500">
+                      <div>Branch: {panel.variant.target_branch}</div>
+                      <div>Autoscaling: {panel.variant.autoscaling}</div>
+                      <div>Max Scale: {panel.variant.max_autoscale}</div>
+                      <div>
+                        Colocated:{" "}
+                        {panel.variant.colocated_workload ? "Yes" : "No"}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -454,7 +619,7 @@ const ResultsSection: React.FC<{
                 {/* Metrics */}
                 <div>
                   <div className="flex items-center gap-1 mb-2">
-                    <TrendUpIcon size={14} />
+                    <TrendUpIcon className="w-4 h-4" />
                     <span className="font-medium text-sm">Metrics</span>
                   </div>
                   <div className="space-y-1">
@@ -475,7 +640,7 @@ const ResultsSection: React.FC<{
                 {/* Plots */}
                 <div>
                   <div className="flex items-center gap-1 mb-2">
-                    <ChartBarIcon size={14} />
+                    <ChartBarIcon className="w-4 h-4" />
                     <span className="font-medium text-sm">Plots</span>
                   </div>
                   <div className="space-y-2">
