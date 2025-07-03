@@ -25,7 +25,7 @@ The framework is designed to be extensible and can be easily integrated with exi
 
 For specific use cases, we offer a wide range of ways to deploy CLUE.
 
-### 💻 CLUE Console
+### 💻 CLUE Web UI
 
 The easiest and recommended way to deploy CLUE on your local machine is to interact with our custom Web UI. To deploy all necessary CLUE container use:
 
