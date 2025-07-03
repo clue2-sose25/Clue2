@@ -128,7 +128,7 @@ class ExperimentRunner:
             # Iterate over workload types
             for iteration in range(num_iterations):
                 # Create the results path for the individual runs
-                results_path = path.join("data", self.experiment.sut, self.experiment.timestamp, variant.name, workload.name, str(iteration))
+                results_path = path.join("data", self.experiment.sut, self.experiment.timestamp, workload.name, variant.name, str(iteration))
                 # Create the results path for the experiment parent folder (inside the timestamp directory)
                 results_parent_path = path.join("data", self.experiment.sut, self.experiment.timestamp)
                 # Create experiment files
