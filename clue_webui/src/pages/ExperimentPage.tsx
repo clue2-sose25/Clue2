@@ -1,20 +1,20 @@
-import { useContext, useEffect, useState, useRef } from "react";
-import { DeploymentContext } from "../contexts/DeploymentContext";
+import {useContext, useEffect, useState, useRef} from "react";
+import {DeploymentContext} from "../contexts/DeploymentContext";
 import {
   PlusCircleIcon,
   RocketLaunchIcon,
   StackPlusIcon,
 } from "@phosphor-icons/react";
-import type { SUT } from "../models/SUT";
-import { IconButton, Tooltip } from "@mui/material";
-import { useNavigate } from "react-router";
-import { QueueContext } from "../contexts/QueueContext";
+import type {SUT} from "../models/SUT";
+import {IconButton, Tooltip} from "@mui/material";
+import {useNavigate} from "react-router";
+import {QueueContext} from "../contexts/QueueContext";
 
 const ExperimentPage = () => {
-  const { currentDeployment, setCurrentDeployment, setIfDeploying } =
+  const {currentDeployment, setCurrentDeployment, setIfDeploying} =
     useContext(DeploymentContext);
 
-  const { currentQueue, setCurrentQueue } = useContext(QueueContext);
+  const {currentQueue, setCurrentQueue} = useContext(QueueContext);
 
   const navigate = useNavigate();
   const [availableSUTs, setAvailableSUTs] = useState<SUT[]>([]);
@@ -108,10 +108,9 @@ const ExperimentPage = () => {
     }
   }, [someWorkloadsSelected]);
 
-  const workloadTime = () => 3;
   const variantTotals = currentDeployment.variants.map((exp) => {
     const perIteration = currentDeployment.workloads.reduce(
-      (sum, w) => sum + 3,
+      (sum, _w) => sum + 3,
       0
     );
     return {
@@ -127,7 +126,7 @@ const ExperimentPage = () => {
 
     await fetch("/api/deploy/sut", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {"Content-Type": "application/json"},
       body: JSON.stringify({
         sut: currentDeployment.sut,
         variants: currentDeployment.variants.join(","),

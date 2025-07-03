@@ -1,12 +1,11 @@
-import { useEffect, useState } from "react";
-import type { Metric } from "../models/Metric";
+import {useEffect, useState} from "react";
 import {
   ArrowLeftIcon,
   DownloadSimpleIcon,
   RepeatIcon,
 } from "@phosphor-icons/react";
-import { Link, useParams } from "react-router";
-import type { ResultDetails } from "../models/ResultsDetails";
+import {Link, useParams} from "react-router";
+import type {ResultDetails} from "../models/ResultsDetails";
 import ResultDetailsDisplay from "../components/results/ResultDetailsDisplay";
 
 // Define params type for useParams
@@ -16,9 +15,8 @@ type ResultEntryParams = {
 
 const ResultPage = () => {
   // The ID of the results
-  const { uuid } = useParams<ResultEntryParams>();
+  const {uuid} = useParams<ResultEntryParams>();
 
-  const [metrics, setMetrics] = useState<Metric[]>([]);
   const [resultDetails, setResultDetails] = useState<ResultDetails | null>(
     null
   );
@@ -94,7 +92,6 @@ const ResultPage = () => {
         // });
       } catch (err) {
         console.error("Error fetching data:", err);
-        setMetrics([]);
         setResultDetails(null);
       }
     };
