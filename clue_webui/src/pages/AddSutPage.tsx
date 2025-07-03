@@ -2,6 +2,9 @@ import {useEffect, useState} from "react";
 import {Link, useNavigate} from "react-router";
 import {ArrowLeftIcon, UploadSimpleIcon} from "@phosphor-icons/react";
 
+// React Syntax Highlighter imports
+import SyntaxHighlighter from "react-syntax-highlighter";
+
 const AddSutPage = () => {
   const [file, setFile] = useState<File | null>(null);
   const [content, setContent] = useState<string>("");
@@ -74,6 +77,38 @@ const AddSutPage = () => {
     if (res.ok) {
       navigate("/experiment");
     }
+  };
+
+  // Custom theme for YAML syntax highlighting
+  const customYamlTheme = {
+    hljs: {
+      background: "transparent",
+      padding: "0",
+      fontFamily:
+        'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+      fontSize: "14px",
+      lineHeight: "1.5",
+    },
+    "hljs-comment": {
+      color: "#10B981",
+      fontStyle: "italic",
+    },
+    "hljs-string": {
+      color: "#F59E0B",
+    },
+    "hljs-number": {
+      color: "#8B5CF6",
+    },
+    "hljs-literal": {
+      color: "#8B5CF6",
+    },
+    "hljs-attr": {
+      color: "#3B82F6",
+      fontWeight: "600",
+    },
+    "hljs-bullet": {
+      color: "#6B7280",
+    },
   };
 
   return (
@@ -156,9 +191,32 @@ const AddSutPage = () => {
         <div className="flex-1 flex flex-col gap-2 min-h-0">
           <label className="text-sm font-medium">Configuration (YAML)</label>
           <div className="flex-1 relative border border-gray-300 rounded-lg overflow-hidden bg-white">
+            {/* Syntax Highlighted Background */}
+            <div className="absolute inset-0 p-3 pointer-events-none overflow-auto">
+              <SyntaxHighlighter
+                language="yaml"
+                style={customYamlTheme}
+                customStyle={{
+                  background: "transparent",
+                  padding: "0",
+                  margin: "0",
+                  fontSize: "14px",
+                  lineHeight: "1.5",
+                  fontFamily:
+                    'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+                }}
+                showLineNumbers={false}
+                wrapLines={false}
+                PreTag="div"
+                CodeTag="div"
+              >
+                {content || " "}
+              </SyntaxHighlighter>
+            </div>
+
             {/* Actual textarea */}
             <textarea
-              className="absolute inset-0 w-full h-full p-3 font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset bg-transparent caret-black text-black"
+              className="absolute inset-0 w-full h-full p-3 font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset bg-transparent caret-black"
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="Enter your YAML configuration here..."
@@ -168,6 +226,17 @@ const AddSutPage = () => {
                   'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
                 lineHeight: "1.5",
                 tabSize: 2,
+                color: "rgba(0, 0, 0, 0.01)", // Almost transparent so highlighting shows through
+              }}
+              onScroll={(e) => {
+                // Sync scroll position with highlight layer
+                const target = e.target as HTMLTextAreaElement;
+                const highlightLayer =
+                  target.previousElementSibling as HTMLDivElement;
+                if (highlightLayer) {
+                  highlightLayer.scrollTop = target.scrollTop;
+                  highlightLayer.scrollLeft = target.scrollLeft;
+                }
               }}
             />
           </div>
