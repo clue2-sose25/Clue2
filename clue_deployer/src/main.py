@@ -21,16 +21,15 @@ from clue_deployer.src.logger import logger
 # Disable SSL verification
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-
-
 class ExperimentRunner:
     def __init__(self,
                 configs: Configs = CONFIGS,
-                variants: str = ENV_CONFIG.VARIANTS,
-                workloads: str = ENV_CONFIG.WORKLOADS,
+                variants_string: str = ENV_CONFIG.VARIANTS,
+                workloads_string: str = ENV_CONFIG.WORKLOADS,
                 deploy_only = ENV_CONFIG.DEPLOY_ONLY,
                 sut: str = ENV_CONFIG.SUT,
                 n_iterations: int = ENV_CONFIG.N_ITERATIONS) -> None:
+        # Load the kube config
         try:
             kube_config.load_kube_config()
         except Exception as exc:
@@ -39,8 +38,12 @@ class ExperimentRunner:
             else:
                 raise
         # Prepare the variants
+        variants = variants_string.split(',')
+        logger.info(f"Specified variants: {variants}")
         final_variants: List[Variant] = [variant for variant in configs.sut_config.variants if variant.name in variants]
         # Prepare the workloads
+        workloads = workloads_string.split(',')
+        logger.info(f"Specified workloads: {workloads}")
         final_workloads: List[Workload] = [workload for workload in configs.sut_config.workloads if workload.name in workloads]
         # Create the final experiment object
         self.experiment = Experiment(
@@ -147,8 +150,6 @@ class ExperimentRunner:
             logger.error(f"Invalid SUT name: '{self.experiment.sut}'")
             logger.info(f"Available SUTs: {available_suts_list}")
             return
-        logger.info(f"Selected {len(self.experiment.variants)} variants to run")
-        logger.info(f"Selected {len(self.experiment.workloads)} workloads to run")
         # Set the status to preparing
         StatusManager.set(StatusPhase.PREPARING_CLUSTER, "Preparing the cluster...")
         # Deploy a single variant if deploy only

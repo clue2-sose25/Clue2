@@ -47,7 +47,7 @@ SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
 RESULTS_DIR = ENV_CONFIG.RESULTS_PATH
 CLUE_CONFIG_PATH = ENV_CONFIG.CLUE_CONFIG_PATH
 
-def run_deployment(configs: Configs, deploy_request: DeployRequest,
+def run_experiment(configs: Configs, deploy_request: DeployRequest,
                   state_lock: Lock, is_deploying, shared_log_buffer: SharedLogBuffer):
     """Function to run the deployment in a separate process."""
     # Setup logger for this child process
@@ -55,8 +55,8 @@ def run_deployment(configs: Configs, deploy_request: DeployRequest,
     
     try:
         process_logger.info(f"Starting deployment for SUT {deploy_request.sut}")
-        runner = ExperimentRunner(configs, variants=deploy_request.variants, sut=deploy_request.sut, 
-                           deploy_only=deploy_request.deploy_only, n_iterations=deploy_request.n_iterations)
+        runner = ExperimentRunner(configs, deploy_request.variants, deploy_request.workloads, 
+                           deploy_request.deploy_only, deploy_request.sut, deploy_request.n_iterations)
         runner.main()
         process_logger.info(f"Successfully completed deployment for SUT {deploy_request.sut}")
         
@@ -105,7 +105,7 @@ async def deploy_sut(request: DeployRequest):
     try:
         # Pass the shared buffer to the child process
         process = multiprocessing.Process(
-            target=run_deployment,
+            target=run_experiment,
             args=(configs, request, 
                   state_lock, is_deploying, shared_log_buffer)
         )
