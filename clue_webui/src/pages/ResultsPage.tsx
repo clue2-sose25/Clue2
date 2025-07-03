@@ -4,8 +4,8 @@ import {
   RepeatIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
-import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import React, {useEffect, useState} from "react";
+import {Link, useNavigate} from "react-router";
 import {
   Table,
   TableBody,
@@ -17,7 +17,7 @@ import {
   IconButton,
   Tooltip,
 } from "@mui/material";
-import type { ResultEntry } from "../models/ResultEntry";
+import type {ResultEntry} from "../models/ResultEntry";
 
 const ResultsPage = () => {
   const [results, setResults] = useState<ResultEntry[]>([]);
@@ -27,7 +27,7 @@ const ResultsPage = () => {
     e.preventDefault();
     e.stopPropagation();
     try {
-      const res = await fetch(`/api/results/${uuid}`, { method: "DELETE" });
+      const res = await fetch(`/api/results/${uuid}`, {method: "DELETE"});
       if (!res.ok) throw new Error("Failed to delete");
       setResults((prev) => prev.filter((r) => r.uuid !== uuid));
     } catch (err) {
@@ -47,7 +47,7 @@ const ResultsPage = () => {
 
       // Create download URL and trigger download
       const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
       link.download = `results-${uuid}.zip`; // Set filename
       document.body.appendChild(link);
@@ -74,7 +74,7 @@ const ResultsPage = () => {
       .then((data) => {
         setResults(data);
       })
-      .catch(() => { });
+      .catch(() => {});
   }, []);
 
   const getStatusColor = (status: string) => {
@@ -126,39 +126,73 @@ const ResultsPage = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {results && results.map((result) => (
-              <TableRow
-                key={result.uuid}
-                hover
-                style={{ cursor: "pointer" }}
-                onClick={() => handleRowClick(result.uuid)}
-              >
-                <TableCell>{result.sut}</TableCell>
-                <TableCell>{result.timestamp}</TableCell>
-                <TableCell>{result.variants}</TableCell>
-                <TableCell>{result.workloads}</TableCell>
-                <TableCell>{result.n_iterations}</TableCell>
-                <TableCell className={getStatusColor(result.status)}>{result.status}</TableCell>
-                <TableCell>
-                  {/** Icons */}
-                  <Tooltip title="Repeat experiment" arrow placement="top">
-                    <IconButton onClick={(e) => { e.stopPropagation(); }}>
-                      <RepeatIcon size={20} />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Download results" arrow placement="top">
-                    <IconButton onClick={(e) => { handleResultsDownload(result.uuid, e) }}>
-                      <DownloadSimpleIcon size={20} />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Delete results" arrow placement="top">
-                    <IconButton onClick={(e) => handleDelete(result.uuid, e)}>
-                      <TrashIcon size={20} color="red" />
-                    </IconButton>
-                  </Tooltip>
-                </TableCell>
-              </TableRow>
-            ))}
+            {results &&
+              results.map((result) => (
+                <TableRow
+                  key={result.uuid}
+                  hover
+                  style={{cursor: "pointer"}}
+                  onClick={() => handleRowClick(result.uuid)}
+                >
+                  <TableCell>
+                    <div className="capitalize">{result.sut}</div>
+                  </TableCell>
+                  <TableCell>
+                    {(() => {
+                      try {
+                        const formattedDate = new Date(
+                          result.timestamp.replace("_", "T")
+                        ).toLocaleString("en-US", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          second: "2-digit",
+                          hour12: true,
+                        });
+                        return formattedDate;
+                      } catch (error) {
+                        return "Invalid Timestamp";
+                      }
+                    })()}
+                  </TableCell>
+                  <TableCell>{result.variants.split(",").join(", ")}</TableCell>
+                  <TableCell>
+                    {result.workloads.split(",").join(", ")}
+                  </TableCell>
+                  <TableCell>{result.n_iterations}</TableCell>
+                  <TableCell className={getStatusColor(result.status)}>
+                    {result.status}
+                  </TableCell>
+                  <TableCell>
+                    {/** Icons */}
+                    <Tooltip title="Repeat experiment" arrow placement="top">
+                      <IconButton
+                        onClick={(e) => {
+                          e.stopPropagation();
+                        }}
+                      >
+                        <RepeatIcon size={20} />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Download results" arrow placement="top">
+                      <IconButton
+                        onClick={(e) => {
+                          handleResultsDownload(result.uuid, e);
+                        }}
+                      >
+                        <DownloadSimpleIcon size={20} />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Delete results" arrow placement="top">
+                      <IconButton onClick={(e) => handleDelete(result.uuid, e)}>
+                        <TrashIcon size={20} color="red" />
+                      </IconButton>
+                    </Tooltip>
+                  </TableCell>
+                </TableRow>
+              ))}
           </TableBody>
         </Table>
       </TableContainer>

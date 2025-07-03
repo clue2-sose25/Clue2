@@ -1,7 +1,7 @@
 import type {ResultDetails} from "../../models/ResultsDetails";
 import ConfigsSection from "./ConfigsSection";
 import ParametersSection from "./ParametersSection";
-import WorkloadTabs from "./WorkloadTabs";
+import ResultsSection from "./ResultsSection";
 
 const ResultDetailsDisplay: React.FC<{data: ResultDetails}> = ({data}) => {
   return (
@@ -14,7 +14,7 @@ const ResultDetailsDisplay: React.FC<{data: ResultDetails}> = ({data}) => {
           <ConfigsSection data={data} />
         </div>
       </div>
-      <WorkloadTabs workloads={data.workloads} variants={data.variants} />
+      <ResultsSection workloads={data.workloads} variants={data.variants} />
     </div>
   );
 };
