@@ -27,6 +27,8 @@ This Readme describes the process of running CLUE experiments on the selected SU
 > [!CAUTION]
 > Please note that this repository also contains work in progress parts -- not all CLUE features and experiment branches that are not mentioned in the paper might be thoroughly tested.
 
+For specific use cases, we offer a wide range of ways to deploy CLUE.
+
 ### 💻 CLUE Console
 
 The easiest and recommended way to deploy CLUE on your local machine is to interact with our custom Web UI. To deploy all necessary CLUE container use:
@@ -35,11 +37,13 @@ The easiest and recommended way to deploy CLUE on your local machine is to inter
 docker compose up -d --build
 ```
 
-CLUE Web UI should be available on the [localhost:5001](http://localhost:5001). Before running experiments, make sure all necessary System Under Test (SUT) docker images are provided in the specified repository.
+CLUE Web UI should be available on the [localhost:5001](http://localhost:5001). Before running experiments, make sure to read the `CLUE Components` section.
 
 ### ⛓️ CLUE CLI
 
-For headless deployment of CLUE we support deploying CLUE as a standalone deployer docker container
+For headless deployment of CLUE we support deploying CLUE as a standalone deployer docker container.
+
+Before running the CLI command, make sure to read the `CLUE Components` section, while CLUE will immediatelly start the experiments.
 
 ### 📦 CLUE GitHub Integration
 
@@ -73,32 +77,26 @@ A sample kubeconfig is provided at `.github/actions/mock-kubeconfig.yaml`. Encod
 base64 -w0 .github/actions/mock-kubeconfig.yaml
 ```
 
-## CLUE Configuration
+## CLUE Components
+
+With CLUE being a highly modular system, all of its components can be configured for the specific use case.
 
 ### 🏁 Image registry
 
-The docker image registry used by CLUE can be specified in the `clue-config.yaml` file (`docker_registry_address` parameter). By default, CLUE supports deploying a local image registry listed below. To deploy the local registry, make sure `Docker` (with `Docker Compose` support) is installed and running. For a custom registry, make sure to run `docker login` in case authentication is needed.
+For the deployment of the SUT, CLUE connects to the provided docker image registry, specified in the `clue-config.yaml` file (`docker_registry_address`). CLUE expects all of the container images used by the SUTs to be present in the selected registry, including the workload generator image. Finally, the tags for the images should match the name of the currently deployed variant.
+
+By default, CLUE deploys its own unsecure, local docker registry. To use any custom public or private registry change the `clue-config.yaml` or visit the `Settings` page in our Web UI. Make sure CLUE will be able to access the images, by running `docker login` in case where authentication is needed.
 
 ### ✨ Cluster preparation
 
-In order to use CLUE to benchmark the SUT of choice, CLUE needs an access to a K8s cluster pre-prepared to run the benchmarks. The requirements include:
+The SUT deployment and experiment will happen at the selected K8s cluster of choice. For local testing we recommend using `kind` cluster, however any cluster with following requirements should work:
 
 - `Prometheus Node Exporter` - we recommend the Kube Prometheus Stack helm chart, which includes e.g. Node Exporter and Grafana resources.
 - `Kepler` - we recommend to deploy the official `Kepler Helm chart` by following the official [Kepler docs](https://sustainable-computing.io/installation/kepler-helm/). If the `Prometheus Node Exporter` was setup before, one can skip the corresponding steps in the `Kepler` guide.
 
-When deploying CLUE service the kubeconfig can be provided in multiple ways. By default
-`docker-compose` mounts `~/.kube/config` into the deployer container. Alternatively you can
-set `KUBECONFIG_FILE` to mount a different file or pass a base64 encoded configuration via
-the `KUBE_CONFIG` environment variable (useful for CI environments).
+The cluster's kubeconfig can be provided in multiple ways. By default `docker-compose` mounts `~/.kube/config` into the deployer container. Alternatively you can set `KUBECONFIG_FILE` to mount a different file or pass a base64 encoded configuration via the `KUBE_CONFIG` environment variable (useful for CI environments).
 
-If `DEPLOY_AS_SERVICE` is enabled and no kubeconfig is provided, the backend
-starts without a cluster connection. You can then upload the configuration from
-the Web UI at `/cluster`. The local cluster patching can be disabled by setting
-`PATCH_LOCAL_CLUSTER=false`.
-
-When running as a service without a SUT configuration the backend still
-starts. Provide the SUT name through the `SUT` environment variable when
-launching a deployment request.
+If `DEPLOY_AS_SERVICE` is enabled and no kubeconfig is provided, the backend starts without a cluster connection. You can then upload the configuration from the Web UI at `/cluster`. The local cluster patching can be disabled by setting `PATCH_LOCAL_CLUSTER=false`.
 
 1. Setting up a local `Kind` cluster
 
@@ -110,7 +108,7 @@ sh create-kind-cluster.sh
 
 ### 🧱 Built the image for the clue loadgenerator
 
-As Clue comes with an integrated loadgenerator and developer just have to bringt their config + locustfiles along with their SUT, it is required to once build the image for it and push it in the image registry.
+As Clue comes with an integrated loadgenerator and developer just have to bring their config + locustfiles along with their SUT, it is required to once build the image for it and push it in the image registry.
 
 ```bash
 docker compose up -d clue-loadgenerator-builder
