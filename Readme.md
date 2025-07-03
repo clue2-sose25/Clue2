@@ -100,7 +100,15 @@ For local testing, we recommend using a `Kind` cluster, simply deployable by pro
 sh create-kind-cluster.sh
 ```
 
-### 3. 🧱 (Optional) Build Images for the selected SUT
+### 3. 🧱 Built the image for the clue loadgenerator
+
+As Clue comes with an integrated loadgenerator and developer just have to bringt their config + locustfiles along with their SUT, it is required to once build the image for it and push it in the image registry.
+
+```bash
+docker compose up -d clue-loadgenerator-builder
+```
+
+### 4. 🧱 (Optional) Build Images for the selected SUT
 
 This step will differ based on the selected SUT. We provide a support for several SUTs listed in the `sut_configs` folder. Before running the CLUE deployer, all images of the selected SUT have to be built and stored in the specified image registry. The image registry path `docker_registry_address` can be changed in the main config (by default, CLUE uses the registry deployed in previous steps).
 
@@ -127,7 +135,7 @@ To build images for the selected SUT, use one of the commands listed below.
 
 Wait for the selected builder to be finished, indicated by its container showing a status `Exited`. To check if the images have been successfully stored in the registry, visit the `http://localhost:9000/v2/_catalog` page.
 
-### 4. 🧪 SUT Test Deployment (without running the benchmark)
+### 5. 🧪 SUT Test Deployment (without running the benchmark)
 
 For a test deployment of the SUT, without running the benchmark itself, open the `.env` file and change the `DEPLOY_ONLY` value to `true`. Make sure that all required images are present in the specified image registry. Next, run the deployer:
 
@@ -145,7 +153,7 @@ kubectl port-forward service/teastore-webui 8080:80 --namespace=tea-bench
 
 Some SUT may run some initial tasks on the startup, so before accessing the SUT, make sure to wait a minute to compensate for slow / unavailable SUTs.
 
-### 5. 💨 CLUE2 Deployment
+### 6. 💨 CLUE2 Deployment
 
 To run the main CLUE2, run the task below. Make sure that all required images are present in the specified image registry.
 
@@ -155,7 +163,7 @@ docker compose up -d --build clue-deployer
 
 ![Running the Experiments](public/running_experiments.png)
 
-### 6. 📋 (Optional) CLUE2 Deployment with local changes
+### 7. 📋 (Optional) CLUE2 Deployment with local changes
 
 If you create your own variants or make changes to the SUT, the images need to be rebuilt and pushed to the image registry specified in the config. Make sure to run `docker login` in case authentication is needed.
 

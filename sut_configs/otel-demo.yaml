@@ -23,7 +23,7 @@ helm_replacements:
   - value: 'tag: ""'
     replacement: 'tag: "__EXPERIMENT_TAG__"'
 
-limit:
+resource_limits:
   - service_name: "checkout"
     limit: # You can override defaults here if needed
       cpu: 500 # Using default
@@ -97,7 +97,10 @@ workloads:
   - name: "shaped"
     description: "Workload with custom load shape behavior."
     timeout_duration: 120
+    workload_runtime: 64
     workload_settings: {}
+    locust_files:
+      - "sut_configs/workloads/otel-demo/locustfile.py"
 
 variants:
   - name: "baseline"

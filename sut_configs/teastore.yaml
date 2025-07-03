@@ -108,44 +108,47 @@ workloads:
   - name: "shaped"
     description: "Workload with custom load shape behavior."
     timeout_duration: 120
-    workload_settings:
-      {
+    workload_runtime: 64
+    workload_settings: {
         "LOADGENERATOR_STAGE_DURATION": 8,
         "LOADGENERATOR_MAX_DAILY_USERS": 100,
-        "LOCUST_LOCUSTFILE": "./consumerbehavior.py,./loadshapes.py",
       }
+    locust_files:
+      - "sut_configs/workloads/teastore/consumerbehavior.py"
+      - "sut_configs/workloads/teastore/loadshapes.py"
+      - "sut_configs/workloads/teastore/config.py"
   - name: "rampup"
     description: "Workload that ramps up users at a constant rate."
     timeout_duration: 120
-    workload_settings:
-      {
-        "LOCUST_LOCUSTFILE": "./locustfile.py",
-        "LOCUST_RUN_TIME": "64s",
+    workload_runtime: 64
+    workload_settings: {
         "LOCUST_SPAWN_RATE": 3,
         "LOCUST_USERS": 100,
       }
+    locust_files:
+      - "sut_configs/workloads/teastore/locustfile.py"
   - name: "pausing"
     description: "Workload that starts 20 pausing users, no ramp-up for the duration."
     timeout_duration: 120
-    workload_settings:
-      {
-            "LOCUST_LOCUSTFILE": "./pausing_users.py",
-            "LOCUST_RUN_TIME": "64s",
+    workload_runtime: 64
+    workload_settings: {
             "LOCUST_SPAWN_RATE": 1,
             "LOCUST_USERS": 10,
             "PAUSE_BACKOFF": 120,
       }
+    locust_files:
+      - "sut_configs/workloads/teastore/pausing_users.py"
   - name: "fixed"
     description: "Workload that ramps up to max users for at most 1000 requests (failed or successful), running for at most the specified duration."
     timeout_duration: 120
-    workload_settings:
-      {
-        "LOCUST_LOCUSTFILE": "./fixed_requests.py",
-        "LOCUST_RUN_TIME": "64s",
+    workload_runtime: 64
+    workload_settings: {
         "LOCUST_SPAWN_RATE": 1,
         "LOCUST_USERS": 100,
         "MAXIMUM_REQUESTS": 200,
       }
+    locust_files:
+      - "sut_configs/workloads/teastore/fixed_requests.py"
 
 ### VARIANTS ###
 # A list of variants for the SUT. Required fields:
