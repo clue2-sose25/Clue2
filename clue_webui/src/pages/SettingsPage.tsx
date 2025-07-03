@@ -38,13 +38,13 @@ const SettingsPage = () => {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="w-full gap-2 bg-white rounded-xl shadow-md hover:shadow-lg transition flex flex-col justify-between p-6">
+      <div className="w-full gap-2 bg-white rounded-xl shadow-md flex flex-col justify-between p-6">
         <div className="flex flex-col gap-2 pb-4">
           <p className="font-large text-lg font-semibold">CLUE settings</p>
           <p>Change the default behaviour of the CLUE deployer</p>
         </div>
       </div>
-      <div className="w-full gap-2s bg-white rounded-xl shadow-md hover:shadow-lg transition flex flex-col justify-between p-6">
+      <div className="w-full gap-2s bg-white rounded-xl shadow-md flex flex-col justify-between p-6">
         <div className="flex flex-col gap-2 pb-4">
           <p className="font-large text-lg font-semibold">Cluster settings</p>
           <p>Upload your kube config to connect to a non default cluster.</p>
