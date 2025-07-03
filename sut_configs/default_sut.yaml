@@ -1,10 +1,10 @@
 # Default SUT configuration template based on teastore.yaml
 
 config:
-  # The name of the SUT  
-  sut: "default-sut"
+  # The name of the SUT
+  sut: "teastore"
   # The K8s namespace to deploy the SUT
-  namespace: "default"
+  namespace: "teastore"
   # The Git repository url for the SUT code
   sut_git_repo: "https://github.com/ISE-TU-Berlin/sustainable_teastore.git"
   # The path to the root folder of the repo after cloning
@@ -16,12 +16,12 @@ config:
   # The values file to use
   values_yaml_name: "values.yaml"
   # The k8s service name (used for in-cluster communication)
-  target_service_name: "teastore-webui" 
+  target_service_name: "teastore-webui"
   # The specific path
-  application_endpoint_path: "/tools.descartes.teastore.webui" 
+  application_endpoint_path: "/tools.descartes.teastore.webui"
   # Default resource limits for all services (used if autoscaling is enabled)
   default_resource_limits:
-    # CPU resource limit 
+    # CPU resource limit
     cpu: 1000
     # Memory resource limit
     memory: 1024
@@ -33,7 +33,7 @@ config:
 ### HELM CHART REPLACEMENTS ###
 # The replacements for the Helm chart values file.
 # Can be used for any arbirary value. It will replace all instances of that value in the whole values file.
-# The replacement will be applied only when all conditions are meet. 
+# The replacement will be applied only when all conditions are meet.
 # The `__EXPERIMENT_TAG__` placeholder will be replaces with the name of the variant. Additionally, it will be used as a tag for the docker images.
 # Required fields:
 #   value: str - the old value to replace
@@ -103,7 +103,7 @@ resource_limits:
 ### WORKLOADS ###
 # A list of workloads for the SUT. Required fields:
 # name: str - a short name of the variant
-# description: str - a short description of the variant 
+# description: str - a short description of the variant
 # timeout_duration: int - the total timeout for the workload generator
 # workload_settings: JSON - settings for the Locust workload generator. See default SUTs' configs for more detail.
 workloads:
@@ -155,7 +155,7 @@ workloads:
 ### VARIANTS ###
 # A list of variants for the SUT. Required fields:
 # name: str - a short name of the variant
-# description: str - a short description of the variant 
+# description: str - a short description of the variant
 # target_branch: str - the name of the git repository branch for the variant
 # colocated_workload: bool - if the workload should be deployed in the cluster or on host machine
 # critical_services: list[str] - a list of the names of the critical services to wait for before running the workload
