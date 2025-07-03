@@ -9,6 +9,7 @@ import type {Variant, Workload} from "../../models/ResultsDetails";
 import type {Metric} from "../../models/Metric";
 import type {Plot} from "../../models/Plot";
 import type {ComparisonPanel} from "../../models/ComparisonPanel";
+import {Box, DialogContent} from "@mui/material";
 
 // Fallback mocks
 const mockMetrics: Metric[] = [
@@ -157,7 +158,13 @@ const ResultsSection: React.FC<{
     <div className="mb-8">
       {/* Header */}
       <div className="flex items-center justify-between pb-4">
-        <h2 className="text-lg font-medium">Experiment Results</h2>
+        <div className="flex flex-col gap-1 pb-2">
+          <span className="text-lg font-medium">Experiment Results</span>
+          <p className="text-xs text-gray-500">
+            Compare different workload/variant/iteration combinations. Add new
+            panels or close existing ones to customize your view.
+          </p>
+        </div>
         <button
           onClick={() => setShowAddPanel(true)}
           className="flex items-center gap-1 px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
@@ -334,41 +341,94 @@ const ResultsSection: React.FC<{
             </div>
             {/* Content */}
             <div className="p-4 space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-xs">
+              <div className="grid grid-cols-2 gap-4 ">
                 <div>
-                  <div className="font-medium mb-1">Workload Details</div>
-                  <p className="text-gray-600 mb-2">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="font-medium text-md">
+                      Workload Details
+                    </span>
+                  </div>
+                  <p className="text-gray-600 mb-2 text-xs">
                     {panel.workload.description}
                   </p>
-                  <div className="text-gray-500">
-                    Timeout: {panel.workload.timeout_duration}s
+                  <div className="flex justify-start gap-4 text-xs">
+                    <span className="text-gray-600 w-1/2 max-w-[100px]">
+                      Timeout:
+                    </span>
+                    <span className="font-medium">
+                      {panel.workload.timeout_duration}s
+                    </span>
+                  </div>
+                  <div className="text-gray-500 text-xs flex flex-col">
+                    <div className="text-gray-600 w-1/2 max-w-[100px]">
+                      Workload settings:
+                    </div>
+                    <DialogContent className="!m-0 !px-0 !py-2">
+                      <Box
+                        component="pre"
+                        className="bg-gray-50 p-4 text-xs rounded-md font-mono text-gray-800 whitespace-pre-wrap break-words overflow-auto"
+                      >
+                        {JSON.stringify(
+                          panel.workload.workload_settings,
+                          null,
+                          2
+                        )}
+                      </Box>
+                    </DialogContent>
                   </div>
                 </div>
                 <div>
-                  <div className="font-medium mb-1">Variant Details</div>
-                  <p className="text-gray-600 mb-2">
-                    {panel.variant.description}
-                  </p>
-                  <div className="space-y-1 text-gray-500">
-                    <div>Branch: {panel.variant.target_branch}</div>
-                    <div>Autoscaling: {panel.variant.autoscaling}</div>
-                    <div>Max Scale: {panel.variant.max_autoscale}</div>
-                    <div>
-                      Colocated:{" "}
-                      {panel.variant.colocated_workload ? "Yes" : "No"}
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="font-medium text-md">Variant Details</span>
+                  </div>
+                  <p className="mb-2 text-xs">{panel.variant.description}</p>
+                  <div className="space-y-1 text-xs">
+                    <div className="flex justify-start gap-4 text-xs">
+                      <span className="text-gray-600 w-1/2 max-w-[150px]">
+                        Branch name:
+                      </span>
+                      <span className="font-medium">
+                        {panel.variant.target_branch}
+                      </span>
+                    </div>
+                    <div className="flex justify-start gap-4 text-xs">
+                      <span className="text-gray-600 w-1/2 max-w-[150px]">
+                        Autoscaling type:
+                      </span>
+                      <span className="font-medium">
+                        {panel.variant.autoscaling}
+                      </span>
+                    </div>
+                    <div className="flex justify-start gap-4 text-xs">
+                      <span className="text-gray-600 w-1/2 max-w-[150px]">
+                        Max autoscale:
+                      </span>
+                      <span className="font-medium">
+                        {panel.variant.max_autoscale}
+                      </span>
+                    </div>
+                    <div className="flex justify-start gap-4 text-xs">
+                      <span className="text-gray-600 w-1/2 max-w-[150px]">
+                        Colocated workload:
+                      </span>
+                      <span className="font-medium">
+                        {panel.variant.colocated_workload ? "Yes" : "No"}
+                      </span>
                     </div>
                   </div>
                 </div>
               </div>
               <div>
-                <div className="flex items-center gap-1 mb-2">
-                  <TrendUpIcon className="w-4 h-4" />
-                  <span className="font-medium text-sm">Metrics</span>
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendUpIcon size={18} />
+                  <span className="font-medium text-md">Metrics</span>
                 </div>
                 <div className="space-y-1 text-xs">
                   {(panelMetrics[panel.id] || []).map((m, i) => (
-                    <div key={i} className="flex justify-between">
-                      <span className="text-gray-600">{m.name}</span>
+                    <div key={i} className="flex justify-start gap-4">
+                      <span className="text-gray-600 w-1/2 max-w-[100px]">
+                        {m.name}:
+                      </span>
                       <span className="font-medium">
                         {m.value} {m.unit}
                       </span>
@@ -377,15 +437,15 @@ const ResultsSection: React.FC<{
                 </div>
               </div>
               <div>
-                <div className="flex items-center gap-1 mb-2">
-                  <ChartBarIcon className="w-4 h-4" />
-                  <span className="font-medium text-sm">Plots</span>
+                <div className="flex items-center gap-2 mb-2">
+                  <ChartBarIcon size={18} />
+                  <span className="font-medium text-md">Plots</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {(panelPlots[panel.id] || []).map((p) => (
                     <div
                       key={p.id}
-                      className="border rounded p-2 text-xs flex-1 min-w-[335px] max-w-[250px]"
+                      className="border rounded p-2 text-xs flex-1 min-w-[335px]"
                     >
                       <div className="font-medium mb-1">{p.name}</div>
                       <div className="mb-2 text-gray-600">{p.description}</div>
