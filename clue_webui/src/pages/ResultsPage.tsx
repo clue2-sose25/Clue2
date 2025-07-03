@@ -18,6 +18,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import type {ResultEntry} from "../models/ResultEntry";
+import {parse, format} from "date-fns";
 
 const ResultsPage = () => {
   const [results, setResults] = useState<ResultEntry[]>([]);
@@ -108,19 +109,19 @@ const ResultsPage = () => {
                 <p className="font-semibold">SUT</p>
               </TableCell>
               <TableCell>
-                <p className="font-semibold">TIMESTAMP</p>
+                <p className="font-semibold">Timestamp</p>
               </TableCell>
               <TableCell>
-                <p className="font-semibold">VARIANTS</p>
+                <p className="font-semibold">Variants</p>
               </TableCell>
               <TableCell>
-                <p className="font-semibold">WORKLOADS</p>
+                <p className="font-semibold">Workloads</p>
               </TableCell>
               <TableCell>
-                <p className="font-semibold">ITERATIONS</p>
+                <p className="font-semibold">Iterations No.</p>
               </TableCell>
               <TableCell>
-                <p className="font-semibold">STATUS</p>
+                <p className="font-semibold">Experiment Status</p>
               </TableCell>
               <TableCell></TableCell>
             </TableRow>
@@ -138,24 +139,14 @@ const ResultsPage = () => {
                     <div className="capitalize">{result.sut}</div>
                   </TableCell>
                   <TableCell>
-                    {(() => {
-                      try {
-                        const formattedDate = new Date(
-                          result.timestamp.replace("_", "T")
-                        ).toLocaleString("en-US", {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          second: "2-digit",
-                          hour12: true,
-                        });
-                        return formattedDate;
-                      } catch (error) {
-                        return "Invalid Timestamp";
-                      }
-                    })()}
+                    {format(
+                      parse(
+                        result.timestamp,
+                        "yyyy-MM-dd_HH-mm-ss",
+                        new Date()
+                      ),
+                      "PPpp"
+                    )}
                   </TableCell>
                   <TableCell>{result.variants.split(",").join(", ")}</TableCell>
                   <TableCell>

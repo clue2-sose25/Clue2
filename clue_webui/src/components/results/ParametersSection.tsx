@@ -1,3 +1,4 @@
+import {format, parse} from "date-fns";
 import type {ResultDetails} from "../../models/ResultsDetails";
 
 const ParametersSection: React.FC<{data: ResultDetails}> = ({data}) => {
@@ -46,7 +47,11 @@ const ParametersSection: React.FC<{data: ResultDetails}> = ({data}) => {
               </span>
             </div>
             <div>
-              <strong>Timestamp:</strong> {data.timestamp}
+              <strong>Timestamp: </strong>{" "}
+              {format(
+                parse(data.timestamp, "yyyy-MM-dd_HH-mm-ss", new Date()),
+                "PPpp"
+              )}
             </div>
             <div>
               <strong>Iterations:</strong> {data.n_iterations}
