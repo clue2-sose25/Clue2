@@ -63,3 +63,10 @@ jobs:
           load: true
           cache-from: type=gha,scope=clue_toystore
           cache-to: type=gha,scope=clue_toystore,mode=max
+      # small tests for the docker container running
+      - name: Smoke test toystore container
+        run: |
+          docker run -d --name=test_clue_toystore ghcr.io/clue2-sose25/clue2-${IMAGE_NAME}:pr-test /bin/sh -c "echo Toystore OK"
+          sleep 5
+          docker logs test_clue_toystore || true
+          docker stop test_clue_toystore
