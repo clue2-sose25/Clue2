@@ -1,13 +1,13 @@
 config:
-  # The name of the SUT  
+  # The name of the SUT
   sut: "toystore"
   namespace: "toystore"
   sut_git_repo: "https://github.com/clue2-sose25/sustainable_toystore"
   sut_path: "toystore"
   helm_chart_path: "toystore/toystore"
   values_yaml_name: "values.yaml"
-  target_service_name: "teastore-webui" # The k8s service name (used for in-cluster communication)
-  application_endpoint_path: "/tools.descartes.teastore.webui" # The specific path
+  target_service_name: "teastore-webui"
+  application_endpoint_path: "/tools.descartes.teastore.webui"
   default_resource_limits:
     cpu: 1000
     memory: 1024
@@ -31,8 +31,14 @@ resource_limits: []
 
 variants:
   - name: "baseline"
-    description: "Baseline experiment for the toystore application"
-    target_branch: "main"
+    description: "A ToyStore application storing its data in a local SQLite DB"
+    target_branch: "baseline"
     colocated_workload: true
     critical_services: ["toystore-frontend", "toystore-backend"]
+    autoscaling: "cpu"
+  - name: "postgres"
+    description: "A ToyStore application using external Postgres DB"
+    target_branch: "postgres"
+    colocated_workload: true
+    critical_services: ["toystore-frontend", "toystore-backend", "toystore-db"]
     autoscaling: "cpu"
