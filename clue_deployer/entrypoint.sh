@@ -3,7 +3,7 @@ set -e
 # Environment variable fallbacks
 : "${DEPLOY_AS_SERVICE:=false}"
 : "${DEPLOY_ONLY:=false}"
-: "${PATCH_LOCAL_CLUSTER:=true}"
+: "${PATCH_LOCAL_CLUSTER:=false}"
 : "${CLUSTER_PROXY_COMMAND:=}"
 : "${SSH_KEY_FILE_PATH:=/root/.ssh/id_rsa}"
 
