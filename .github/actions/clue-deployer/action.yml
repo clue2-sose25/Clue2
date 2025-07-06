@@ -25,6 +25,12 @@ inputs:
   patch-local-cluster:
     description: 'Patch localhost addresses in the kubeconfig'
     default: 'true'
+  CLUSTER_PROXY_COMMAND:
+    description: 'Command to proxy the cluster, e.g., "ssh -i ~/.ssh/id_rsa -L 6443:localhost:6443 user@remote-cluster"'
+    required: false
+  SSH_KEY_FILE:
+    description: 'Path to the SSH key file for accessing the cluster'
+    required: false
 runs:
   using: "composite"
   steps:
@@ -35,6 +41,8 @@ runs:
        -v ${{ inputs['sut-config-path'] }}:/app/sut-config.yaml \
        -v ${{ inputs['results-path'] }}:/app/results \
        -e KUBE_CONFIG=${{ inputs['kubeconfig'] }} \
+       -e CLUSTER_PROXY_COMMAND= ${{ inputs['CLUSTER_PROXY_COMMAND'] }} \
+       -e SSH_KEY_FILE= ${{ inputs['CLUSTER_PROXY_COMMAND'] }} \
        -e PATCH_LOCAL_CLUSTER=${{ inputs['patch-local-cluster'] }}\
        -e DEPLOY_AS_SERVICE=false -p 9001:8000 -e EXPERIMENT_NAME=${{ inputs.variants-name }} -e SUT=${{ inputs['sut-config-path'] }} -e DEPLOY_ONLY=false -e N_ITERATIONS=1\
        ghcr.io/clue2-sose25/clue2-deployer:dev
