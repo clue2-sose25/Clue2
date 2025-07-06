@@ -30,19 +30,21 @@ runs:
   steps:
     - run: |
         # start clue with the main Python program without as service
+        SUT_NAME=$(basename "${{ inputs['sut-config-path'] }}" .yaml)
+        echo "SUT_NAME: $SUT_NAME"
         docker run -d --name test_clue_deployer \
           -v ${{ inputs['clue-config-path']  }}:/app/clue-config.yaml \
-          -v ${{ inputs['sut-config-path'] }}:/app/sut-config.yaml \
+          -v ${{ inputs['sut-config-path'] }}:/app/sut_configs/${SUT_NAME}.yaml \
           -v /tmp/data:/app/data \
           -e KUBE_CONFIG="${{ inputs['kubeconfig'] }}" \
           -e CLUSTER_PROXY_COMMAND="${{ inputs['CLUSTER_PROXY_COMMAND'] }}" \
           -v ${{ inputs['SSH_KEY_FILE_PATH'] }}:/root/.ssh/id_rsa:ro \
           -e PATCH_LOCAL_CLUSTER=false \
-          -e DEPLOY_AS_SERVICE=false -p 9001:8000 -e EXPERIMENT_NAME=${{ inputs.variants-name }} -e SUT=${{ inputs['sut-config-path'] }} -e DEPLOY_ONLY=false -e N_ITERATIONS=1\
+          -e DEPLOY_AS_SERVICE=false -p 9001:8000 -e EXPERIMENT_NAME=${{ inputs.variants-name }} -e SUT=${SUT_NAME} -e DEPLOY_ONLY=false -e N_ITERATIONS=1\
           ghcr.io/clue2-sose25/clue2-deployer:pr-test
         while [ "$(docker inspect -f '{{.State.Running}}' test_clue_deployer)" = "true" ]; do
           docker logs --tail 20 test_clue_deployer || true
-          sleep 10
+          sleep 5
         done
         docker logs test_clue_deployer  || true
         sleep 30
