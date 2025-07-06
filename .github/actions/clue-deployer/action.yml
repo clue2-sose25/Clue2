@@ -35,7 +35,7 @@ runs:
           -v ${{ inputs['sut-config-path'] }}:/app/sut-config.yaml \
           -v /app/data:/app/data \
           -e KUBE_CONFIG=${{ inputs['kubeconfig'] }} \
-          -e CLUSTER_PROXY_COMMAND="${{ inputs['CLUSTER_PROXY_COMMAND'] }}"" \
+          -e CLUSTER_PROXY_COMMAND="${{ inputs['CLUSTER_PROXY_COMMAND'] }}" \
           -v ${{ inputs['SSH_KEY_FILE_PATH'] }}:/root/.ssh/id_rsa:ro \
           -e PATCH_LOCAL_CLUSTER=false \
           -e DEPLOY_AS_SERVICE=false -p 9001:8000 -e EXPERIMENT_NAME=${{ inputs.variants-name }} -e SUT=${{ inputs['sut-config-path'] }} -e DEPLOY_ONLY=false -e N_ITERATIONS=1\
