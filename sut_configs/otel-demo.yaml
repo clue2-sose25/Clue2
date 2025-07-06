@@ -2,7 +2,7 @@ config:
   # The name of the SUT  
   sut: "otel-demo"
   namespace: "otel-demo"
-  sut_git_repo: "https://github.com/JulianLegler/opentelemetry-demo.git"
+  sut_git_repo: "https://github.com/clue2-sose25/opentelemetry-demo"
   sut_path: "opentelemetry-demo"
   helm_chart_repo: "https://github.com/open-telemetry/opentelemetry-helm-charts"
   helm_chart_path: "opentelemetry-demo/charts/opentelemetry-demo"
@@ -18,10 +18,44 @@ config:
   wait_after_workloads: 180 # 3 minutes in seconds  
 
 helm_replacements:
-  - value: "ghcr.io/open-telemetry/demo"
-    replacement: "registry:5000/clue/otel-demo"
-  - value: 'tag: ""'
-    replacement: 'tag: "__EXPERIMENT_TAG__"'
+  # Default image settings - remove them to prevent auto-appending
+  - value: "default:\n  image:\n    repository: ghcr.io/open-telemetry/demo"
+    replacement: "default:\n  image:\n    repository: registry:5000/clue"
+  # Override each service's image
+  - value: "  accounting:\n    enabled: true"
+    replacement: "  accounting:\n    enabled: true\n    imageOverride:\n      repository: registry:5000/clue/ots-accounting\n      tag: __EXPERIMENT_TAG__"
+  - value: "  ad:\n    enabled: true"
+    replacement: "  ad:\n    enabled: true\n    imageOverride:\n      repository: registry:5000/clue/ots-ad\n      tag: __EXPERIMENT_TAG__"
+  - value: "  cart:\n    enabled: true"
+    replacement: "  cart:\n    enabled: true\n    imageOverride:\n      repository: registry:5000/clue/ots-cart\n      tag: __EXPERIMENT_TAG__"
+  - value: "  checkout:\n    enabled: true"
+    replacement: "  checkout:\n    enabled: true\n    imageOverride:\n      repository: registry:5000/clue/ots-checkout\n      tag: __EXPERIMENT_TAG__"
+  - value: "  currency:\n    enabled: true"
+    replacement: "  currency:\n    enabled: true\n    imageOverride:\n      repository: registry:5000/clue/ots-currency\n      tag: __EXPERIMENT_TAG__"
+  - value: "  email:\n    enabled: true"
+    replacement: "  email:\n    enabled: true\n    imageOverride:\n      repository: registry:5000/clue/ots-email\n      tag: __EXPERIMENT_TAG__"
+  - value: "  fraud-detection:\n    enabled: true"
+    replacement: "  fraud-detection:\n    enabled: true\n    imageOverride:\n      repository: registry:5000/clue/ots-fraud-detection\n      tag: __EXPERIMENT_TAG__"
+  - value: "  frontend:\n    enabled: true"
+    replacement: "  frontend:\n    enabled: true\n    imageOverride:\n      repository: registry:5000/clue/ots-frontend\n      tag: __EXPERIMENT_TAG__"
+  - value: "  frontend-proxy:\n    enabled: true"
+    replacement: "  frontend-proxy:\n    enabled: true\n    imageOverride:\n      repository: registry:5000/clue/ots-frontend-proxy\n      tag: __EXPERIMENT_TAG__"
+  - value: "  load-generator:\n    enabled: true"
+    replacement: "  load-generator:\n    enabled: true\n    imageOverride:\n      repository: registry:5000/clue/ots-load-generator\n      tag: __EXPERIMENT_TAG__"
+  - value: "  payment:\n    enabled: true"
+    replacement: "  payment:\n    enabled: true\n    imageOverride:\n      repository: registry:5000/clue/ots-payment\n      tag: __EXPERIMENT_TAG__"
+  - value: "  product-catalog:\n    enabled: true"
+    replacement: "  product-catalog:\n    enabled: true\n    imageOverride:\n      repository: registry:5000/clue/ots-product-catalog\n      tag: __EXPERIMENT_TAG__"
+  - value: "  quote:\n    enabled: true"
+    replacement: "  quote:\n    enabled: true\n    imageOverride:\n      repository: registry:5000/clue/ots-quote\n      tag: __EXPERIMENT_TAG__"
+  - value: "  recommendation:\n    enabled: true"
+    replacement: "  recommendation:\n    enabled: true\n    imageOverride:\n      repository: registry:5000/clue/ots-recommendation\n      tag: __EXPERIMENT_TAG__"
+  - value: "  shipping:\n    enabled: true"
+    replacement: "  shipping:\n    enabled: true\n    imageOverride:\n      repository: registry:5000/clue/ots-shipping\n      tag: __EXPERIMENT_TAG__"
+  - value: "  flagd:\n    enabled: true"
+    replacement: "  flagd:\n    enabled: true\n    imageOverride:\n      repository: registry:5000/clue/ots-flagd-ui\n      tag: __EXPERIMENT_TAG__"
+  - value: "  image-provider:\n    enabled: true"
+    replacement: "  image-provider:\n    enabled: true\n    imageOverride:\n      repository: registry:5000/clue/ots-image-provider\n      tag: __EXPERIMENT_TAG__"
 
 resource_limits:
   - service_name: "checkout"
