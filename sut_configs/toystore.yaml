@@ -1,5 +1,5 @@
 config:
-  # The name of the SUT  
+  # The name of the SUT
   sut: "toystore"
   namespace: "toystore"
   sut_git_repo: "https://github.com/clue2-sose25/sustainable_toystore"
@@ -31,8 +31,14 @@ resource_limits: []
 
 variants:
   - name: "baseline"
-    description: "Baseline experiment for the toystore application"
-    target_branch: "main"
+    description: "A ToyStore application storing its data in a local SQLite DB"
+    target_branch: "baseline"
     colocated_workload: true
     critical_services: ["toystore-frontend", "toystore-backend"]
+    autoscaling: "cpu"
+  - name: "postgres"
+    description: "A ToyStore application using external Postgres DB"
+    target_branch: "postgres"
+    colocated_workload: true
+    critical_services: ["toystore-frontend", "toystore-backend", "toystore-db"]
     autoscaling: "cpu"
