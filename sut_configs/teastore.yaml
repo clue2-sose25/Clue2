@@ -24,9 +24,9 @@ config:
     # Memory resource limit
     memory: 1024
   # The time to wait before deploying individual workloads. Specified in seconds
-  wait_before_workloads: 3
+  wait_before_workloads: 120
   # The time to wait after deploying individual workloads. Specified in seconds
-  wait_after_workloads: 0
+  wait_after_workloads: 120
 
 ### HELM CHART REPLACEMENTS ###
 # The replacements for the Helm chart values file.
