@@ -40,6 +40,7 @@ runs:
           -v ${{ inputs['clue-config-path']  }}:/app/clue-config.yaml \
           -v ${{ inputs['sut-config-path'] }}:/app/sut_configs/${SUT_NAME}.yaml \
           -v /tmp/data:/app/data \
+          -e HELM_DRIVER=configmap \
           -e KUBE_CONFIG="${{ inputs['kubeconfig'] }}" \
           -e CLUSTER_PROXY_COMMAND="${{ inputs['CLUSTER_PROXY_COMMAND'] }}" \
           -v ${{ inputs['SSH_KEY_FILE_PATH'] }}:/root/.ssh/id_rsa:ro \
