@@ -664,8 +664,8 @@ def deploy_kill():
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                              detail=f"Failed to terminate deployment: {str(e)}")
 
-    logger.info("Deployment process terminated.")
-    return JSONResponse(status_code=status.HTTP_204_NO_CONTENT, content=None)
+    logger.info("Deployment process killed.")
+    return 
 
 @app.delete("/api/deploy/stop", status_code=status.HTTP_204_NO_CONTENT)
 def stop_deployment():

@@ -45,6 +45,8 @@ class Worker:
 
         self.core_v1_api = CoreV1Api()
     
+
+
     @property
     def current_experiment(self):
         """
@@ -58,7 +60,22 @@ class Worker:
         Set the current deployment in the shared container.
         """
         self.shared_container['current_experiment'] = experiment
-        
+
+
+    def new_process(self):
+        self.process = mp.Process(
+            target=self._worker_loop,
+            args=(
+                self.shared_flag,
+                self.state_lock,
+                self.is_deploying,
+                self.condition,
+                self.experiment_queue,
+                get_child_process_logger("NO_SUT", shared_log_buffer),
+                self.shared_container,
+            )
+        )
+
     def _worker_loop(self, 
                      shared_flag, 
                      state_lock, 
@@ -134,6 +151,13 @@ class Worker:
         if self.process.is_alive():
             raise RuntimeError("Worker process is already running.")
         
+        if self.is_deploying.value == 1:
+            raise RuntimeError("Worker is already deploying an experiment.")
+        
+        if self.experiment_queue.is_empty():
+            raise RuntimeError("Experiment queue is empty. Cannot start worker.")
+        
+        self.new_process()  # Create a new process instance
         self.process.start()
         logger.info("Worker process started successfully.")
     
@@ -154,7 +178,9 @@ class Worker:
         self.process.kill()
         self.process.join()
         logger.info("Worker killed.")
+        self.is_deploying.value = 0
         self._cleanup()
+
     
     def _cleanup(self):
         """Clean up the worker resources."""
