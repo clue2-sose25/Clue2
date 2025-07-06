@@ -30,22 +30,9 @@ class Worker:
             "NO_SUT",
             shared_log_buffer
         )
-        self.process = mp.Process(
-            target=self._worker_loop,
-            args=(
-                self.shared_flag,
-                self.state_lock,
-                self.is_deploying,
-                self.condition,
-                self.experiment_queue,
-                get_child_process_logger("NO_SUT", shared_log_buffer),
-                self.shared_container,
-            )
-        )
-
+        self.process = None
         self.core_v1_api = CoreV1Api()
     
-
 
     @property
     def current_experiment(self):
@@ -62,7 +49,7 @@ class Worker:
         self.shared_container['current_experiment'] = experiment
 
 
-    def new_process(self):
+    def _new_process(self):
         self.process = mp.Process(
             target=self._worker_loop,
             args=(
@@ -84,6 +71,7 @@ class Worker:
                      experiment_queue, 
                      process_logger,
                      shared_container):
+        
         with self.state_lock:
             if is_deploying.value == 1:
                 raise HTTPException(
@@ -91,6 +79,7 @@ class Worker:
                     detail="A deployment is already running."
                 )
             is_deploying.value = 1
+        
         process_logger.info("Worker process started and ready to deploy experiments.")
         condition = mp.Condition()
         while shared_flag.value:
@@ -148,7 +137,7 @@ class Worker:
         process_logger.info(f"Deployment process for SUT {experiment.sut} finished")
     
     def start(self):
-        if self.process.is_alive():
+        if self.process and self.process.is_alive():
             raise RuntimeError("Worker process is already running.")
         
         if self.is_deploying.value == 1:
@@ -156,8 +145,8 @@ class Worker:
         
         if self.experiment_queue.is_empty():
             raise RuntimeError("Experiment queue is empty. Cannot start worker.")
-        
-        self.new_process()  # Create a new process instance
+        self.shared_flag.value = True
+        self._new_process()  # Create a new process instance
         self.process.start()
         logger.info("Worker process started successfully.")
     
@@ -178,7 +167,7 @@ class Worker:
         self.process.kill()
         self.process.join()
         logger.info("Worker killed.")
-        self.is_deploying.value = 0
+        #self.is_deploying.value = 0
         self._cleanup()
 
     
