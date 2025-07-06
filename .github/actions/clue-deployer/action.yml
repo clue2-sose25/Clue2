@@ -40,7 +40,7 @@ runs:
           -e PATCH_LOCAL_CLUSTER=false \
           -e DEPLOY_AS_SERVICE=false -p 9001:8000 -e EXPERIMENT_NAME=${{ inputs.variants-name }} -e SUT=${{ inputs['sut-config-path'] }} -e DEPLOY_ONLY=false -e N_ITERATIONS=1\
           ghcr.io/clue2-sose25/clue2-deployer:pr-test
-        sleep 200
+        sleep 100
         docker logs test_clue_deployer  || true
       shell: bash
 #    - name: Upload CLUE results
