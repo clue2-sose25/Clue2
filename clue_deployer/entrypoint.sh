@@ -27,6 +27,7 @@ if [ -n "$CLUSTER_PROXY_COMMAND" ]; then
     echo "[ENTRYPOINT.SH] Starting SSH proxy: $CLUSTER_PROXY_COMMAND"
     [ -f /root/.ssh/id_rsa ] && chmod 600 /root/.ssh/id_rsa
     bash -c "$CLUSTER_PROXY_COMMAND &"
+    echo "Starting with CLUSTER_PROXY_COMMAND: $CLUSTER_PROXY_COMMAND"
 fi
 
 # If DEPLOY_AS_SERVICE = True, deploy CLUE as a service
