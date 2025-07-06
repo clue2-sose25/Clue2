@@ -94,6 +94,15 @@ The cluster's kubeconfig can be provided in multiple ways. By default `docker-co
 
 If `DEPLOY_AS_SERVICE` is enabled and no kubeconfig is provided, the backend starts without a cluster connection. You can then upload the configuration from the Web UI at `/cluster`. The local cluster patching can be disabled by setting `PATCH_LOCAL_CLUSTER=false`.
 
+For clusters that are only reachable via a bastion host ( Jump Host ) you can specify a proxy command that is executed after the kubeconfig has been patched. Define `CLUSTER_PROXY_COMMAND` in your `.env` and mount the required SSH key via `SSH_KEY_FILE`:
+
+```bash
+CLUSTER_PROXY_COMMAND="ssh -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no -N -L 6443:remote-cluster:6443 user@bastion"
+SSH_KEY_FILE=~/.ssh/id_rsa
+```
+
+The entrypoint ensures the key permissions are correct and starts the command in the background before the deployer connects to the cluster.
+
 1. Setting up a local `Kind` cluster
 
 For local testing, we recommend using a `Kind` cluster, simply deployable by providing a config file. The cluster is configured to allow the usage of the local unsecure registry and to deploy the required number of nodes (at least 2) with designated node labels. Additionally, all created containers will be added to a custom `clue2` docker network. Deploy the pre-configured cluster using:

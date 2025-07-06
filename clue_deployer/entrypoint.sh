@@ -4,6 +4,7 @@ set -e
 : "${DEPLOY_AS_SERVICE:=false}"
 : "${DEPLOY_ONLY:=false}"
 : "${PATCH_LOCAL_CLUSTER:=true}"
+: "${CLUSTER_PROXY_COMMAND:=}"
 
 
 # Print configs 
@@ -19,6 +20,13 @@ python3 /app/clue_deployer/prepare_kubeconfig.py
 if [ -f /app/clue_deployer/kubeconfig_patched ]; then
     chmod 600 /app/clue_deployer/kubeconfig_patched
     export KUBECONFIG=/app/clue_deployer/kubeconfig_patched
+fi
+
+# Start optional cluster proxy after kubeconfig was prepared
+if [ -n "$CLUSTER_PROXY_COMMAND" ]; then
+    echo "[ENTRYPOINT.SH] Starting SSH proxy: $CLUSTER_PROXY_COMMAND"
+    [ -f /root/.ssh/id_rsa ] && chmod 600 /root/.ssh/id_rsa
+    bash -c "$CLUSTER_PROXY_COMMAND &"
 fi
 
 # If DEPLOY_AS_SERVICE = True, deploy CLUE as a service

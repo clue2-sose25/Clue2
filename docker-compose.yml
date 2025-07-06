@@ -51,12 +51,14 @@ services:
       DEPLOY_AS_SERVICE: ${DEPLOY_AS_SERVICE}
       KUBE_CONFIG: ${KUBE_CONFIG}
       PATCH_LOCAL_CLUSTER: ${PATCH_LOCAL_CLUSTER}
+      CLUSTER_PROXY_COMMAND: ${CLUSTER_PROXY_COMMAND}
     volumes:
       # CLUE Configs
       - ./clue-config.yaml:/app/clue-config.yaml
       - ./sut_configs:/app/sut_configs
       # Cluster configs
       - ${KUBECONFIG_FILE}:/root/.kube:ro
+      - ${SSH_KEY_FILE}:/root/.ssh/id_rsa:ro
       # Results
       - results-deployer-data:/app/data
     networks:
