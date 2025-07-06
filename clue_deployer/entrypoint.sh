@@ -28,7 +28,7 @@ if [ -n "$CLUSTER_PROXY_COMMAND" ]; then
     echo "[ENTRYPOINT.SH] Starting SSH proxy: ssh -i $SSH_KEY_FILE_PATH $CLUSTER_PROXY_COMMAND"
     ls -l "$SSH_KEY_FILE_PATH"
     if [ -f "$SSH_KEY_FILE_PATH" ]; then
-        chmod 400 "$SSH_KEY_FILE_PATH"
+        chmod 400 "$SSH_KEY_FILE_PATH" || true
         ls -l "$SSH_KEY_FILE_PATH"
     fi
     ssh -i "$SSH_KEY_FILE_PATH" $CLUSTER_PROXY_COMMAND &
