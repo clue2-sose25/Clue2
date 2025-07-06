@@ -31,6 +31,8 @@ if [ -n "$CLUSTER_PROXY_COMMAND" ]; then
         chmod 400 "$SSH_KEY_FILE_PATH" || true
         ls -l "$SSH_KEY_FILE_PATH"
     fi
+    echo "Checking SSH key file permissions..."
+    echo < ls -l "$SSH_KEY_FILE_PATH"
     ssh -i "$SSH_KEY_FILE_PATH" $CLUSTER_PROXY_COMMAND &
     echo "Starting with CLUSTER_PROXY_COMMAND: $CLUSTER_PROXY_COMMAND"
 fi
