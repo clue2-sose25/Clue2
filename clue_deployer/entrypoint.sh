@@ -26,6 +26,7 @@ fi
 # Start optional cluster proxy after kubeconfig was prepared
 if [ -n "$CLUSTER_PROXY_COMMAND" ]; then
     echo "[ENTRYPOINT.SH] Starting SSH proxy: ssh -i $SSH_KEY_FILE_PATH $CLUSTER_PROXY_COMMAND"
+    ls -l "$SSH_KEY_FILE_PATH"
     if [ -f "$SSH_KEY_FILE_PATH" ]; then
         chmod 400 "$SSH_KEY_FILE_PATH"
         ls -l "$SSH_KEY_FILE_PATH"
