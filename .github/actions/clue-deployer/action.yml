@@ -22,7 +22,7 @@ inputs:
   CLUSTER_PROXY_COMMAND:
     description: 'Command to proxy the cluster, e.g., "ssh -i ~/.ssh/id_rsa -L 6443:localhost:6443 user@remote-cluster"'
     required: false
-  SSH_KEY_FILE:
+  SSH_KEY_FILE_PATH:
     description: "Path to the SSH key file for accessing the cluster"
     required: false
 runs:
@@ -36,7 +36,7 @@ runs:
           -v /app/data:/app/data \
           -e KUBE_CONFIG=${{ inputs['kubeconfig'] }} \
           -e CLUSTER_PROXY_COMMAND= ${{ inputs['CLUSTER_PROXY_COMMAND'] }} \
-          -e SSH_KEY_FILE= ${{ inputs['CLUSTER_PROXY_COMMAND'] }} \
+          -v ${{ inputs['SSH_KEY_FILE_PATH'] }}:/root/.ssh/id_rsa:ro \
           -e PATCH_LOCAL_CLUSTER=false \
           -e DEPLOY_AS_SERVICE=false -p 9001:8000 -e EXPERIMENT_NAME=${{ inputs.variants-name }} -e SUT=${{ inputs['sut-config-path'] }} -e DEPLOY_ONLY=false -e N_ITERATIONS=1\
           ghcr.io/clue2-sose25/clue2-deployer:dev
