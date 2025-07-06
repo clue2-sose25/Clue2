@@ -34,7 +34,7 @@ runs:
           -v ${{ inputs['clue-config-path']  }}:/app/clue-config.yaml \
           -v ${{ inputs['sut-config-path'] }}:/app/sut-config.yaml \
           -v /app/data:/app/data \
-          -e KUBE_CONFIG=${{ inputs['kubeconfig'] }} \
+          -e KUBE_CONFIG="${{ inputs['kubeconfig'] }}" \
           -e CLUSTER_PROXY_COMMAND="${{ inputs['CLUSTER_PROXY_COMMAND'] }}" \
           -v ${{ inputs['SSH_KEY_FILE_PATH'] }}:/root/.ssh/id_rsa:ro \
           -e PATCH_LOCAL_CLUSTER=false \
