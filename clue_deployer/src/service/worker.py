@@ -7,7 +7,7 @@ from clue_deployer.src.models.experiment import Experiment
 from clue_deployer.src.main import ExperimentRunner
 from clue_deployer.src.configs.configs import ENV_CONFIG, Configs
 from fastapi import HTTPException
-from kubernetes.client import CoreV1Api, V1Namespace, V1ObjectMeta, AppsV1Api
+from kubernetes.client import CoreV1Api
 from kubernetes.client.exceptions import ApiException   
 
 SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
@@ -25,6 +25,7 @@ class Worker:
         self.condition = self.manager.Condition()
         self.shared_container['current_experiment'] = None
 
+
         self.process_logger = get_child_process_logger(
             "NO_SUT",
             shared_log_buffer
@@ -41,6 +42,8 @@ class Worker:
                 self.shared_container,
             )
         )
+
+        self.core_v1_api = CoreV1Api()
     
     @property
     def current_experiment(self):
@@ -148,7 +151,7 @@ class Worker:
         
         self.shared_flag.value = False
         logger.info("Stopping worker queue by killing the process...")
-        self.process.terminate()
+        self.process.kill()
         self.process.join()
         logger.info("Worker killed.")
         self._cleanup()
