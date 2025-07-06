@@ -48,6 +48,6 @@ def patch_kubeconfig(config):
 
 if __name__ == "__main__":
     config = load_config()
-    if PATCH_CONFIG:
+    if PATCH_CONFIG and PATCH_CONFIG.lower() == "true":
         patch_kubeconfig(config)
     
