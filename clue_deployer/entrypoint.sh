@@ -39,4 +39,5 @@ fi
 # Deploy CLUE
 # Uncomment the line below to enable debugging with debugpy
 #exec uv run -m debugpy --listen 0.0.0.0:5678 --wait-for-client clue_deployer/src/main.py
+echo "Starting without DEPLOY_AS_SERVICE "
 exec uv run clue_deployer/src/main.py
