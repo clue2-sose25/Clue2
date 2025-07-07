@@ -103,6 +103,28 @@ SSH_KEY_FILE=~/.ssh/id_rsa
 
 The entrypoint ensures the key permissions are correct and starts the command in the background before the deployer connects to the cluster.
 
+### Running inside the cluster
+
+When the `clue-deployer` is executed as a Pod in the same Kubernetes cluster, it
+automatically detects this by checking the `KUBERNETES_SERVICE_HOST` environment
+variable. In this case the in-cluster configuration is used and the
+`prepare_kubeconfig.py` step is skipped. Make sure the Pod runs with a
+`ServiceAccount` that has permissions to list and patch nodes and manage pods.
+An example RBAC manifest is provided in `clue_deployer/k8s/clue-deployer-rbac.yaml`.
+The local-cluster patching logic is disabled automatically when running in-cluster.
+
+To launch the deployer as a Kubernetes `Job`, apply the RBAC manifest and the
+provided example job file:
+
+```bash
+kubectl apply -f clue_deployer/k8s/clue-deployer-rbac.yaml
+kubectl apply -f clue_deployer/k8s/clue-deployer-job.yaml
+```
+
+The job uses the `clue-deployer` ServiceAccount and stores results in a mounted
+volume. Adjust the `VARIANTS` and `WORKLOADS` variables in the manifest to suit
+your experiment.
+
 1. Setting up a local `Kind` cluster
 
 For local testing, we recommend using a `Kind` cluster, simply deployable by providing a config file. The cluster is configured to allow the usage of the local unsecure registry and to deploy the required number of nodes (at least 2) with designated node labels. Additionally, all created containers will be added to a custom `clue2` docker network. Deploy the pre-configured cluster using:
