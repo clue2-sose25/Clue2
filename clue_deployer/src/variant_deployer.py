@@ -5,6 +5,7 @@ from kubernetes.client.exceptions import ApiException
 from clue_deployer.src.configs.configs import CLUE_CONFIG, ENV_CONFIG, SUT_CONFIG
 from clue_deployer.src.logger import logger
 import time
+import os
 import subprocess
 from kubernetes import config as k_config
 from clue_deployer.src.helm_wrapper import HelmWrapper
@@ -25,7 +26,10 @@ class VariantDeployer:
         self.values_yaml_name = SUT_CONFIG.values_yaml_name
         # Initialize Kubernetes API clients
         try:
-            k_config.load_kube_config()
+            if os.getenv("KUBERNETES_SERVICE_HOST"):
+                k_config.load_incluster_config()
+            else:
+                k_config.load_kube_config()
             self.core_v1_api = CoreV1Api()
             self.apps_v1_api = AppsV1Api()
         except Exception as e:

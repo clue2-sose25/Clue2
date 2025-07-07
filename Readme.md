@@ -208,3 +208,16 @@ If all the preliminaries for data collection are installed, Clue will fetch the 
 - Ensure that you have a sufficient amount of memory alocated for docker, at least 12 GB
 - Run `minikube dashboard` to monitor deployment errors, e.g. missing node labels or insufficient memory
 - The monolith app has some specific handles, e.g. a different set name. If a a set is not found, especially when skipping builds, this can cause problems.
+
+### Helm deployment
+
+A basic Helm chart is provided under `clue_helm/` to run the deployer and web UI directly in a cluster.
+Install it with:
+
+```bash
+helm install clue clue_helm
+```
+
+Set `imageRegistry` and other values in `values.yaml` to point to your images and configure the ingress host.
+The chart includes a `Job` manifest for CI execution and a `Deployment` for a long-running service.
+

@@ -31,7 +31,10 @@ class ExperimentRunner:
                 n_iterations: int = ENV_CONFIG.N_ITERATIONS) -> None:
         # Load the kube config
         try:
-            kube_config.load_kube_config()
+            if os.getenv("KUBERNETES_SERVICE_HOST"):
+                kube_config.load_incluster_config()
+            else:
+                kube_config.load_kube_config()
         except Exception as exc:
             if os.getenv("DEPLOY_AS_SERVICE", "false").lower() == "true":
                 logger.warning(f"Failed to load kubeconfig: {exc}")
@@ -41,6 +44,10 @@ class ExperimentRunner:
         variants = variants_string.split(',')
         logger.info(f"Specified variants: {variants}")
         final_variants: List[Variant] = [variant for variant in configs.sut_config.variants if variant.name in variants]
+        # Check if variants are valid and set colected to true if inside the same cluster
+        if os.getenv("KUBERNETES_SERVICE_HOST"):
+            for v in final_variants:
+                v.colocated_workload = True
         # Prepare the workloads
         workloads = workloads_string.split(',')
         logger.info(f"Specified workloads: {workloads}")
