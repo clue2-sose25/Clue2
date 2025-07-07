@@ -153,6 +153,52 @@ services:
     networks:
       - clue2
 
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - clue2
+
+  # Grafana for dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    networks:
+      - clue2
+    depends_on:
+      - prometheus
+
+  # Kepler exporter (public image, for local testing)
+  kepler-exporter:
+    image: quay.io/sustainable_computing_io/kepler:latest
+    container_name: kepler-exporter
+    ports:
+      - "9100:9100"
+    networks:
+      - clue2
+    # Note: This image may require additional configuration for local use
+
+  # Prometheus-Agent (build from local Dockerfile)
+  prometheus-agent:
+    build:
+      context: ./clue_deployer/agent
+      dockerfile: Dockerfile
+    image: prometheus-agent:latest
+    container_name: prometheus-agent
+    ports:
+      - "8000:8000"
+    networks:
+      - clue2
+
 volumes:
   registry-data:
   results-deployer-data:
