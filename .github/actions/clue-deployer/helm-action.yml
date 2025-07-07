@@ -1,0 +1,26 @@
+name: CLUE Helm Deploy Action
+description: Deploys Clue using the Helm chart
+inputs:
+  kubeconfig:
+    description: Base64 encoded kubeconfig
+    required: true
+  chart-path:
+    description: where the helm chart is located
+    required: false
+    default: clue_helm
+  release-name:
+    description: Release name
+    default: clue
+runs:
+  using: composite
+  steps:
+    - name: Setup kubeconfig
+      run: |
+        echo "${{ inputs.kubeconfig }}" | base64 -d > /tmp/kubeconfig
+        kubectl config use-context default || true
+      shell: bash
+    - name: Deploy with Helm
+      run: |
+        helm upgrade --install ${{ inputs.release-name }} ${{ inputs.chart-path }} \
+          --kubeconfig /tmp/kubeconfig
+      shell: bash

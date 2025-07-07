@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: clue-deployer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: clue-deployer
+  template:
+    metadata:
+      labels:
+        app: clue-deployer
+    spec:
+      serviceAccountName: {{ .Values.clueDeployer.serviceAccountName }}
+      containers:
+        - name: clue-deployer
+          image: "{{ .Values.imageRegistry }}/{{ .Values.clueDeployer.image }}:{{ .Values.clueDeployer.tag }}"
+          env:
+            - name: API_BASE_URL
+              value: "http://clue-deployer:{{ .Values.clueDeployer.service.port }}"
+          envFrom:
+            - configMapRef:
+                name: clue-config
+            - secretRef:
+                name: clue-secrets
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.clueDeployer.probes.path }}
+              port: {{ .Values.clueDeployer.service.port }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.clueDeployer.probes.path }}
+              port: {{ .Values.clueDeployer.service.port }}
+      volumes:
+        - name: data
+          emptyDir: {}

@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: clue-deployer
+spec:
+  selector:
+    app: clue-deployer
+  ports:
+    - port: {{ .Values.clueDeployer.service.port }}
+      targetPort: {{ .Values.clueDeployer.service.port }}

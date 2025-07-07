@@ -1,0 +1,21 @@
+imageRegistry: ghcr.io/clue2-sose25
+clueDeployer:
+  image: "clue2-deployer"
+  tag: "latest"
+  serviceAccountName: clue-deployer
+  service:
+    port: 8000
+  probes:
+    path: /api/health
+  env: {}
+clueWebui:
+  image: "clue2-webui"
+  tag: "latest"
+  service:
+    port: 80
+  env:
+    API_BASE_URL: "http://clue-deployer:8000"
+ingress:
+  enabled: true
+  host: clue.example.com
+  tls: false

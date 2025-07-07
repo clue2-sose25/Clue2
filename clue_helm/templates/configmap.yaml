@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clue-config
+data:
+  DEPLOY_ONLY: "false"
+  N_ITERATIONS: "1"
