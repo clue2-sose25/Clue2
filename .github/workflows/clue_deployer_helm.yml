@@ -10,6 +10,7 @@ on:
 
 jobs:
   helm_deploy:
+    environment: helm-approval
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
