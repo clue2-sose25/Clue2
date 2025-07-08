@@ -102,13 +102,13 @@ class VariantDeployer:
                 logger.info("Note: You may see some 'memcache.go' warnings during installation - these are harmless.")
                 
                 # Install with NodePort service type for Prometheus
-                # subprocess.check_call([
-                #     "helm", "install", "kps1", "prometheus-community/kube-prometheus-stack",
-                #     "--set", "prometheus.service.type=NodePort",
-                #     "--set", "prometheus.service.nodePort=30090",
-                #     "--wait",
-                #     "--timeout", "15m"
-                # ])
+                subprocess.check_call([
+                    "helm", "install", "kps1", "prometheus-community/kube-prometheus-stack",
+                    "--set", "prometheus.service.type=NodePort",
+                    "--set", "prometheus.service.nodePort=30090",
+                    "--wait",
+                    "--timeout", "15m"
+                ])
             else:
                 logger.info("Prometheus stack found")
                 # Check if service is already NodePort, if not patch it
@@ -139,15 +139,15 @@ class VariantDeployer:
             )
             if kepler_status.returncode != 0:
                 logger.info("Helm chart 'Kepler' is not installed. Installing it now...")
-                # subprocess.check_call([
-                #     "helm", "install", "kepler", "kepler/kepler",
-                #     "--namespace", "kepler",
-                #     "--create-namespace",
-                #     "--set", "serviceMonitor.enabled=true",
-                #     "--set", "serviceMonitor.labels.release=kps1",
-                #     "--wait",
-                #     "--timeout", "10m"
-                # ])
+                subprocess.check_call([
+                    "helm", "install", "kepler", "kepler/kepler",
+                    "--namespace", "kepler",
+                    "--create-namespace",
+                    "--set", "serviceMonitor.enabled=true",
+                    "--set", "serviceMonitor.labels.release=kps1",
+                    "--wait",
+                    "--timeout", "10m"
+                ])
             else:
                 logger.info("Kepler stack found")
             logger.info("All cluster requirements fulfilled")
