@@ -31,10 +31,9 @@ jobs:
       - name: Tunnel SSH
         run: ssh "${{ vars.CLUSTER_PROXY_COMMAND }}" -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no &
         
-      - name: using kubeconfig
-        run: |
-          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > $HOME/.kube/config
-          chmod 600 $HOME/.kube/config
+      - name: Wait for SSH tunnel
+        run: sleep 5
+        
       - name: Deploy with Helm action
         uses: ./.github/actions/clue-deployer/helm-action.yaml
         with:
