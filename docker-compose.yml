@@ -58,7 +58,7 @@ services:
       - ./sut_configs:/app/sut_configs
       # Cluster configs
       - ${KUBECONFIG_FILE}:/root/.kube:ro
-      - ${SSH_KEY_FILE_PATH}:/root/.ssh/id_rsa:ro
+      - ${SSH_KEY_FILE_PATH:-/dev/null}:/root/.ssh/id_rsa:ro
       # Results
       - results-deployer-data:/app/data
     networks:

@@ -68,6 +68,6 @@ jobs:
         run: |
           docker run -p 5001:80 -d --name=clue-webui ghcr.io/clue2-sose25/clue2-${IMAGE_NAME}:pr-test
           sleep 8
-          curl -fs http://localhost:5001/ | grep -q "Clue Dashboard" && echo " webUI Up and running"
+          curl -fs http://localhost:5001/ | grep -q "Clue Dashboard" && echo "Web UI Up and running"
           docker logs clue-webui || true
           docker stop clue-webui

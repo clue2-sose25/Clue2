@@ -101,7 +101,7 @@ class ExperimentRunner:
         with open(status_file_path, 'w') as f:
             json.dump(status_data, f, indent=2)
 
-    def execute_single_run(self, variant: Variant, workload: Workload, results_path: Path) -> None:
+    def execute_single_run(self, variant: Variant, workload: Workload | None, results_path: Path | None) -> None:
         """
         Executes and runs a single variant
         """
@@ -161,8 +161,8 @@ class ExperimentRunner:
         StatusManager.set(StatusPhase.PREPARING_CLUSTER, "Preparing the cluster...")
         # Deploy a single variant if deploy only
         if self.experiment.deploy_only:
-            logger.info(f"Starting deployment only for variant: {self.experiment.variants[0]} (workload: {self.experiment.workloads[0]})")
-            self.execute_single_run(self.experiment.variants[0], self.experiment.workloads[0])
+            logger.info(f"Starting deployment only for variant: {self.experiment.variants[0]} (workload: None)")
+            self.execute_single_run(self.experiment.variants[0], None, None)
             logger.info("Deploy only experiment executed successfully.")
         else:
             # Run over all variants of the experiment
