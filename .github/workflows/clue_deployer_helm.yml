@@ -78,15 +78,6 @@ jobs:
       - name: Wait for SSH tunnel
         run: sleep 5
 
-### waiting until the person who triggered the workflow approves the next steps
-      - name: Wait for manual approval
-        uses: trstringer/manual-approval@v1
-        with:
-          secret: ${{ github.TOKEN }}
-          approvers: issafadel
-          exclude-workflow-initiator-as-approver: false
-          fail-on-denial: true
-
       - name: Deploy with Helm action
         uses: ./.github/actions/clue-deployer/helm-action.yaml
         with:
