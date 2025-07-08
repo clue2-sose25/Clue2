@@ -1,3 +1,5 @@
+import os
+import json
 import multiprocessing as mp
 from contextlib import contextmanager
 from multiprocessing.managers import BaseManager
@@ -11,6 +13,7 @@ from fastapi import HTTPException
 from kubernetes.client import CoreV1Api
 from kubernetes.client.exceptions import ApiException   
 from clue_deployer.src.service.status_manager import StatusManager, StatusPhase
+from clue_deployer.src.service.final_status import FinalStatus
 
 SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
 CLUE_CONFIG_PATH = ENV_CONFIG.CLUE_CONFIG_PATH
@@ -166,7 +169,7 @@ class Worker:
         self.process.join()
         logger.info("Worker killed.")
         #self.is_deploying.value = 0
-        self._cleanup()
+        self._cleanup(FinalStatus.ERROR)
 
     @contextmanager
     def experiment_manager(self, sut_name):
@@ -177,9 +180,9 @@ class Worker:
         finally:
             process_logger.logger = "MAIN"
             process_logger.info(f"Cleaning up after deployment for SUT {sut_name}")
-            self._cleanup()
+            self._cleanup(FinalStatus.SUCCESS)
     
-    def _cleanup(self):
+    def _cleanup(self, status):
         """Clean up the worker resources."""
         #TODO write the deployment status to the status file
         logger.info("Cleaning up worker resources...")
@@ -188,6 +191,18 @@ class Worker:
             return
         namespace = self.current_experiment.configs.sut_config.namespace
         
+        exp_dir = os.path.join("data", 
+                                    self.current_experiment.sut,
+                                    self.current_experiment.timestamp,
+                                    "status.json")
+        try:
+            with open(exp_dir) as f:
+                json.dump({"status": status}, f)
+        
+        except FileNotFoundError as e:
+            logger.error(f"could not locate experiment dir: {exp_dir}" )
+            raise e
+
         # Clean up the namespace if it exists
         try:
             self.core_v1_api.read_namespace(name=namespace)
