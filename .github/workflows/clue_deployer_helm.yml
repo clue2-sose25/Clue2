@@ -10,7 +10,6 @@ on:
 
 jobs:
   helm_deploy:
-    environment: helm-approval
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -38,7 +37,6 @@ jobs:
       - name: Wait for manual approval
         uses: trstringer/manual-approval@v1
         with:
-          secret: ${{ secrets.GITHUB_TOKEN }}
           approvers: ${{ github.actor }}
           exclude-workflow-initiator-as-approver: false
           fail-on-denial: true
