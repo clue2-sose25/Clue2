@@ -39,7 +39,13 @@ jobs:
     needs:
       - staging
     steps:
-      - run: echo "Approved to Prod"
+      - name: Wait for manual approval
+        uses: trstringer/manual-approval@v1
+        with:
+          secret: ${{ github.TOKEN }}
+          approvers: ${{ github.actor }}
+          exclude-workflow-initiator-as-approver: false
+          fail-on-denial: true
 
   helm_deploy:
     runs-on: ubuntu-latest
