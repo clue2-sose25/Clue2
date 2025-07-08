@@ -168,7 +168,10 @@ const ExperimentPage = () => {
         </div>
 
         {/* Parameter Selection */}
-        <div className="h-full overflow-y-auto flex flex-col gap-4 border-x border-t rounded shadow p-4 md:w-2/5 w-3/4 flex-grow">
+        <div
+          className="h-full overflow-y-auto flex flex-col gap-4 border-x border-t rounded shadow p-4 md:w-2/5 w-3/4 flex-grow"
+          style={{scrollBehavior: "smooth", willChange: "scroll-position"}}
+        >
           {/* SUT Dropdown */}
           <div className="flex flex-col gap-2">
             <label
@@ -226,7 +229,7 @@ const ExperimentPage = () => {
               </p>
             </label>
             <div
-              className={`border p-2 flex flex-col gap-2 max-h-[10.5rem] overflow-auto  ${
+              className={`border p-2 flex flex-col gap-2 max-h-40 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 ${
                 !currentDeployment.sut ? "opacity-50" : ""
               }`}
             >
@@ -316,7 +319,7 @@ const ExperimentPage = () => {
               )}
             </label>
             <div
-              className={`border p-2 flex flex-col gap-2 max-h-[10.5rem] overflow-auto  ${
+              className={`border p-2 flex flex-col gap-2 max-h-40 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 ${
                 !currentDeployment.sut || currentDeployment.deploy_only
                   ? "opacity-50"
                   : ""
