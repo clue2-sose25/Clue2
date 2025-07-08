@@ -2,6 +2,7 @@ import logging
 import sys
 import multiprocessing as mp
 
+
 # Define ANSI color codes
 COLORS = {
     'DEBUG': '\033[94m',   # Blue
@@ -127,3 +128,38 @@ def get_child_process_logger(process_name, shared_buffer=None):
             child_logger.addHandler(buffer_handler)
     
     return child_logger
+
+class ProcessLogger:
+    def __init__(self):
+        self._logger = get_child_process_logger("MAIN", shared_log_buffer)
+
+    @property
+    def logger(self):
+        return self._logger
+    
+    @logger.setter
+    def logger(self, process_name):
+        """Set the logger for a specific process."""
+        if process_name is None:
+            process_name = "NO_SUT"
+        self._logger = get_child_process_logger(process_name, shared_log_buffer)
+    
+    def info(self, message):
+        """Log a message with the specified level."""
+        self._logger.info(message)
+    
+    def debug(self, message):
+        """Log a debug message."""
+        self._logger.debug(message)
+    
+    def warning(self, message):
+        """Log a warning message."""
+        self._logger.warning(message)
+    
+    def error(self, message):
+        """Log an error message."""
+        self._logger.error(message)
+    
+
+
+process_logger = ProcessLogger()

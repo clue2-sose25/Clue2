@@ -16,7 +16,7 @@ from clue_deployer.src.models.variant import Variant
 from clue_deployer.src.variant_runner import VariantRunner
 from clue_deployer.src.models.workload import Workload
 from clue_deployer.src.variant_deployer import VariantDeployer
-from clue_deployer.src.logger import logger
+from clue_deployer.src.logger import process_logger as logger
 
 # Disable SSL verification
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)

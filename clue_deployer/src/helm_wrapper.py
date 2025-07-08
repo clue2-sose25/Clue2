@@ -5,7 +5,7 @@ import tempfile
 import shutil
 from clue_deployer.src.configs.configs import SUT_CONFIG
 from clue_deployer.src.models.variant import Variant
-from clue_deployer.src.logger import logger
+from clue_deployer.src.logger import process_logger as logger
 from clue_deployer.src.models.helm_dependencies import Dependencies
 
 class HelmWrapper():

@@ -15,7 +15,7 @@ from clue_deployer.src.models.variant import Variant
 from clue_deployer.src.models.result_files import ResultFiles
 from clue_deployer.src.models.workload import Workload
 from clue_deployer.src.models.workload_cancelled_exception import WorkloadCancelled
-from clue_deployer.src.logger import logger
+from clue_deployer.src.logger import process_logger as logger
 
 
 class WorkloadRunner:

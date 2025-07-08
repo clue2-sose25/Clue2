@@ -15,7 +15,7 @@ from os import path
 import signal
 import kubernetes
 from kubernetes.client.rest import ApiException
-from clue_deployer.src.logger import logger
+from clue_deployer.src.logger import process_logger as logger
 
 class VariantRunner:
 

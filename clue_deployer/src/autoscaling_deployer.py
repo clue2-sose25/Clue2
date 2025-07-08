@@ -3,7 +3,7 @@ import kubernetes
 from clue_deployer.src.configs.configs import CLUE_CONFIG, SUT_CONFIG
 from clue_deployer.src.models.variant import Variant
 from clue_deployer.src.models.scaling_experiment_setting import ScalingExperimentSetting
-from clue_deployer.src.logger import logger
+from clue_deployer.src.logger import process_logger as logger
 
 class AutoscalingDeployer:
 

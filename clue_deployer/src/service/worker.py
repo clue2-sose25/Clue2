@@ -1,7 +1,8 @@
 import multiprocessing as mp
+from contextlib import contextmanager
 from multiprocessing.managers import BaseManager
 from clue_deployer.src.service.experiment_queue import ExperimentQueue
-from clue_deployer.src.logger import get_child_process_logger, logger, shared_log_buffer
+from clue_deployer.src.logger import get_child_process_logger, logger, shared_log_buffer, process_logger
 from clue_deployer.src.models.deploy_request import DeployRequest
 from clue_deployer.src.models.experiment import Experiment
 from clue_deployer.src.main import ExperimentRunner
@@ -59,7 +60,7 @@ class Worker:
                 self.is_deploying,
                 self.condition,
                 self.experiment_queue,
-                get_child_process_logger("NO_SUT", shared_log_buffer),
+                #process_logger,
                 self.shared_container,
             )
         )
@@ -70,7 +71,7 @@ class Worker:
                      is_deploying, 
                      condition, 
                      experiment_queue, 
-                     process_logger,
+                     #process_logger,
                      shared_container):
         
         with self.state_lock:
@@ -98,13 +99,6 @@ class Worker:
 
                 shared_container['current_deployment'] = experiment
 
-
-
-                process_logger = get_child_process_logger(
-                    experiment.sut,
-                    shared_log_buffer
-                )
-
             try:
                 sut_filename = f"{experiment.sut}.yaml"
                 sut_path = SUT_CONFIGS_DIR.joinpath(sut_filename)
@@ -126,8 +120,10 @@ class Worker:
                     n_iterations=experiment.n_iterations,
                 )
                 self.current_experiment = runner.experiment
-
-                runner.main()
+                
+                with self.experiment_manager(experiment.sut):
+                    runner.main()
+                
                 process_logger.info(f"Successfully completed deployment for SUT {experiment.sut}")
             except Exception as e:
                 process_logger.error(f"Deployment process failed for SUT {experiment.sut}: {str(e)}")
@@ -172,6 +168,16 @@ class Worker:
         #self.is_deploying.value = 0
         self._cleanup()
 
+    @contextmanager
+    def experiment_manager(self, sut_name):
+        """Context manager to ensure cleanup after worker operations."""
+        process_logger.logger = sut_name
+        try:
+            yield
+        finally:
+            process_logger.logger = "MAIN"
+            process_logger.info(f"Cleaning up after deployment for SUT {sut_name}")
+            self._cleanup()
     
     def _cleanup(self):
         """Clean up the worker resources."""
