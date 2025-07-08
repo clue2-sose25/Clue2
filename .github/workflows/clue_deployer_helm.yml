@@ -49,6 +49,7 @@ jobs:
           approvers: ${{ github.actor }}
           exclude-workflow-initiator-as-approver: false
           fail-on-denial: true
+        timeout-minutes: 5
 
   helm_deploy:
     runs-on: ubuntu-latest
