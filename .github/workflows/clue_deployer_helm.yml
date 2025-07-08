@@ -29,7 +29,7 @@ jobs:
           chmod 400 $HOME/.kube/config
 
       - name: Tunnel SSH
-        run: ssh -N -L 6443:ise-kmaster.ise.tu-berlin.de:6443 jump@ssh-gateway.ise.tu-berlin.de -p 20122 -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no &
+        run: ssh "${{ vars.CLUSTER_PROXY_COMMAND }}" -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no &
         
       - name: using kubeconfig
         run: |
