@@ -216,11 +216,13 @@ If all the preliminaries for data collection are installed, Clue will fetch the 
 A basic Helm chart is provided under `clue_helm/` to run the deployer and web UI directly in a cluster.
 Install it with:
 
+
 ```bash
-helm install clue clue_helm
+helm install clue clue_helm --namespace clue --create-namespace
 ```
 
 Set `imageRegistry` and other values in `values.yaml` to point to your images and configure the ingress host.
+The chart deploys all CLUE components into the `clue` // Release.Namespace. SUT deployments are created in a separate namespace defined in the SUT config on nodes labeled `scaphandre=true`.
 The chart includes a `Job` manifest for CI execution and a `Deployment` for a long-running service.
 
 For automated tests you can use the composite action under

@@ -1,0 +1,42 @@
+---
+name: Test Helm Deploy
+
+on:
+  pull_request:
+    paths:
+      - 'clue_helm/**'
+      - '.github/actions/clue-deployer/helm-action.yaml'
+  workflow_dispatch:
+
+jobs:
+  helm_deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+      - name: Reconstruct SSH key 
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.TU_CLUSTER_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 400 ~/.ssh/id_rsa
+      - name: using kubeconfig
+        run: |
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > $HOME/.kube/config
+          chmod 400 $HOME/.kube/config
+
+      - name: Tunnel SSH
+        run: ssh -N -L 6443:ise-kmaster.ise.tu-berlin.de:6443 jump@ssh-gateway.ise.tu-berlin.de -p 20122 -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no &
+        
+      - name: using kubeconfig
+        run: |
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+      - name: Deploy with Helm action
+        uses: ./.github/actions/clue-deployer/helm-action.yaml
+        with:
+          kubeconfig: ${{ secrets.KUBE_CONFIG }}
+          chart-path: clue_helm
+          release-name: clue-test
