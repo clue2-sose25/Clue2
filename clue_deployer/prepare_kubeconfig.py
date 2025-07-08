@@ -28,7 +28,13 @@ def load_config():
     print(f"[PREPARE_KUBECONFIG] No B64 config detected. Using the Kube config from the path: {KUBECONFIG_ORIGINAL}")
     with open(KUBECONFIG_ORIGINAL) as f:
         return yaml.safe_load(f)
-
+# Patch the config
+def _save_config(config):
+    """Write the (possibly patched) config to the known path and export KUBECONFIG."""
+    with open(KUBECONFIG_PATCHED, "w") as f:
+        yaml.safe_dump(config, f)
+    os.environ["KUBECONFIG"] = KUBECONFIG_PATCHED
+    
 # Patch the config
 def patch_kubeconfig(config):
     for cluster in config.get("clusters", []):
@@ -40,14 +46,12 @@ def patch_kubeconfig(config):
             cluster["cluster"].pop("certificate-authority-data", None)
             cluster["cluster"]["insecure-skip-tls-verify"] = True
     # Save the changes
-    with open(KUBECONFIG_PATCHED, "w") as f:
-        yaml.safe_dump(config, f)
-    # Change the variable
-    os.environ["KUBECONFIG"] = KUBECONFIG_PATCHED
+    _save_config(config)
     print("[PREPARE_KUBECONFIG] Patched kubeconfig to use clue-cluster-control-plane and insecure-skip-tls-verify: true")
 
 if __name__ == "__main__":
     config = load_config()
-    if PATCH_CONFIG:
+    if PATCH_CONFIG and PATCH_CONFIG.lower() == "true":
         patch_kubeconfig(config)
-    
+    else:
+        _save_config(config)

@@ -3,7 +3,9 @@ set -e
 # Environment variable fallbacks
 : "${DEPLOY_AS_SERVICE:=false}"
 : "${DEPLOY_ONLY:=false}"
-: "${PATCH_LOCAL_CLUSTER:=true}"
+: "${PATCH_LOCAL_CLUSTER:=false}"
+: "${CLUSTER_PROXY_COMMAND:=}"
+: "${SSH_KEY_FILE_PATH:=/root/.ssh/id_rsa}"
 
 
 # Print configs 
@@ -21,6 +23,19 @@ if [ -f /app/clue_deployer/kubeconfig_patched ]; then
     export KUBECONFIG=/app/clue_deployer/kubeconfig_patched
 fi
 
+# Start optional cluster proxy after kubeconfig was prepared
+if [ -n "$CLUSTER_PROXY_COMMAND" ]; then
+    echo "[ENTRYPOINT.SH] Starting SSH proxy: ssh -i $SSH_KEY_FILE_PATH $CLUSTER_PROXY_COMMAND"
+    ls -l "$SSH_KEY_FILE_PATH"
+    if [ -f "$SSH_KEY_FILE_PATH" ]; then
+        chmod 400 "$SSH_KEY_FILE_PATH" || true
+        ls -l "$SSH_KEY_FILE_PATH"
+    fi
+    echo "Checking SSH key file permissions..."
+    ssh -i "$SSH_KEY_FILE_PATH" $CLUSTER_PROXY_COMMAND &
+    echo "Starting with CLUSTER_PROXY_COMMAND: $CLUSTER_PROXY_COMMAND"
+fi
+
 # If DEPLOY_AS_SERVICE = True, deploy CLUE as a service
 if [ "$DEPLOY_AS_SERVICE" = "true" ]; then
     echo "[ENTRYPOINT.SH] Starting FastAPI service..."
@@ -31,4 +46,5 @@ fi
 # Deploy CLUE
 # Uncomment the line below to enable debugging with debugpy
 #exec uv run -m debugpy --listen 0.0.0.0:5678 --wait-for-client clue_deployer/src/main.py
+echo "Starting without DEPLOY_AS_SERVICE "
 exec uv run clue_deployer/src/main.py
