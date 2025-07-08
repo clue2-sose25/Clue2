@@ -1,6 +1,6 @@
-import { useContext, useEffect, useState } from "react";
-import { DeploymentContext } from "../contexts/DeploymentContext";
-import { Link } from "react-router";
+import {useContext, useEffect, useState} from "react";
+import {DeploymentContext} from "../contexts/DeploymentContext";
+import {Link, useNavigate} from "react-router";
 import {
   CaretLeftIcon,
   CaretRightIcon,
@@ -16,17 +16,19 @@ import {
   RepeatIcon,
   WrenchIcon,
 } from "@phosphor-icons/react/dist/ssr";
-import { QueueContext } from "../contexts/QueueContext";
-import { IconButton } from "@mui/material";
+import {QueueContext} from "../contexts/QueueContext";
+import {IconButton} from "@mui/material";
 
 const DashboardPage = () => {
-  const { ifDeploying, setIfDeploying, currentDeployment } =
+  const {ifDeploying, setIfDeploying, currentDeployment} =
     useContext(DeploymentContext);
 
   // The experiments queue
-  const { currentQueue, setCurrentQueue } = useContext(QueueContext);
+  const {currentQueue, setCurrentQueue} = useContext(QueueContext);
   // The currently displayed index from queue
   const [currentQueueIndex, setCurrentQueueIndex] = useState<number>(0);
+
+  const navigate = useNavigate();
 
   /**
    * On the component load
@@ -137,7 +139,7 @@ const DashboardPage = () => {
         </div>
       )}
       <div className="bg-white p-6 rounded-lg shadow-md w-full h-full">
-        {ifDeploying ? (
+        {!ifDeploying ? (
           <div className="flex gap-6 ">
             <div className="w-1/3">
               <div className="flex flex-col gap-2">
@@ -176,9 +178,10 @@ const DashboardPage = () => {
                   </div>
                 </div>
                 <button
-                  className="rounded p-2 bg-green-400 text-white hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                  onClick={() => {}}
-                  disabled={true}
+                  className="rounded p-2 bg-blue-400 text-white hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  onClick={() => {
+                    navigate("/results");
+                  }}
                 >
                   <div className="flex items-center justify-center gap-2">
                     <FilesIcon size={24} className="inline-block" />
