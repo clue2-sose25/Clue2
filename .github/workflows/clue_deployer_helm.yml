@@ -42,4 +42,4 @@ jobs:
         with:
           kubeconfig: ${{ secrets.KUBE_CONFIG }}
           chart-path: clue_helm
-          release-name: clue-test
+          release-name: clue
