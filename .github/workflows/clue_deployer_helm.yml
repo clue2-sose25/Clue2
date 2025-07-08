@@ -33,13 +33,14 @@ jobs:
         
       - name: Wait for SSH tunnel
         run: sleep 5
-        
+###write me wait for manual approval step
       - name: Wait for manual approval
         uses: trstringer/manual-approval@v1
         with:
           secret: ${{ secrets.GITHUB_TOKEN }}
           approvers: ${{ github.actor }}
-          minimum-approvals: 1
+          exclude-workflow-initiator-as-approver: false
+          fail-on-denial: true
 
       - name: Deploy with Helm action
         uses: ./.github/actions/clue-deployer/helm-action.yaml
