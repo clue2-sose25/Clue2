@@ -69,3 +69,10 @@ except Exception as exc:
         print(f"[CONFIGS] starting without SUT config: {exc}")
     else:
         raise
+
+# Grafana configuration
+    grafana_node_port: int = 30080
+    grafana_username: str = "admin"
+    grafana_password: str = "prom-operator"
+    grafana_dashboard_import_enabled: bool = True
+    kepler_dashboard_path: str = "kepler_dashboard.json"

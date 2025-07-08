@@ -4,6 +4,7 @@ from kubernetes.client import CoreV1Api, V1Namespace, V1ObjectMeta, AppsV1Api
 from kubernetes.client.exceptions import ApiException   
 from clue_deployer.src.configs.configs import CLUE_CONFIG, ENV_CONFIG, SUT_CONFIG
 from clue_deployer.src.logger import logger
+from clue_deployer.src.service.grafana_manager import GrafanaManager
 import time
 import os
 import subprocess
@@ -160,6 +161,11 @@ class VariantDeployer:
                     logger.info("Skipped Kepler installation. The PRECONFIGURE_CLUSTER set to false.")
             else:
                 logger.info("Kepler stack found")
+            
+            # Setup Grafana dashboards
+            logger.info("Setting up Grafana dashboards")
+            self._setup_grafana_dashboard()
+            
             logger.info("All cluster requirements fulfilled")
         except subprocess.CalledProcessError as e:
             logger.error(f"Error while fulfilling Helm requirements: {e}")
@@ -272,3 +278,43 @@ class VariantDeployer:
             logger.info("Autoscaling disabled. Skipping its deployment.")
         StatusManager.set(StatusPhase.WAITING, "Waiting for load generator...")
         logger.info("SUT deployment successful.")
+
+    def _setup_grafana_dashboard(self):
+        """
+        Setup Grafana dashboards for sustainability monitoring.
+        """
+        try:
+            # Check if dashboard import is enabled
+            if not CLUE_CONFIG.grafana_dashboard_import_enabled:
+                logger.info("Grafana dashboard import is disabled")
+                return True
+            
+            # Path to the Kepler dashboard JSON file
+            dashboard_path = BASE_DIR / CLUE_CONFIG.kepler_dashboard_path
+            
+            if not dashboard_path.exists():
+                logger.warning(f"Kepler dashboard file not found at {dashboard_path}")
+                return False
+            
+            # Initialize Grafana manager with configuration
+            grafana_manager = GrafanaManager(
+                username=CLUE_CONFIG.grafana_username,
+                password=CLUE_CONFIG.grafana_password
+            )
+            
+            # Setup complete Grafana environment
+            success = grafana_manager.setup_complete_grafana_environment(
+                dashboard_path, 
+                node_port=CLUE_CONFIG.grafana_node_port
+            )
+            
+            if success:
+                logger.info("Grafana dashboard setup completed successfully")
+                return True
+            else:
+                logger.error("Failed to setup Grafana dashboard")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error setting up Grafana dashboard: {e}")
+            return False

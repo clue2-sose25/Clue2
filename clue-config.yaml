@@ -17,3 +17,13 @@ config:
   local_platform_arch: "linux/arm64/v8"
   ### AUTOSCALING ###
   target_utilization: 70
+  ### GRAFANA CONFIG ###
+  # Grafana NodePort for external access
+  grafana_node_port: 30080
+  # Grafana admin credentials
+  grafana_username: "admin"
+  grafana_password: "prom-operator"
+  # Enable/disable automatic dashboard import
+  grafana_dashboard_import_enabled: true
+  # Path to Kepler dashboard JSON file
+  kepler_dashboard_path: "kepler_dashboard.json"
