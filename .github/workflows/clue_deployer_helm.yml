@@ -24,6 +24,7 @@ jobs:
           chmod 400 ~/.ssh/id_rsa
       - name: using kubeconfig
         run: |
+          mkdir -p $HOME/.kube
           echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > $HOME/.kube/config
           chmod 400 $HOME/.kube/config
 
