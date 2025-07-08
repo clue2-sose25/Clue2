@@ -36,6 +36,9 @@ jobs:
 
   manual-approval:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     needs:
       - staging
     steps:
