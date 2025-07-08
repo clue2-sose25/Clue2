@@ -21,22 +21,30 @@ from clue_deployer.src.logger import process_logger as logger
 # Disable SSL verification
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# Load K8s config
-kube_config.load_kube_config()
-
-
 class ExperimentRunner:
-    def __init__(self, 
-                configs: Configs = CONFIGS, 
-                variants: str = ENV_CONFIG.VARIANTS,
-                workloads: str = ENV_CONFIG.WORKLOADS,
+    def __init__(self,
+                configs: Configs = CONFIGS,
+                variants_string: str = ENV_CONFIG.VARIANTS,
+                workloads_string: str = ENV_CONFIG.WORKLOADS,
                 deploy_only = ENV_CONFIG.DEPLOY_ONLY,
                 sut: str = ENV_CONFIG.SUT,
                 n_iterations: int = ENV_CONFIG.N_ITERATIONS,
                 uuid = uuid.uuid4()) -> None:
+        # Load the kube config
+        try:
+            kube_config.load_kube_config()
+        except Exception as exc:
+            if os.getenv("DEPLOY_AS_SERVICE", "false").lower() == "true":
+                logger.warning(f"Failed to load kubeconfig: {exc}")
+            else:
+                raise
         # Prepare the variants
+        variants = variants_string.split(',')
+        logger.info(f"Specified variants: {variants}")
         final_variants: List[Variant] = [variant for variant in configs.sut_config.variants if variant.name in variants]
         # Prepare the workloads
+        workloads = workloads_string.split(',')
+        logger.info(f"Specified workloads: {workloads}")
         final_workloads: List[Workload] = [workload for workload in configs.sut_config.workloads if workload.name in workloads]
         # Create the final experiment object
         self.timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -64,30 +72,31 @@ class ExperimentRunner:
         return sut_files
 
 
-    def create_experiment_files(self, results_path: str) -> None:
+    def create_experiment_files(self, results_path: str, results_parent_path: str) -> None:
         """
         Create experiment configuration and status files in the specified results path.
         
         Args:
-            results_path: The directory path where files should be created
+            results_path: The whole directory path where all data files will be stored. Only creating the directories here.
+            results_parent_path: The directory path where the parent files should be created: experiment.json and status.json
         """
-        # Create directories if they don't exist
+        # Create all directories if they don't exist
         logger.info(f"Creating the results folder: {results_path}")
         os.makedirs(results_path, exist_ok=False)
         # Create the full file path for experiment.json
         logger.info("Creating the experiment.json in the results folder")
-        experiment_file_path = path.join(results_path, 'experiment.json')
+        experiment_file_path = path.join(results_parent_path, 'experiment.json')
         # Copy the experiment object into json
         with open(experiment_file_path, 'w') as f:
             f.write(self.experiment.to_json())
         # Create status file
         logger.info("Creating the status.json in the results folder")
-        status_file_path = path.join(results_path, 'status.json')
+        status_file_path = path.join(results_parent_path, 'status.json')
         status_data = {"status": "STARTED"}
         with open(status_file_path, 'w') as f:
             json.dump(status_data, f, indent=2)
 
-    def execute_single_run(self, variant: Variant, workload: Workload, results_path: Path) -> None:
+    def execute_single_run(self, variant: Variant, workload: Workload | None, results_path: Path | None) -> None:
         """
         Executes and runs a single variant
         """
@@ -120,10 +129,12 @@ class ExperimentRunner:
             logger.info(f"Starting workload: {variant}/{workload.name}")
             # Iterate over workload types
             for iteration in range(num_iterations):
-                # Create the results path
-                results_path = path.join("data", self.experiment.sut, self.experiment.timestamp, variant.name, workload.name, str(iteration))
+                # Create the results path for the individual runs
+                results_path = path.join("data", self.experiment.sut, self.experiment.timestamp, workload.name, variant.name, str(iteration))
+                # Create the results path for the experiment parent folder (inside the timestamp directory)
+                results_parent_path = path.join("data", self.experiment.sut, self.experiment.timestamp)
                 # Create experiment files
-                self.create_experiment_files(results_path)
+                self.create_experiment_files(results_path, results_parent_path)
                 # Iterate
                 logger.info(f"Starting iteration ({iteration + 1}/{num_iterations}) for {variant.name}/{workload.name})")
                 self.execute_single_run(variant, workload, results_path)
@@ -141,14 +152,12 @@ class ExperimentRunner:
             logger.error(f"Invalid SUT name: '{self.experiment.sut}'")
             logger.info(f"Available SUTs: {available_suts_list}")
             return
-        logger.info(f"Selected {len(self.experiment.variants)} variants to run")
-        logger.info(f"Selected {len(self.experiment.workloads)} workloads to run")
         # Set the status to preparing
         StatusManager.set(StatusPhase.PREPARING_CLUSTER, "Preparing the cluster...")
         # Deploy a single variant if deploy only
         if self.experiment.deploy_only:
-            logger.info(f"Starting deployment only for variant: {self.experiment.variants[0]} (workload: {self.experiment.workloads[0]})")
-            self.execute_single_run(self.experiment.variants[0], self.experiment.workloads[0])
+            logger.info(f"Starting deployment only for variant: {self.experiment.variants[0]} (workload: None)")
+            self.execute_single_run(self.experiment.variants[0], None, None)
             logger.info("Deploy only experiment executed successfully.")
         else:
             # Run over all variants of the experiment

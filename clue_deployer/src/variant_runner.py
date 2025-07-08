@@ -80,10 +80,7 @@ class VariantRunner:
             signal.alarm(0)  # Disable SIGALRM on Unix-like systems
 
     def run(self, results_path: str):
-        if len(self.workload.workload_settings) == 0:
-            raise ValueError(f"Cant run {self.variant.name} with empty workload settings")
         # TODO: autoscaling is set up upon branch deployment but cleaned up here
-
         node_file = path.join(
             results_path, f"measurements_node_{datetime.now().strftime('%d_%m_%Y_%H_%M')}.csv"
         )

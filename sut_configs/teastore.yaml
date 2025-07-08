@@ -1,5 +1,5 @@
 config:
-  # The name of the SUT  
+  # The name of the SUT
   sut: "teastore"
   # The K8s namespace to deploy the SUT
   namespace: "teastore"
@@ -14,24 +14,24 @@ config:
   # The values file to use
   values_yaml_name: "values.yaml"
   # The k8s service name (used for in-cluster communication)
-  target_service_name: "teastore-webui" 
+  target_service_name: "teastore-webui"
   # The specific path
-  application_endpoint_path: "/tools.descartes.teastore.webui" 
+  application_endpoint_path: "/tools.descartes.teastore.webui"
   # Default resource limits for all services (used if autoscaling is enabled)
   default_resource_limits:
-    # CPU resource limit 
+    # CPU resource limit
     cpu: 1000
     # Memory resource limit
     memory: 1024
   # The time to wait before deploying individual workloads. Specified in seconds
-  wait_before_workloads: 180
+  wait_before_workloads: 120
   # The time to wait after deploying individual workloads. Specified in seconds
-  wait_after_workloads: 180
+  wait_after_workloads: 120
 
 ### HELM CHART REPLACEMENTS ###
 # The replacements for the Helm chart values file.
 # Can be used for any arbirary value. It will replace all instances of that value in the whole values file.
-# The replacement will be applied only when all conditions are meet. 
+# The replacement will be applied only when all conditions are meet.
 # The `__EXPERIMENT_TAG__` placeholder will be replaces with the name of the variant. Additionally, it will be used as a tag for the docker images.
 # Required fields:
 #   value: str - the old value to replace
@@ -101,56 +101,48 @@ resource_limits:
 ### WORKLOADS ###
 # A list of workloads for the SUT. Required fields:
 # name: str - a short name of the variant
-# description: str - a short description of the variant 
+# description: str - a short description of the variant
 # timeout_duration: int - the total timeout for the workload generator
 # workload_settings: JSON - settings for the Locust workload generator. See default SUTs' configs for more detail.
 workloads:
   - name: "shaped"
     description: "Workload with custom load shape behavior."
     timeout_duration: 120
+    workload_runtime: 64
     workload_settings:
-      {
-        "LOADGENERATOR_STAGE_DURATION": 8,
-        "LOADGENERATOR_MAX_DAILY_USERS": 100,
-        "LOCUST_LOCUSTFILE": "./consumerbehavior.py,./loadshapes.py",
-      }
+      {"LOADGENERATOR_STAGE_DURATION": 8, "LOADGENERATOR_MAX_DAILY_USERS": 100}
+    locust_files:
+      - "sut_configs/workloads/teastore/consumerbehavior.py"
+      - "sut_configs/workloads/teastore/loadshapes.py"
+      - "sut_configs/workloads/teastore/config.py"
   - name: "rampup"
     description: "Workload that ramps up users at a constant rate."
     timeout_duration: 120
-    workload_settings:
-      {
-        "LOCUST_LOCUSTFILE": "./locustfile.py",
-        "LOCUST_RUN_TIME": "64s",
-        "LOCUST_SPAWN_RATE": 3,
-        "LOCUST_USERS": 100,
-      }
+    workload_runtime: 20
+    workload_settings: {"LOCUST_SPAWN_RATE": 3, "LOCUST_USERS": 100}
+    locust_files:
+      - "sut_configs/workloads/teastore/locustfile.py"
   - name: "pausing"
     description: "Workload that starts 20 pausing users, no ramp-up for the duration."
     timeout_duration: 120
+    workload_runtime: 64
     workload_settings:
-      {
-            "LOCUST_LOCUSTFILE": "./pausing_users.py",
-            "LOCUST_RUN_TIME": "64s",
-            "LOCUST_SPAWN_RATE": 1,
-            "LOCUST_USERS": 10,
-            "PAUSE_BACKOFF": 120,
-      }
+      {"LOCUST_SPAWN_RATE": 1, "LOCUST_USERS": 10, "PAUSE_BACKOFF": 120}
+    locust_files:
+      - "sut_configs/workloads/teastore/pausing_users.py"
   - name: "fixed"
     description: "Workload that ramps up to max users for at most 1000 requests (failed or successful), running for at most the specified duration."
     timeout_duration: 120
+    workload_runtime: 64
     workload_settings:
-      {
-        "LOCUST_LOCUSTFILE": "./fixed_requests.py",
-        "LOCUST_RUN_TIME": "64s",
-        "LOCUST_SPAWN_RATE": 1,
-        "LOCUST_USERS": 100,
-        "MAXIMUM_REQUESTS": 200,
-      }
+      {"LOCUST_SPAWN_RATE": 1, "LOCUST_USERS": 100, "MAXIMUM_REQUESTS": 200}
+    locust_files:
+      - "sut_configs/workloads/teastore/fixed_requests.py"
 
 ### VARIANTS ###
 # A list of variants for the SUT. Required fields:
 # name: str - a short name of the variant
-# description: str - a short description of the variant 
+# description: str - a short description of the variant
 # target_branch: str - the name of the git repository branch for the variant
 # colocated_workload: bool - if the workload should be deployed in the cluster or on host machine
 # critical_services: list[str] - a list of the names of the critical services to wait for before running the workload
@@ -162,9 +154,57 @@ variants:
     colocated_workload: true
     critical_services: ["teastore-auth", "teastore-registry", "teastore-webui"]
     autoscaling: "cpu"
+  - name: "runtime-replacement"
+    description: "Replaces the JVM runtime with a more recent version."
+    target_branch: "runtime-replacement"
+    colocated_workload: true
+    critical_services: ["teastore-auth", "teastore-registry", "teastore-webui"]
+    autoscaling: "cpu"
+  - name: "monolith"
+    description: "Runs the teastore application as a monolith, without microservices. Not tested with CLUE2."
+    target_branch: "monolith"
+    colocated_workload: true
+    critical_services: ["teastore-all"]
+    autoscaling: "cpu"
   - name: "serverless"
-    description: "Serverless experiment for the teastore application"
-    target_branch: "serverless"
+    description: "Runs the authentication service in a serverless fashion using Knative. Not tested with CLUE2."
+    target_branch: "serverless-auth"
     colocated_workload: true
     critical_services: ["teastore-registry", "teastore-webui"]
+    autoscaling: "cpu"
+  - name: "norec"
+    description: "Runs the application without the recommender service. Not tested with CLUE2."
+    target_branch: "service-reduction"
+    colocated_workload: true
+    critical_services: ["teastore-auth", "teastore-registry", "teastore-webui"]
+    autoscaling: "cpu"
+  - name: "lessrec"
+    description: "Reduces the number of recommendations shown to users. Not tested with CLUE2."
+    target_branch: "feature/lessrecs"
+    colocated_workload: true
+    critical_services: ["teastore-auth", "teastore-registry", "teastore-webui"]
+    autoscaling: "cpu"
+  - name: "obs"
+    description: "Uses object storage for storing images. Not tested with CLUE2. Not tested with CLUE2."
+    target_branch: "feature/object-storage"
+    colocated_workload: true
+    critical_services: ["teastore-auth", "teastore-registry", "teastore-webui"]
+    autoscaling: "cpu"
+  - name: "dbopt"
+    description: "Implements database optimizations. Not tested with CLUE2."
+    target_branch: "feature/db-optimization"
+    colocated_workload: true
+    critical_services: ["teastore-auth", "teastore-registry", "teastore-webui"]
+    autoscaling: "cpu"
+  - name: "car"
+    description: "Implements carbon-aware retraining for the recommender. Not tested with CLUE2."
+    target_branch: "Carbon-Aware-Retraining"
+    colocated_workload: true
+    critical_services: ["teastore-auth", "teastore-registry", "teastore-webui"]
+    autoscaling: "cpu"
+  - name: "sig"
+    description: "Implements static site generation and API gateway. Not tested with CLUE2."
+    target_branch: "ssg+api-gateway"
+    colocated_workload: true
+    critical_services: ["teastore-auth", "teastore-registry", "teastore-webui"]
     autoscaling: "cpu"

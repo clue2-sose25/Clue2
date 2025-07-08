@@ -117,7 +117,8 @@ class Worker:
                 process_logger.info(f"Starting deployment for SUT {experiment.sut}")
                 runner = ExperimentRunner(
                     configs,
-                    variants=experiment.variants,
+                    variants_string=experiment.variants,
+                    workloads_string=experiment.workloads,
                     sut=experiment.sut,
                     deploy_only=experiment.deploy_only,
                     n_iterations=experiment.n_iterations,

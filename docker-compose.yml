@@ -49,12 +49,16 @@ services:
       N_ITERATIONS: ${N_ITERATIONS}
       DEPLOY_ONLY: ${DEPLOY_ONLY}
       DEPLOY_AS_SERVICE: ${DEPLOY_AS_SERVICE}
+      KUBE_CONFIG: ${KUBE_CONFIG}
+      PATCH_LOCAL_CLUSTER: ${PATCH_LOCAL_CLUSTER}
+      CLUSTER_PROXY_COMMAND: ${CLUSTER_PROXY_COMMAND}
     volumes:
       # CLUE Configs
       - ./clue-config.yaml:/app/clue-config.yaml
       - ./sut_configs:/app/sut_configs
       # Cluster configs
-      - ~/.kube:/root/.kube:ro
+      - ${KUBECONFIG_FILE}:/root/.kube:ro
+      - ${SSH_KEY_FILE_PATH:-/dev/null}:/root/.ssh/id_rsa:ro
       # Results
       - results-deployer-data:/app/data
     networks:
@@ -63,6 +67,8 @@ services:
   # The optional Teastore builder
   teastore-builder:
     image: ghcr.io/clue2-sose25/clue2/teastore-builder:latest
+    profiles:
+      - teastore
     build:
       context: .
       dockerfile: ./clue_builders/teastore/Dockerfile
@@ -83,6 +89,8 @@ services:
   # The optional Open Telemetry Shop builder
   ots-builder:
     image: ghcr.io/clue2-sose25/clue2/ots-builder:latest
+    profiles:
+      - ots
     build:
       context: .
       dockerfile: ./clue_builders/ots/Dockerfile
@@ -103,6 +111,8 @@ services:
   # The optional Toystore builder
   toystore-builder:
     image: ghcr.io/clue2-sose25/clue2/toystore-builder:latest
+    profiles:
+      - toystore
     build:
       context: .
       dockerfile: ./clue_builders/toystore/Dockerfile
@@ -117,6 +127,28 @@ services:
       # CLUE Configs
       - ./clue-config.yaml:/app/clue-config.yaml
       - ./sut_configs:/app/sut_configs
+    networks:
+      - clue2
+
+  clue-loadgenerator-builder:
+    image: ghcr.io/clue2-sose25/clue2/loadgenerator-builder:latest
+    profiles:
+      - toystore
+      - teastore
+      - ots
+    build:
+      context: .
+      dockerfile: ./clue_loadgenerator/builder/Dockerfile
+    container_name: loadgenerator-builder
+    privileged: true
+    depends_on:
+      - registry
+    environment:
+      DOCKER_BUILDKIT: 1
+    volumes:
+      - ./clue-config.yaml:/app/clue-config.yaml
+      - ./sut_configs:/app/sut_configs
+      - ./clue_loadgenerator:/app/clue_loadgenerator
     networks:
       - clue2
 
