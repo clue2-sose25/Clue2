@@ -24,8 +24,8 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 class ExperimentRunner:
     def __init__(self,
                 configs: Configs = CONFIGS,
-                variants_string: str = ENV_CONFIG.VARIANTS,
-                workloads_string: str = ENV_CONFIG.WORKLOADS,
+                variants: list[str] = ENV_CONFIG.VARIANTS,
+                workloads: list[str] = ENV_CONFIG.WORKLOADS,
                 deploy_only = ENV_CONFIG.DEPLOY_ONLY,
                 sut: str = ENV_CONFIG.SUT,
                 n_iterations: int = ENV_CONFIG.N_ITERATIONS,
@@ -39,11 +39,9 @@ class ExperimentRunner:
             else:
                 raise
         # Prepare the variants
-        variants = variants_string.split(',')
         logger.info(f"Specified variants: {variants}")
         final_variants: List[Variant] = [variant for variant in configs.sut_config.variants if variant.name in variants]
         # Prepare the workloads
-        workloads = workloads_string.split(',')
         logger.info(f"Specified workloads: {workloads}")
         final_workloads: List[Workload] = [workload for workload in configs.sut_config.workloads if workload.name in workloads]
         # Create the final experiment object

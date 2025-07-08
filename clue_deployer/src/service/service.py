@@ -1,20 +1,22 @@
 from multiprocessing.sharedctypes import Synchronized
 import os
+import asyncio
+import json
 from contextlib import asynccontextmanager
 from threading import Lock
 from typing import Any
 from fastapi import FastAPI, HTTPException, status, Request
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse, StreamingResponse
 import multiprocessing
 from clue_deployer.src.models.deploy_request import DeployRequest
 from clue_deployer.src.models.health_response import HealthResponse
 from clue_deployer.src.models.status_response import StatusResponse
 from clue_deployer.src.service.status_manager import StatusManager
-from clue_deployer.src.logger import get_child_process_logger, logger, shared_log_buffer
+from clue_deployer.src.logger import get_child_process_logger, logger, shared_log_buffer, SharedLogBuffer
 from clue_deployer.src.main import ExperimentRunner
 from clue_deployer.src.configs.configs import SUTConfig, Configs, ENV_CONFIG
 from clue_deployer.src.service.worker import Worker
-from .routers import logs, suts, results, plots, cluster
+from .routers import logs, suts, results, plots, cluster, queue
 
 
 # Initialize multiprocessing lock and value for deployment synchronization. Used for deployments.
@@ -41,6 +43,7 @@ app.include_router(suts.router)
 app.include_router(results.router)
 app.include_router(plots.router)
 app.include_router(cluster.router)
+app.include_router(queue.router)
 
 
 SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
@@ -165,91 +168,6 @@ async def deploy_sut(request: DeployRequest):
     
     return {"message": f"Deployment of SUT {request.sut} has been started."}
 
-@app.post("/api/queue/enqueue", status_code=status.HTTP_202_ACCEPTED)
-def enqueue_experiment(request: list[DeployRequest]):
-    """
-    Enqueue a list of deployment requests to the experiment queue.
-    """ 
-    if not request:
-        raise HTTPException(status_code=400, detail="Request body cannot be empty")
-    if len(request) == 0:
-        raise HTTPException(status_code=400, detail="No requests provided")
-    
-    for deploy_request in request:
-        worker.experiment_queue.enqueue(deploy_request)
-    
-    logger.info(f"Enqueued {len(request)} deployment requests.")
-    return {"message": f"Enqueued {len(request)} deployment requests."}
 
-@app.get("/api/experiment/current", status_code=status.HTTP_200_OK)
-async def get_current_deployment():
-    logger.info("Fetching current deployment status.")
-    return worker.current_experiment
-
-@app.post("/api/deploy/start", status_code=status.HTTP_202_ACCEPTED)
-def deploy_from_queue():
-    """
-    start deploy worker
-    """
-    try:
-        worker.start()
-    except Exception as e:
-        logger.error(f"Failed to start deployment worker: {str(e)}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                             detail=f"Failed to start deployment worker: {str(e)}")
-    
-    logger.info("Deployment worker started.")
-    return JSONResponse(status_code=status.HTTP_202_ACCEPTED, content={"message": "Deployment worker started."})
-    
-    
-
-@app.delete("/api/deploy/kill", status_code=status.HTTP_204_NO_CONTENT)
-def deploy_kill():
-    """
-    Kill the current deployment process.
-    """
-    
-    
-    # Terminate the worker process
-    try:
-        worker.kill()
-    except Exception as e:
-        logger.error(f"Failed to terminate deployment process: {str(e)}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                             detail=f"Failed to terminate deployment: {str(e)}")
-
-    logger.info("Deployment process killed.")
-    return 
-
-@app.delete("/api/deploy/stop", status_code=status.HTTP_204_NO_CONTENT)
-def stop_deployment():
-    """
-    Stop the current deployment process gracefully.
-    """
-    try:
-        worker.stop()
-    except Exception as e:
-        logger.error(f"Failed to stop deployment process: {str(e)}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                             detail=f"Failed to stop deployment: {str(e)}")
-
-    logger.info("Deployment process stopped.")
-    return JSONResponse(status_code=status.HTTP_204_NO_CONTENT, content=None)
-
-@app.delete("/api/queue/flush", status_code=status.HTTP_204_NO_CONTENT)
-def flush_queue():
-    """Flush the deployment queue."""
-    worker.experiment_queue.flush()
-    logger.info("Experiment queue flushed.")
-    return JSONResponse(status_code=status.HTTP_204_NO_CONTENT, content=None)
-
-@app.get("/api/queue/status")
-def get_queue_status():
-    """Get the current status of the deployment queue."""
-    queue_size = worker.experiment_queue.size()
-    return {
-        "queue_size": queue_size,
-        "queue": worker.experiment_queue.get_all()
-    }
 
 
