@@ -30,8 +30,8 @@ else
     echo "[ENTRYPOINT.SH] Running in cluster, skipping kubeconfig preparation."
 fi
 
-# Start optional cluster proxy after kubeconfig was prepared
-if [ -n "$CLUSTER_PROXY_COMMAND" ]; then
+# Start optional cluster proxy after kubeconfig was prepared and outside of the cluster
+if [ -n "$CLUSTER_PROXY_COMMAND" ] && [ -z "$KUBERNETES_SERVICE_HOST" ] ; then
     echo "[ENTRYPOINT.SH] Starting SSH proxy: ssh -i $SSH_KEY_FILE_PATH $CLUSTER_PROXY_COMMAND"
     ls -l "$SSH_KEY_FILE_PATH"
     if [ -f "$SSH_KEY_FILE_PATH" ]; then
@@ -41,6 +41,8 @@ if [ -n "$CLUSTER_PROXY_COMMAND" ]; then
     echo "Checking SSH key file permissions..."
     ssh -i "$SSH_KEY_FILE_PATH" $CLUSTER_PROXY_COMMAND &
     echo "Starting with CLUSTER_PROXY_COMMAND: $CLUSTER_PROXY_COMMAND"
+elif [ -n "$CLUSTER_PROXY_COMMAND" ]; then
+    echo "[ENTRYPOINT.SH] Running in cluster, ignoring CLUSTER_PROXY_COMMAND"
 fi
 
 # If DEPLOY_AS_SERVICE = True, deploy CLUE as a service

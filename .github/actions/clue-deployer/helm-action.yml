@@ -11,16 +11,24 @@ inputs:
   release-name:
     description: Release name
     default: clue
+  namespace:
+    description: Namespace to deploy into
+    default: clue
+  values-file:
+    description: Optional values file
+    required: false
 runs:
   using: composite
   steps:
     - name: Setup kubeconfig
       run: |
-        echo "${{ inputs.kubeconfig }}" | base64 -d > /tmp/kubeconfig
-        kubectl config use-context default || true
+        echo "${{ inputs.kubeconfig }}" | base64 -d > .kube/kubeconfig
       shell: bash
     - name: Deploy with Helm
       run: |
-        helm upgrade --install ${{ inputs.release-name }} ${{ inputs.chart-path }} \
-          --kubeconfig /tmp/kubeconfig
+        CMD="helm upgrade --install ${{ inputs.release-name }} ${{ inputs.chart-path }} --namespace ${{ inputs.namespace }}"
+        if [ -n "${{ inputs.values-file }}" ]; then
+          CMD="$CMD -f ${{ inputs.values-file }}"
+        fi
+        $CMD
       shell: bash

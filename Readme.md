@@ -110,6 +110,8 @@ automatically detects this by checking the `KUBERNETES_SERVICE_HOST` environment
 variable. In this case the in-cluster configuration is used and the
 `prepare_kubeconfig.py` step is skipped. Make sure the Pod runs with a
 `ServiceAccount` that has permissions to list and patch nodes and manage pods.
+`KUBERNETES_SERVICE_HOST` is automatically defined by Kubernetes for every
+container in the cluster, so you typically do not need to set it manually.
 An example RBAC manifest is provided in `clue_deployer/k8s/clue-deployer-rbac.yaml`.
 The local-cluster patching logic is disabled automatically when running in-cluster.
 
@@ -221,3 +223,8 @@ helm install clue clue_helm
 Set `imageRegistry` and other values in `values.yaml` to point to your images and configure the ingress host.
 The chart includes a `Job` manifest for CI execution and a `Deployment` for a long-running service.
 
+For automated tests you can use the composite action under
+`.github/actions/clue-deployer/helm-action.yaml` which deploys the chart when a base64 encoded kubeconfig is supplied via the `kubeconfig` input. Optional
+`namespace` and `values-file` inputs allow you to specify the target namespace
+and an override file for the chart. See the workflow
+`.github/workflows/clue-deployer-helm.yml` for an example.
