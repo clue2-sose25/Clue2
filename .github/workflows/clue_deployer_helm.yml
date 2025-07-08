@@ -79,7 +79,7 @@ jobs:
         run: sleep 5
 
       - name: Deploy with Helm action
-        uses: ./.github/actions/clue-deployer/helm-action.yaml
+        uses: ./.github/actions/clue-deployer/helm-action.yml
         with:
           kubeconfig: ${{ secrets.KUBE_CONFIG }}
           chart-path: clue_helm
