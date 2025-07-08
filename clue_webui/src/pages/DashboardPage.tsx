@@ -139,7 +139,7 @@ const DashboardPage = () => {
         </div>
       )}
       <div className="bg-white p-6 rounded-lg shadow-md w-full h-full">
-        {!ifDeploying ? (
+        {ifDeploying ? (
           <div className="flex gap-6 ">
             <div className="w-1/3">
               <div className="flex flex-col gap-2">
