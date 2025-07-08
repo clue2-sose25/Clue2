@@ -9,6 +9,7 @@ from clue_deployer.src.configs.configs import ENV_CONFIG, Configs
 from fastapi import HTTPException
 from kubernetes.client import CoreV1Api
 from kubernetes.client.exceptions import ApiException   
+from clue_deployer.src.service.status_manager import StatusManager, StatusPhase
 
 SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
 CLUE_CONFIG_PATH = ENV_CONFIG.CLUE_CONFIG_PATH
@@ -162,6 +163,7 @@ class Worker:
                 raise ValueError("Worker is not currently deploying. Cannot kill the process.")
             self.is_deploying.value = 0
         
+        StatusManager.set(StatusPhase.NO_DEPLOYMENT, "Worker process killed by user.")
         self.shared_flag.value = False
         logger.info("Stopping worker queue by killing the process...")
         self.process.kill()
