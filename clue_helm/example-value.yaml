@@ -1,7 +1,7 @@
 
 # Example override values for the Helm deploy action
 # Set the image registry and any tags to match your published images
-imageRegistry: ghcr.io/example
+imageRegistry: ghcr.io/clue2-sose25
 clueDeployer:
   image: clue2-deployer
   tag: latest
