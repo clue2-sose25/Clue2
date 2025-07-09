@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: loadgenerator-workload
+data:
+{{- range $name, $file := .Values.loadGenerator.workloadFiles }}
+  {{ $name }}: |-
+{{ $file | indent 4 }}
+{{- end }}
