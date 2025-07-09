@@ -226,7 +226,13 @@ The chart deploys all CLUE components into the `clue` // Release.Namespace. SUT 
 The chart includes a `Job` manifest for CI execution and a `Deployment` for a long-running service.
 
 For automated tests you can use the composite action under
-`.github/actions/clue-deployer/helm-action.yaml` which deploys the chart when a base64 encoded kubeconfig is supplied via the `kubeconfig` input. Optional
+`.github/actions/helm-deploy` which deploys the chart when a
+base64 encoded kubeconfig is supplied via the `kubeconfig` input. Optional
 `namespace` and `values-file` inputs allow you to specify the target namespace
 and an override file for the chart. See the workflow
 `.github/workflows/clue-deployer-helm.yml` for an example.
+The repository includes `clue_helm/values-toystore.yaml` which sets the
+environment variables to run the `toystore` SUT with the `baseline` variant.
+An additional template `clue_helm/values-example.yaml` shows all required fields.
+Copy this file to your own repository and adjust the registry and tags. Provide the
+path via the `values-file` input of the action to deploy your SUT.

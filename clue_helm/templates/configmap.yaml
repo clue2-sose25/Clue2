@@ -3,5 +3,6 @@ kind: ConfigMap
 metadata:
   name: clue-config
 data:
-  DEPLOY_ONLY: "false"
-  N_ITERATIONS: "1"
+{{- range $key, $value := .Values.clueDeployer.env }}
+  {{ $key }}: "{{ $value }}"
+{{- end }}

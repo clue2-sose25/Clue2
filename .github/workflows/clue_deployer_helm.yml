@@ -79,8 +79,9 @@ jobs:
         run: sleep 5
 
       - name: Deploy with Helm action
-        uses: ./.github/actions/clue-deployer/helm-action.yml
+        uses: ./.github/actions/helm-deploy
         with:
           kubeconfig: ${{ secrets.KUBE_CONFIG }}
           chart-path: clue_helm
           release-name: clue
+          values-file: clue_helm/values-toystore.yaml

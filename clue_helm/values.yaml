@@ -7,7 +7,9 @@ clueDeployer:
     port: 8000
   probes:
     path: /api/health
-  env: {}
+  env:
+    DEPLOY_ONLY: "false"
+    N_ITERATIONS: "1"
 clueWebui:
   image: "clue2-webui"
   tag: "latest"
