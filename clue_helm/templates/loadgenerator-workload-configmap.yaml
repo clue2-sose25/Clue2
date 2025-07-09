@@ -3,7 +3,15 @@ kind: ConfigMap
 metadata:
   name: loadgenerator-workload
 data:
+{{- if .Values.loadGenerator.workloadFiles }}
 {{- range $name, $file := .Values.loadGenerator.workloadFiles }}
   {{ $name }}: |-
 {{ $file | indent 4 }}
+{{- end }}
+{{- else if .Values.loadGenerator.workloadDir }}
+{{- $files := .Files.Glob (printf "%s/*" .Values.loadGenerator.workloadDir) }}
+{{- range $path, $_ := $files }}
+  {{ base $path }}: |-
+{{ $.Files.Get $path | indent 4 }}
+{{- end }}
 {{- end }}
