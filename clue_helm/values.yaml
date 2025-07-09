@@ -1,4 +1,4 @@
-imageRegistry: ghcr.io/issafadel
+imageRegistry: ghcr.io/clue2-sose25
 sutConfigFileName: ""
 sutConfig: ""
 clueConfig: |
