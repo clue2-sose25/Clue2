@@ -28,7 +28,7 @@ spec:
             - name: SUT_NAME
               value: "{{ $sut }}"
             - name: LOCUST_FILE
-              value: "{{ join "," $paths}}"
+              value: '{{ join "," $paths}}'
           volumeMounts:
             - name: workload-files
               mountPath: "/app/sut_configs/workloads/{{ $sut }}"
