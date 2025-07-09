@@ -161,6 +161,8 @@ class ExperimentRunner:
         StatusManager.set(StatusPhase.PREPARING_CLUSTER, "Preparing the cluster...")
         # Deploy a single variant if deploy only
         if self.experiment.deploy_only:
+            #logger.info(f"Starting deployment only for variant: {self.experiment.variants[0]} (workload: {self.experiment.workloads[0]})")
+            #self.execute_single_run(self.experiment.variants[0], self.experiment.workloads[0])
             logger.info(f"Starting deployment only for variant: {self.experiment.variants[0]} (workload: None)")
             self.execute_single_run(self.experiment.variants[0], None, None)
             logger.info("Deploy only experiment executed successfully.")
