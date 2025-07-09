@@ -3,7 +3,7 @@ sutConfigFileName: ""
 sutConfig: ""
 clueConfig: |
   config:
-    experiment_timeout: 150
+    experiment_timeout: 149
     prometheus_url: "http://clue-cluster-control-plane:30090"
     docker_registry_address: "registry:5000/clue"
     local_public_ip: "registry"
