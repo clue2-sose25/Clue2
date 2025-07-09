@@ -1,0 +1,8 @@
+# example, not done yet!
+clueDeployer:
+  env:
+    SUT: toystore
+    VARIANTS: baseline
+    WORKLOADS: shaped
+    DEPLOY_ONLY: "false"
+    N_ITERATIONS: "1"
