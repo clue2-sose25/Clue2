@@ -1,0 +1,27 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: clue-loadgenerator
+spec:
+  template:
+    metadata:
+      labels:
+        app: loadgenerator
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: loadgenerator
+          image: "{{ .Values.imageRegistry }}/{{ .Values.loadGenerator.image }}:{{ .Values.loadGenerator.tag }}"
+          env:
+            - name: SUT_NAME
+              value: "{{ .Values.clueDeployer.env.SUT | default \"sut\" }}"
+            - name: LOCUST_FILE
+              value: "/app/sut_configs/workloads/{{ .Values.clueDeployer.env.SUT | default \"sut\" }}/{{ .Values.loadGenerator.workloadFileName }}"
+          volumeMounts:
+            - name: workload-file
+              mountPath: "/app/sut_configs/workloads/{{ .Values.clueDeployer.env.SUT | default \"sut\" }}/{{ .Values.loadGenerator.workloadFileName }}"
+              subPath: "{{ .Values.loadGenerator.workloadFileName }}"
+      volumes:
+        - name: workload-file
+          configMap:
+            name: loadgenerator-workload
