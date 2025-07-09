@@ -22,11 +22,11 @@ runs:
   steps:
     - name: Setup kubeconfig
       run: |
-        echo "${{ inputs.kubeconfig }}" | base64 -d > .kube/kubeconfig
+        echo "${{ inputs.kubeconfig }}" | base64 -d > ~/.kube/kubeconfig
       shell: bash
     - name: Deploy with Helm
       run: |
-        CMD="helm upgrade --install ${{ inputs.release-name }} ${{ inputs.chart-path }} --namespace ${{ inputs.namespace }}"
+        CMD="helm upgrade --install ${{ inputs.release-name }} ${{ inputs.chart-path }} --namespace ${{ inputs.namespace }} --create-namespace"
         if [ -n "${{ inputs.values-file }}" ]; then
           CMD="$CMD -f ${{ inputs.values-file }}"
         fi
