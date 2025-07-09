@@ -1,9 +1,9 @@
-imageRegistry: ghcr.io/clue2-sose25
+imageRegistry: ghcr.io/issafadel
 sutConfigFileName: ""
 sutConfig: ""
 clueConfig: |
   config:
-    experiment_timeout: 149
+    experiment_timeout: 150
     prometheus_url: "http://clue-cluster-control-plane:30090"
     docker_registry_address: "registry:5000/clue"
     local_public_ip: "registry"
