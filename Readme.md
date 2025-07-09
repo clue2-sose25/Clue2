@@ -236,3 +236,13 @@ environment variables to run the `toystore` SUT with the `baseline` variant.
 An additional template `clue_helm/values-example.yaml` shows all required fields.
 Copy this file to your own repository and adjust the registry and tags. Provide the
 path via the `values-file` input of the action to deploy your SUT.
+From this version on the deployer expects the selected SUT configuration file to be
+available under `/app/sut_configs/`. Supply the YAML content via the `sutConfig`
+value (and optional `sutConfigFileName`) so the chart can create a `sut-config`
+ConfigMap and mount it into both the `Deployment` and `Job`.
+The main CLUE configuration is also required at `/app/clue-config.yaml`. Provide
+its YAML via the `clueConfig` value so a `clue-config-file` ConfigMap gets mounted
+to that path.
+See `clue_helm/values-toystore.yaml` for an example embedding the configuration and
+the workflow `.github/workflows/clue_deploy_toystore_helm.yml` for usage of the
+Helm action.
