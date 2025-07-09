@@ -2,6 +2,7 @@ import json
 from uuid import UUID
 from pydantic import BaseModel
 from pydantic_settings import SettingsConfigDict
+from pathlib import Path
 from typing import List
 from clue_deployer.src.models.workload import Workload
 from clue_deployer.src.models.variant import Variant
@@ -55,3 +56,13 @@ class Experiment(BaseModel):
             f"iterations={self.n_iterations}, "
             f"deploy_only={self.deploy_only})"
         )
+    
+    def get_experiment_dir(self) -> Path:
+        """Return the directory path for this experiment."""
+        base_path = self.configs.env_config.RESULTS_PATH
+        return base_path / self.sut / self.timestamp
+
+    def make_experiemnts_dir(self) -> None:
+        """ Create the directory for this experiment if it doesn't exist."""
+        experiment_path = self.get_experiment_dir()
+        experiment_path.mkdir(parents=True, exist_ok=True)

@@ -17,12 +17,13 @@ from clue_deployer.src.main import ExperimentRunner
 from clue_deployer.src.configs.configs import SUTConfig, Configs, ENV_CONFIG
 from clue_deployer.src.service.worker import Worker
 from .routers import logs, suts, results, plots, cluster, queue
+from .routers.queue import worker
 
 
 # Initialize multiprocessing lock and value for deployment synchronization. Used for deployments.
 
-worker = Worker()
-state_lock = worker.state_lock
+
+state_lock = Lock()
 is_deploying = worker.is_deploying
 
 # Root page redirect to swagger /docs

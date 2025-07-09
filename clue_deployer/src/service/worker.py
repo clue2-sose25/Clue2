@@ -68,6 +68,7 @@ class Worker:
             )
         )
 
+
     def _worker_loop(self, 
                      shared_flag, 
                      state_lock, 
@@ -117,14 +118,15 @@ class Worker:
                 process_logger.info(f"Starting deployment for SUT {experiment.sut}")
                 runner = ExperimentRunner(
                     configs,
-                    variants_string=experiment.variants,
-                    workloads_string=experiment.workloads,
+                    variants=experiment.variants,
+                    workloads=experiment.workloads,
                     sut=experiment.sut,
                     deploy_only=experiment.deploy_only,
                     n_iterations=experiment.n_iterations,
                 )
                 self.current_experiment = runner.experiment
-                
+                #cretae the experiment directory
+                self.current_experiment.make_experiemnts_dir()
                 with self.experiment_manager(experiment.sut):
                     runner.main()
                 
@@ -179,6 +181,7 @@ class Worker:
         try:
             yield
         finally:
+            self.is_deploying.value = 0
             process_logger.logger = "MAIN"
             process_logger.info(f"Cleaning up after deployment for SUT {sut_name}")
             self._cleanup(FinalStatus.SUCCESS)
@@ -192,12 +195,12 @@ class Worker:
             return
         namespace = self.current_experiment.configs.sut_config.namespace
         
-        exp_dir = os.path.join("data", 
-                                    self.current_experiment.sut,
-                                    self.current_experiment.timestamp,
-                                    "status.json")
+        exp_dir = self.current_experiment.get_experiment_dir()
+
+        StatusManager.set(StatusPhase.NO_DEPLOYMENT, "Worker process finished deployment.")
+
         try:
-            with open(exp_dir) as f:
+            with open(exp_dir.joinpath("status.json"), 'w') as f:
                 json.dump({"status": status}, f)
         
         except FileNotFoundError as e:
