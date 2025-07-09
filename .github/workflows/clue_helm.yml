@@ -36,7 +36,6 @@ jobs:
           helm package clue_helm --destination . --version $CHART_VERSION
           echo "CHART_VERSION=$CHART_VERSION" >> $GITHUB_ENV
       - name: Push chart
-        if: ${{ github.event_name != 'pull_request' }}
         run: |
           CHART_VERSION=0.1.0-${SHORT_SHA}
           helm push clue-$CHART_VERSION.tgz oci://ghcr.io/clue2-sose25/clue2-${IMAGE_NAME}
