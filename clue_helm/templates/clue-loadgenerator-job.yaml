@@ -9,19 +9,23 @@ spec:
         app: loadgenerator
     spec:
       restartPolicy: Never
+{{- $sut := .Values.clueDeployer.env.SUT | default "sut" }}
+{{- $paths := list }}
+{{- range $name, $_ := .Values.loadGenerator.workloadFiles }}
+{{- $paths = append $paths (printf "/app/sut_configs/workloads/%s/%s" $sut $name) }}
+{{- end }}
       containers:
         - name: loadgenerator
           image: "{{ .Values.imageRegistry }}/{{ .Values.loadGenerator.image }}:{{ .Values.loadGenerator.tag }}"
           env:
             - name: SUT_NAME
-              value: "{{ .Values.clueDeployer.env.SUT | default \"sut\" }}"
+              value: "{{ $sut }}"
             - name: LOCUST_FILE
-              value: "/app/sut_configs/workloads/{{ .Values.clueDeployer.env.SUT | default \"sut\" }}/{{ .Values.loadGenerator.workloadFileName }}"
+              value: "{{ join $paths "," }}"
           volumeMounts:
-            - name: workload-file
-              mountPath: "/app/sut_configs/workloads/{{ .Values.clueDeployer.env.SUT | default \"sut\" }}/{{ .Values.loadGenerator.workloadFileName }}"
-              subPath: "{{ .Values.loadGenerator.workloadFileName }}"
+            - name: workload-files
+              mountPath: "/app/sut_configs/workloads/{{ $sut }}"
       volumes:
-        - name: workload-file
+        - name: workload-files
           configMap:
             name: loadgenerator-workload
