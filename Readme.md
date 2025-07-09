@@ -170,6 +170,18 @@ To build images for the selected SUT, use one of the commands listed below.
 
 Wait for the selected builder to be finished, indicated by its container showing a status `Exited`. To check if the images have been successfully stored in the registry, visit the `http://localhost:9000/v2/_catalog` page.
 
+### Load Generator & Locust
+
+CLUE uses the `clue_loadgenerator` image to execute Locust workloads. When a variant sets `colocated_workload: true`, this image is launched as a pod inside the cluster; otherwise the workload runs locally next to the deployer.
+
+For the deployment outside the K8s Cluster, Build the image once before running experiments:
+
+```bash
+docker compose up -d clue-loadgenerator-builder
+```
+
+The Locust files listed in `workloads[*].locust_files` are packed into ConfigMaps and mounted into the container so you can customise your workload scripts without rebuilding the image.
+
 ### 🧪 SUT Test Deployment (without running the benchmark)
 
 For a test deployment of the SUT, without running the benchmark itself, open the `.env` file and change the `DEPLOY_ONLY` value to `true`. Make sure that all required images are present in the specified image registry. Next, run the deployer:

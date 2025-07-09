@@ -1,0 +1,23 @@
+---
+name: Deploy ToyStore via Helm
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+#      - name: Deploy CLUE with ToyStore
+#        uses: ./.github/actions/helm-deploy
+#        with:
+#          kubeconfig: ${{ secrets.KUBE_CONFIG }}
+#          chart-path: clue_helm
+#          release-name: clue-toystore
+#          namespace: clue
+#          values-file: clue_helm/values-toystore.yaml
