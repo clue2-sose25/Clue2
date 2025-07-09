@@ -24,6 +24,17 @@ spec:
           volumeMounts:
             - name: results
               mountPath: /app/data
+            - name: sut-config
+              mountPath: /app/sut_configs/
+            - name: clue-config-file
+              mountPath: /app/clue-config.yaml
+              subPath: clue-config.yaml
       volumes:
         - name: results
           emptyDir: {}
+        - name: sut-config
+          configMap:
+            name: sut-config
+        - name: clue-config-file
+          configMap:
+            name: clue-config-file
