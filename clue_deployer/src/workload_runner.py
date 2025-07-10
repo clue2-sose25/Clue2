@@ -308,7 +308,7 @@ class WorkloadRunner:
                 "port-forward",
                 "--address",
                 "0.0.0.0",
-                f"services/{SUT_CONFIG.target_service_name}",
+                f"services/{SUT_CONFIG.workload_target}",
                 f"{CLUE_CONFIG.local_port}:80",
             ],
             stdin=subprocess.PIPE,
