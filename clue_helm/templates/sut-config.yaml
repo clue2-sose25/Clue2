@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sut-config
+data:
+  {{ .Values.sutConfigFileName | default (printf "%s.yaml" (.Values.clueDeployer.env.SUT | default "sut")) }}: |-
+{{ .Values.sutConfig | indent 4 }}

@@ -5,6 +5,7 @@ from kubernetes.client.exceptions import ApiException
 from clue_deployer.src.configs.configs import CLUE_CONFIG, ENV_CONFIG, SUT_CONFIG
 from clue_deployer.src.logger import logger
 import time
+import os
 import subprocess
 from kubernetes import config as k_config
 from clue_deployer.src.helm_wrapper import HelmWrapper
@@ -25,7 +26,10 @@ class VariantDeployer:
         self.values_yaml_name = SUT_CONFIG.values_yaml_name
         # Initialize Kubernetes API clients
         try:
-            k_config.load_kube_config()
+            if os.getenv("KUBERNETES_SERVICE_HOST"):
+                k_config.load_incluster_config()
+            else:
+                k_config.load_kube_config()
             self.core_v1_api = CoreV1Api()
             self.apps_v1_api = AppsV1Api()
         except Exception as e:
@@ -98,17 +102,19 @@ class VariantDeployer:
                 text=True
                 )
             if prometheus_status.returncode != 0:
-                logger.info("Helm chart 'kube-prometheus-stack' is not installed. Installing it now...")
-                logger.info("Note: You may see some 'memcache.go' warnings during installation - these are harmless.")
-                
-                # Install with NodePort service type for Prometheus
-                subprocess.check_call([
-                    "helm", "install", "kps1", "prometheus-community/kube-prometheus-stack",
-                    "--set", "prometheus.service.type=NodePort",
-                    "--set", "prometheus.service.nodePort=30090",
-                    "--wait",
-                    "--timeout", "15m"
-                ])
+               # Install with NodePort service type for Prometheus if required
+                if os.getenv("PRECONFIGURE_CLUSTER"):
+                    logger.info("Helm chart 'kube-prometheus-stack' is not installed. Installing it now...")
+                    logger.info("Note: You may see some 'memcache.go' warnings during installation - these are harmless.")
+                    subprocess.check_call([
+                        "helm", "install", "kps1", "prometheus-community/kube-prometheus-stack",
+                        "--set", "prometheus.service.type=NodePort",
+                        "--set", "prometheus.service.nodePort=30090",
+                        "--wait",
+                        "--timeout", "15m"
+                    ])
+                else:
+                    logger.info("Skipped Prometheus installation. The PRECONFIGURE_CLUSTER set to false.")
             else:
                 logger.info("Prometheus stack found")
                 # Check if service is already NodePort, if not patch it
@@ -138,16 +144,20 @@ class VariantDeployer:
                 text=True
             )
             if kepler_status.returncode != 0:
-                logger.info("Helm chart 'Kepler' is not installed. Installing it now...")
-                subprocess.check_call([
-                    "helm", "install", "kepler", "kepler/kepler",
-                    "--namespace", "kepler",
-                    "--create-namespace",
-                    "--set", "serviceMonitor.enabled=true",
-                    "--set", "serviceMonitor.labels.release=kps1",
-                    "--wait",
-                    "--timeout", "10m"
-                ])
+                # Install Kepler if required
+                if os.getenv("PRECONFIGURE_CLUSTER"):
+                    logger.info("Helm chart 'Kepler' is not installed. Installing it now...")
+                    subprocess.check_call([
+                        "helm", "install", "kepler", "kepler/kepler",
+                        "--namespace", "kepler",
+                        "--create-namespace",
+                        "--set", "serviceMonitor.enabled=true",
+                        "--set", "serviceMonitor.labels.release=kps1",
+                        "--wait",
+                        "--timeout", "10m"
+                    ])
+                else:
+                    logger.info("Skipped Kepler installation. The PRECONFIGURE_CLUSTER set to false.")
             else:
                 logger.info("Kepler stack found")
             logger.info("All cluster requirements fulfilled")

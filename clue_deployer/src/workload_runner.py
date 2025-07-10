@@ -30,6 +30,8 @@ class WorkloadRunner:
         self._docker_client = None
     
     def run_workload(self, outpath):
+        if os.getenv("KUBERNETES_SERVICE_HOST"):
+            self.variant.colocated_workload = True
         if self.variant.colocated_workload:
             self._run_remote_workload(outpath)
         else:

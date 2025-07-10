@@ -103,6 +103,30 @@ SSH_KEY_FILE=~/.ssh/id_rsa
 
 The entrypoint ensures the key permissions are correct and starts the command in the background before the deployer connects to the cluster.
 
+### Running inside the cluster
+
+When the `clue-deployer` is executed as a Pod in the same Kubernetes cluster, it
+automatically detects this by checking the `KUBERNETES_SERVICE_HOST` environment
+variable. In this case the in-cluster configuration is used and the
+`prepare_kubeconfig.py` step is skipped. Make sure the Pod runs with a
+`ServiceAccount` that has permissions to list and patch nodes and manage pods.
+`KUBERNETES_SERVICE_HOST` is automatically defined by Kubernetes for every
+container in the cluster, so you typically do not need to set it manually.
+An example RBAC manifest is provided in `clue_deployer/k8s/clue-deployer-rbac.yaml`.
+The local-cluster patching logic is disabled automatically when running in-cluster.
+
+To launch the deployer as a Kubernetes `Job`, apply the RBAC manifest and the
+provided example job file:
+
+```bash
+kubectl apply -f clue_deployer/k8s/clue-deployer-rbac.yaml
+kubectl apply -f clue_deployer/k8s/clue-deployer-job.yaml
+```
+
+The job uses the `clue-deployer` ServiceAccount and stores results in a mounted
+volume. Adjust the `VARIANTS` and `WORKLOADS` variables in the manifest to suit
+your experiment.
+
 1. Setting up a local `Kind` cluster
 
 For local testing, we recommend using a `Kind` cluster, simply deployable by providing a config file. The cluster is configured to allow the usage of the local unsecure registry and to deploy the required number of nodes (at least 2) with designated node labels. Additionally, all created containers will be added to a custom `clue2` docker network. Deploy the pre-configured cluster using:
@@ -146,6 +170,18 @@ To build images for the selected SUT, use one of the commands listed below.
 
 Wait for the selected builder to be finished, indicated by its container showing a status `Exited`. To check if the images have been successfully stored in the registry, visit the `http://localhost:9000/v2/_catalog` page.
 
+### Load Generator & Locust
+
+CLUE uses the `clue_loadgenerator` image to execute Locust workloads. When a variant sets `colocated_workload: true`, this image is launched as a pod inside the cluster; otherwise the workload runs locally next to the deployer.
+
+For the deployment outside the K8s Cluster, Build the image once before running experiments:
+
+```bash
+docker compose up -d clue-loadgenerator-builder
+```
+
+The Locust files listed in `workloads[*].locust_files` are packed into ConfigMaps and mounted into the container so you can customise your workload scripts without rebuilding the image.
+
 ### 🧪 SUT Test Deployment (without running the benchmark)
 
 For a test deployment of the SUT, without running the benchmark itself, open the `.env` file and change the `DEPLOY_ONLY` value to `true`. Make sure that all required images are present in the specified image registry. Next, run the deployer:
@@ -186,3 +222,39 @@ If all the preliminaries for data collection are installed, Clue will fetch the 
 - Ensure that you have a sufficient amount of memory alocated for docker, at least 12 GB
 - Run `minikube dashboard` to monitor deployment errors, e.g. missing node labels or insufficient memory
 - The monolith app has some specific handles, e.g. a different set name. If a a set is not found, especially when skipping builds, this can cause problems.
+
+### Helm deployment
+
+A basic Helm chart is provided under `clue_helm/` to run the deployer and web UI directly in a cluster.
+Install it with:
+
+
+```bash
+helm install clue clue_helm --namespace clue --create-namespace
+```
+
+Set `imageRegistry` and other values in `values.yaml` to point to your images and configure the ingress host.
+The chart deploys all CLUE components into the `clue` // Release.Namespace. SUT deployments are created in a separate namespace defined in the SUT config on nodes labeled `scaphandre=true`.
+The chart includes a `Job` manifest for CI execution and a `Deployment` for a long-running service.
+
+For automated tests you can use the composite action under
+`.github/actions/helm-deploy` which deploys the chart when a
+base64 encoded kubeconfig is supplied via the `kubeconfig` input. Optional
+`namespace` and `values-file` inputs allow you to specify the target namespace
+and an override file for the chart. See the workflow
+`.github/workflows/clue-deployer-helm.yml` for an example.
+The repository includes `clue_helm/values-toystore.yaml` which sets the
+environment variables to run the `toystore` SUT with the `baseline` variant.
+An additional template `clue_helm/values-example.yaml` shows all required fields.
+Copy this file to your own repository and adjust the registry and tags. Provide the
+path via the `values-file` input of the action to deploy your SUT.
+From this version on the deployer expects the selected SUT configuration file to be
+available under `/app/sut_configs/`. Supply the YAML content via the `sutConfig`
+value (and optional `sutConfigFileName`) so the chart can create a `sut-config`
+ConfigMap and mount it into both the `Deployment` and `Job`.
+The main CLUE configuration is also required at `/app/clue-config.yaml`. Provide
+its YAML via the `clueConfig` value so a `clue-config-file` ConfigMap gets mounted
+to that path.
+See `clue_helm/values-toystore.yaml` for an example embedding the configuration and
+the workflow `.github/workflows/clue_deploy_toystore_helm.yml` for usage of the
+Helm action.

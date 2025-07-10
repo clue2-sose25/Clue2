@@ -1,0 +1,47 @@
+imageRegistry: ghcr.io/issafadel
+sutConfigFileName: ""
+sutConfig: ""
+clueConfig: |
+  config:
+    experiment_timeout: 150
+    prometheus_url: "http://clue-cluster-control-plane:30090"
+    docker_registry_address: "registry:5000/clue"
+    local_public_ip: "registry"
+    local_port: 5000
+    remote_platform_arch: "linux/arm64/v8"
+    local_platform_arch: "linux/arm64/v8"
+    target_utilization: 70
+clueDeployer:
+  image: "clue2-deployer"
+  tag: "latest"
+  serviceAccountName: clue-deployer
+  service:
+    port: 8000
+  probes:
+    path: /api/health
+  env:
+    DEPLOY_ONLY: "false"
+    N_ITERATIONS: "1"
+    PRECONFIGURE_CLUSTER: "false"
+clueWebui:
+  image: "clue2-webui"
+  tag: "latest"
+  service:
+    port: 80
+  env:
+    API_BASE_URL: "http://clue-deployer:8000"
+loadGenerator:
+  image: "clue-loadgenerator"
+  tag: "latest"
+  workloadFiles:
+    example.py: |
+      from locust import HttpUser, task
+
+      class Example(HttpUser):
+          @task
+          def index(self):
+              self.client.get("/")
+ingress:
+  enabled: true
+  host: clue.example.com
+  tls: false

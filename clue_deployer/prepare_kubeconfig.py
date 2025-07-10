@@ -3,6 +3,11 @@ import sys
 import base64
 import yaml
 
+# inside the same cluster not needed
+if os.getenv("KUBERNETES_SERVICE_HOST"):
+    print("[PREPARE_KUBECONFIG] Running in cluster, skipping kubeconfig preparation")
+    sys.exit(0)
+
 KUBECONFIG_ORIGINAL = "/root/.kube/config"
 KUBECONFIG_PATCHED = "/app/clue_deployer/kubeconfig_patched"
 PATCH_CONFIG = os.getenv("PATCH_LOCAL_CLUSTER")

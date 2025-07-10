@@ -52,6 +52,7 @@ services:
       KUBE_CONFIG: ${KUBE_CONFIG}
       PATCH_LOCAL_CLUSTER: ${PATCH_LOCAL_CLUSTER}
       CLUSTER_PROXY_COMMAND: ${CLUSTER_PROXY_COMMAND}
+      PRECONFIGURE_CLUSTER: ${PRECONFIGURE_CLUSTER}
     volumes:
       # CLUE Configs
       - ./clue-config.yaml:/app/clue-config.yaml

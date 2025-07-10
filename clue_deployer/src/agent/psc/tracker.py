@@ -4,6 +4,7 @@ from clue_deployer.src.logger import logger
 from threading import Timer
 from kubernetes import client, config
 import copy 
+import os
 from queue import Queue
 
 
@@ -105,9 +106,9 @@ class ResourceTracker:
             self.namespaces = namespaces
             self.initialize_and_validate_metrics()
 
-            try:
+            if os.getenv("KUBERNETES_SERVICE_HOST"):
                 config.load_incluster_config()
-            except Exception as e:
+            else:
                 config.load_kube_config()
             self.k8s_api_client = client.CoreV1Api()
             logger.info("Resource Tracker initialized.")
