@@ -9,12 +9,6 @@ import warnings
 import yaml
 from experiment_results import ExperimentResults
 
-def main():
-    da = DataAnalysis("/data", "data/sut_config", load_data_from_fil=True)
-
-
-if __name__ == '__main__':
-    main()
 
 class DataAnalysis:
     #Settings for plotting
@@ -716,3 +710,7 @@ class DataAnalysis:
             return fig
 
         app.run(debug=True)
+
+if __name__ == '__main__':
+    da = DataAnalysis("/data", "data/sut_config", load_data_from_fil=True)
+    da.create_server()
