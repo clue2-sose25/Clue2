@@ -1,4 +1,4 @@
-name: Build and Push Workload Generator Image
+name: Build and Push Workload Generator Builder Image
 
 on:
   push:
@@ -17,10 +17,10 @@ permissions:
   packages: write
 
 jobs:
-  build_clue_loadgenerator:
+  build_clue_loadgenerator_builder:
     runs-on: ubuntu-latest
     env:
-      IMAGE_NAME: loadgenerator
+      IMAGE_NAME: loadgenerator-builder
     steps:
       # Checkout the repository
       - name: Checkout repository
@@ -46,8 +46,8 @@ jobs:
         if: ${{ github.event_name != 'pull_request' }}
         uses: docker/build-push-action@v3
         with:
-          context: ./clue_loadgenerator
-          file: Dockerfile
+          context: .
+          file: clue_loadgenerator/builder/Dockerfile
           platforms: linux/amd64
           tags: |
             ghcr.io/clue2-sose25/clue2-${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }}
