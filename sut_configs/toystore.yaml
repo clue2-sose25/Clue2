@@ -6,7 +6,7 @@ config:
   sut_path: "toystore"
   helm_chart_path: "toystore/toystore"
   values_yaml_name: "values.yaml"
-  target_service_name: "teastore-webui"
+  workload_target: "teastore-webui"
   application_endpoint_path: "/tools.descartes.teastore.webui"
   default_resource_limits:
     cpu: 1000

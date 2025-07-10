@@ -25,7 +25,7 @@ class SUTConfig(BaseSettings):
     # K8s namespace
     namespace: str
     infrastructure_namespaces: list[str] = Field(default_factory=list)
-    target_service_name: str
+    workload_target: str
     application_endpoint_path: str
     default_resource_limits: dict[str, int]
     # Timings
@@ -66,7 +66,7 @@ class SUTConfig(BaseSettings):
         if not path.startswith("/"):
             path = "/" + path
          
-        return f"http://{self.target_service_name}{self.application_endpoint_path}"
+        return f"http://{self.workload_target}{self.application_endpoint_path}"
 
     @classmethod
     def load_from_yaml(cls, sut_config_path) -> "SUTConfig":
