@@ -8,7 +8,7 @@ config:
   helm_chart_path: "opentelemetry-demo/charts/opentelemetry-demo"
   helm_dependencies_from_chart: true # If true, dependencies are fetched from the chart
   values_yaml_name: "values.yaml"
-  target_service_name: "frontend" # The k8s service name (used for in-cluster communication)
+  target_service_name: "frontend-proxy:8080" # The k8s service name (used for in-cluster communication)
   application_endpoint_path: "/" # The specific path
   timeout_for_services_ready: 300 # 5 minutes since otel demo can take a while to start
   default_resource_limits:
@@ -41,7 +41,7 @@ helm_replacements:
   - value: "  frontend-proxy:\n    enabled: true"
     replacement: "  frontend-proxy:\n    enabled: true\n    imageOverride:\n      repository: registry:5000/clue/ots-frontend-proxy\n      tag: __EXPERIMENT_TAG__"
   - value: "  load-generator:\n    enabled: true"
-    replacement: "  load-generator:\n    enabled: true\n    imageOverride:\n      repository: registry:5000/clue/ots-load-generator\n      tag: __EXPERIMENT_TAG__"
+    replacement: "  load-generator:\n    enabled: false"
   - value: "  payment:\n    enabled: true"
     replacement: "  payment:\n    enabled: true\n    imageOverride:\n      repository: registry:5000/clue/ots-payment\n      tag: __EXPERIMENT_TAG__"
   - value: "  product-catalog:\n    enabled: true"
@@ -132,9 +132,29 @@ workloads:
     description: "Workload with custom load shape behavior."
     timeout_duration: 120
     workload_runtime: 64
-    workload_settings: {}
+    workload_settings:
+      LOCUST_USERS: 25
+      LOCUST_SPAWN_RATE: 2
     locust_files:
       - "sut_configs/workloads/otel-demo/locustfile.py"
+  - name: "fixed"
+    description: "Fixed number of requests workload for consistent testing. Will terminate after 1000 requests or the specified duration."
+    timeout_duration: 120
+    workload_runtime: 64
+    workload_settings:
+      MAXIMUM_REQUESTS: 1000
+    locust_files:
+      - "sut_configs/workloads/otel-demo/fixed_requests.py"
+  - name: "rampup"
+    description: "Gradual ramp-up load pattern with 8 stages."
+    timeout_duration: 600  # should be stages * stage_duration + buffer
+    workload_runtime: 480  # should be stages * stage_duration
+    workload_settings:
+      STAGE_DURATION: 60  # 5 minutes per stage
+      MAX_USERS: 100
+      NUM_STAGES: 8
+    locust_files:
+      - "sut_configs/workloads/otel-demo/rampup_loadshape.py"
 
 variants:
   - name: "baseline"

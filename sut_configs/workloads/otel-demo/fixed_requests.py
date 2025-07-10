@@ -1,17 +1,28 @@
 #!/usr/bin/python
 
-# Working OpenTelemetry Demo Load Generator
-# Based on actual API structure from the OTS repository
+# Fixed Requests Load Generator for OpenTelemetry Demo
+# Based on the teastore fixed_requests.py pattern
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
 import random
 import logging
 import uuid
-from locust import HttpUser, task, between
+import threading
+import signal
+import os
+from locust import HttpUser, task, between, events
 
 # Set up logging
-logging.getLogger().setLevel(logging.ERROR)
+logging.getLogger().setLevel(logging.INFO)
+
+# Configuration
+max_requests = int(os.getenv("MAXIMUM_REQUESTS", 1000))
+request_count = 0
+stopped = False
+quitting = False
+
+lock = threading.Lock()
 
 # Actual product IDs from the OpenTelemetry Demo
 PRODUCT_IDS = [
@@ -28,11 +39,28 @@ PRODUCT_IDS = [
 
 CURRENCIES = ["USD", "EUR", "CAD", "JPY", "GBP"]
 
+# Function to check maximum and quit
+def check_maximum_and_quit():
+    global request_count
+    global stopped
+    with lock:
+        if request_count >= max_requests:
+            stopped = True
+            signal.raise_signal(signal.SIGTERM)
 
-class WebStoreUser(HttpUser):
+# Event listener for request success
+@events.request.add_listener
+def my_request_handler(request_type, name, response_time, response_length, response,
+                       context, exception, start_time, url, **kwargs):
+    global request_count
+    with lock:
+        request_count += 1
+    check_maximum_and_quit()
+
+class FixedRequestWebStoreUser(HttpUser):
     """
-    Realistic user behavior for OpenTelemetry Demo web store
-    Based on actual Next.js API routes and frontend structure
+    Fixed request count user behavior for OpenTelemetry Demo web store
+    Stops after reaching the maximum number of requests
     """
     wait_time = between(1, 3)
 
@@ -41,37 +69,90 @@ class WebStoreUser(HttpUser):
         self.session_id = str(uuid.uuid4())
         self.currency = random.choice(CURRENCIES)
 
-    @task(15)
+    @task
+    def complete_user_journey(self):
+        """
+        Complete user journey simulation with request counting
+        """
+        global stopped
+        global request_count
+
+        if stopped:
+            self.environment.process_exit_code = 0
+            self.environment.runner.stop()
+            logging.info(f"Reached task limit {request_count}, quitting")
+            return
+        
+        logging.info(f"Starting user journey {request_count}")
+        
+        # Browse home page
+        self.browse_home()
+        
+        # Get product catalog
+        self.get_products()
+        
+        # View some product details
+        for _ in range(random.randint(1, 3)):
+            self.view_product_details()
+        
+        # Add items to cart (50% chance)
+        if random.choice([True, False]):
+            for _ in range(random.randint(1, 2)):
+                self.add_to_cart()
+        
+        # View cart
+        self.view_cart()
+        
+        # Get recommendations
+        self.get_recommendations()
+        
+        # Complete purchase (30% chance)
+        if random.random() < 0.3:
+            self.checkout_flow()
+        else:
+            # Or empty cart (20% chance)
+            if random.random() < 0.2:
+                self.empty_cart()
+        
+        logging.info("Completed user journey.")
+        check_maximum_and_quit()
+
     def browse_home(self):
         """Visit the home page"""
+        if stopped:
+            return
         self.client.get("/")
 
-    @task(12)
     def get_products(self):
         """Get product catalog via API"""
+        if stopped:
+            return
         self.client.get("/api/products", params={
             "currencyCode": self.currency
         })
 
-    @task(8)
     def view_product_details(self):
         """View individual product details"""
+        if stopped:
+            return
         product_id = random.choice(PRODUCT_IDS)
         self.client.get(f"/api/products/{product_id}", params={
             "currencyCode": self.currency
         })
 
-    @task(6)
     def view_cart(self):
         """View shopping cart"""
+        if stopped:
+            return
         self.client.get("/api/cart", params={
             "sessionId": self.session_id,
             "currencyCode": self.currency
         })
 
-    @task(4)
     def add_to_cart(self):
         """Add item to cart"""
+        if stopped:
+            return
         product_id = random.choice(PRODUCT_IDS)
         quantity = random.randint(1, 3)
         
@@ -83,27 +164,30 @@ class WebStoreUser(HttpUser):
             }
         })
 
-    @task(3)
     def get_recommendations(self):
         """Get product recommendations"""
+        if stopped:
+            return
         product_ids = random.sample(PRODUCT_IDS, random.randint(1, 3))
         self.client.get("/api/recommendations", params={
             "productIds": product_ids,
             "sessionId": self.session_id
         })
 
-    @task(2)
     def set_currency(self):
         """Set currency preference"""
+        if stopped:
+            return
         new_currency = random.choice(CURRENCIES)
         self.client.post("/api/currency", json={
             "currencyCode": new_currency
         })
         self.currency = new_currency
 
-    @task(2)
     def get_shipping_quote(self):
         """Get shipping cost estimate"""
+        if stopped:
+            return
         self.client.post("/api/shipping", json={
             "address": {
                 "streetAddress": "123 Main St",
@@ -118,9 +202,10 @@ class WebStoreUser(HttpUser):
             }]
         })
 
-    @task(1)
     def checkout_flow(self):
         """Simulate checkout process"""
+        if stopped:
+            return
         # Place order
         self.client.post("/api/checkout", json={
             "userId": self.session_id,
@@ -141,9 +226,10 @@ class WebStoreUser(HttpUser):
             }
         })
 
-    @task(1)
     def empty_cart(self):
         """Empty the shopping cart"""
+        if stopped:
+            return
         self.client.delete("/api/cart", json={
             "userId": self.session_id
         })
