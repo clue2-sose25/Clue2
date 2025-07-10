@@ -1,5 +1,5 @@
 # example values for running the toystore SUT
-imageRegistry: ghcr.io/your-org
+imageRegistry: ghcr.io/clue2-sose25
 sutConfigFileName: toystore.yaml
 sutConfig: |
   config:
@@ -84,6 +84,8 @@ loadGenerator:
           def index(self):
               self.client.get("/")
 ingress:
-  enabled: true
+  enabled: false
   host: clue.example.com
   tls: false
+rbac:
+  create: false

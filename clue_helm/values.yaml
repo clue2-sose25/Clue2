@@ -47,3 +47,5 @@ ingress:
   enabled: true
   host: clue.example.com
   tls: false
+rbac:
+  create: true
