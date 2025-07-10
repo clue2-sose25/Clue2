@@ -62,8 +62,8 @@ jobs:
         if: ${{ github.event_name == 'pull_request' }}
         uses: docker/build-push-action@v3
         with:
-          context: ./clue_loadgenerator
-          file: Dockerfile
+          context: ./clue_loadgenerator/
+          file: ./clue_loadgenerator/Dockerfile
           platforms: linux/amd64
           tags: ghcr.io/clue2-sose25/clue2-${{ env.IMAGE_NAME }}:pr-test
           push: true
