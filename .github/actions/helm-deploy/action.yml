@@ -4,6 +4,9 @@ inputs:
   kubeconfig:
     description: Base64 encoded kubeconfig
     required: true
+  chart-ref:
+    description: OCI reference to the Helm chart
+    required: false
   chart-path:
     description: where the helm chart is located
     required: false
@@ -29,14 +32,24 @@ runs:
         echo "${{ inputs.kubeconfig }}" | base64 -d > $HOME/.kube/config
         echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
       shell: bash
+    - name: Pull chart from registry
+      if: ${{ inputs.chart-ref != '' }}
+      run: |
+        helm pull "${{ inputs.chart-ref }}" --untar --untardir pulled
+        echo "CHART_PATH=$(find pulled -mindepth 1 -maxdepth 1 -type d)" >> $GITHUB_ENV
+      shell: bash
+    - name: Set chart path
+      if: ${{ inputs.chart-ref == '' }}
+      run: echo "CHART_PATH=${{ inputs.chart-path }}" >> $GITHUB_ENV
+      shell: bash
     - name: Copy workload files
       if: ${{ inputs.workload-folder != '' }}
       run: |
-        cp -r "${{ inputs.workload-folder }}" "${{ inputs.chart-path }}/extra-workloads"
+        cp -r "${{ inputs.workload-folder }}" "$CHART_PATH/extra-workloads"
       shell: bash
     - name: Deploy with Helm
       run: |
-        CMD="helm upgrade --install ${{ inputs.release-name }} ${{ inputs.chart-path }} --namespace ${{ inputs.namespace }} --create-namespace"
+        CMD="helm upgrade --install ${{ inputs.release-name }} $CHART_PATH --namespace ${{ inputs.namespace }} --create-namespace"
         if [ -n "${{ inputs.workload-folder }}" ]; then
           CMD="$CMD --set loadGenerator.workloadDir=extra-workloads"
         fi

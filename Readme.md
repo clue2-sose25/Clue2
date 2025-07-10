@@ -249,7 +249,13 @@ The repository includes `clue_helm/values-toystore.yaml` which sets the
 environment variables to run the `toystore` SUT with the `baseline` variant.
 An additional template `clue_helm/values-example.yaml` shows all required fields.
 Copy this file to your own repository and adjust the registry and tags. Provide the
-path via the `values-file` input of the action to deploy your SUT.
+path via the `values-file` input of the action to deploy your SUT. When you need
+to mount a folder of Locust scripts, pass its location via the `workload-folder`
+input. The action copies that folder next to the chart and sets
+`loadGenerator.workloadDir` accordingly.
+If the chart is stored in a registry, supply its reference via the
+`chart-ref` input. Otherwise the action uses the `chart-path` (default
+`clue_helm`) to deploy a local copy.
 From this version on the deployer expects the selected SUT configuration file to be
 available under `/app/sut_configs/`. Supply the YAML content via the `sutConfig`
 value (and optional `sutConfigFileName`) so the chart can create a `sut-config`
