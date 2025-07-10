@@ -15,6 +15,7 @@ RUN apt-get update && \
     gnupg \
     docker.io \
     dos2unix \
+    openssh-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Install kubectl

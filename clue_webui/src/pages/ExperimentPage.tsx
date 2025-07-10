@@ -25,7 +25,7 @@ const ExperimentPage = () => {
   const sutConfigProgress =
     !!currentDeployment.sut &&
     currentDeployment.variants.length > 0 &&
-    currentDeployment.workloads.length > 0;
+    (currentDeployment.deploy_only || currentDeployment.workloads.length > 0);
 
   const benchmarkingConfigProgress = currentDeployment.iterations > 0;
   const deployEnabled = sutConfigProgress && benchmarkingConfigProgress;
@@ -168,7 +168,10 @@ const ExperimentPage = () => {
         </div>
 
         {/* Parameter Selection */}
-        <div className="h-full overflow-y-auto flex flex-col gap-4 border-x border-t rounded shadow p-4 md:w-2/5 w-3/4 flex-grow">
+        <div
+          className="h-full overflow-y-auto flex flex-col gap-4 border-x border-t rounded shadow p-4 md:w-2/5 w-3/4 flex-grow"
+          style={{scrollBehavior: "smooth", willChange: "scroll-position"}}
+        >
           {/* SUT Dropdown */}
           <div className="flex flex-col gap-2">
             <label
@@ -226,7 +229,7 @@ const ExperimentPage = () => {
               </p>
             </label>
             <div
-              className={`border p-2 flex flex-col gap-2 max-h-[10.5rem] overflow-auto  ${
+              className={`border p-2 flex flex-col gap-2 max-h-40 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 ${
                 !currentDeployment.sut ? "opacity-50" : ""
               }`}
             >
@@ -308,10 +311,18 @@ const ExperimentPage = () => {
                 A list of possible workload types. You can select multiple
                 workloads; they will run sequentially.
               </p>
+              {currentDeployment.deploy_only && (
+                <p className="text-xs text-amber-600 font-medium">
+                  Workload generator will not start due to "Deploy only" option
+                  being selected.
+                </p>
+              )}
             </label>
             <div
-              className={`border p-2 flex flex-col gap-2 max-h-[10.5rem] overflow-auto  ${
-                !currentDeployment.sut ? "opacity-50" : ""
+              className={`border p-2 flex flex-col gap-2 max-h-40 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 ${
+                !currentDeployment.sut || currentDeployment.deploy_only
+                  ? "opacity-50"
+                  : ""
               }`}
             >
               <label className="flex gap-2 items-center font-medium">
@@ -319,7 +330,9 @@ const ExperimentPage = () => {
                   type="checkbox"
                   ref={workloadSelectAllRef}
                   className="mt-1 bg-white"
-                  disabled={!currentDeployment.sut}
+                  disabled={
+                    !currentDeployment.sut || currentDeployment.deploy_only
+                  }
                   checked={allWorkloadsSelected}
                   onChange={(e) => {
                     setCurrentDeployment({
@@ -344,7 +357,10 @@ const ExperimentPage = () => {
                       <input
                         type="checkbox"
                         className="mt-1 bg-white"
-                        disabled={!currentDeployment.sut}
+                        disabled={
+                          !currentDeployment.sut ||
+                          currentDeployment.deploy_only
+                        }
                         checked={currentDeployment.workloads.includes(w.name)}
                         onChange={() => {
                           const exists = currentDeployment.workloads.includes(
@@ -426,6 +442,9 @@ const ExperimentPage = () => {
                 setCurrentDeployment({
                   ...currentDeployment,
                   deploy_only: e.target.checked,
+                  workloads: e.target.checked
+                    ? []
+                    : currentDeployment.workloads,
                 })
               }
             />
@@ -435,7 +454,11 @@ const ExperimentPage = () => {
         {/* Estimated Benchmarking Time */}
         <div className="h-full border-x border-t rounded shadow p-4 flex flex-col gap-2 md:w-1/5">
           <p className="font-medium">Estimated Benchmarking Time</p>
-          {variantTotals.length === 0 ? (
+          {currentDeployment.deploy_only ? (
+            <p className="text-sm text-amber-600">
+              Benchmarking disabled - deploy only mode selected
+            </p>
+          ) : variantTotals.length === 0 ? (
             <p className="text-sm text-gray-500">
               Configure the experiment to see the total estimated benchmarking
               time
@@ -454,7 +477,7 @@ const ExperimentPage = () => {
               </div>
             ))
           )}
-          {variantTotals.length > 0 && (
+          {variantTotals.length > 0 && !currentDeployment.deploy_only && (
             <p className="font-medium pt-2">Total: {overallTotal} min</p>
           )}
         </div>

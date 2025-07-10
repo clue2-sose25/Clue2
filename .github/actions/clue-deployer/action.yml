@@ -1,48 +1,62 @@
 ---
-# but first do the registry setup and builder setup, bevor using clue_deployer 
+# but first do the registry setup and builder setup, bevor using clue_deployer
 # Ensure registry and builder setup are completed before using clue_deployer
 name: CLUE Deploy Action
 description: Deploys the SUT via Helm in a Kubernetes cluster
 inputs:
   clue-config-path:
-    description: 'Path to the Helm chart directory'
+    description: "Path to the Helm chart directory"
     required: true
   sut-config-path:
-    description: 'Path to the sut-config.yaml file; should have the same value as clue2-sose25/sut-configs/teastore.yml for example'
+    description: "Path to the sut-config.yaml file; should have the same value as clue2-sose25/sut-configs/teastore.yml for example"
     required: true
   image-registry:
-    description: 'Docker image name or tag to deploy (should match the value in sut-config.yaml)'
-    required: true  
+    description: "Docker image name or tag to deploy (should match the value in sut-config.yaml)"
+    required: true
   variants-name:
     description: 'Name of the variant or experiment, e.g., "baseline", which targets the main branch and is also specified in the sut-config.'
     required: true
-  results-path:
-    description: 'Directory on the runner to store CLUE results'
-    default: clue_results
   kubeconfig:
-    description: 'Base64 encoded kubeconfig to access the cluster'
+    description: "Base64 encoded kubeconfig to access the cluster"
     required: false
-  patch-local-cluster:
-    description: 'Patch localhost addresses in the kubeconfig'
-    default: 'true'
+  CLUSTER_PROXY_COMMAND:
+    description: 'Command to proxy the cluster, e.g., "ssh -i ~/.ssh/id_rsa -L 6443:localhost:6443 user@remote-cluster"'
+    required: false
+  SSH_KEY_FILE_PATH:
+    description: "Path to the SSH key file for accessing the cluster"
+    required: false
+  WORKLOADS:
+    description: "Workloads to run, e.g., 'teastore' or 'teastore,teastore-2' (default: 'teastore')"
+    required: false
+    default: "shaped"
 runs:
   using: "composite"
   steps:
-  - run: |
-     # start clue with the main Python program without as service
-     docker run -d --name test_clue_deployer \
-       -v ${{ inputs['clue-config-path']  }}:/app/clue-config.yaml \
-       -v ${{ inputs['sut-config-path'] }}:/app/sut-config.yaml \
-       -v ${{ inputs['results-path'] }}:/app/results \
-       -e KUBE_CONFIG=${{ inputs['kubeconfig'] }} \
-       -e PATCH_LOCAL_CLUSTER=${{ inputs['patch-local-cluster'] }}\
-       -e DEPLOY_AS_SERVICE=false -p 9001:8000 -e EXPERIMENT_NAME=${{ inputs.variants-name }} -e SUT=${{ inputs['sut-config-path'] }} -e DEPLOY_ONLY=false -e N_ITERATIONS=1\
-       ghcr.io/clue2-sose25/clue2-deployer:dev
-     sleep 60
-     docker logs test_clue_deployer  || true
-    shell: bash
-  - name: Upload CLUE results
-    uses: actions/upload-artifact@v3
-    with:
-      name: clue-results
-      path: ${{ inputs['results-path'] }}
+    - run: |
+        # start clue with the main Python program without as service
+        SUT_NAME=$(basename "${{ inputs['sut-config-path'] }}" .yaml)
+        echo "SUT_NAME: $SUT_NAME"
+        docker run -d --name test_clue_deployer \
+          -v ${{ inputs['clue-config-path']  }}:/app/clue-config.yaml \
+          -v ${{ inputs['sut-config-path'] }}:/app/sut_configs/${SUT_NAME}.yaml \
+          -v /tmp/data:/app/data \
+          -e HELM_DRIVER=configmap \
+          -e KUBE_CONFIG="${{ inputs['kubeconfig'] }}" \
+          -e CLUSTER_PROXY_COMMAND="${{ inputs['CLUSTER_PROXY_COMMAND'] }}" \
+          -v ${{ inputs['SSH_KEY_FILE_PATH'] }}:/root/.ssh/id_rsa:ro \
+          -e PATCH_LOCAL_CLUSTER=false \
+          -e DEPLOY_AS_SERVICE=false -p 9001:8000 -e VARIANTS=${{ inputs['variants-name'] }} -e SUT=${SUT_NAME} -e DEPLOY_ONLY=false -e N_ITERATIONS=1 -e WORKLOADS=${{ inputs['WORKLOADS'] }}\
+          ghcr.io/clue2-sose25/clue2-deployer:pr-test
+        while [ "$(docker inspect -f '{{.State.Running}}' test_clue_deployer)" = "true" ]; do
+          docker logs --tail 20 test_clue_deployer || true
+          sleep 5
+        done
+        docker logs test_clue_deployer  || true
+        sleep 30
+        docker logs test_clue_deployer  || true
+      shell: bash
+#    - name: Upload CLUE results
+#      uses: actions/upload-artifact@v3
+#      with:
+#        name: clue-results
+#        path: /app/data

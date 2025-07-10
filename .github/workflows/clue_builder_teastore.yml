@@ -70,3 +70,10 @@ jobs:
           load: true
           cache-from: type=gha,scope=clue_teastore
           cache-to: type=gha,scope=clue_teastore,mode=max
+      # small tests for the docker container running
+      - name: Smoke test teastore container
+        run: |
+          docker run -d --name=test_clue_teastore ghcr.io/clue2-sose25/clue2-${IMAGE_NAME}:pr-test /bin/sh -c "echo Teastore OK"
+          sleep 5
+          docker logs test_clue_teastore || true
+          docker stop test_clue_teastore

@@ -179,8 +179,8 @@ class VariantDeployer:
             for service in services.difference(ready_services):
                 # Check StatefulSet status
                 try:
-                    statefulset_status = v1_apps.read_namespaced_stateful_set_status(service, namespace)
-                    if statefulset_status.status.ready_replicas and statefulset_status.status.ready_replicas > 0:
+                    statefulset = v1_apps.read_namespaced_stateful_set(service, namespace)
+                    if statefulset.status.ready_replicas and statefulset.status.ready_replicas > 0:
                         ready_services.add(service)
                         continue
                 except ApiException as e:
@@ -189,8 +189,8 @@ class VariantDeployer:
                         logger.error(f"Error checking status for service '{service}': {e}")
                 # Check Deployment status
                 try:
-                    deployment_status = v1_apps.read_namespaced_deployment_status(service, namespace)
-                    if deployment_status.status.ready_replicas and deployment_status.status.ready_replicas > 0:
+                    deployment = v1_apps.read_namespaced_deployment(service, namespace)
+                    if deployment.status.ready_replicas and deployment.status.ready_replicas > 0:
                         ready_services.add(service)
                         continue
                 except ApiException as e:
