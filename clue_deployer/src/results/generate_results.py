@@ -1,10 +1,8 @@
 import seaborn as sns
-import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import glasbey
 import numpy as np
-import matplotlib.gridspec as gridspec
 import warnings
 import yaml
 from experiment_results import ExperimentResults

@@ -26,6 +26,8 @@ dependencies = [
     "flask",
     "flask-sock",
     "gunicorn",
+    "seaborn",
+    "glasbey"
 ]
 
 [tool.setuptools]
