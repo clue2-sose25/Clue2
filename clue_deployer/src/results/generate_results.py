@@ -122,12 +122,36 @@ class DataAnalysis:
     
     
     def DataAnalsyis(self, experiment_folder:str, config_file_path:str, load_data_from_file:False):
-        yaml_dict = parse_sut_yaml(config_file_path)
-        self.general_allowance = {entry["service_name"]: entry["limit"] for entry in yaml_dict["resource_limits"]}
-        self.pod_configuration = {entry["service_name"]: entry["limit"] for entry in yaml_dict["resource_limits"]}
+        #yaml_dict = parse_sut_yaml(config_file_path)
+        #self.general_allowance = {entry["service_name"]: entry["limit"] for entry in yaml_dict["resource_limits"]}
+        #self.pod_configuration = {entry["service_name"]: entry["limit"] for entry in yaml_dict["resource_limits"]}
         self.service_pods = [] #TODO
-        self.sut = yaml_dict['sut']
-        self.namespace = yaml_dict['namespace']
+        #self.sut = yaml_dict['sut']
+        #self.namespace = yaml_dict['namespace']
+        self.sut="teastore"
+        self.general_allowanc = {
+                "teastore-recommender": {"cpu": 2600, "memory": 1332},
+                "teastore-webui": {"cpu": 1300, "memory": 1950},
+                "teastore-image": {"cpu": 1300, "memory": 1950},
+                "teastore-auth": {"cpu": 585, "memory": 1332},
+                'teastore-registry':{"cpu": 1300, "memory": 1332}, 
+                'teastore-persistence':{"cpu": 1300, "memory": 1332}, 
+                'teastore-db':{"cpu": 1300, "memory": 1332},
+                "teastore-all": {"cpu":1950, "memory":2663},
+                "auth": {"cpu": 500, "memory": 500},
+            }
+        self.namespace = "tea-bench"
+        self.pod_configuration = {
+                "teastore-recommender": {"cpu": 2600, "memory": 1332},
+                "teastore-webui": {"cpu": 1300, "memory": 1950},
+                "teastore-image": {"cpu": 1300, "memory": 1950},
+                "teastore-auth": {"cpu": 585, "memory": 1332},
+                'teastore-registry':{"cpu": 1000, "memory": 1024}, # not set by default ....
+                'teastore-persistence':{"cpu": 1000, "memory": 1024}, # not set by default ....
+                'teastore-db':{"cpu": 1000, "memory": 1024}, # not set by default ....
+                "teastore-all": {"cpu":1950, "memory":2663},
+                "auth": {"cpu": 500, "memory": 500},
+            }
 
         if load_data_from_file: #TODO: Make data_file dynamic
             self.stats_history_aggregated_data = pd.read_hdf(f"{experiment_folder}/observation_original.hdf5", key="stats_history_aggregated")
