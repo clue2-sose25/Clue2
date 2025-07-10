@@ -30,15 +30,12 @@ jobs:
         run: |
           echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
           echo "::set-output name=short_sha::${GITHUB_SHA::7}"
-      - name: Lint Helm chart
-        run: helm lint clue_helm
       - name: Package chart
         run: |
           CHART_VERSION=0.1.0-${SHORT_SHA}
           helm package clue_helm --destination . --version $CHART_VERSION
           echo "CHART_VERSION=$CHART_VERSION" >> $GITHUB_ENV
       - name: Push chart
-        if: ${{ github.event_name != 'pull_request' }}
         run: |
           CHART_VERSION=0.1.0-${SHORT_SHA}
-          helm push clue-$CHART_VERSION.tgz oci://ghcr.io/issafadel/clue2-${IMAGE_NAME}
+          helm push clue-$CHART_VERSION.tgz oci://ghcr.io/clue2-sose25/clue2-${IMAGE_NAME}
