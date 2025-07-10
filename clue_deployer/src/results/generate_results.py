@@ -11,6 +11,7 @@ from experiment_results import ExperimentResults
 
 def main():
     da = DataAnalysis("/data", "data/sut_config", load_data_from_fil=True)
+    da.create_server()
 
 
 if __name__ == '__main__':
