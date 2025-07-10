@@ -5,10 +5,10 @@ RUN apt-get update && apt-get install -y build-essential \
 
 WORKDIR /app
 
-COPY requirements.txt .
+COPY clue_loadgenerator/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY entrypoint.sh .
+COPY clue_loadgenerator/entrypoint.sh .
 RUN chmod +x entrypoint.sh
 
 EXPOSE 8089
