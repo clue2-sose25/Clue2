@@ -14,8 +14,8 @@ config:
   default_resource_limits:
     cpu: 1000
     memory: 1024
-  wait_before_workloads: 10 # 3 minutes in seconds
-  wait_after_workloads: 10 # 3 minutes in seconds  
+  wait_before_workloads: 180 # 3 minutes in seconds
+  wait_after_workloads: 180 # 3 minutes in seconds  
 
 helm_replacements:
   # Default image settings - remove them to prevent auto-appending
@@ -130,8 +130,8 @@ resource_limits:
 workloads:
   - name: "shaped"
     description: "Workload with custom load shape behavior."
-    timeout_duration: 120
-    workload_runtime: 64
+    timeout_duration: 360
+    workload_runtime: 300
     workload_settings:
       LOCUST_USERS: 25
       LOCUST_SPAWN_RATE: 2
