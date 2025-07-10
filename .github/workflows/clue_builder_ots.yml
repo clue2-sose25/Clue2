@@ -1,0 +1,72 @@
+name: Build and Push OTS Image
+
+on:
+  push:
+    branches: ["dev", "main"]
+    paths:
+      - "clue_builders/ots/**"
+  pull_request:
+    branches: ["dev"]
+    paths:
+      - "clue_builders/ots/**"
+
+permissions:
+  # For checkout
+  contents: read
+  # Needed to push to GHCR
+  packages: write
+
+jobs:
+  build_clue_ots:
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_NAME: ots_builder
+    steps:
+      # Checkout the repository
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      # Setup buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      # Login to GHCR
+      - name: Log in to GHCR
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # Compute the short SHA
+      - name: Compute short Git SHA
+        id: vars
+        run: |
+          echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
+          echo "::set-output name=short_sha::${GITHUB_SHA::7}"
+      # Build and push when merged to dev or main
+      - name: Build and push ots image
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: clue_builders/ots/Dockerfile
+          platforms: linux/amd64
+          tags: |
+            ghcr.io/clue2-sose25/clue2-${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }}
+            ghcr.io/clue2-sose25/clue2-${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+            ghcr.io/clue2-sose25/clue2-${{ env.IMAGE_NAME }}:pr-test
+            ${{ github.ref_name == 'main' && format('ghcr.io/clue2-sose25/clue2-{0}:latest', env.IMAGE_NAME) || '' }}
+          push: true
+          cache-from: type=gha,scope=clue_ots
+          cache-to: type=gha,scope=clue_ots,mode=max
+      # Only build when on PR
+      - name: Build ots image (no push, PR test)
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: clue_builders/ots/Dockerfile
+          platforms: linux/amd64
+          tags: ghcr.io/clue2-sose25/clue2-${{ env.IMAGE_NAME }}:pr-test
+          push: true
+          load: true
+          cache-from: type=gha,scope=clue_ots
+          cache-to: type=gha,scope=clue_ots,mode=max

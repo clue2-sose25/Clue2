@@ -3,18 +3,37 @@ set -e
 # Environment variable fallbacks
 : "${DEPLOY_AS_SERVICE:=false}"
 : "${DEPLOY_ONLY:=false}"
+: "${PATCH_LOCAL_CLUSTER:=false}"
+: "${CLUSTER_PROXY_COMMAND:=}"
+: "${SSH_KEY_FILE_PATH:=/root/.ssh/id_rsa}"
 
-# Print configs
+
+# Print configs 
 echo "[ENTRYPOINT.SH] Starting CLUE Deployer container"
 echo "[ENTRYPOINT.SH] Deploying as a service: $DEPLOY_AS_SERVICE"
 echo "[ENTRYPOINT.SH] Deploy without benchmarking: $DEPLOY_ONLY"
-echo "[ENTRYPOINT.SH] Bechmark config: SUT: $SUT_NAME, experiment: $EXPERIMENT_NAME"
+echo "[ENTRYPOINT.SH] Patch kubeconfig: $PATCH_LOCAL_CLUSTER"
+echo "[ENTRYPOINT.SH] Bechmark config: SUT: $SUT, experiment: $VARIANTS"
 
-# Patch the kubeconfig to allow access to clusters running on the host
-python3 /app/clue_deployer/patch_kubeconfig.py
+# Prepare the kubeconfig to allow access to clusters running on the host
+echo "[ENTRYPOINT.SH] Preparing kubeconfig..."
+python3 /app/clue_deployer/prepare_kubeconfig.py
 if [ -f /app/clue_deployer/kubeconfig_patched ]; then
     chmod 600 /app/clue_deployer/kubeconfig_patched
     export KUBECONFIG=/app/clue_deployer/kubeconfig_patched
+fi
+
+# Start optional cluster proxy after kubeconfig was prepared
+if [ -n "$CLUSTER_PROXY_COMMAND" ]; then
+    echo "[ENTRYPOINT.SH] Starting SSH proxy: ssh -i $SSH_KEY_FILE_PATH $CLUSTER_PROXY_COMMAND"
+    ls -l "$SSH_KEY_FILE_PATH"
+    if [ -f "$SSH_KEY_FILE_PATH" ]; then
+        chmod 400 "$SSH_KEY_FILE_PATH" || true
+        ls -l "$SSH_KEY_FILE_PATH"
+    fi
+    echo "Checking SSH key file permissions..."
+    ssh -i "$SSH_KEY_FILE_PATH" $CLUSTER_PROXY_COMMAND &
+    echo "Starting with CLUSTER_PROXY_COMMAND: $CLUSTER_PROXY_COMMAND"
 fi
 
 # If DEPLOY_AS_SERVICE = True, deploy CLUE as a service
@@ -27,4 +46,5 @@ fi
 # Deploy CLUE
 # Uncomment the line below to enable debugging with debugpy
 #exec uv run -m debugpy --listen 0.0.0.0:5678 --wait-for-client clue_deployer/src/main.py
+echo "Starting without DEPLOY_AS_SERVICE "
 exec uv run clue_deployer/src/main.py

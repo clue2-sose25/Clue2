@@ -12,7 +12,6 @@ dependencies = [
     "docker>=7.1.0",
     "kubernetes>=32.0.1",
     "locust>=2.33.0",
-    "progressbar2>=4.5.0",
     "pydantic>=2.11.4",
     "pydantic-settings>=2.9.1",
     "pydantic-yaml>=1.4.0",
@@ -22,12 +21,12 @@ dependencies = [
     "yaml-patch>=1.1.0",
     "uvicorn>=0.34.3", 
     "fastapi>=0.111",
-    "psc",
-    "debugpy"
+    "debugpy",
+    "prometheus-api-client",
+    "flask",
+    "flask-sock",
+    "gunicorn",
 ]
 
 [tool.setuptools]
 packages = ["clue_deployer"]
-
-[tool.uv.sources]
-psc = { path = "./clue_deployer/src/agent", editable = true }

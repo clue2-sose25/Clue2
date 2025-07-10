@@ -3,7 +3,6 @@ __pycache__/
 data*
 .idea
 mock_data/
-.github
 .vscode
 results/*
 /teastore/
@@ -11,3 +10,4 @@ results/*
 .lh
 localClusterConfig/minikube/minikube_kube_config
 localClusterConfig/minikube/minikube_kube_config
+.venv

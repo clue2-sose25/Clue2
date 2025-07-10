@@ -1,4 +1,6 @@
 export interface Metric {
-  label: string;
-  value: string | number;
+  name: string;
+  value: number;
+  unit: string;
+  description?: string;
 }

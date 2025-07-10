@@ -32,7 +32,7 @@ def load_configs():
         })(),
         'sut_config': type('SutConfig', (), {
             'sut_path': sut_config['config']['sut_path'],
-            'experiments': sut_config.get('experiments', [])
+            'experiments': sut_config.get('variants', [])
         })()
     })()
     
@@ -151,34 +151,6 @@ def run_maven(sut_path):
         print(f"Unexpected error during Maven build: {e}")
         raise
 
-def build_workload(experiment):
-        platform = (
-            experiment.env.remote_platform_arch
-            if experiment.colocated_workload
-            else experiment.env.remote_platform_arch
-        )
-        registry = experiment.env.docker_registry_address
-        branch = experiment.target_branch
-
-        print(f"Building Teastore workload generator for platform {platform}")
-        tag = f"{registry}/loadgenerator:{branch}"
-        build = subprocess.check_call(
-            [
-                "docker",
-                "buildx",
-                "build",
-                "--platform", platform,
-                "--push",
-                "-t", tag,
-                ".",
-            ],
-            cwd=path.join("workload_generator"),
-        )
-        if build != 0:
-            raise RuntimeError("Failed to build the workload generator")
-
-        print(f"Built workload generator for platform {platform} and pushed to {tag}")
-
 def switchBranch(sut_path, branch_name):
     git = subprocess.check_call(
             ["git", "switch", branch_name], cwd=path.join(sut_path)
@@ -190,7 +162,7 @@ def switchBranch(sut_path, branch_name):
     return branch_name
 
 def build_main():
-    # Read BUILDER_EXPERIMENT_NAME environment variable, use "all" for default
+    # Read BUILDER_VARIANTS environment variable, use "all" for default
     exp_name = os.environ.get("TEASTORE_EXP_NAME", "all").lower().strip()
     
     # Allow multiple experiments per comma: ‘baseline,serverless’
@@ -224,8 +196,6 @@ def build_main():
         if not selected_experiments:
             print(f"No experiment found for: {exp_list}")
             sys.exit(1)  # Exit with error if experiment not found
-    # Build the workload generator
-    build_workload(selected_experiments[0])
     # Build the teastore images
     for experiment in selected_experiments:
         print(f"Building teastore images for {experiment.name}")

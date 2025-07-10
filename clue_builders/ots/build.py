@@ -83,31 +83,6 @@ class OTSBuilder:
             raise RuntimeError(f"Error building OTS image: {e}")
 
         
-    def build_push_loadgenerator(self):
-        platform = (
-            self.platform
-        )
-        registry = self.docker_registry_address
-
-        print(f"Building OTS workload generator for platform {platform}")
-        tag = f"{registry}/ots-loadgenerator"
-        build = subprocess.check_call(
-            [
-                "docker",
-                "buildx",
-                "build",
-                "--platform", platform,
-                "--push",
-                "-t", tag,
-                ".",
-            ],
-            cwd=path.join("workload_generator"),
-        )
-        if build != 0:
-            raise RuntimeError("Failed to build the workload generator")
-
-        print(f"Built workload generator for platform {platform} and pushed to {tag}")
-    
     def push(self):
         """
         Push the OTS image to the Docker registry.
@@ -138,7 +113,6 @@ def main(minimal: bool = False):
     builder.check_docker_running()
     builder.build()
     builder.push()
-    builder.build_push_loadgenerator()
 
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser(description="Build OTS images")

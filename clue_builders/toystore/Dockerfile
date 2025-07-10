@@ -21,6 +21,6 @@ COPY clue_builders/toystore/ .
 
 # Convert line endings and make executable
 RUN dos2unix /app/entrypoint.sh \
-     && chmod +x /app/entrypoint.sh
+    && chmod +x /app/entrypoint.sh
 
 ENTRYPOINT ["sh" , "entrypoint.sh"]

@@ -1,2 +1,0 @@
-locust==2.33.0
-locust-plugins[playwright]==4.6.0

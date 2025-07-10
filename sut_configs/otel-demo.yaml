@@ -1,4 +1,6 @@
 config:
+  # The name of the SUT  
+  sut: "otel-demo"
   namespace: "otel-demo"
   sut_git_repo: "https://github.com/JulianLegler/opentelemetry-demo.git"
   sut_path: "opentelemetry-demo"
@@ -12,91 +14,95 @@ config:
   default_resource_limits:
     cpu: 1000
     memory: 1024
-  workload_settings: {}
-  timeout_duration: 3600 # 1 hour in seconds
   wait_before_workloads: 180 # 3 minutes in seconds
-  wait_after_workloads: 180 # 3 minutes in seconds
-  tags: []
-  
+  wait_after_workloads: 180 # 3 minutes in seconds  
 
 helm_replacements:
-  - old_value: "ghcr.io/open-telemetry/demo"
-    new_value: "registry:5000/clue/otel-demo"
-  - old_value: 'tag: ""'
-    new_value: 'tag: "__EXPERIMENT_TAG__"'
+  - value: "ghcr.io/open-telemetry/demo"
+    replacement: "registry:5000/clue/otel-demo"
+  - value: 'tag: ""'
+    replacement: 'tag: "__EXPERIMENT_TAG__"'
 
-services:
-  - name: "checkout"
-    resource_limits: # You can override defaults here if needed
+resource_limits:
+  - service_name: "checkout"
+    limit: # You can override defaults here if needed
       cpu: 500 # Using default
       memory: 512 # Using default
-  - name: "product-catalog"
-    resource_limits:
+  - service_name: "product-catalog"
+    limit:
       cpu: 500
       memory: 512
-  - name: "ad"
-    resource_limits:
+  - service_name: "ad"
+    limit:
       cpu: 500
       memory: 512
-  - name: "frontend-proxy" # Often a key entry point
-    resource_limits:
+  - service_name: "frontend-proxy" # Often a key entry point
+    limit:
       cpu: 750 # Example: slightly higher for a proxy
       memory: 768
-  - name: "fraud-detection"
-    resource_limits:
+  - service_name: "fraud-detection"
+    limit:
       cpu: 500
       memory: 512
-  - name: "currency"
-    resource_limits:
+  - service_name: "currency"
+    limit:
       cpu: 500
       memory: 512
-  - name: "frontend" # This is different from frontend-proxy
-    resource_limits:
+  - service_name: "frontend" # This is different from frontend-proxy
+    limit:
       cpu: 750
       memory: 768
-  - name: "image-provider"
-    resource_limits:
+  - service_name: "image-provider"
+    limit:
       cpu: 500
       memory: 512
-  - name: "email"
-    resource_limits:
+  - service_name: "email"
+    limit:
       cpu: 500
       memory: 512
-  - name: "accounting"
-    resource_limits:
+  - service_name: "accounting"
+    limit:
       cpu: 500
       memory: 512
-  - name: "cart"
-    resource_limits:
+  - service_name: "cart"
+    limit:
       cpu: 500
       memory: 512
-  - name: "kafka" # Infrastructure component, might need different defaults
-    resource_limits:
+  - service_name: "kafka" # Infrastructure component, might need different defaults
+    limit:
       cpu: 1000
       memory: 1024
-  - name: "recommendation"
-    resource_limits:
+  - service_name: "recommendation"
+    limit:
       cpu: 500
       memory: 512
-  - name: "shipping"
-    resource_limits:
+  - service_name: "shipping"
+    limit:
       cpu: 500
       memory: 512
-  - name: "quote"
-    resource_limits:
+  - service_name: "quote"
+    limit:
       cpu: 500
       memory: 512
-  - name: "payment"
-    resource_limits:
+  - service_name: "payment"
+    limit:
       cpu: 500
       memory: 512
-  - name: "flagd-ui" # UI for feature flags, might be less critical for performance
-    resource_limits:
+  - service_name: "flagd-ui" # UI for feature flags, might be less critical for performance
+    limit:
       cpu: 250
       memory: 256
 
-#TODO
-experiments:
+workloads:
+  - name: "shaped"
+    description: "Workload with custom load shape behavior."
+    timeout_duration: 120
+    workload_runtime: 64
+    workload_settings: {}
+    locust_files:
+      - "sut_configs/workloads/otel-demo/locustfile.py"
+
+variants:
   - name: "baseline"
     description: "Baseline experiment for the otel-demo application"
     target_branch: "main"
