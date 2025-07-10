@@ -71,7 +71,7 @@ clueWebui:
   env:
     API_BASE_URL: http://clue-deployer:8000
 loadGenerator:
-  image: clue-loadgenerator
+  image: "clue2-loadgenerator-builder"
   tag: latest
   # Set this to mount a folder path within the chart to include all locust files
   workloadDir: default_workloads_toystore
