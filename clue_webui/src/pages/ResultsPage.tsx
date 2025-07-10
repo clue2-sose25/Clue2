@@ -4,7 +4,7 @@ import {
   RepeatIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
-import React, {useEffect, useState} from "react";
+import React, {useContext, useEffect, useState} from "react";
 import {Link, useNavigate} from "react-router";
 import {
   Table,
@@ -19,8 +19,14 @@ import {
 } from "@mui/material";
 import type {ResultEntry} from "../models/ResultEntry";
 import {parse, format} from "date-fns";
+import {DeploymentContext} from "../contexts/DeploymentContext";
+import {QueueContext} from "../contexts/QueueContext";
 
 const ResultsPage = () => {
+  const {setIfDeploying} = useContext(DeploymentContext);
+
+  const {setCurrentQueue} = useContext(QueueContext);
+
   const [results, setResults] = useState<ResultEntry[]>([]);
   const navigate = useNavigate();
 
@@ -33,6 +39,59 @@ const ResultsPage = () => {
       setResults((prev) => prev.filter((r) => r.uuid !== uuid));
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const fetchQueue = () => {
+    fetch("/api/queue")
+      .then(async (r) => {
+        if (!r.ok) {
+          throw new Error(`API responded with status ${r.status}`);
+        }
+        const data = await r.json();
+        // Validate data type (optional, adjust based on your needs)
+        if (!Array.isArray(data)) {
+          console.error("API returned non-array data:", data);
+          return [];
+        }
+        return data;
+      })
+      .then((d) => setCurrentQueue(d ?? []))
+      .catch((err) => {
+        console.error("Failed to fetch queue:", err);
+        setCurrentQueue([]);
+      });
+  };
+
+  const handleRepeatExperiment = async (
+    result: ResultEntry,
+    e: React.MouseEvent
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    try {
+      const response = await fetch("/api/deploy/sut", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          sut: result.sut,
+          variants: result.variants,
+          workloads: result.workloads,
+          n_iterations: result.n_iterations,
+          deploy_only: result.deploy_only,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to repeat experiment");
+      }
+      // If you have these functions available, uncomment:
+      setIfDeploying(true);
+      fetchQueue();
+      navigate("/dashboard");
+    } catch (err) {
+      console.error("Error repeating experiment:", err);
     }
   };
 
@@ -161,7 +220,7 @@ const ResultsPage = () => {
                     <Tooltip title="Repeat experiment" arrow placement="top">
                       <IconButton
                         onClick={(e) => {
-                          e.stopPropagation();
+                          handleRepeatExperiment(result, e);
                         }}
                       >
                         <RepeatIcon size={20} />

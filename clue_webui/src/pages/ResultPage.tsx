@@ -1,12 +1,15 @@
-import {useEffect, useState} from "react";
+import {useContext, useEffect, useState} from "react";
 import {
   ArrowLeftIcon,
   DownloadSimpleIcon,
   RepeatIcon,
 } from "@phosphor-icons/react";
-import {Link, useParams} from "react-router";
+import {Link, useNavigate, useParams} from "react-router";
 import type {ResultDetails} from "../models/ResultsDetails";
 import ResultDetailsDisplay from "../components/results/ResultDetailsDisplay";
+import type {ResultEntry} from "../models/ResultEntry";
+import {DeploymentContext} from "../contexts/DeploymentContext";
+import {QueueContext} from "../contexts/QueueContext";
 
 // Define params type for useParams
 type ResultEntryParams = {
@@ -16,6 +19,11 @@ type ResultEntryParams = {
 const ResultPage = () => {
   // The ID of the results
   const {uuid} = useParams<ResultEntryParams>();
+
+  const {setIfDeploying} = useContext(DeploymentContext);
+  const {setCurrentQueue} = useContext(QueueContext);
+
+  const navigate = useNavigate();
 
   const [resultDetails, setResultDetails] = useState<ResultDetails | null>(
     null
@@ -44,6 +52,60 @@ const ResultPage = () => {
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const fetchQueue = () => {
+    fetch("/api/queue")
+      .then(async (r) => {
+        if (!r.ok) {
+          throw new Error(`API responded with status ${r.status}`);
+        }
+        const data = await r.json();
+        // Validate data type (optional, adjust based on your needs)
+        if (!Array.isArray(data)) {
+          console.error("API returned non-array data:", data);
+          return [];
+        }
+        return data;
+      })
+      .then((d) => setCurrentQueue(d ?? []))
+      .catch((err) => {
+        console.error("Failed to fetch queue:", err);
+        setCurrentQueue([]);
+      });
+  };
+
+  const handleRepeatExperiment = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    try {
+      const response = await fetch("/api/deploy/sut", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          sut: resultDetails?.sut,
+          variants: resultDetails?.variants
+            .map((variant) => variant.name)
+            .join(", "),
+          workloads: resultDetails?.workloads
+            .map((workload) => workload.name)
+            .join(", "),
+          n_iterations: resultDetails?.n_iterations,
+          deploy_only: resultDetails?.deploy_only,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to repeat experiment");
+      }
+      // If you have these functions available, uncomment:
+      setIfDeploying(true);
+      fetchQueue();
+      navigate("/dashboard");
+    } catch (err) {
+      console.error("Error repeating experiment:", err);
     }
   };
 
@@ -117,8 +179,13 @@ const ResultPage = () => {
             <ArrowLeftIcon /> Back
           </Link>
           <div className="flex gap-4">
-            <button className="flex items-center gap-2 border px-4 py-2 rounded hover:bg-gray-200">
-              <RepeatIcon size={20} /> Repeat benchmark
+            <button
+              onClick={(e) => {
+                handleRepeatExperiment(e);
+              }}
+              className="flex items-center gap-2 border px-4 py-2 rounded hover:bg-gray-200"
+            >
+              <RepeatIcon size={20} /> Repeat experiment
             </button>
             <button
               onClick={(e) => handleResultsDownload(uuid!, e)}

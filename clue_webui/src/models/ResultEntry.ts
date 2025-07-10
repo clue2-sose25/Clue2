@@ -6,4 +6,5 @@ export interface ResultEntry {
   variants: string;
   timestamp: string;
   n_iterations: number;
+  deploy_only: boolean;
 }
