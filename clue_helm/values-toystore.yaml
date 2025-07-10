@@ -1,5 +1,5 @@
 # example values for running the toystore SUT
-imageRegistry: ghcr.io/your-org
+imageRegistry: ghcr.io/clue2-sose25
 sutConfigFileName: toystore.yaml
 sutConfig: |
   config:
@@ -71,7 +71,7 @@ clueWebui:
   env:
     API_BASE_URL: http://clue-deployer:8000
 loadGenerator:
-  image: clue-loadgenerator
+  image: "clue2-loadgenerator-builder"
   tag: latest
   # Set this to mount a folder path within the chart to include all locust files
   workloadDir: default_workloads_toystore
@@ -84,6 +84,8 @@ loadGenerator:
           def index(self):
               self.client.get("/")
 ingress:
-  enabled: true
+  enabled: false
   host: clue.example.com
   tls: false
+rbac:
+  create: false
