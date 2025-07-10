@@ -226,18 +226,16 @@ If all the preliminaries for data collection are installed, Clue will fetch the 
 ### Helm deployment
 
 A basic Helm chart is provided under `clue_helm/` to run the deployer and web UI directly in a cluster.
-Install it with:
-
+Install it with (e.g. using `ToyStore` values file):
 
 ```bash
-helm install clue clue_helm --namespace clue --create-namespace
+helm upgrade --install clue clue_helm --namespace clue --create-namespace -f clue_helm/values-toystore.yaml
 ```
 
 Set `imageRegistry` and other values in `values.yaml` to point to your images and configure the ingress host.
 The chart deploys all CLUE components into the `clue` // Release.Namespace. SUT deployments are created in a separate namespace defined in the SUT config on nodes labeled `scaphandre=true`.
 
 The chart includes a `Job` manifest for CI execution and a `Deployment` for a long-running service. A second job `clue-loadgenerator` can be used to run Locust in the cluster next to the deployer. Locust scripts are taken from the ConfigMap `loadgenerator-workload`, created from entries in `loadGenerator.workloadFiles` in the values file and mounted under `sut_configs/workloads/<sut>/`.
-
 
 For automated tests you can use the composite action under
 `.github/actions/helm-deploy` which deploys the chart when a

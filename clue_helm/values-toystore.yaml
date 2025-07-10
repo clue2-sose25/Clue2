@@ -1,4 +1,5 @@
 # example values for running the toystore SUT
+imageRegistry: ghcr.io/your-org
 sutConfigFileName: toystore.yaml
 sutConfig: |
   config:
@@ -48,10 +49,41 @@ clueConfig: |
     local_platform_arch: "linux/arm64/v8"
     target_utilization: 70
 clueDeployer:
+  image: clue2-deployer
+  tag: latest
+  serviceAccountName: clue-deployer
+  service:
+    port: 8000
+  probes:
+    path: /api/health
   env:
+    DEPLOY_ONLY: "false"
+    N_ITERATIONS: "1"
     SUT: toystore
     VARIANTS: baseline
     WORKLOADS: shaped
-    DEPLOY_ONLY: "false"
-    N_ITERATIONS: "1"
     PRECONFIGURE_CLUSTER: "false"
+clueWebui:
+  image: clue2-webui
+  tag: latest
+  service:
+    port: 80
+  env:
+    API_BASE_URL: http://clue-deployer:8000
+loadGenerator:
+  image: clue-loadgenerator
+  tag: latest
+  # Set this to mount a folder path within the chart to include all locust files
+  workloadDir: default_workloads_toystore
+  workloadFiles:
+    example.py: |
+      from locust import HttpUser, task
+
+      class Example(HttpUser):
+          @task
+          def index(self):
+              self.client.get("/")
+ingress:
+  enabled: true
+  host: clue.example.com
+  tls: false
