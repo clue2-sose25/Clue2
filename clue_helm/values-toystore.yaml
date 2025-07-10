@@ -54,3 +54,4 @@ clueDeployer:
     WORKLOADS: shaped
     DEPLOY_ONLY: "false"
     N_ITERATIONS: "1"
+    PRECONFIGURE_CLUSTER: "false"

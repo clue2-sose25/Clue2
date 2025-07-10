@@ -14,9 +14,9 @@ config:
   wait_before_workloads: 120
   wait_after_workloads: 120
 
-#helm_replacements:
-#  - value: "ghcr.io/clue2-sose25/sustainable_toystore"
-#    replacement: "registry:5000/clue"
+helm_replacements:
+  - value: "ghcr.io/clue2-sose25/sustainable_toystore"
+    replacement: "registry:5000/clue"
 
 workloads:
   - name: "shaped"

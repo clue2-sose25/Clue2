@@ -31,6 +31,7 @@ class ResultsEntry(BaseModel):
     n_iterations: int
     sut: str
     timestamp: str
+    deploy_only: bool
 
 
 def read_json_file(file_path: Path) -> Optional[dict]:
@@ -79,6 +80,9 @@ def extract_results_entry(sut_dir: Path, timestamp_dir: Path) -> Optional[Result
         
         # Extract status from status.json
         status = status_data.get("status", "")
+
+        # Extract if deploy only
+        deploy_only = status_data.get("deploy_only", False)
         
         return ResultsEntry(
             uuid=uuid,
@@ -87,7 +91,8 @@ def extract_results_entry(sut_dir: Path, timestamp_dir: Path) -> Optional[Result
             variants=variants,
             n_iterations=n_iterations,
             sut=sut,
-            timestamp=timestamp_dir.name
+            timestamp=timestamp_dir.name,
+            deploy_only=deploy_only
         )
     except Exception as e:
         logger.error(f"Error processing data from directory {timestamp_dir}: {e}")

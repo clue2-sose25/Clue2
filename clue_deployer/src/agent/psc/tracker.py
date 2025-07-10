@@ -109,11 +109,7 @@ class ResourceTracker:
             if os.getenv("KUBERNETES_SERVICE_HOST"):
                 config.load_incluster_config()
             else:
-            ### SHOULD BE REMOVED IN THE FUTURE, ONLY FOR TESTING
-                try:
-                    config.load_incluster_config()
-                except Exception as e:
-                    config.load_kube_config()
+                config.load_kube_config()
             self.k8s_api_client = client.CoreV1Api()
             logger.info("Resource Tracker initialized.")
         else:
