@@ -63,7 +63,7 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           context: .
-          file: clue_loadgenerator/Dockerfile
+          file: clue_loadgenerator/builder/Dockerfile
           platforms: linux/amd64
           tags: ghcr.io/clue2-sose25/clue2-${{ env.IMAGE_NAME }}:pr-test
           push: true
