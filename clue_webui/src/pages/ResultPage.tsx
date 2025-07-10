@@ -7,7 +7,6 @@ import {
 import {Link, useNavigate, useParams} from "react-router";
 import type {ResultDetails} from "../models/ResultsDetails";
 import ResultDetailsDisplay from "../components/results/ResultDetailsDisplay";
-import type {ResultEntry} from "../models/ResultEntry";
 import {DeploymentContext} from "../contexts/DeploymentContext";
 import {QueueContext} from "../contexts/QueueContext";
 

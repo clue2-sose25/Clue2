@@ -180,6 +180,9 @@ const ResultsPage = () => {
                 <p className="font-semibold">Iterations No.</p>
               </TableCell>
               <TableCell>
+                <p className="font-semibold">Deploy Only</p>
+              </TableCell>
+              <TableCell>
                 <p className="font-semibold">Experiment Status</p>
               </TableCell>
               <TableCell></TableCell>
@@ -212,6 +215,7 @@ const ResultsPage = () => {
                     {result.workloads.split(",").join(", ")}
                   </TableCell>
                   <TableCell>{result.n_iterations}</TableCell>
+                  <TableCell>{result.deploy_only ? "True" : "False"}</TableCell>
                   <TableCell className={getStatusColor(result.status)}>
                     {result.status}
                   </TableCell>
