@@ -172,7 +172,7 @@ Wait for the selected builder to be finished, indicated by its container showing
 
 ### Load Generator & Locust
 
-CLUE uses the `clue_loadgenerator` image to execute Locust workloads. When a variant sets `colocated_workload: true`, this image is launched as a pod inside the cluster; otherwise the workload runs locally next to the deployer.
+CLUE uses the `clue_loadgenerator` image to execute Locust workloads. The deployer orchestrates this through the `workload_runner.py` module. When a variant sets `colocated_workload: true`, the image is launched as a pod inside the cluster; otherwise the workload runs locally next to the deployer.
 
 For the deployment outside the K8s Cluster, Build the image once before running experiments:
 
@@ -235,7 +235,9 @@ helm install clue clue_helm --namespace clue --create-namespace
 
 Set `imageRegistry` and other values in `values.yaml` to point to your images and configure the ingress host.
 The chart deploys all CLUE components into the `clue` // Release.Namespace. SUT deployments are created in a separate namespace defined in the SUT config on nodes labeled `scaphandre=true`.
-The chart includes a `Job` manifest for CI execution and a `Deployment` for a long-running service.
+
+The chart includes a `Job` manifest for CI execution and a `Deployment` for a long-running service. A second job `clue-loadgenerator` can be used to run Locust in the cluster next to the deployer. Locust scripts are taken from the ConfigMap `loadgenerator-workload`, created from entries in `loadGenerator.workloadFiles` in the values file and mounted under `sut_configs/workloads/<sut>/`.
+
 
 For automated tests you can use the composite action under
 `.github/actions/helm-deploy` which deploys the chart when a
@@ -247,7 +249,13 @@ The repository includes `clue_helm/values-toystore.yaml` which sets the
 environment variables to run the `toystore` SUT with the `baseline` variant.
 An additional template `clue_helm/values-example.yaml` shows all required fields.
 Copy this file to your own repository and adjust the registry and tags. Provide the
-path via the `values-file` input of the action to deploy your SUT.
+path via the `values-file` input of the action to deploy your SUT. When you need
+to mount a folder of Locust scripts, pass its location via the `workload-folder`
+input. The action copies that folder next to the chart and sets
+`loadGenerator.workloadDir` accordingly.
+If the chart is stored in a registry, supply its reference via the
+`chart-ref` input. Otherwise the action uses the `chart-path` (default
+`clue_helm`) to deploy a local copy.
 From this version on the deployer expects the selected SUT configuration file to be
 available under `/app/sut_configs/`. Supply the YAML content via the `sutConfig`
 value (and optional `sutConfigFileName`) so the chart can create a `sut-config`
@@ -258,3 +266,21 @@ to that path.
 See `clue_helm/values-toystore.yaml` for an example embedding the configuration and
 the workflow `.github/workflows/clue_deploy_toystore_helm.yml` for usage of the
 Helm action.
+
+#### Locust workload deployment
+
+`workload_runner.py` uses the `clue_loadgenerator` image to run Locust. For each path
+listed under `workloads[*].locust_files` in the SUT configuration a ConfigMap is
+created which contains the file content. Those ConfigMaps are mounted at
+`/app/locustfiles` in the load generator pod and referenced by the `LOCUST_FILE`
+environment variable. If the selected variant has `colocated_workload: true`,
+the pod runs inside the cluster. Otherwise the load generator container is
+executed locally next to the deployer.
+When deploying via Helm you can supply one or multiple scripts through `loadGenerator.workloadFiles`.
+The chart mounts them at `sut_configs/workloads/<sut>/` and sets `LOCUST_FILE` to a comma separated list of their paths
+before launching the `clue-loadgenerator` job.
+Alternatively you can put your Locust scripts in a folder and reference it via `loadGenerator.workloadDir`.
+All files in that folder become entries in the `loadgenerator-workload` ConfigMap. This is convenient
+when invoking the Helm chart from another repository: copy the folder next to the chart and pass its path
+through the GitHub action's `workload-folder` input. The action mounts the folder into the chart and
+sets `loadGenerator.workloadDir` automatically.

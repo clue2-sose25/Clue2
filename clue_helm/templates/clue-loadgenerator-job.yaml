@@ -11,8 +11,15 @@ spec:
       restartPolicy: Never
 {{- $sut := .Values.clueDeployer.env.SUT | default "sut" }}
 {{- $paths := list }}
+{{- if .Values.loadGenerator.workloadFiles }}
 {{- range $name, $_ := .Values.loadGenerator.workloadFiles }}
 {{- $paths = append $paths (printf "/app/sut_configs/workloads/%s/%s" $sut $name) }}
+{{- end }}
+{{- else if .Values.loadGenerator.workloadDir }}
+{{- $files := .Files.Glob (printf "%s/*" .Values.loadGenerator.workloadDir) }}
+{{- range $path, $_ := $files }}
+{{- $paths = append $paths (printf "/app/sut_configs/workloads/%s/%s" $sut (base $path)) }}
+{{- end }}
 {{- end }}
       containers:
         - name: loadgenerator
@@ -21,7 +28,7 @@ spec:
             - name: SUT_NAME
               value: "{{ $sut }}"
             - name: LOCUST_FILE
-              value: "{{ join $paths "," }}"
+              value: '{{ join "," $paths}}'
           volumeMounts:
             - name: workload-files
               mountPath: "/app/sut_configs/workloads/{{ $sut }}"

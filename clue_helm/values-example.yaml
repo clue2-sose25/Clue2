@@ -41,6 +41,8 @@ clueWebui:
 loadGenerator:
   image: clue-loadgenerator
   tag: latest
+  # set this to a folder path within the chart to include all Locust files
+  workloadDir: extra-workloads
   workloadFiles:
     example.py: |
       from locust import HttpUser, task

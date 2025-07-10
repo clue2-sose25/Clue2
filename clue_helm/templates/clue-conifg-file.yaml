@@ -4,4 +4,4 @@ metadata:
   name: clue-config-file
 data:
   clue-config.yaml: |-
-    {{ .Values.clueConfig | indent 4 }}
+  {{ .Values.clueConfig | indent 4 }}

@@ -1,4 +1,4 @@
-imageRegistry: ghcr.io/issafadel
+imageRegistry: ghcr.io/clue2-sose25
 sutConfigFileName: ""
 sutConfig: ""
 clueConfig: |
@@ -33,6 +33,8 @@ clueWebui:
 loadGenerator:
   image: "clue-loadgenerator"
   tag: "latest"
+  # optionally mount all locust files from a folder within the chart
+  workloadDir: ""
   workloadFiles:
     example.py: |
       from locust import HttpUser, task
