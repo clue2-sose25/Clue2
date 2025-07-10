@@ -22,6 +22,7 @@ clueDeployer:
   env:
     DEPLOY_ONLY: "false"
     N_ITERATIONS: "1"
+    PRECONFIGURE_CLUSTER: "false"
 clueWebui:
   image: "clue2-webui"
   tag: "latest"

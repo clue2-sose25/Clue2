@@ -30,6 +30,7 @@ clueDeployer:
     SUT: example
     VARIANTS: baseline
     WORKLOADS: shaped
+    PRECONFIGURE_CLUSTER: "false"
 clueWebui:
   image: clue2-webui
   tag: latest

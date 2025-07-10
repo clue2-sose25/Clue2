@@ -6,7 +6,7 @@ set -e
 : "${PATCH_LOCAL_CLUSTER:=false}"
 : "${CLUSTER_PROXY_COMMAND:=}"
 : "${SSH_KEY_FILE_PATH:=/root/.ssh/id_rsa}"
-
+: "${PRECONFIGURE_CLUSTER:=false}"
 
 # Print configs 
 echo "[ENTRYPOINT.SH] Starting CLUE Deployer container"
