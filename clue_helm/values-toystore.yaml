@@ -54,6 +54,7 @@ clueDeployer:
   serviceAccountName: clue-deployer
   service:
     port: 8000
+    type: ClusterIP  # Change to NodePort if needed or LoadBalancer if need to access with IP_NODE:PORT
   probes:
     path: /api/health
   env:
@@ -67,6 +68,7 @@ clueWebui:
   image: clue2-webui
   tag: latest
   service:
+    type: ClusterIP  # Change to NodePort if needed or LoadBalancer if need to access with IP_NODE:PORT
     port: 80
   env:
     API_BASE_URL: http://clue-deployer:8000

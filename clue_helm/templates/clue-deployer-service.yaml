@@ -3,6 +3,7 @@ kind: Service
 metadata:
   name: clue-deployer
 spec:
+  type: {{ .Values.clueDeployer.service.type | default "ClusterIP" }}
   selector:
     app: clue-deployer
   ports:

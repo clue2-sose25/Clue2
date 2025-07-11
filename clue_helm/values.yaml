@@ -16,6 +16,7 @@ clueDeployer:
   tag: "latest"
   serviceAccountName: clue-deployer
   service:
+    type: ClusterIP
     port: 8000
   probes:
     path: /api/health
@@ -27,6 +28,7 @@ clueWebui:
   image: "clue2-webui"
   tag: "latest"
   service:
+    type: ClusterIP 
     port: 80
   env:
     API_BASE_URL: "http://clue-deployer:8000"
