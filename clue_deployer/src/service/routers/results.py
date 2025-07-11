@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from clue_deployer.src.configs.configs import ENV_CONFIG
 from clue_deployer.src.logger import logger
 from clue_deployer.src.models.start_server_request import StartServerRequest
-from clue_deployer.src.results.generate_results import DataAnalysis
+from clue_deployer.src.results.data_analysis import DataAnalysis
 
 SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
 RESULTS_DIR = ENV_CONFIG.RESULTS_PATH
