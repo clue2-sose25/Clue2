@@ -316,7 +316,7 @@ For full Kubernetes deployments with the CLUE experiment framework:
 ./create-kind-cluster.sh
 
 # 2. Automated setup (installs Prometheus, Kepler, Grafana + imports dashboard)
-python setup_complete_observability.py
+python setup_observability.py
 
 # 3. Access Grafana
 kubectl port-forward -n default service/kps1-grafana 3000:80
