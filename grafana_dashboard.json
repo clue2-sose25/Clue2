@@ -1125,12 +1125,12 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(container_network_receive_bytes_total[5m])",
-          "legendFormat": "RX {{pod}} ({{interface}})",
+          "expr": "rate(kepler_container_bpf_net_rx_irq_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[5m])",
+          "legendFormat": "RX IRQ {{container_name}} ({{pod_name}})",
           "refId": "A"
         }
       ],
-      "title": "Container Network RX Traffic",
+      "title": "Container Network RX IRQ Activity",
       "type": "timeseries"
     },
     {
@@ -1220,12 +1220,12 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "rate(container_network_transmit_bytes_total[5m])",
-          "legendFormat": "TX {{pod}} ({{interface}})",
+          "expr": "rate(kepler_container_bpf_net_tx_irq_total{container_namespace=~\"$namespace\", pod_name=~\"$pod\"}[5m])",
+          "legendFormat": "TX IRQ {{container_name}} ({{pod_name}})",
           "refId": "A"
         }
       ],
-      "title": "Container Network TX Traffic",
+      "title": "Container Network TX IRQ Activity",
       "type": "timeseries"
     },
     {

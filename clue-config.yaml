@@ -3,22 +3,27 @@ config:
   ### BASE CONFIG ###
   # The main timeout to kill the experiment, to avoid hanging experiments
   experiment_timeout: 150
-  
   ### NETWORKING CONFIG ###
   # The URL of the prometheus deployed on the host machine
-  prometheus_url: "http://localhost:30090"
-  
+  prometheus_url: "http://clue-cluster-control-plane:30090"
+  # The docker image registry address for the CLUE deployer. This address should be accessable from inside of the clue_deployer container.
+  docker_registry_address: "registry:5000/clue"
+  # The public IP for the workload generator
+  local_public_ip: "registry"
+  # The public port for the workload generator
+  local_port: 5000
+  # The Platform specification
+  remote_platform_arch: "linux/arm64/v8"
+  local_platform_arch: "linux/arm64/v8"
+  ### AUTOSCALING ###
+  target_utilization: 70
   ### GRAFANA CONFIG ###
-  # Enable automatic Grafana dashboard import
-  grafana_dashboard_import_enabled: true
+  # Grafana NodePort for external access
+  grafana_node_port: 30080
   # Grafana admin credentials
   grafana_username: "admin"
   grafana_password: "prom-operator"
-  # NodePort for Grafana service
-  grafana_node_port: 30080
-  # Path to the Kepler dashboard JSON file
-  kepler_dashboard_path: "kepler_dashboard.json"
-  
-  ### DOCKER REGISTRY CONFIG ###
-  # The URL of the docker registry deployed on the host machine
-  docker_registry_address: "registry:5000"
+  # Enable/disable automatic dashboard import
+  grafana_dashboard_import_enabled: true
+  # Path to Kepler dashboard JSON file
+  kepler_dashboard_path: "grafana_dashboard.json"
