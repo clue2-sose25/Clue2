@@ -171,7 +171,14 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=prom-operator
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana_dashboard.json:/var/lib/grafana/dashboards/kepler-dashboard.json
+      - ./prometheus.yml:/etc/grafana/prometheus.yml
     networks:
       - clue2
     depends_on:
@@ -182,10 +189,18 @@ services:
     image: quay.io/sustainable_computing_io/kepler:latest
     container_name: kepler-exporter
     ports:
-      - "9100:9100"
+      - "9102:8888"
+    privileged: true
+    pid: host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+    environment:
+      - EXPOSE_ESTIMATED_IDLE_POWER_METRICS=true
+      - ENABLE_ESTIMATED_IDLE_POWER_CONSUMPTION=true
+      - KEPLER_BIND_ADDRESS=0.0.0.0:8888
     networks:
       - clue2
-    # Note: This image may require additional configuration for local use
 
   # Prometheus-Agent (build from local Dockerfile)
   prometheus-agent:
@@ -194,6 +209,8 @@ services:
       dockerfile: Dockerfile
     image: prometheus-agent:latest
     container_name: prometheus-agent
+    environment:
+      - PROMETHEUSSERVER=http://prometheus:9090
     ports:
       - "8000:8000"
     networks:
@@ -202,6 +219,7 @@ services:
 volumes:
   registry-data:
   results-deployer-data:
+  grafana-data:
 
 networks:
   clue2:
