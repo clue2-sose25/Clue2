@@ -27,7 +27,10 @@ dependencies = [
     "flask-sock",
     "gunicorn",
     "seaborn",
-    "glasbey"
+    "glasbey",
+    "dash",
+    "plotly",
+    "tables"
 ]
 
 [tool.setuptools]

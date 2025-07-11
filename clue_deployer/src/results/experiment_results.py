@@ -1,8 +1,8 @@
-import pandas as pd
-import numpy as np
+import pandas as pd # type: ignore
+import numpy as np # type: ignore
 from glob import glob
 import logging
-from scipy.stats import zscore
+from scipy.stats import zscore # type: ignore
 
 
 class ExperimentResults:

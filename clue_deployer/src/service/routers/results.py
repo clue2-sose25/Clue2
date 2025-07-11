@@ -307,7 +307,7 @@ def start_server_thread(uuid: str, sut_name: str, experiment_dir: Path):
     
     try:
         # Start the data server
-        da = DataAnalysis(experiment_dir, f"/app/sut_configs/{sut_name}.yaml", load_data_from_fil=True)
+        da = DataAnalysis(experiment_dir, f"/app/sut_configs/{sut_name}.yaml", load_data_from_file=True)
         da.create_server()
         
         # Store the server instance
@@ -316,7 +316,7 @@ def start_server_thread(uuid: str, sut_name: str, experiment_dir: Path):
         logger.info(f"Results server started for UUID: {uuid}, SUT: {sut_name}")
         
     except Exception as e:
-        logger.exception(f"Error starting server for UUID {uuid}")
+        logger.exception(f"Error starting server for UUID {uuid} {e}")
         # Clean up on error
         current_server = None
         current_server_info = None
@@ -328,7 +328,8 @@ async def start_results_server(request: StartServerRequest):
     
     uuid = request.uuid
     sut_name = request.sut_name
-    
+    logger.info(f"Start Server: {uuid} {sut_name}")
+
     # Stop any existing server first
     if current_server is not None:
         logger.info(f"Stopping existing server for UUID: {current_server_info.get('uuid', 'unknown')}")

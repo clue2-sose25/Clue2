@@ -1,12 +1,16 @@
-import seaborn as sns
-import pandas as pd
-import matplotlib.pyplot as plt
-import glasbey
-import numpy as np
+import seaborn as sns # type: ignore
+import pandas as pd# type: ignore
+import matplotlib.pyplot as plt # type: ignore
+import glasbey # type: ignore
+import numpy as np # type: ignore
 import warnings
-import yaml
+import yaml # type: ignore
 from clue_deployer.src.results.experiment_results import ExperimentResults
-
+import pandas as pd # type: ignore
+import dash # type: ignore
+from dash import dcc, html, Input, Output, dash_table # type: ignore
+import plotly.express as px # type: ignore
+from datetime import time
 
 class DataAnalysis:
     #Settings for plotting
@@ -113,7 +117,7 @@ class DataAnalysis:
 
     
     
-    def DataAnalsyis(self, experiment_folder:str, config_file_path:str, load_data_from_file:False):
+    def __init__(self, experiment_folder:str, config_file_path:str, load_data_from_file:False):
         #yaml_dict = parse_sut_yaml(config_file_path)
         #self.general_allowance = {entry["service_name"]: entry["limit"] for entry in yaml_dict["resource_limits"]}
         #self.pod_configuration = {entry["service_name"]: entry["limit"] for entry in yaml_dict["resource_limits"]}
@@ -144,14 +148,104 @@ class DataAnalysis:
                 "teastore-all": {"cpu":1950, "memory":2663},
                 "auth": {"cpu": 500, "memory": 500},
             }
+        self.node_model = {
+            "sm-gpu": 32704316//1024,
+            "ise-knode6": 32719632//1024,
+            "ise-knode1": 32761604//1024,
+        }
+        self.resouce_scale = {
+            "baseline_vanilla_full": {
+                'teastore-recommender':3,
+                'teastore-webui':3,
+                'teastore-image':3,
+                'teastore-auth':3,
+                'teastore-registry':1,
+                'teastore-persistence':1,
+                'teastore-db':1,
+                "teastore-all":0,
+                "auth":0,
+            },
+            'jvm_jvm-impoove_full': {
+                'teastore-recommender':3,
+                'teastore-webui':3,
+                'teastore-image':3,
+                'teastore-auth':3,
+                'teastore-registry':1,
+                'teastore-persistence':1,
+                'teastore-db':1,
+                "teastore-all":0,
+                "auth":0,
+            },
+            'monolith_feature_monolith_full': {
+                'teastore-recommender':0,
+                'teastore-webui':0,
+                'teastore-image':0,
+                'teastore-auth':0,
+                'teastore-registry':1,
+                'teastore-persistence':0,
+                'teastore-db':1,
+                "teastore-all":3,
+                "auth":0,
+            },
+            'norec_feature_norecommendations_full' : {
+                'teastore-recommender':0,
+                'teastore-webui':3,
+                'teastore-image':3,
+                'teastore-auth':3,
+                'teastore-registry':1,
+                'teastore-persistence':1,
+                'teastore-db':1,
+                "teastore-all":0,
+                "auth":0,
+            },
+            'obs_feature_object-storage_full' : {
+                'teastore-recommender':3,
+                'teastore-webui':3,
+                'teastore-image':3,
+                'teastore-auth':3,
+                'teastore-registry':1,
+                'teastore-persistence':1,
+                'teastore-db':1,
+                "teastore-all":0,
+                "auth":0,
+            },
+            'serverless_feature_serverless_full' : {
+                'teastore-recommender':3,
+                'teastore-webui':3,
+                'teastore-image':3,
+                'teastore-auth':0,
+                'teastore-registry':1,
+                'teastore-persistence':1,
+                'teastore-db':1,
+                "teastore-all":0,
+                "auth":40, # infinite theorethical, we use the maximum possible on the nodes we use (12+8 cores) -> 40 functions fit
+            },
+            'serverless_incl_knative' : {
+                'teastore-recommender':3,
+                'teastore-webui':3,
+                'teastore-image':3,
+                'teastore-auth':0,
+                'teastore-registry':1,
+                'teastore-persistence':1,
+                'teastore-db':1,
+                "teastore-all":0,
+                "auth":40, # infinite theorethical, we use the maximum possible on the nodes we use (12+8 cores) -> 40 functions fit
+            },
+        }
 
         if load_data_from_file: #TODO: Make data_file dynamic
-            self.stats_history_aggregated_data = pd.read_hdf(f"{experiment_folder}/observation_original.hdf5", key="stats_history_aggregated")
-            self.pods_data = pd.read_hdf(f"{experiment_folder}/observation_original.hdf5", key="pods")
-            self.stats_data = pd.read_hdf(f"{experiment_folder}/observation_original.hdf5", key="stats")
-            self.nodes_data = pd.read_hdf(f"{experiment_folder}/observation_original.hdf5", key="nodes")
-            self.pods_energy_data = pd.read_hdf(f"{experiment_folder}/observation_original.hdf5", key="pods_energy")
-            self.run_stats_data = pd.read_hdf(f"{experiment_folder}/observation_original.hdf5", key="run_stats")
+            #self.stats_history_aggregated_data = pd.read_hdf(f"{experiment_folder}/observation_original.hdf5", key="stats_history_aggregated")
+            #self.pods_data = pd.read_hdf(f"{experiment_folder}/observation_original.hdf5", key="pods")
+            #self.stats_data = pd.read_hdf(f"{experiment_folder}/observation_original.hdf5", key="stats")
+            #self.nodes_data = pd.read_hdf(f"{experiment_folder}/observation_original.hdf5", key="nodes")
+            #self.pods_energy_data = pd.read_hdf(f"{experiment_folder}/observation_original.hdf5", key="pods_energy")
+            #self.run_stats_data = pd.read_hdf(f"{experiment_folder}/observation_original.hdf5", key="run_stats")
+            self.stats_history_aggregated_data = pd.read_hdf(f"clue_deployer/src/results/observation_original.hdf5", key="stats_history_aggregated")
+            self.pods_data = pd.read_hdf(f"clue_deployer/src/results/observation_original.hdf5", key="pods")
+            self.stats_data = pd.read_hdf(f"clue_deployer/src/results/observation_original.hdf5", key="stats")
+            self.nodes_data = pd.read_hdf(f"clue_deployer/src/results/observation_original.hdf5", key="nodes")
+            self.pods_energy_data = pd.read_hdf(f"clue_deployer/src/results/observation_original.hdf5", key="pods_energy")
+            self.run_stats_data = pd.read_hdf(f"clue_deployer/src/results/observation_original.hdf5", key="run_stats")
         else:
             exr = ExperimentResults(experiment_folder, load_stats_history=True, sut=self.sut, remove_outliers=True)
             self.stats_history_aggregated_data = exr.stats_history_aggregated_data
@@ -162,20 +256,20 @@ class DataAnalysis:
             self.run_stats_data = exr.run_stats
 
     def create_metrics(self):
-        failures = get_failures()
-        latency = get_latency()
-        pod_usage = get_pod_usage()
-        mean_costs = get_mean_costs(pod_usage)
-        real_utilization = get_real_utilization(self.pods_data)
-        run_time_overhead = get_run_time_overhead_costs(self.pods_data)
+        failures = self.get_failures()
+        latency = self.get_latency()
+        pod_usage = self.get_pod_usage()
+        mean_costs = self.get_mean_costs(pod_usage)
+        real_utilization = self.get_real_utilization(self.pods_data)
+        run_time_overhead = self.get_run_time_overhead_costs(self.pods_data)
         json_data = self.groupby(["exp_branch", "exp_workload"]
             )["run_iteration"].nunique().reset_index(name="num_iterations")
-        json_data = json_data.merge(latency).merge(failures).merge(runtime_overhead_cost).merge(real_total_utilization)
+        json_data = json_data.merge(latency).merge(failures).merge(DataAnalysis.runtime_overhead_cost).merge(DataAnalysis.real_total_utilization)
 
     def generate_basic_plots(self):
         pass
 
-    def save_json(exp_branch, exp_workload, save_path):
+    def save_json(json_data, exp_branch, exp_workload, save_path):
         json_data[(json_data["exp_branch"] == exp_branch) & (json_data["exp_workload"] == exp_workload)].to_json(
             f"{save_path}/metrics.json", orient='records', lines=True)
         print(f"✅ JSON saved to {save_path}/metrics.json")
@@ -254,25 +348,25 @@ class DataAnalysis:
         failures["Failure Rate"] = 100 * failures["frq"] / failures["rq"]
         return failures
 
-    def get_latency():
+    def get_latency(self):
         latency = (self.stats_history_aggregated_data.groupby(["exp_branch", "exp_workload"])[["p50", "p95"]].mean().reset_index())
         return latency
 
     def calc_request_based_billing(self, row):
         if row["type"] == "pod" and row["type"] in self.pod_configuration.keys():
             conf = self.pod_configuration[row["pod_name"]]
-            return conf["memory"] * memory_second_price + np.ceil(conf["cpu"] / 1000) * vCPU_second_price
+            return conf["memory"] * DataAnalysis.memory_second_price + np.ceil(conf["cpu"] / 1000) * DataAnalysis.vCPU_second_price
         elif row["type"] == "function":
-            return 500 * serverless_price
+            return 500 * DataAnalysis.serverless_price
 
     def calc_usage_based_billing(self, row):
         if row["type"] == "pod":
-            return row["memory_usage"] * memory_second_price + np.ceil(row["cpu_usage"]) * vCPU_second_price
+            return row["memory_usage"] * DataAnalysis.memory_second_price + np.ceil(row["cpu_usage"]) * DataAnalysis.vCPU_second_price
         elif row["type"] == "function":
-            return row["memory_usage"] * serverless_price
+            return row["memory_usage"] * DataAnalysis.serverless_price
 
     def get_pods_usage(self, namespace:str):
-        pods = self.pods_data[pods_data["namespace"] == namespace]
+        pods = self.pods_data[self.pods_data["namespace"] == namespace]
         pods["pod_name"] = pods["name"].apply(lambda x: "-".join(x.split("-")[0:2]))
 
         #TODO: Find a way to generalize this
@@ -280,21 +374,21 @@ class DataAnalysis:
         #    lambda x: "pod" if x.startswith("teastore") else "function" if x.startswith("auth") else "infra")
         # ignore infra pods for now
         #pods = pods[pods["type"].isin(["pod", "function"])]
-        pods_usage = pods.groupby(run_vars + ["run_time", "name", "pod_name", "type"])[
+        pods_usage = pods.groupby(DataAnalysis.run_vars + ["run_time", "name", "pod_name", "type"])[
             ["memory_usage", "cpu_usage"]].sum().reset_index()
 
-        pods_usage["requested_cost"] = pods_usage.apply(calc_request_based_billing, axis=1)
-        pods_usage["used_cost"] = pods_usage.apply(calc_usage_based_billing, axis=1)
+        pods_usage["requested_cost"] = pods_usage.apply(self.calc_request_based_billing, axis=1)
+        pods_usage["used_cost"] = pods_usage.apply(self.calc_usage_based_billing, axis=1)
 
         return pods_usage
 
 
 
     def get_mean_costs(self, pods_usage):
-        pods_mean_cost = pods_usage.groupby(run_vars)[["requested_cost", "used_cost"]].sum().reset_index().groupby(
+        pods_mean_cost = pods_usage.groupby(DataAnalysis.run_vars)[["requested_cost", "used_cost"]].sum().reset_index().groupby(
             ["exp_branch", "exp_workload"])[["requested_cost", "used_cost"]].mean().reset_index()
 
-        requests = stats_data.groupby(["exp_branch", "exp_workload"])[
+        requests = self.stats_data.groupby(["exp_branch", "exp_workload"])[
             ["Request Count", "Failure Count"]].sum().reset_index()  # total request count
         requests["rq"] = requests["Request Count"] - requests["Failure Count"]
 
@@ -308,29 +402,29 @@ class DataAnalysis:
                                                              "rq"]) * 100 * 1000  # convert to mili cents
         return pods_mean_cost_per_request
 
-    def calculate_maximum_resource_allowance(exp_branch: str):
-        scale = resouce_scale[exp_branch]
+    def calculate_maximum_resource_allowance(self, exp_branch: str):
+        scale = self.resouce_scale[exp_branch]
         max_allowance = {
             "cpu": 0,
             "memory": 0
         }
         for pod_name, pod_scale in scale.items():
-            for resource, value in general_allowance[pod_name].items():
+            for resource, value in self.general_allowance[pod_name].items():
                 max_allowance[resource] += value * pod_scale
         return max_allowance
 
-    def calulate_resouce_allowence(row):
-        if not row["type"] in general_allowance.keys() and not row["type"].startswith("auth"):
+    def calulate_resouce_allowence(self, row):
+        if not row["type"] in self.general_allowance.keys() and not row["type"].startswith("auth"):
             return row
         else: #TODO: find way to generalize this
             if row["type"].startswith("auth"):
-                cpu = general_allowance["auth"]["cpu"]
-                memory = general_allowance["auth"]["memory"]
-                max_count = resouce_scale[row["exp_branch"]]["auth"]
+                cpu = self.general_allowance["auth"]["cpu"]
+                memory = self.general_allowance["auth"]["memory"]
+                max_count = self.resouce_scale[row["exp_branch"]]["auth"]
             else:
-                cpu = general_allowance[row["type"]]["cpu"]
-                memory = general_allowance[row["type"]]["memory"]
-                max_count = resouce_scale[row["exp_branch"]][row["type"]]
+                cpu = self.general_allowance[row["type"]]["cpu"]
+                memory = self.general_allowance[row["type"]]["memory"]
+                max_count = self.resouce_scale[row["exp_branch"]][row["type"]]
             row["cpu_limit"] = cpu * row["count"]
             row["mem_limit"] = memory * row["count"]
             row["cpu_max"] = cpu * max_count
@@ -339,17 +433,17 @@ class DataAnalysis:
     
     def get_real_utilization(self, pods):
         pods["type"] = pods["name"].apply(lambda x: "-".join(x.split("-")[0:2]))
-        pod_scale_behavior = pods.groupby(run_vars + ["run_time", "type"])["type"].count().reset_index(name="count")
+        pod_scale_behavior = pods.groupby(DataAnalysis.run_vars + ["run_time", "type"])["type"].count().reset_index(name="count")
 
-        pod_resouce_utilization = pod_scale_behavior.apply(calulate_resouce_allowence, axis=1)
+        pod_resouce_utilization = pod_scale_behavior.apply(self.calulate_resouce_allowence, axis=1)
 
-        real_pod_utilization = pods.groupby(run_vars + ["run_time", "type"])[["cpu_usage", "memory_usage"]].sum()
+        real_pod_utilization = pods.groupby(DataAnalysis.run_vars + ["run_time", "type"])[["cpu_usage", "memory_usage"]].sum()
         real_pod_utilization["r_cpu_usage"] = (real_pod_utilization["cpu_usage"] * 1000).astype(int)
         real_pod_utilization["r_memory_usage"] = real_pod_utilization["memory_usage"].astype(int)
         real_pod_utilization.reset_index()
 
         real_total_utilization = \
-        pod_resouce_utilization.merge(real_pod_utilization, on=run_vars + ["run_time", "type"]).groupby(
+        pod_resouce_utilization.merge(real_pod_utilization, on=DataAnalysis.run_vars + ["run_time", "type"]).groupby(
             ["exp_branch", "exp_workload"])[
             ["r_cpu_usage", "r_memory_usage", "cpu_limit", "mem_limit", "cpu_max", "mem_max"]].sum()
         real_total_utilization["r_cpu_utilization"] = 100 * real_total_utilization["r_cpu_usage"] / \
@@ -369,39 +463,39 @@ class DataAnalysis:
 
     def calculate_cost(row):
         # meory * cpu_seconds * price_per_memory_second + wattage * kwh_price
-        return row['memory_usage'] * memory_second_price + np.ceil(row["cpu_usage"]) * vCPU_second_price + (
-                    row["wattage_kepler"] * ws_price)
+        return row['memory_usage'] * DataAnalysis.memory_second_price + np.ceil(row["cpu_usage"]) * DataAnalysis.vCPU_second_price + (
+                    row["wattage_kepler"] * DataAnalysis.ws_price)
 
-    def calculate_memory_usage(row):
-        return row['memory_usage'] * node_model[row['instance']]
+    def calculate_memory_usage(self, row):
+        return row['memory_usage'] * self.node_model[row['instance']]
 
     def get_runtime_overhead_costs(self, nodes):
-        nodes = self.nodes_data[(nodes_data['instance'].isin(pods_data['instance'].unique()))].copy()
+        nodes = self.nodes_data[(self.nodes_data['instance'].isin(self.pods_data['instance'].unique()))].copy()
     
-        nodes["memory_usage"] = nodes.apply(calculate_memory_usage, axis=1)
+        nodes["memory_usage"] = nodes.apply(self.calculate_memory_usage, axis=1)
     
         # We calculate the cpu_seconds memory (MB) and wattage used per second for each node ... 
     
-        nodes = nodes.groupby(run_vars + ['run_time', 'instance'])[
+        nodes = nodes.groupby(DataAnalysis.run_vars + ['run_time', 'instance'])[
             ["cpu_usage", "memory_usage", "wattage_kepler", "wattage_scaph"]].sum()
-        nodes['cost'] = nodes.apply(calculate_cost, axis=1)
+        nodes['cost'] = nodes.apply(self.calculate_cost, axis=1)
     
-        pods = pods_data.copy()
+        pods = self.pods_data.copy()
     
-        pods = pods.groupby(run_vars + ['run_time', 'instance'])[
+        pods = pods.groupby(DataAnalysis.run_vars + ['run_time', 'instance'])[
             ["cpu_usage", "memory_usage", "wattage_kepler", "wattage_scaph"]].sum()
     
         # ... and calculate the runtime overhead by removing the total pod usage from the node usage
         # we assume that the worklaod generator run on a separate node outside of the pod nodes
         runtime_overhead_data = (nodes - pods)
-        runtime_overhead_data['cost'] = runtime_overhead_data.apply(calculate_cost, axis=1)
+        runtime_overhead_data['cost'] = runtime_overhead_data.apply(self.calculate_cost, axis=1)
     
         runtime_overhead_cost = 100 * runtime_overhead_data.groupby(["exp_workload", "exp_branch"])[["cost"]].sum() / \
                                 nodes.groupby(["exp_workload", "exp_branch"])[["cost"]].sum()
         runtime_overhead_cost.reset_index(inplace=True)
         return runtime_overhead_cost
 
-    def calulate_resouce_allowence_for_cost(row):
+    def calulate_resouce_allowence_for_cost(self, row):
         if row["service"] in self.pod_configuration.keys():
             row["cpu_limit"] = self.pod_configuration[row["service"]]["cpu"]
             row["mem_limit"] = self.pod_configuration[row["service"]]["memory"]
@@ -423,7 +517,7 @@ class DataAnalysis:
         pods_scale = pods.groupby(["exp_branch", "exp_workload", "run_iteration", "run_time", "service"])[
             "name"].count().reset_index()
         
-        pods = pods.apply(calulate_resouce_allowence_for_cost, axis=1, result_type="expand")
+        pods = pods.apply(self.calulate_resouce_allowence_for_cost, axis=1, result_type="expand")
 
         pods["mem_utilization"] = 100 * pods["memory_usage"] / pods["mem_limit"]
         pods["cpu_utilization"] = 100 * (1000 * pods["cpu_usage"]) / pods["cpu_limit"]
@@ -707,8 +801,8 @@ class DataAnalysis:
             fig.update_layout(title=f"{agg_func.title()} of {y_col} by exp_branch")
             return fig
 
-        app.run(debug=True)
+        app.run(debug=False)
 
 if __name__ == '__main__':
-    da = DataAnalysis("/data", "data/sut_config", load_data_from_fil=True)
+    da = DataAnalysis("/", "data/sut_config", load_data_from_fil=True)
     da.create_server()
