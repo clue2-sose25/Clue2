@@ -118,8 +118,9 @@ class VariantDeployer:
                     logger.info("Skipped Prometheus installation. The PRECONFIGURE_CLUSTER set to false.")
             else:
                 logger.info("Prometheus stack found")
-                # Check if service is already NodePort, if not patch it
+                # Check if services are already NodePort, if not patch them
                 try:
+                    # Check and patch Prometheus service
                     service_info = subprocess.check_output([
                         "kubectl", "get", "svc", "kps1-kube-prometheus-stack-prometheus", 
                         "-o", "jsonpath={.spec.type}"
@@ -133,8 +134,24 @@ class VariantDeployer:
                         ])
                     else:
                         logger.info("Prometheus service is already NodePort")
+                        
+                    # Check and patch Grafana service
+                    grafana_service_info = subprocess.check_output([
+                        "kubectl", "get", "svc", "kps1-grafana", 
+                        "-o", "jsonpath={.spec.type}"
+                    ], text=True)
+                    
+                    if grafana_service_info.strip() != "NodePort":
+                        logger.info("Converting Grafana service to NodePort...")
+                        subprocess.check_call([
+                            "kubectl", "patch", "svc", "kps1-grafana",
+                            "-p", '{"spec":{"type":"NodePort","ports":[{"port":80,"targetPort":3000,"nodePort":30080}]}}'
+                        ])
+                    else:
+                        logger.info("Grafana service is already NodePort")
+                        
                 except subprocess.CalledProcessError as e:
-                    logger.warning(f"Could not check/patch Prometheus service: {e}")
+                    logger.warning(f"Could not check/patch services: {e}")
 
             # Check if kepler is installed
             logger.info("Checking for Kepler stack")
