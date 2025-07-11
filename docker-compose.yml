@@ -123,7 +123,7 @@ services:
       - registry
     environment:
       DOCKER_BUILDKIT: 1
-      OTS_EXP_NAME: ${OTS_EXP_NAME}
+      TOYSTORE_EXP_NAME: ${TOYSTORE_EXP_NAME}
     volumes:
       # CLUE Configs
       - ./clue-config.yaml:/app/clue-config.yaml
