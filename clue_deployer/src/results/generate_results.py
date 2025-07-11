@@ -1,3 +1,5 @@
+import html
+import dash
 import seaborn as sns
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -614,16 +616,16 @@ class DataAnalysis:
             return []
 
         @app.callback(
-            Output("main-plot", "figure"),
-            Output("summary-table", "children"),
-            Input("branch-dropdown", "value"),
-            Input("workload-dropdown", "value"),
-            Input("plot-type", "value"),
-            Input("group-by", "value"),
-            Input("x-axis", "value"),
-            Input("y-axis", "value"),
-            Input("value-filter-column", "value"),
-            Input("value-filter-values", "value")
+            dash.Output("main-plot", "figure"),
+            dash.Output("summary-table", "children"),
+            dash.Input("branch-dropdown", "value"),
+            dash.Input("workload-dropdown", "value"),
+            dash.Input("plot-type", "value"),
+            dash.Input("group-by", "value"),
+            dash.Input("x-axis", "value"),
+            dash.Input("y-axis", "value"),
+            dash.Input("value-filter-column", "value"),
+            dash.Input("value-filter-values", "value")
         )
         def update_main_plot(branch, workload, plot_type, group_by, x_col, y_col, filter_col, filter_vals):
             dff = df.copy()
@@ -678,12 +680,12 @@ class DataAnalysis:
             return fig, summary
 
         @app.callback(
-            Output("compare-plot", "figure"),
-            Input("multi-exp-branch", "value"),
-            Input("compare-plot-type", "value"),
+            dash.Output("compare-plot", "figure"),
+            dash.Input("multi-exp-branch", "value"),
+            dash.Input("compare-plot-type", "value"),
             #Input("compare-x", "value"),
-            Input("compare-y", "value"),
-            Input("compare-agg-func", "value")
+            dash.Input("compare-y", "value"),
+            dash.Input("compare-agg-func", "value")
         )
         def update_compare_plot(branches, plot_type, y_col, agg_func):
             if not branches:
