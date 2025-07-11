@@ -164,6 +164,7 @@ To build images for the selected SUT, use one of the commands listed below.
   ```
 
 - Toystore (custom, simple SUT)
+
   ```bash
   docker compose up -d --build toystore-builder
   ```
@@ -282,3 +283,83 @@ All files in that folder become entries in the `loadgenerator-workload` ConfigMa
 when invoking the Helm chart from another repository: copy the folder next to the chart and pass its path
 through the GitHub action's `workload-folder` input. The action mounts the folder into the chart and
 sets `loadGenerator.workloadDir` automatically.
+
+## 🚀 Observability Stack Setup: Two Options
+
+CLUE provides two main approaches for setting up the observability stack with Grafana dashboards:
+
+### Option 1: Docker Compose Setup (Recommended for Local Development)
+
+The simplest way to get started with Grafana and energy monitoring:
+
+```bash
+# Start the complete observability stack
+docker compose up -d
+
+# Access Grafana immediately
+# Open: http://localhost:3000 (admin/prom-operator)
+```
+
+**Perfect for:**
+
+- Local development and testing
+- Quick prototyping
+- Learning and experimentation
+- CI/CD environments
+
+### Option 2: Kubernetes Setup (For Production/Cluster Environments)
+
+For full Kubernetes deployments with the CLUE experiment framework:
+
+```bash
+# 1. Create Kind cluster
+./create-kind-cluster.sh
+
+# 2. Automated setup (installs Prometheus, Kepler, Grafana + imports dashboard)
+python setup_complete_observability.py
+
+# 3. Access Grafana
+kubectl port-forward -n default service/kps1-grafana 3000:80
+# Open: http://localhost:3000 (admin/prom-operator)
+```
+
+**Perfect for:**
+
+- Production environments
+- Multi-node clusters
+- Running CLUE experiments
+- Enterprise deployments
+
+## Automated Grafana Dashboard Setup
+
+CLUE now automatically handles the complete observability stack setup, including:
+
+- **Automated Prometheus and Kepler installation** via Helm charts
+- **Grafana dashboard import** - automatically imports the Kepler sustainability dashboard
+- **Service configuration** - sets up NodePort services for easy access
+- **Health validation** - ensures all components are working correctly
+
+The observability stack is automatically configured during the experiment deployment phase. No manual setup is required!
+
+### Grafana Configuration Options
+
+You can customize the Grafana setup in `clue-config.yaml`:
+
+```yaml
+### GRAFANA CONFIG ###
+grafana_node_port: 30080                    # NodePort for Grafana access
+grafana_username: "admin"                   # Grafana admin username
+grafana_password: "prom-operator"           # Grafana admin password
+grafana_dashboard_import_enabled: true      # Enable/disable dashboard import
+kepler_dashboard_path: "grafana_dashboard.json"  # Path to dashboard JSON
+```
+
+### Accessing the Grafana Dashboard
+
+After successful deployment, you can access Grafana at:
+
+- URL: `http://localhost:30080` (or your configured port)
+- Username: `admin` (or your configured username)
+- Password: `prom-operator` (or your configured password)
+
+The Kepler dashboard will be automatically imported and available in the Grafana interface, showing real-time sustainability metrics including energy consumption, carbon emissions, and resource utilization.
