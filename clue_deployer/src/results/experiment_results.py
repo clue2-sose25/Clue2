@@ -7,29 +7,26 @@ from scipy.stats import zscore
 
 class ExperimentResults:
 
-    DATA_ROOT_FOLDER = "data"
     RUN_VARS = ["exp_start", "exp_branch", "exp_workload", "run_iteration"]
     SCAPH_FACTOR = 100
-    ENERGY_WORKLOADS = ["exp_scale_fixed", "exp_scale_shaped"]
 
-
-    def __init__(self, exp_dir=None, load_stats_history=True, remove_outliers=True):
+    #Call constructor with iteration folder or with Experiment folder
+    def __init__(self, exp_dir, load_stats_history=True, remove_outliers=True, sut="", ENERGY_WORKLOADS=["exp_scale_fixed", "exp_scale_shaped"]):
         
         self.remove_outliers = remove_outliers
 
-
         # per default, use last experiment performed
-        if not exp_dir:
-            experiment_dirs = sorted(glob(f"{self.DATA_ROOT_FOLDER}/*"))
-            exp_dir = experiment_dirs[-1]
+        #if not exp_dir:
+        #    experiment_dirs = sorted(glob(f"{self.DATA_ROOT_FOLDER}/*"))
+        #    exp_dir = experiment_dirs[-1]
 
         self.exp_dir = exp_dir
-        self.measurement_dirs = glob(self.exp_dir + "/*/*/*")
+        self.sut = sut
+        self.measurement_dirs = glob(self.exp_dir + "/*/*/*/*")
 
         self.total_outliers = 0
         self.total_datapoints = 0
-
-        #TODO: to speed this up we could try and add some sort of caching mechanism, based on measurment_dir+version_name write out the four files as csv after processing so we can load them instead of processing them every time.
+        self.ENERGY_WORKLOADS = ENERGY_WORKLOADS
 
         self.nodes = self.load_nodes()
         self.pods = self.load_pods() 
@@ -43,10 +40,10 @@ class ExperimentResults:
         else:
             self.stats_history = pd.DataFrame([],columns=['timestamp', 'user_count', 'type', 'url', 'rq_s', 'frq_s','rq', 'frq', 'mean_rsp_time', 'mean_resp_size', 'exp_workload','exp_branch', 'exp_start', 'run_start', 'run_iteration', 'run','run_time','urun'])
 
-        logging.warn(f"loaded {self.total_datapoints} datapoints with {self.total_outliers} problems")
+        logging.warn(f"loaded {self.total_datapoints} datapoints with {self.total_outliers} outliers")
 
     def load_pods(self, filter=True):
-        pods =  self.get_df_for_prefix("measurements_pod_")
+        pods = self.get_df_for_prefix("measurements_pod_")
         if filter:
             pods = pods[~pods.name.isin(['loadgenerator'])]
             pods = pods[~pods.instance.isin(['unknown'])]
@@ -59,21 +56,21 @@ class ExperimentResults:
         pod_scaling = p \
             .groupby(['exp_branch', 'exp_workload', 'pod_name', 'run_iteration', 'run_time']) \
             .agg({"wattage_scaph": "mean", "wattage_kepler": "mean", "cpu_usage": "sum", 'name': 'nunique'})
-
         return pod_scaling
 
-    def load_nodes(self):
+    def load_nodes(self, estimate=False):
         nodes = self.get_df_for_prefix("measurements_node_")
-        NodeEnergyModel.apply(nodes)
-        assert "wattage_estimation" in nodes.columns
+        if estimate:
+            NodeEnergyModel.apply(nodes)
+            assert "wattage_estimation" in nodes.columns
         return nodes
 
     def load_stats(self):
-        stats = self.get_df_for_prefix("teastore_stats.csv", treat=False)
+        stats = self.get_df_for_prefix(f"{self.sut}_stats.csv", treat=False)
         return stats[stats["Name"] != "Aggregated"]
     
     def load_stats_aggregated(self):
-        stats = self.get_df_for_prefix("teastore_stats.csv", treat=False)
+        stats = self.get_df_for_prefix(f"{self.sut}_stats.csv", treat=False)
         return stats[stats["Name"] == "Aggregated"]
 
     def load_stat_history(self, aggregated=False):
@@ -96,7 +93,7 @@ class ExperimentResults:
             "99.9%":"p999",
         }
 
-        hraw = self.get_df_for_prefix("teastore_stats_history.csv", treat=False)
+        hraw = self.get_df_for_prefix(f"{self.sut}_stats_history.csv", treat=False)
         hraw['is_agg'] = hraw["Name"] == "Aggregated"
         history = hraw[hraw['is_agg'] == aggregated][[*history_cols.keys(), *self.RUN_VARS, "run_start", "run", "urun"]]
         history = history.rename(columns=history_cols)
@@ -135,7 +132,6 @@ class ExperimentResults:
         common_keys = [
             "wattage_kepler",
             "wattage_scaph",
-            # "wattage"
             "cpu_usage",
             "memory_usage",
             "network_usage",
@@ -150,10 +146,10 @@ class ExperimentResults:
             data_errors += len(outliers)
             df = df.drop(outliers)
 
-        # if data_errors:
-        #     logging.warning(
-        #         f"dropped {data_errors} outliers ({100*data_errors/data_points:.0f}%)"
-        #     )
+        if data_errors:
+             logging.warning(
+                 f"dropped {data_errors} outliers ({100*data_errors/data_points:.0f}%)"
+             )
 
         self.total_datapoints += data_points
         self.total_outliers += data_errors
@@ -163,6 +159,9 @@ class ExperimentResults:
 
     def measurement_file_to_df(self, file: str, prefix: str, treat=True):
         # no risk, no fun
+        # workaround for windows machines
+        if "\\" in file:
+            file = file.replace("\\", "/")
         (_, pr_time, pr_scale, pr_branch, pr_run, pr_name) = file.split("/")
         pod_df = pd.read_csv(file)
         pod_df["exp_workload"] = pr_scale
@@ -182,8 +181,9 @@ class ExperimentResults:
 
     def get_df_for_prefix(self, prefix, treat=True):
         pod_files = np.concatenate(
-            [glob(f"{d}/{prefix}*") for d in self.measurement_dirs]
+            [glob(f"{d}\\{prefix}*") for d in self.measurement_dirs]
         )
+
         all_pods = pd.concat(
             [self.measurement_file_to_df(pf, prefix, treat) for pf in pod_files]
         )
@@ -239,7 +239,7 @@ class ExperimentResults:
 
         return runs_merged
 
-    def _calc_energy(self, input, wattages, energy_workloads=True, app_namespace_only=True):
+    def _calc_energy(self, input, wattages, energy_workloads=True, app_namespace_only=False):
         """
         Aggregate Wattages in different ways. Only use Workloads that make sense for that.
 
@@ -268,8 +268,6 @@ class ExperimentResults:
 
         for w in wattages:
             wsum[f"{w}_avg"] = wavg[w] * wavg["run_time"].dt.total_seconds()
-
-        # todo: node wattages (also estimate + tap)o
 
         return wsum
 

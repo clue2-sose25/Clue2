@@ -5,7 +5,7 @@ import glasbey
 import numpy as np
 import warnings
 import yaml
-from experiment_results import ExperimentResults
+from clue_deployer.src.results.experiment_results import ExperimentResults
 
 
 class DataAnalysis:
