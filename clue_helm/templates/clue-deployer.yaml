@@ -24,6 +24,10 @@ spec:
           env:
             - name: API_BASE_URL
               value: "http://clue-deployer:{{ .Values.clueDeployer.service.port }}"
+          {{- range $key, $value := .Values.clueDeployer.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+          {{- end }}
           envFrom:
             - configMapRef:
                 name: clue-config-file

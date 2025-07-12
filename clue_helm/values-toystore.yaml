@@ -4,19 +4,21 @@ imagePullPolicy: Always
 sutConfigFileName: toystore.yaml
 sutConfig: |
   config:
+    # The name of the SUT
     sut: "toystore"
     namespace: "toystore"
     sut_git_repo: "https://github.com/clue2-sose25/sustainable_toystore"
     sut_path: "toystore"
     helm_chart_path: "toystore/toystore"
     values_yaml_name: "values.yaml"
-    target_service_name: "teastore-webui"
+    workload_target: "teastore-webui"
     application_endpoint_path: "/tools.descartes.teastore.webui"
     default_resource_limits:
       cpu: 1000
       memory: 1024
     wait_before_workloads: 120
     wait_after_workloads: 120
+  helm_replacements: []
   workloads:
     - name: "shaped"
       description: "Workload with custom load shape behavior."
