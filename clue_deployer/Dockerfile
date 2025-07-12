@@ -38,6 +38,7 @@ RUN mkdir -p /app/data
 # Install Python dependencies
 RUN uv sync
 ENV PATH="/app/.venv/bin:$PATH"
+ENV PYTHONPATH="/app"
 
 # Copy the rest of the necessary files
 COPY clue_deployer /app/clue_deployer

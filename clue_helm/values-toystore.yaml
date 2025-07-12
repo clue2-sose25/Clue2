@@ -67,6 +67,7 @@ clueDeployer:
     VARIANTS: baseline
     WORKLOADS: shaped
     PRECONFIGURE_CLUSTER: "false"
+    DEPLOY_AS_SERVICE: "false"
   job:
     enabled: false
 clueWebui:
