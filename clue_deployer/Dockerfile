@@ -34,13 +34,13 @@ COPY clue_deployer/pyproject.toml /app
 COPY clue_deployer/src/agent/ /app/clue_deployer/src/agent
 RUN mkdir -p /app/clue_deployer
 RUN mkdir -p /app/data
-# Copy the rest of the necessary files
-COPY clue_deployer /app/clue_deployer
 
-
-# Install Python dependencies 
+# Install Python dependencies
 RUN uv sync
 ENV PATH="/app/.venv/bin:$PATH"
+
+# Copy the rest of the necessary files
+COPY clue_deployer /app/clue_deployer
 
 # Fix the line endings
 RUN dos2unix /app/clue_deployer/entrypoint.sh \

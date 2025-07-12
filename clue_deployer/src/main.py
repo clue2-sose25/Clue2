@@ -3,13 +3,13 @@ import os
 import time
 from typing import List
 import uuid
-from clue_deployer.src.models.experiment import Experiment
 import urllib3
 from pathlib import Path
 from datetime import datetime
 from os import path
 from kubernetes import config as kube_config
 from clue_deployer.src.configs.configs import CONFIGS, ENV_CONFIG, SUT_CONFIG, Configs
+from clue_deployer.src.models.experiment import Experiment
 from clue_deployer.src.models.status_phase import StatusPhase
 from clue_deployer.src.service.status_manager import StatusManager
 from clue_deployer.src.models.variant import Variant
