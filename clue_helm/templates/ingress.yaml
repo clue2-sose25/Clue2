@@ -30,3 +30,4 @@ spec:
         - {{ .Values.ingress.host }}
       secretName: clue-tls
 {{- end }}
+{{- end }}
