@@ -1,0 +1,186 @@
+clientside_loadbalancer: false # Deploys as Statefulset which enables communication to every instance individually. A kubernetes service is used otherwise
+webui:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: cluereg.local:22222/karl/teastore-webui
+    pullPolicy: Always
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: "latest"
+  imagePullSecrets: []
+  podAnnotations: {}
+  podSecurityContext: {}
+  securityContext: {}
+  service:
+    type: ClusterIP
+    port: 80
+    annotations: {}
+  resources: {}
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 100
+    targetCPUUtilizationPercentage: 80
+    # targetMemoryUtilizationPercentage: 80
+  nodeSelector: {"scaphandre": "true"}
+  tolerations: []
+  affinity: {}
+  svc_name: teastore-webui
+registry:
+  enabled: true
+  image:
+    repository: cluereg.local:22222/karl/teastore-registry
+    pullPolicy: Always
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: "latest"
+  imagePullSecrets: []
+  podAnnotations: {}
+  podSecurityContext: {}
+  securityContext: {}
+  service:
+    port: 8080
+    annotations: {}
+  resources: {}
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 100
+    targetCPUUtilizationPercentage: 80
+    # targetMemoryUtilizationPercentage: 80
+  nodeSelector: {"scaphandre": "true"}
+  tolerations: []
+  affinity: {}
+  svc_name: teastore-registry
+db:
+  enabled: true
+  image:
+    repository: cluereg.local:22222/karl/teastore-db
+    pullPolicy: Always
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: "latest"
+  imagePullSecrets: []
+  podAnnotations: {}
+  podSecurityContext: {}
+  securityContext: {}
+  service:
+    port: 3306
+    annotations: {}
+  resources: {}
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 100
+    targetCPUUtilizationPercentage: 80
+    # targetMemoryUtilizationPercentage: 80
+  nodeSelector: {"scaphandre": "true"}
+  tolerations: []
+  affinity: {}
+  svc_name: teastore-db
+auth:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: cluereg.local:22222/karl/teastore-auth
+    pullPolicy: Always
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: "latest"
+  imagePullSecrets: []
+  podAnnotations: {}
+  podSecurityContext: {}
+  securityContext: {}
+  service:
+    type: ClusterIP
+    port: 8080
+    annotations: {}
+  resources: {}
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 100
+    targetCPUUtilizationPercentage: 80
+    # targetMemoryUtilizationPercentage: 80
+  nodeSelector: {"scaphandre": "true"}
+  tolerations: []
+  affinity: {}
+  svc_name: teastore-auth
+image:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: cluereg.local:22222/karl/teastore-image
+    pullPolicy: Always
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: "latest"
+  imagePullSecrets: []
+  podAnnotations: {}
+  podSecurityContext: {}
+  securityContext: {}
+  service:
+    type: ClusterIP
+    port: 8080
+    annotations: {}
+  resources: {}
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 100
+    targetCPUUtilizationPercentage: 80
+    # targetMemoryUtilizationPercentage: 80
+  nodeSelector: {"scaphandre": "true"}
+  tolerations: []
+  affinity: {}
+  svc_name: teastore-image
+recommender:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: cluereg.local:22222/karl/teastore-recommender
+    pullPolicy: Always
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: "latest"
+  imagePullSecrets: []
+  podAnnotations: {}
+  podSecurityContext: {}
+  securityContext: {}
+  service:
+    type: ClusterIP
+    port: 8080
+    annotations: {}
+  resources: {}
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 100
+    targetCPUUtilizationPercentage: 80
+    # targetMemoryUtilizationPercentage: 80
+  nodeSelector: {"scaphandre": "true"}
+  tolerations: []
+  affinity: {}
+  svc_name: teastore-recommender
+persistence:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: cluereg.local:22222/karl/teastore-persistence
+    pullPolicy: Always
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: "latest"
+  imagePullSecrets: []
+  podAnnotations: {}
+  podSecurityContext: {}
+  securityContext: {}
+  service:
+    type: ClusterIP
+    port: 8080
+    annotations: {}
+  resources: {}
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 100
+    targetCPUUtilizationPercentage: 80
+    # targetMemoryUtilizationPercentage: 80
+  nodeSelector: {"scaphandre": "true"}
+  tolerations: []
+  affinity: {}
+  svc_name: teastore-persistence
