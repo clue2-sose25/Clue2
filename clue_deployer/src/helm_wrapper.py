@@ -89,7 +89,12 @@ class HelmWrapper():
             if replacement.replacement.__contains__("__EXPERIMENT_TAG__"):
                 new_tag = self.variant.target_branch
                 replacement.replacement = replacement.replacement.replace("__EXPERIMENT_TAG__", new_tag)
-                values = values.replace(replacement.value, replacement.replacement)
+                no_instances = values.count(replacement.value)
+                if no_instances > 0:
+                    logger.info(f"Replacing {no_instances} instances of: {replacement}")
+                    values = values.replace(replacement.value, replacement.replacement)
+                else:
+                    logger.warning(f"No instances found for replacement: {replacement}")
             elif replacement.should_apply(autoscaling=self.variant.autoscaling):
                 no_instances = values.count(replacement.value)
                 if no_instances > 0:

@@ -14,7 +14,7 @@ config:
   # The values file to use
   values_yaml_name: "values.yaml"
   # The k8s service name (used for in-cluster communication)
-  target_service_name: "teastore-webui"
+  workload_target: "teastore-webui"
   # The specific path
   application_endpoint_path: "/tools.descartes.teastore.webui"
   # Default resource limits for all services (used if autoscaling is enabled)
@@ -24,9 +24,9 @@ config:
     # Memory resource limit
     memory: 1024
   # The time to wait before deploying individual workloads. Specified in seconds
-  wait_before_workloads: 120
+  wait_before_workloads: 10
   # The time to wait after deploying individual workloads. Specified in seconds
-  wait_after_workloads: 120
+  wait_after_workloads: 10
 
 ### HELM CHART REPLACEMENTS ###
 # The replacements for the Helm chart values file.

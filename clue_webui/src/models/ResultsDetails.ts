@@ -74,7 +74,7 @@ export interface SutConfig {
     values_yaml_name: string;
     namespace: string;
     infrastructure_namespaces: string[];
-    target_service_name: string;
+    workload_target: string;
     application_endpoint_path: string;
     default_resource_limits: ResourceLimit;
     wait_before_workloads: number;

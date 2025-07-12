@@ -22,4 +22,10 @@ dependencies = [
     "flask",
     "flask-sock",
     "gunicorn",
+    "seaborn",
+    "glasbey",
+    "dash",
+    "plotly",
+    "tables"
 ]
+

@@ -1,8 +1,6 @@
-from multiprocessing.sharedctypes import Synchronized
 import os
 from contextlib import asynccontextmanager
 from threading import Lock
-from typing import Any
 from fastapi import FastAPI, HTTPException, status
 from fastapi.responses import JSONResponse, RedirectResponse
 import multiprocessing
@@ -14,7 +12,7 @@ from clue_deployer.src.logger import SharedLogBuffer, get_child_process_logger, 
 from clue_deployer.src.configs.configs import ENV_CONFIG, Configs
 from clue_deployer.src.main import ExperimentRunner
 from clue_deployer.src.service.worker import Worker
-from .routers import logs, suts, results, plots, cluster
+from .routers import logs, suts, results, plots, cluster, results_server
 
 
 # Initialize multiprocessing lock and value for deployment synchronization. Used for deployments.
@@ -41,6 +39,7 @@ app.include_router(suts.router)
 app.include_router(results.router)
 app.include_router(plots.router)
 app.include_router(cluster.router)
+app.include_router(results_server.router)
 
 
 SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
