@@ -248,7 +248,7 @@ class VariantDeployer:
         # self._check_labeled_node_available()
         # Installs Prometheus, Kepler
         logger.info("Ensuring cluster observability requirements")
-        self._ensure_helm_requirements() 
+        #self._ensure_helm_requirements() 
         # Clones the SUT repository
         self.clone_sut() 
         # Prepare the Helm wrapper as a context manager
