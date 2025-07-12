@@ -562,31 +562,30 @@ class DataAnalysis:
         
         # Load and copy data
         df = self.pods_data.copy()
+        df.rename(columns = {'exp_branch': 'variant', 'exp_workload': 'workload'}, inplace = True)
 
-        plot_columns = ["cpu_usage", "wattage_kepler", "network_usage", "memory_usage", "pod_name", "observation_time"]
-        group_columns = ["None", "run_iteration", "instance", "pod_name", "exp_branch", "exp_workload"]
+        plot_columns = ["cpu_usage", "wattage_kepler", "network_usage", "memory_usage", "pod_name", "observation_time", "collection_time"]
+        group_columns = ["None", "run_iteration", "instance", "pod_name", "variant", "workload"]
         agg_options = ["mean", "median", "min", "max", "sum"]
 
         app = dash.Dash(__name__)
         app.title = "Pods Data Explorer"
 
         app.layout = html.Div([
-            html.H2("Pods Data Analysis"),
-
             html.Div([
-                html.Label("Filter by exp_branch:"),
+                html.Label("Filter by Variant:"),
                 dcc.Dropdown(
-                    options=[{"label": b, "value": b} for b in sorted(df["exp_branch"].dropna().unique())],
+                    options=[{"label": b, "value": b} for b in sorted(df["variant"].dropna().unique())],
                     id="branch-dropdown",
                     value=None,
                     clearable=True,
                 )
-            ], style={"width": "30%", "display": "inline-block", "margin-right": "2%"}),
+            ], style={"width": "30%", "display": "inline-block", "margin-right": "2%", "padding-bottom": "1%","padding-top": "1%"}),
 
             html.Div([
-                html.Label("Filter by exp_workload:"),
+                html.Label("Filter by Workload:"),
                 dcc.Dropdown(
-                    options=[{"label": w, "value": w} for w in sorted(df["exp_workload"].dropna().unique())],
+                    options=[{"label": w, "value": w} for w in sorted(df["workload"].dropna().unique())],
                     id="workload-dropdown",
                     value=None,
                     clearable=True
@@ -602,7 +601,7 @@ class DataAnalysis:
                     id="value-filter-column",
                     placeholder="Select column to filter"
                 )
-            ], style={"width": "30%", "display": "inline-block", "margin-right": "2%"}),
+            ], style={"width": "30%", "display": "inline-block", "margin-right": "2%", "padding-bottom": "1%","padding-top": "1%"}),
 
             html.Div([
                 html.Label("Filter Values:"),
@@ -612,7 +611,7 @@ class DataAnalysis:
                     multi=True,
                     placeholder="Select values"
                 )
-            ], style={"width": "40%", "display": "inline-block"}),
+            ], style={"width": "30%", "display": "inline-block"}),
 
             html.Hr(),
 
@@ -623,7 +622,7 @@ class DataAnalysis:
                     id="plot-type",
                     value="scatter"
                 )
-            ], style={"width": "30%", "display": "inline-block"}),
+            ], style={"width": "30%", "display": "inline-block",  "padding-bottom": "0.5%","padding-top": "1%" }),
 
             html.Div([
                 html.Label("Group Plot By:"),
@@ -633,10 +632,10 @@ class DataAnalysis:
                     value="instance",
                     clearable=False
                 )
-            ], style={"width": "30%", "display": "inline-block", "margin-left": "2%"}),
+            ], style={"width": "30%", "display": "inline-block", "margin-left": "2%", "margin-right": "2%"}),
 
             html.Div([
-                html.Label("X-axis:"),
+                html.Label("X-Axis:"),
                 dcc.Dropdown(
                     options=[{"label": col, "value": col} for col in plot_columns],
                     id="x-axis",
@@ -645,24 +644,24 @@ class DataAnalysis:
             ], style={"width": "30%", "display": "inline-block", "margin-right": "2%"}),
 
             html.Div([
-                html.Label("Y-axis:"),
+                html.Label("Y-Axis:"),
                 dcc.Dropdown(
                     options=[{"label": col, "value": col} for col in plot_columns],
                     id="y-axis",
                     value=plot_columns[1]
                 )
-            ], style={"width": "30%", "display": "inline-block"}),
+            ], style={"width": "30%", "display": "inline-block",  "padding-bottom": "1%","padding-top": "0.5%"}),
 
             dcc.Graph(id="main-plot"),
             html.Div(id="summary-table"),
 
             html.Hr(),
-            html.H3("Compare Multiple exp_branch"),
+            html.H3("Compare Multiple variants"),
 
             html.Div([
-                html.Label("Select exp_branch(es):"),
+                html.Label("Select variant(s):"),
                 dcc.Dropdown(
-                    options=[{"label": b, "value": b} for b in sorted(df["exp_branch"].dropna().unique())],
+                    options=[{"label": b, "value": b} for b in sorted(df["variant"].dropna().unique())],
                     id="multi-exp-branch",
                     value=[],
                     multi=True
@@ -676,7 +675,7 @@ class DataAnalysis:
                     id="compare-plot-type",
                     value="line"
                 )
-            ], style={"width": "30%", "margin-top": "10px"}),
+            ], style={"width": "30%", "margin-top": "10px", "padding-bottom": "0.5%","padding-top": "0.5%"}),
 
             html.Div([
                 html.Label("Aggregation Function:"),
@@ -685,16 +684,16 @@ class DataAnalysis:
                     id="compare-agg-func",
                     value="mean"
                 )
-            ], style={"width": "30%", "margin-top": "10px"}),
+            ], style={"width": "30%", "margin-top": "10px", "padding-bottom": "0.5%","padding-top": "0.5%"}),
 
             html.Div([
-                html.Label("Y-axis:"),
+                html.Label("Y-Axis:"),
                 dcc.Dropdown(
                     options=[{"label": col, "value": col} for col in plot_columns],
                     id="compare-y",
                     value=plot_columns[1]
                 )
-            ], style={"width": "30%", "display": "inline-block"}),
+            ], style={"width": "30%", "display": "inline-block", "padding-bottom": "0.5%","padding-top": "0.5%"}),
 
             dcc.Graph(id="compare-plot")
         ])
@@ -710,23 +709,23 @@ class DataAnalysis:
             return []
 
         @app.callback(
-            dash.Output("main-plot", "figure"),
-            dash.Output("summary-table", "children"),
-            dash.Input("branch-dropdown", "value"),
-            dash.Input("workload-dropdown", "value"),
-            dash.Input("plot-type", "value"),
-            dash.Input("group-by", "value"),
-            dash.Input("x-axis", "value"),
-            dash.Input("y-axis", "value"),
-            dash.Input("value-filter-column", "value"),
-            dash.Input("value-filter-values", "value")
+            Output("main-plot", "figure"),
+            Output("summary-table", "children"),
+            Input("branch-dropdown", "value"),
+            Input("workload-dropdown", "value"),
+            Input("plot-type", "value"),
+            Input("group-by", "value"),
+            Input("x-axis", "value"),
+            Input("y-axis", "value"),
+            Input("value-filter-column", "value"),
+            Input("value-filter-values", "value")
         )
         def update_main_plot(branch, workload, plot_type, group_by, x_col, y_col, filter_col, filter_vals):
             dff = df.copy()
             if branch:
-                dff = dff[dff["exp_branch"] == branch]
+                dff = dff[dff["variant"] == branch]
             if workload:
-                dff = dff[dff["exp_workload"] == workload]
+                dff = dff[dff["workload"] == workload]
             if filter_col and filter_vals:
                 dff = dff[dff[filter_col].isin(filter_vals)]
             if x_col == "pod_name": dff[x_col] = dff[x_col].astype(str)
@@ -759,7 +758,7 @@ class DataAnalysis:
                 #        style_table={"overflowX": "auto"},
                 #        style_cell={"textAlign": "left", "padding": "5px"},
                 #        style_header={"fontWeight": "bold"},
-                #   )
+                #    )
                 #])
             elif plot_type == "line":
                 fig = px.line(dff, x=x_col, y=y_col, color=group, markers=True)
@@ -774,36 +773,35 @@ class DataAnalysis:
             return fig, summary
 
         @app.callback(
-            dash.Output("compare-plot", "figure"),
-            dash.Input("multi-exp-branch", "value"),
-            dash.Input("compare-plot-type", "value"),
+            Output("compare-plot", "figure"),
+            Input("multi-exp-branch", "value"),
+            Input("compare-plot-type", "value"),
             #Input("compare-x", "value"),
-            dash.Input("compare-y", "value"),
-            dash.Input("compare-agg-func", "value")
+            Input("compare-y", "value"),
+            Input("compare-agg-func", "value")
         )
         def update_compare_plot(branches, plot_type, y_col, agg_func):
             if not branches:
                 return px.scatter(title="Select branches to compare.")
-            dff = df[df["exp_branch"].isin(branches)].copy()
+            dff = df[df["variant"].isin(branches)].copy()
             if y_col == "pod_name":
                 dff[y_col] = dff[y_col].astype(str)
 
             try:
-                agg_df = dff.groupby("exp_branch")[y_col].agg(agg_func).reset_index()
+                agg_df = dff.groupby("variant")[y_col].agg(agg_func).reset_index()
             except Exception as e:
                 return px.scatter(title=f"Aggregation error: {e}")
 
             if plot_type == "line":
-                fig = px.line(agg_df, x="exp_branch", y=y_col, markers=True)
+                fig = px.line(agg_df, x="variant", y=y_col, markers=True)
             elif plot_type == "bar":
-                fig = px.bar(agg_df, x="exp_branch", y=y_col, barmode="group")
+                fig = px.bar(agg_df, x="variant", y=y_col, barmode="group")
             else:
-                fig = px.scatter(agg_df, x="exp_branch", y=y_col)
+                fig = px.scatter(agg_df, x="variant", y=y_col)
 
-            fig.update_layout(title=f"{agg_func.title()} of {y_col} by exp_branch")
+            fig.update_layout(title=f"{agg_func.title()} of {y_col} by variant")
             return fig
         
-        logger.info(f"Start Server datashape {df.shape}")
         app.run(host="0.0.0.0", port=8050, debug=False, use_reloader=False)
 
 if __name__ == '__main__':
