@@ -50,7 +50,7 @@ clueConfig: |
     target_utilization: 70
 clueDeployer:
   image: clue2-deployer
-  tag: latest
+  tag: pr-test
   serviceAccountName: clue-deployer
   service:
     port: 8000
@@ -66,7 +66,7 @@ clueDeployer:
     PRECONFIGURE_CLUSTER: "false"
 clueWebui:
   image: clue2-webui
-  tag: latest
+  tag: pr-test
   service:
     type: ClusterIP  # Change to NodePort if needed or LoadBalancer if need to access with IP_NODE:PORT
     port: 80
