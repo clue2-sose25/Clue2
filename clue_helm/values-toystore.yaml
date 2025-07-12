@@ -70,6 +70,7 @@ clueDeployer:
     WORKLOADS: shaped
     PRECONFIGURE_CLUSTER: "false"
     DEPLOY_AS_SERVICE: "false"
+    HELM_DRIVER: configmap
   job:
     enabled: false
 clueWebui:

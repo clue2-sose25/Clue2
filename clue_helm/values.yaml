@@ -25,6 +25,7 @@ clueDeployer:
     DEPLOY_ONLY: "false"
     N_ITERATIONS: "1"
     PRECONFIGURE_CLUSTER: "false"
+    HELM_DRIVER: configmap
 clueWebui:
   image: "clue2-webui"
   tag: "latest"

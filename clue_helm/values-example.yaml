@@ -32,6 +32,7 @@ clueDeployer:
     VARIANTS: baseline
     WORKLOADS: shaped
     PRECONFIGURE_CLUSTER: "false"
+    HELM_DRIVER: configmap
 clueWebui:
   image: clue2-webui
   tag: latest
