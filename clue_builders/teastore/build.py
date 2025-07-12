@@ -28,7 +28,7 @@ def load_configs():
     config = type('Config', (), {
         'clue_config': type('ClueConfig', (), {
             'remote_platform_arch': clue_config['config']['remote_platform_arch'],
-            'docker_registry_address': "registry:5000/clue"
+            'docker_registry_address': clue_config['config']['docker_registry_address']
         })(),
         'sut_config': type('SutConfig', (), {
             'sut_path': sut_config['config']['sut_path'],
