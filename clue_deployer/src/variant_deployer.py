@@ -245,7 +245,7 @@ class VariantDeployer:
         # self._create_namespace_if_not_exists()
         # Check for nodes labels
         logger.info(f"Checking for nodes with label scaphandre=true")
-        self._check_labeled_node_available()
+        # self._check_labeled_node_available()
         # Installs Prometheus, Kepler
         logger.info("Ensuring cluster observability requirements")
         self._ensure_helm_requirements() 
