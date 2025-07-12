@@ -29,5 +29,4 @@ dependencies = [
 ]
 
 [tool.setuptools]
-package-dir = {"clue_deployer" = "src"}
 packages = ["clue_deployer"]
