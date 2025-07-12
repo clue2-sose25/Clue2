@@ -8,15 +8,15 @@ from pathlib import Path
 from datetime import datetime
 from os import path
 from kubernetes import config as kube_config
-from clue_deployer.src.configs.configs import CONFIGS, ENV_CONFIG, SUT_CONFIG, Configs
-from clue_deployer.src.models.experiment import Experiment
-from clue_deployer.src.models.status_phase import StatusPhase
-from clue_deployer.src.service.status_manager import StatusManager
-from clue_deployer.src.models.variant import Variant
-from clue_deployer.src.variant_runner import VariantRunner
-from clue_deployer.src.models.workload import Workload
-from clue_deployer.src.variant_deployer import VariantDeployer
-from clue_deployer.src.logger import logger
+from .configs.configs import CONFIGS, ENV_CONFIG, SUT_CONFIG, Configs
+from .models.experiment import Experiment
+from .models.status_phase import StatusPhase
+from .service.status_manager import StatusManager
+from .models.variant import Variant
+from .variant_runner import VariantRunner
+from .models.workload import Workload
+from .variant_deployer import VariantDeployer
+from .logger import logger
 
 # Disable SSL verification
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
