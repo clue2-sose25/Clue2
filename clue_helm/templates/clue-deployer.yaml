@@ -26,7 +26,7 @@ spec:
               value: "http://clue-deployer:{{ .Values.clueDeployer.service.port }}"
           envFrom:
             - configMapRef:
-                name: clue-config
+                name: clue-config-file
             - secretRef:
                 name: clue-secrets
           volumeMounts:
