@@ -44,7 +44,7 @@ sutConfig: |
 clueConfig: |
   config:
     experiment_timeout: 150
-    prometheus_url: "http://clue-cluster-control-plane:30090"
+    prometheus_url: "http://192.168.1.106:9090"
     docker_registry_address: ghcr.io/clue2-sose25
     local_public_ip: "registry"
     local_port: 5000
