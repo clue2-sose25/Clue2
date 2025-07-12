@@ -20,15 +20,11 @@ const ResultsServerFrame: React.FC<{data: ResultDetails}> = ({data}) => {
       console.log("Starting server for:", data.id, data.sut);
 
       try {
-        await fetch("/api/results/startResultsServer", {
+        await fetch(`/api/results/${data.id}/startResultsServer`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            uuid: data.id,
-            sut_name: data.sut,
-          }),
         });
       } catch (error) {
         console.error("Failed to start results server:", error);

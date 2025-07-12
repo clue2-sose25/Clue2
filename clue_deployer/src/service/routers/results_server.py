@@ -21,10 +21,7 @@ class ServerInfo:
     server_instance: Any
     thread: threading.Thread
 
-@dataclass
-class StartServerRequest:
-    """Request model for starting a server - now only requires UUID."""
-    uuid: str
+
 
 class ServerManager:
     """Manages server instances and their lifecycle."""
@@ -162,10 +159,9 @@ class ServerManager:
 # Create a global server manager instance
 server_manager = ServerManager()
 
-@router.post("/api/results/startResultsServer")
-async def start_results_server(request: StartServerRequest):
-    """Starts a results server by UUID only. Fetches SUT from experiment data. Stops any existing server first."""
-    uuid = request.uuid
+@router.post("/api/results/{uuid}/startResultsServer")
+async def start_results_server(uuid: str):
+    """Starts a results server by UUID from URL path. Fetches SUT from experiment data. Stops any existing server first."""
     logger.info(f"Start Server: {uuid}")
     
     results_base_path = Path(RESULTS_DIR)
@@ -203,46 +199,3 @@ async def start_results_server(request: StartServerRequest):
     except Exception as e:
         logger.exception(f"Unexpected error while starting server for experiment {uuid}")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while starting server: {str(e)}")
-
-@router.post("/api/results/stopResultsServer")
-async def stop_results_server():
-    """Stops the currently running results server."""
-    try:
-        server_info = server_manager.get_current_server_info()
-        if server_info is None:
-            return {"message": "No server is currently running", "status": "no_server"}
-        
-        uuid = server_info["uuid"]
-        sut_name = server_info["sut_name"]
-        
-        server_manager.stop_current_server()
-        
-        return {
-            "message": f"Successfully stopped results server for UUID: {uuid}, SUT: {sut_name}",
-            "uuid": uuid,
-            "sut_name": sut_name,
-            "status": "stopped"
-        }
-        
-    except Exception as e:
-        logger.exception("Unexpected error while stopping server")
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred while stopping server: {str(e)}")
-
-@router.get("/api/results/serverStatus")
-async def get_server_status():
-    """Get the status of the currently running results server."""
-    try:
-        server_info = server_manager.get_current_server_info()
-        if server_info is None:
-            return {"status": "no_server", "message": "No server is currently running"}
-        
-        return {
-            "status": "running",
-            "uuid": server_info["uuid"],
-            "sut_name": server_info["sut_name"],
-            "message": f"Server running for UUID: {server_info['uuid']}, SUT: {server_info['sut_name']}"
-        }
-        
-    except Exception as e:
-        logger.exception("Unexpected error while getting server status")
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred while getting server status: {str(e)}")
