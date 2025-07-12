@@ -34,19 +34,19 @@ COPY clue_deployer/pyproject.toml /app
 COPY clue_deployer/src/agent/ /app/clue_deployer/src/agent
 RUN mkdir -p /app/clue_deployer
 RUN mkdir -p /app/data
-
-# Install Python dependencies
-RUN uv sync
-ENV PATH="/app/.venv/bin:$PATH"
-
 # Copy the rest of the necessary files
 COPY clue_deployer /app/clue_deployer
-RUN uv sync --no-editable  
+
+
+# Install Python dependencies
+RUN pip download setuptools==68.2.2 --dest /wheelhouse
+ENV PIP_FIND_LINKS=/wheelhouse \
+    PIP_NO_INDEX=1
+RUN uv sync
+ENV PATH="/app/.venv/bin:$PATH"
 
 # Fix the line endings
 RUN dos2unix /app/clue_deployer/entrypoint.sh \
     && chmod +x /app/clue_deployer/entrypoint.sh
 
 ENTRYPOINT ["/app/clue_deployer/entrypoint.sh"]
-
-
