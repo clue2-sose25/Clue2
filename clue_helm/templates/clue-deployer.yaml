@@ -35,8 +35,7 @@ spec:
             - name: sut-config
               mountPath: /app/sut_configs/
             - name: clue-config-file
-              mountPath: /app/clue-config.yaml
-              subPath: clue-config.yaml
+              mountPath: /app
           readinessProbe:
             httpGet:
               path: {{ .Values.clueDeployer.probes.path }}
