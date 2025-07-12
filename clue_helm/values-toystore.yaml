@@ -42,19 +42,21 @@ clueConfig: |
   config:
     experiment_timeout: 150
     prometheus_url: "http://clue-cluster-control-plane:30090"
-    docker_registry_address: ghcr.io/clue2-sose25/sustainable_toystore
+    docker_registry_address: ghcr.io/clue2-sose25
     local_public_ip: "registry"
     local_port: 5000
     remote_platform_arch: "linux/arm64/v8"
     local_platform_arch: "linux/arm64/v8"
     target_utilization: 70
 clueDeployer:
+  enabled: true
   image: clue2-deployer
   tag: pr-test
   serviceAccountName: clue-deployer
   service:
     port: 8000
     type: ClusterIP  # Change to NodePort if needed or LoadBalancer if need to access with IP_NODE:PORT
+    nodePort: 30501
   probes:
     path: /api/health
   env:
@@ -64,16 +66,21 @@ clueDeployer:
     VARIANTS: baseline
     WORKLOADS: shaped
     PRECONFIGURE_CLUSTER: "false"
+  job:
+    enabled: false
 clueWebui:
+  enabled: true
   image: clue2-webui
   tag: pr-test
   service:
-    type: ClusterIP  # Change to NodePort if needed or LoadBalancer if need to access with IP_NODE:PORT
     port: 80
+    type: ClusterIP  # Change to NodePort if needed or LoadBalancer if need to access with IP_NODE:PORT 
+    nodePort: 30501
   env:
     API_BASE_URL: http://clue-deployer:8000
 loadGenerator:
-  image: "clue2-loadgenerator-builder"
+  jobEnabled: true
+  image: clue2-loadgenerator-builder
   tag: latest
   # Set this to mount a folder path within the chart to include all locust files
   workloadDir: default_workloads_toystore
