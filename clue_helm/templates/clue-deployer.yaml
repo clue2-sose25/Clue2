@@ -34,7 +34,7 @@ spec:
               mountPath: /app/data
             - name: sut-config
               mountPath: /app/sut_configs/
-            - name: clue-config
+            - name: clue-config-file
               mountPath: /app/clue-config.yaml
               subPath: clue-config.yaml
           readinessProbe:
@@ -54,4 +54,7 @@ spec:
         - name: clue-config-file
           configMap:
             name: clue-config-file
+            items:
+              - key: clue-config.yaml
+                path: clue-config.yaml
 {{- end }}
