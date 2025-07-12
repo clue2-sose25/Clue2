@@ -4,7 +4,7 @@ config:
   namespace: "otel-demo"
   sut_git_repo: "https://github.com/clue2-sose25/opentelemetry-demo"
   sut_path: "opentelemetry-demo"
-  helm_chart_repo: "https://github.com/open-telemetry/opentelemetry-helm-charts"
+  helm_chart_repo: "https://github.com/clue2-sose25/opentelemetry-helm-charts"
   helm_chart_path: "opentelemetry-demo/charts/opentelemetry-demo"
   helm_dependencies_from_chart: true # If true, dependencies are fetched from the chart
   values_yaml_name: "values.yaml"
@@ -160,6 +160,28 @@ variants:
   - name: "baseline"
     description: "Baseline experiment for the otel-demo application"
     target_branch: "main"
+    colocated_workload: true
+    critical_services:
+      [
+        "checkout",
+        "product-catalog",
+        "ad",
+        "frontend-proxy",
+        "fraud-detection",
+        "currency",
+        "frontend",
+        "image-provider",
+        "email",
+        "kafka",
+        "recommendation",
+        "shipping",
+        "quote",
+        "payment",
+      ]
+    autoscaling: "cpu"
+  - name: "rust-product-catalog"
+    description: "Experiment with a Rust-based product catalog service"
+    target_branch: "rust-product-catalog"
     colocated_workload: true
     critical_services:
       [
