@@ -39,9 +39,6 @@ COPY clue_deployer /app/clue_deployer
 
 
 # Install Python dependencies
-RUN pip download setuptools==68.2.2 --dest /wheelhouse
-ENV PIP_FIND_LINKS=/wheelhouse \
-    PIP_NO_INDEX=1
 RUN uv sync
 ENV PATH="/app/.venv/bin:$PATH"
 

@@ -1,11 +1,7 @@
-[build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "clue2"
 version = "0.1.0"
-description = "Add your description here"
+description = "The CLUE2 Project repo"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -27,6 +23,3 @@ dependencies = [
     "flask-sock",
     "gunicorn",
 ]
-
-[tool.setuptools]
-packages = ["clue_deployer"]
