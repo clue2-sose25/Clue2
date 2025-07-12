@@ -3,7 +3,6 @@ import os
 from pathlib import Path
 import shutil
 import tempfile
-import threading
 from typing import List, Optional
 import zipfile
 from fastapi import APIRouter, HTTPException
@@ -11,17 +10,11 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from clue_deployer.src.configs.configs import ENV_CONFIG
 from clue_deployer.src.logger import logger
-from clue_deployer.src.models.start_server_request import StartServerRequest
-from clue_deployer.src.results.data_analysis import DataAnalysis
 
 SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
 RESULTS_DIR = ENV_CONFIG.RESULTS_PATH
 CLUE_CONFIG_PATH = ENV_CONFIG.CLUE_CONFIG_PATH
 
-# Global variables to keep track of the single running server
-current_server = None
-current_server_thread = None
-current_server_info = None
 
 router = APIRouter()
 
@@ -270,108 +263,6 @@ async def delete_result_by_uuid(uuid: str):
         logger.exception(f"Unexpected error while deleting experiment {uuid}.")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while deleting experiment: {str(e)}")
 
-
-def stop_current_server():
-    """Stop the currently running server if any."""
-    global current_server, current_server_thread, current_server_info
-    
-    if current_server is not None:
-        try:
-            # Stop the server
-            if hasattr(current_server, 'stop_server'):
-                current_server.stop_server()
-            elif hasattr(current_server, 'shutdown'):
-                current_server.shutdown()
-            else:
-                logger.warning("Current server doesn't have a stop method")
-            
-            logger.info(f"Stopped previous server for UUID: {current_server_info.get('uuid', 'unknown')}")
-            
-        except Exception as e:
-            logger.exception("Error stopping current server")
-        
-        # Wait for thread to finish (with timeout)
-        if current_server_thread is not None:
-            current_server_thread.join(timeout=5.0)
-            if current_server_thread.is_alive():
-                logger.warning("Previous server thread did not terminate gracefully")
-        
-        # Clean up
-        current_server = None
-        current_server_thread = None
-        current_server_info = None
-
-def start_server_thread(uuid: str, sut_name: str, experiment_dir: Path):
-    """Function to run the server in a separate thread."""
-    global current_server, current_server_info
-    
-    try:
-        # Start the data server
-        da = DataAnalysis(experiment_dir, f"/app/sut_configs/{sut_name}.yaml", load_data_from_file=True)
-        da.create_server()
-        
-        # Store the server instance
-        current_server = da
-        current_server_info = {"uuid": uuid, "sut_name": sut_name}
-        logger.info(f"Results server started for UUID: {uuid}, SUT: {sut_name}")
-        
-    except Exception as e:
-        logger.exception(f"Error starting server for UUID {uuid} {e}")
-        # Clean up on error
-        current_server = None
-        current_server_info = None
-
-@router.post("/api/results/startResultsServer")
-async def start_results_server(request: StartServerRequest):
-    """Starts a results server by UUID and SUT name. Stops any existing server first."""
-    global current_server_thread
-    
-    uuid = request.uuid
-    sut_name = request.sut_name
-    logger.info(f"Start Server: {uuid} {sut_name}")
-
-    # Stop any existing server first
-    if current_server is not None:
-        logger.info(f"Stopping existing server for UUID: {current_server_info.get('uuid', 'unknown')}")
-        stop_current_server()
-    
-    results_base_path = Path(RESULTS_DIR)
-    
-    # Check for results directory
-    if not results_base_path.is_dir():
-        logger.error(f"Results directory not found: {results_base_path}")
-        raise HTTPException(status_code=404, detail=f"Results directory not found: {results_base_path}")
-    
-    try:
-        # Find the experiment directory by UUID
-        experiment_dir = find_experiment_directory_by_uuid(uuid, results_base_path)
-        
-        if experiment_dir is None:
-            raise HTTPException(status_code=404, detail=f"Experiment with UUID {uuid} not found")
-        
-        # Start the server in a separate thread
-        current_server_thread = threading.Thread(
-            target=start_server_thread,
-            args=(uuid, sut_name, experiment_dir),
-            daemon=True,
-            name=f"ResultsServer-{uuid}"
-        )
-        
-        current_server_thread.start()
-        
-        return {
-            "message": f"Successfully started results server for UUID: {uuid}, SUT: {sut_name}",
-            "uuid": uuid,
-            "sut_name": sut_name,
-            "status": "starting"
-        }
-        
-    except HTTPException:
-        # Re-raise HTTP exceptions
-        raise
-    except Exception as e:
-        logger.exception(f"Unexpected error while starting server for experiment {uuid}")
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred while starting server: {str(e)}")
 
 def create_zip_from_directory(source_dir: Path, zip_path: Path) -> None:
     """Create a ZIP file containing all contents of the source directory."""

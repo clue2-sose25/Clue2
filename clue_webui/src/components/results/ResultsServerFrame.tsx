@@ -1,12 +1,24 @@
-import {useState, useEffect} from "react";
+import {useState, useEffect, useRef} from "react";
 import type {ResultDetails} from "../../models/ResultsDetails";
 
 const ResultsServerFrame: React.FC<{data: ResultDetails}> = ({data}) => {
   const [isServerReady, setIsServerReady] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const serverStartedRef = useRef(false);
 
   useEffect(() => {
+    let intervalId: number;
+    let isServerReadyRef = false;
+
     const startResultsServer = async () => {
+      // Prevent multiple server starts
+      if (serverStartedRef.current) {
+        return;
+      }
+
+      serverStartedRef.current = true;
+      console.log("Starting server for:", data.id, data.sut);
+
       try {
         await fetch("/api/results/startResultsServer", {
           method: "POST",
@@ -20,6 +32,7 @@ const ResultsServerFrame: React.FC<{data: ResultDetails}> = ({data}) => {
         });
       } catch (error) {
         console.error("Failed to start results server:", error);
+        serverStartedRef.current = false; // Reset on error
       }
     };
 
@@ -29,8 +42,10 @@ const ResultsServerFrame: React.FC<{data: ResultDetails}> = ({data}) => {
           method: "HEAD",
           mode: "no-cors", // This prevents CORS issues when checking availability
         });
+        isServerReadyRef = true;
         setIsServerReady(true);
         setIsLoading(false);
+        clearInterval(intervalId);
       } catch (error) {
         setIsServerReady(false);
         setIsLoading(false);
@@ -44,16 +59,14 @@ const ResultsServerFrame: React.FC<{data: ResultDetails}> = ({data}) => {
     checkServerStatus();
 
     // Then check every 2 seconds until server is ready
-    const interval = setInterval(() => {
-      if (!isServerReady) {
+    intervalId = setInterval(() => {
+      if (!isServerReadyRef) {
         checkServerStatus();
-      } else {
-        clearInterval(interval);
       }
     }, 2000);
 
-    return () => clearInterval(interval);
-  }, [data.id, data.sut, isServerReady]);
+    return () => clearInterval(intervalId);
+  }, [data.id, data.sut]);
 
   if (isLoading || !isServerReady) {
     return (
