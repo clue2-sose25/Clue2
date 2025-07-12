@@ -1,5 +1,6 @@
 # example values for running the toystore SUT
 imageRegistry: ghcr.io/clue2-sose25
+imagePullPolicy: Always
 sutConfigFileName: toystore.yaml
 sutConfig: |
   config:
@@ -55,7 +56,7 @@ clueDeployer:
   serviceAccountName: clue-deployer
   service:
     port: 8000
-    type: ClusterIP  # Change to NodePort if needed or LoadBalancer if need to access with IP_NODE:PORT
+    type: ClusterIP # Change to NodePort if needed or LoadBalancer if need to access with IP_NODE:PORT
     nodePort: 30501
   probes:
     path: /api/health
@@ -74,7 +75,7 @@ clueWebui:
   tag: pr-test
   service:
     port: 80
-    type: ClusterIP  # Change to NodePort if needed or LoadBalancer if need to access with IP_NODE:PORT 
+    type: ClusterIP # Change to NodePort if needed or LoadBalancer if need to access with IP_NODE:PORT
     nodePort: 30501
   env:
     API_BASE_URL: http://clue-deployer:8000

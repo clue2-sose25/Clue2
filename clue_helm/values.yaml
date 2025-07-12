@@ -1,4 +1,5 @@
 imageRegistry: ghcr.io/clue2-sose25
+imagePullPolicy: Always
 sutConfigFileName: ""
 sutConfig: ""
 clueConfig: |
@@ -28,7 +29,7 @@ clueWebui:
   image: "clue2-webui"
   tag: "latest"
   service:
-    type: ClusterIP 
+    type: ClusterIP
     port: 80
   env:
     API_BASE_URL: "http://clue-deployer:8000"

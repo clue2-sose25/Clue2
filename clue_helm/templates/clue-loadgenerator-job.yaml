@@ -28,6 +28,7 @@ spec:
       containers:
         - name: loadgenerator
           image: "{{ .Values.imageRegistry }}/{{ .Values.loadGenerator.image }}:{{ .Values.loadGenerator.tag }}"
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
           env:
             - name: SUT_NAME
               value: "{{ $sut }}"

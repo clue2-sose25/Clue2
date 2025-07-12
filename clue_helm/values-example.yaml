@@ -1,5 +1,6 @@
 # example values for customizing the CLUE Helm chart
 imageRegistry: ghcr.io/your-org
+imagePullPolicy: Always
 sutConfigFileName: example-sut.yaml
 sutConfig: |
   config:
