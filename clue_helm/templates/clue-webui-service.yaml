@@ -1,8 +1,10 @@
----
+{{- if .Values.clueWebui.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
   name: clue-webui
+  labels:
+    {{- include "clue.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.clueDeployer.service.type | default "ClusterIP" }}
   selector:
@@ -11,5 +13,6 @@ spec:
     - port: {{ .Values.clueWebui.service.port }}
       targetPort: 80
       {{- if and .Values.clueWebui.service.nodePort (ne .Values.clueWebui.service.type "ClusterIP") }}
-      nodePort: {{ .Values.clueWebui.service.nodePort }}
-      {{- end }}
+        nodePort: {{ .Values.clueWebui.service.nodePort }}
+        {{- end }}
+{{- end }}

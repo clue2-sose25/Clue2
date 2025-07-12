@@ -1,7 +1,10 @@
+{{- if .Values.clueWebui.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: clue-webui
+  labels:
+    {{- include "clue.labels" . | nindent 4 }}
 spec:
   replicas: 1
   selector:
@@ -11,6 +14,7 @@ spec:
     metadata:
       labels:
         app: clue-webui
+        {{- include "clue.labels" . | nindent 8 }}
     spec:
       containers:
         - name: clue-webui
@@ -20,3 +24,4 @@ spec:
               value: {{ .Values.clueWebui.env.API_BASE_URL | quote }}
           ports:
             - containerPort: 80
+{{- end }}

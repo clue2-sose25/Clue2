@@ -42,7 +42,7 @@ clueConfig: |
   config:
     experiment_timeout: 150
     prometheus_url: "http://clue-cluster-control-plane:30090"
-    docker_registry_address: ghcr.io/issafadel/sustainable_toystore
+    docker_registry_address: ghcr.io/clue2-sose25/sustainable_toystore
     local_public_ip: "registry"
     local_port: 5000
     remote_platform_arch: "linux/arm64/v8"

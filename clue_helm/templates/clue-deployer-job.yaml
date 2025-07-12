@@ -1,12 +1,16 @@
+{{- if .Values.clueDeployer.job.enabled }}
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: clue-deployer-job
+  labels:
+    {{- include "clue.labels" . | nindent 4 }}
 spec:
   template:
     metadata:
       labels:
         app: clue-deployer
+        {{- include "clue.labels" . | nindent 8 }}
     spec:
       serviceAccountName: {{ .Values.clueDeployer.serviceAccountName }}
       restartPolicy: Never
@@ -38,3 +42,4 @@ spec:
         - name: clue-config-file
           configMap:
             name: clue-config-file
+{{- end }}

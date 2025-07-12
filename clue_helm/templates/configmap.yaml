@@ -2,6 +2,8 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: clue-config
+  labels:
+    {{- include "clue.labels" . | nindent 4 }}
 data:
 {{- range $key, $value := .Values.clueDeployer.env }}
   {{ $key }}: "{{ $value }}"
