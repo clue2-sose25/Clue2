@@ -5,9 +5,8 @@ from dataclasses import dataclass
 from fastapi import APIRouter, HTTPException
 from clue_deployer.src.configs.configs import ENV_CONFIG
 from clue_deployer.src.logger import logger
-from clue_deployer.src.models.start_server_request import StartServerRequest
 from clue_deployer.src.results.data_analysis import DataAnalysis
-from clue_deployer.src.service.routers.results import find_experiment_directory_by_uuid
+from clue_deployer.src.service.routers.results import find_experiment_by_uuid, find_experiment_directory_by_uuid
 
 SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
 RESULTS_DIR = ENV_CONFIG.RESULTS_PATH
@@ -21,6 +20,11 @@ class ServerInfo:
     sut_name: str
     server_instance: Any
     thread: threading.Thread
+
+@dataclass
+class StartServerRequest:
+    """Request model for starting a server - now only requires UUID."""
+    uuid: str
 
 class ServerManager:
     """Manages server instances and their lifecycle."""
@@ -160,10 +164,9 @@ server_manager = ServerManager()
 
 @router.post("/api/results/startResultsServer")
 async def start_results_server(request: StartServerRequest):
-    """Starts a results server by UUID and SUT name. Stops any existing server first."""
+    """Starts a results server by UUID only. Fetches SUT from experiment data. Stops any existing server first."""
     uuid = request.uuid
-    sut_name = request.sut_name
-    logger.info(f"Start Server: {uuid} {sut_name}")
+    logger.info(f"Start Server: {uuid}")
     
     results_base_path = Path(RESULTS_DIR)
     
@@ -173,11 +176,22 @@ async def start_results_server(request: StartServerRequest):
         raise HTTPException(status_code=404, detail=f"Results directory not found: {results_base_path}")
     
     try:
+        # Find the experiment data by UUID
+        experiment_data = find_experiment_by_uuid(uuid, results_base_path)
+        
+        if experiment_data is None:
+            raise HTTPException(status_code=404, detail=f"Experiment with UUID {uuid} not found")
+        
+        # Extract SUT name from experiment data
+        sut_name = experiment_data.get("sut")
+        if not sut_name:
+            raise HTTPException(status_code=400, detail=f"SUT name not found in experiment data for UUID {uuid}")
+        
         # Find the experiment directory by UUID
         experiment_dir = find_experiment_directory_by_uuid(uuid, results_base_path)
         
         if experiment_dir is None:
-            raise HTTPException(status_code=404, detail=f"Experiment with UUID {uuid} not found")
+            raise HTTPException(status_code=404, detail=f"Experiment directory with UUID {uuid} not found")
         
         # Use the server manager to start the server
         result = server_manager.start_server(uuid, sut_name, experiment_dir)
