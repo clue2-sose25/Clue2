@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "clue.labels" . | nindent 4 }}
 spec:
-  type: NodePort
+  type: {{ .Values.clueWebui.service.type | default "ClusterIP" }}
   selector:
     app: clue-webui
   ports:
