@@ -244,7 +244,7 @@ class VariantDeployer:
         StatusManager.set(StatusPhase.DEPLOYING_SUT, "Deploying SUT...")
         # Check for namespace
         logger.info(f"Checking if namespace '{SUT_CONFIG.namespace}' exists")
-        self._create_namespace_if_not_exists()
+        #self._create_namespace_if_not_exists()
         # Check for nodes labels
         logger.info(f"Checking for nodes with label scaphandre=true")
         self._check_labeled_node_available()
