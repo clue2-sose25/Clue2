@@ -16,6 +16,7 @@ WORKDIR /
 
 # Use envsubst support for templated config
 ENV NGINX_RESOLVER=127.0.0.11
+ENV NGINX_RESOLVER_VALID=30s
 
 # Copy built UI files
 COPY --from=build /app/dist /usr/share/nginx/html
