@@ -83,6 +83,8 @@ clueWebui:
     nodePort: 30501
   env:
     API_BASE_URL: http://clue-deployer:8000
+    NGINX_RESOLVER: 10.96.0.10
+    NGINX_RESOLVER_VALID: 30s
 loadGenerator:
   jobEnabled: false
   image: clue2-loadgenerator-builder

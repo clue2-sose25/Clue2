@@ -53,6 +53,8 @@ clueWebui:
     port: 80
   env:
     API_BASE_URL: "http://clue-deployer:8000"
+    NGINX_RESOLVER: "kube-dns.kube-system.svc.cluster.local"
+    NGINX_RESOLVER_VALID: 30s
 loadGenerator:
   image: "clue2-loadgenerator-builder"
   tag: "latest"
