@@ -249,7 +249,7 @@ class WorkloadRunner:
                     containers=[
                         client.V1Container(
                             name="loadgenerator",
-                            image=f"{CLUE_CONFIG.docker_registry_address}/clue2-loadgenerator:latest",
+                            image=f"{CLUE_CONFIG.docker_registry_address}/clue2-loadgenerator:pr-test",
                             env=container_env,
                             command=["/bin/bash", "-c", "./entrypoint.sh"],
                             working_dir="/app",
@@ -364,7 +364,7 @@ class WorkloadRunner:
         try:
             print("Running the workload generator")
             workload = self._docker_client.containers.run(
-                image=f"{CLUE_CONFIG.docker_registry_address}/clue2-loadgenerator:latest",
+                image=f"{CLUE_CONFIG.docker_registry_address}/clue2-loadgenerator:pr-test",
                 auto_remove=True,
                 environment={
                     **{k: v for k, v in self.workload.workload_settings.items() if k != "LOCUST_RUN_TIME"},
