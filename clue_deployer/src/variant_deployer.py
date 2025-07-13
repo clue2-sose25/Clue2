@@ -4,7 +4,6 @@ from kubernetes.client import CoreV1Api, V1Namespace, V1ObjectMeta, AppsV1Api
 from kubernetes.client.exceptions import ApiException   
 from clue_deployer.src.configs.configs import CLUE_CONFIG, ENV_CONFIG, SUT_CONFIG
 from clue_deployer.src.logger import logger
-from clue_deployer.src.service.grafana_manager import GrafanaManager
 import time
 import os
 import subprocess
@@ -301,13 +300,9 @@ class VariantDeployer:
         Setup Grafana dashboards for sustainability monitoring.
         """
         try:
-            # Check if dashboard import is enabled
-            if not CLUE_CONFIG.grafana_dashboard_import_enabled:
-                logger.info("Grafana dashboard import is disabled")
-                return True
-            
+
             # Path to the Kepler dashboard JSON file
-            dashboard_path = BASE_DIR / CLUE_CONFIG.kepler_dashboard_path
+            dashboard_path = BASE_DIR / "grafana" / "grafana_dashboard.json"
             
             if not dashboard_path.exists():
                 logger.warning(f"Kepler dashboard file not found at {dashboard_path}")
@@ -315,14 +310,14 @@ class VariantDeployer:
             
             # Initialize Grafana manager with configuration
             grafana_manager = GrafanaManager(
-                username=CLUE_CONFIG.grafana_username,
-                password=CLUE_CONFIG.grafana_password
+                username=ENV_CONFIG.GRAFANA_USERNAME,
+                password=ENV_CONFIG.GRAFANA_PASSWORD
             )
             
             # Setup complete Grafana environment
             success = grafana_manager.setup_complete_grafana_environment(
                 dashboard_path, 
-                node_port=CLUE_CONFIG.grafana_node_port
+                node_port=30080
             )
             
             if success:

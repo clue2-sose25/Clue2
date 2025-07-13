@@ -53,6 +53,8 @@ services:
       PATCH_LOCAL_CLUSTER: ${PATCH_LOCAL_CLUSTER}
       CLUSTER_PROXY_COMMAND: ${CLUSTER_PROXY_COMMAND}
       PRECONFIGURE_CLUSTER: ${PRECONFIGURE_CLUSTER}
+      GRAFANA_USERNAME: ${GRAFANA_USERNAME}
+      GRAFANA_PASSWORD: ${GRAFANA_PASSWORD}
     volumes:
       # CLUE Configs
       - ./clue-config.yaml:/app/clue-config.yaml
@@ -153,17 +155,6 @@ services:
     networks:
       - clue2
 
-  # Prometheus for metrics collection
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: prometheus
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-    networks:
-      - clue2
-
   # Grafana for dashboards
   grafana:
     image: grafana/grafana:latest
@@ -171,48 +162,14 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=prom-operator
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USERNAME}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
       - GF_INSTALL_PLUGINS=grafana-piechart-panel
     volumes:
       - grafana-data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning
-      - ./grafana_dashboard.json:/var/lib/grafana/dashboards/kepler-dashboard.json
-      - ./prometheus.yml:/etc/grafana/prometheus.yml
-    networks:
-      - clue2
-    depends_on:
-      - prometheus
-
-  # Kepler exporter (public image, for local testing)
-  kepler-exporter:
-    image: quay.io/sustainable_computing_io/kepler:latest
-    container_name: kepler-exporter
-    ports:
-      - "9102:8888"
-    privileged: true
-    pid: host
-    volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-    environment:
-      - EXPOSE_ESTIMATED_IDLE_POWER_METRICS=true
-      - ENABLE_ESTIMATED_IDLE_POWER_CONSUMPTION=true
-      - KEPLER_BIND_ADDRESS=0.0.0.0:8888
-    networks:
-      - clue2
-
-  # Prometheus-Agent (build from local Dockerfile)
-  prometheus-agent:
-    build:
-      context: ./clue_deployer/agent
-      dockerfile: Dockerfile
-    image: prometheus-agent:latest
-    container_name: prometheus-agent
-    environment:
-      - PROMETHEUSSERVER=http://prometheus:9090
-    ports:
-      - "8000:8000"
+      - ./grafana/grafana_dashboard.json:/var/lib/grafana/dashboards/kepler-dashboard.json
+      - ./grafana/prometheus.yml:/etc/grafana/prometheus.yml
     networks:
       - clue2
 

@@ -341,19 +341,6 @@ CLUE now automatically handles the complete observability stack setup, including
 
 The observability stack is automatically configured during the experiment deployment phase. No manual setup is required!
 
-### Grafana Configuration Options
-
-You can customize the Grafana setup in `clue-config.yaml`:
-
-```yaml
-### GRAFANA CONFIG ###
-grafana_node_port: 30080                    # NodePort for Grafana access
-grafana_username: "admin"                   # Grafana admin username
-grafana_password: "prom-operator"           # Grafana admin password
-grafana_dashboard_import_enabled: true      # Enable/disable dashboard import
-kepler_dashboard_path: "grafana_dashboard.json"  # Path to dashboard JSON
-```
-
 ### Accessing the Grafana Dashboard
 
 After successful deployment, you can access Grafana at:

@@ -4,7 +4,7 @@ datasources:
   - name: Prometheus
     type: prometheus
     access: proxy
-    url: http://prometheus:9090
+    url: http://clue-cluster-control-plane:30090
     isDefault: true
     basicAuth: false
     editable: true
