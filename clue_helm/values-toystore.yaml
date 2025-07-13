@@ -33,13 +33,13 @@ sutConfig: |
       description: "A ToyStore application storing its data in a local SQLite DB"
       target_branch: "baseline"
       colocated_workload: true
-      critical_services: ["frontend", "backend"]
+      critical_services: ["toystore-frontend", "toystore-backend"]
       autoscaling: "cpu"
     - name: "postgres"
       description: "A ToyStore application using external Postgres DB"
       target_branch: "postgres"
       colocated_workload: true
-      critical_services: ["frontend", "backend", "toystore-db"]
+      critical_services: ["toystore-frontend", "toystore-backend", "toystore-db"]
       autoscaling: "cpu"
 clueConfig: |
   config:
