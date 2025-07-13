@@ -364,7 +364,7 @@ class WorkloadRunner:
         try:
             print("Running the workload generator")
             workload = self._docker_client.containers.run(
-                image=f"{CLUE_CONFIG.docker_registry_address}/loadgenerator:latest",
+                image=f"{CLUE_CONFIG.docker_registry_address}/clue2-loadgenerator:latest",
                 auto_remove=True,
                 environment={
                     **{k: v for k, v in self.workload.workload_settings.items() if k != "LOCUST_RUN_TIME"},
