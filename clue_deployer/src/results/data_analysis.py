@@ -6,12 +6,26 @@ import numpy as np # type: ignore
 import warnings
 import yaml # type: ignore
 from clue_deployer.src.results.experiment_results import ExperimentResults
-import pandas as pd # type: ignore
-import dash # type: ignore
-from dash import dcc, html, Input, Output, dash_table # type: ignore
-import plotly.express as px # type: ignore
 from datetime import time
 from clue_deployer.src.logger import logger
+import dash
+import dash_table
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objs as go
+from plotly.subplots import make_subplots
+from dash import Dash, dcc, html, Input, Output, State, dash_table
+import dash_bootstrap_components as dbc
+from sklearn.linear_model import LinearRegression, Ridge, Lasso
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.model_selection import train_test_split
+import statsmodels.api as sm
+import numpy as np
+from scipy.stats import mannwhitneyu, pearsonr
+
+
 
 class DataAnalysis:
     #Settings for plotting
@@ -562,143 +576,329 @@ class DataAnalysis:
         
         # Load and copy data
         df = self.pods_data.copy()
+        df.rename(columns = {'exp_branch': 'variant', 'exp_workload': 'workload'}, inplace = True)
 
-        plot_columns = ["cpu_usage", "wattage_kepler", "network_usage", "memory_usage", "pod_name", "observation_time"]
-        group_columns = ["None", "run_iteration", "instance", "pod_name", "exp_branch", "exp_workload"]
+        ####---------------------Standard plots setup---------------------####
+
+        plot_columns = ["cpu_usage", "wattage_kepler", "network_usage", "memory_usage", "pod_name", "observation_time", "collection_time"]
+        group_columns = ["None", "run_iteration", "instance", "pod_name", "variant", "workload"]
         agg_options = ["mean", "median", "min", "max", "sum"]
 
-        app = dash.Dash(__name__)
-        app.title = "Pods Data Explorer"
+        ####---------------------Regression setup---------------------####
 
-        app.layout = html.Div([
-            html.H2("Pods Data Analysis"),
+        variant_options = [{"label": v, "value": v} for v in sorted(df["variant"].dropna().unique())]
+        workload_options = [{"label": w, "value": w} for w in sorted(df["workload"].dropna().unique())]
+        numeric_cols = df.select_dtypes(include="number").columns.tolist()
+        feature_options = [{"label": col, "value": col} for col in numeric_cols]
 
-            html.Div([
-                html.Label("Filter by exp_branch:"),
-                dcc.Dropdown(
-                    options=[{"label": b, "value": b} for b in sorted(df["exp_branch"].dropna().unique())],
-                    id="branch-dropdown",
-                    value=None,
-                    clearable=True,
+        default_features = ["memory_usage", "network_usage", "cpu_usage"]
+        default_target = "wattage_kepler"
+
+        ####---------------------Correlation setup---------------------####
+        def cliffs_delta(a, b):
+            a, b = np.array(a), np.array(b)
+            n, m = len(a), len(b)
+            greater = np.sum(a[:, None] > b)
+            less = np.sum(a[:, None] < b)
+            return (greater - less) / (n * m)
+
+        variant_options = [{"label": v, "value": v} for v in sorted(df["variant"].dropna().unique())]
+        workload_options = [{"label": w, "value": w} for w in sorted(df["workload"].dropna().unique())]
+
+        app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+        app.title = "Data Explorer"
+
+        def card_toggle_header(title, icon_id, toggle_id):
+            return html.Div([
+                html.Span(title, style={"fontWeight": "bold", "fontSize": "1.2rem"}),
+                html.Span(id=icon_id, children="⯆", style={"float": "right", "cursor": "pointer", "fontSize": "1.5rem"})
+            ], id=toggle_id, n_clicks=0, style={"cursor": "pointer", "display": "flex", "justifyContent": "space-between", "alignItems": "center"})
+
+        app.layout = dbc.Container([
+
+            # Observation Analysis Card
+            dbc.Card([
+                dbc.CardHeader(card_toggle_header("Observation Analysis", "obs-icon", "obs-toggle")),
+                dbc.Collapse(dbc.CardBody([
+                    dbc.Row([
+                        dbc.Col([
+                            dbc.Label("Filter by Variant"),
+                            dcc.Dropdown(
+                                id="branch-dropdown",
+                                options=[{"label": b, "value": b} for b in sorted(df["variant"].dropna().unique())],
+                                value=None, clearable=True
+                            )
+                        ], width=6),
+                        dbc.Col([
+                            dbc.Label("Filter by Workload"),
+                            dcc.Dropdown(
+                                id="workload-dropdown",
+                                options=[{"label": w, "value": w} for w in sorted(df["workload"].dropna().unique())],
+                                value=None, clearable=True
+                            )
+                        ], width=6),
+                    ], className="p-2 mb-3"),
+
+                    dbc.Row([
+                        dbc.Col([
+                            dbc.Label("Filter Column"),
+                            dcc.Dropdown(
+                                id="value-filter-column",
+                                options=[{"label": col, "value": col} for col in df.columns],
+                                placeholder="Select column to filter"
+                            )
+                        ], width=6),
+                        dbc.Col([
+                            dbc.Label("Filter Values"),
+                            dcc.Dropdown(
+                                id="value-filter-values",
+                                options=[], multi=True,
+                                placeholder="Select values"
+                            )
+                        ], width=6),
+                    ], className="p-2 mb-3"),
+
+                    dbc.Row([
+                        dbc.Col([
+                            dbc.Label("Main Plot Type"),
+                            dcc.Dropdown(
+                                id="plot-type",
+                                options=[{"label": t.title(), "value": t} for t in ["scatter", "line", "box", "histogram", "bar"]],
+                                value="scatter"
+                            )
+                        ], width=6),
+                        dbc.Col([
+                            dbc.Label("Group Plot By"),
+                            dcc.Dropdown(
+                                id="group-by",
+                                options=[{"label": col, "value": col} for col in group_columns],
+                                value="instance", clearable=False
+                            )
+                        ], width=6),
+                    ], className="p-2 mb-3"),
+
+                    dbc.Row([
+                        dbc.Col([
+                            dbc.Label("X-Axis"),
+                            dcc.Dropdown(
+                                id="x-axis",
+                                options=[{"label": col, "value": col} for col in plot_columns],
+                                value=plot_columns[0]
+                            )
+                        ], width=6),
+                        dbc.Col([
+                            dbc.Label("Y-Axis"),
+                            dcc.Dropdown(
+                                id="y-axis",
+                                options=[{"label": col, "value": col} for col in plot_columns],
+                                value=plot_columns[1]
+                            )
+                        ], width=6),
+                    ], className="p-2 mb-3"),
+
+                    dcc.Graph(id="main-plot"),
+                    html.Div(id="summary-table")
+                ]), id="obs-collapse", is_open=True)
+            ], className="mb-4"),
+
+            # Variant Comparison Card
+            dbc.Card([
+                dbc.CardHeader(card_toggle_header("Variant Comparison", "cmp-icon", "cmp-toggle")),
+                dbc.Collapse(dbc.CardBody([
+                    dbc.Row([
+                        dbc.Col([
+                            dbc.Label("Select variant(s)"),
+                            dcc.Dropdown(
+                                id="multi-exp-branch",
+                                options=[{"label": b, "value": b} for b in sorted(df["variant"].dropna().unique())],
+                                value=[], multi=True
+                            )
+                        ], width=6),
+                    ], className="p-2 mb-3"),
+
+                    dbc.Row([
+                        dbc.Col([
+                            dbc.Label("Comparison Plot Type"),
+                            dcc.Dropdown(
+                                id="compare-plot-type",
+                                options=[{"label": t.title(), "value": t} for t in ["line", "scatter", "bar"]],
+                                value="line"
+                            )
+                        ], width=4),
+                        dbc.Col([
+                            dbc.Label("Aggregation Function"),
+                            dcc.Dropdown(
+                                id="compare-agg-func",
+                                options=[{"label": f.title(), "value": f} for f in agg_options],
+                                value="mean"
+                            )
+                        ], width=4),
+                        dbc.Col([
+                            dbc.Label("Y-Axis"),
+                            dcc.Dropdown(
+                                id="compare-y",
+                                options=[{"label": col, "value": col} for col in plot_columns],
+                                value=plot_columns[1]
+                            )
+                        ], width=4),
+                    ], className="p-2 mb-3"),
+
+                    dcc.Graph(id="compare-plot")
+                ]), id="cmp-collapse", is_open=True)
+            ]),
+            
+            #Regression Card
+            dbc.Card([
+                html.Div([
+                    dbc.CardHeader(
+                        dbc.Row([
+                            dbc.Col(html.H5("Regression Model Explorer"), align="center"),
+                            dbc.Col(html.Div(id="collapse-icon", style={"textAlign": "right", "cursor": "pointer"}), width="auto", align="center")
+                        ], justify="between", className="w-100"),
+                        className="p-2"
+                    )
+                ], id="toggle-area", n_clicks=0, style={"cursor": "pointer"}),
+
+                dbc.Collapse(
+                    dbc.CardBody([
+                        dbc.Row([
+                            dbc.Col([
+                                dbc.Label("Select Variant"),
+                                dcc.Dropdown(id="variant-dropdown", options=variant_options)
+                            ], md=6),
+                            dbc.Col([
+                                dbc.Label("Select Workload"),
+                                dcc.Dropdown(id="workload-dropdown", options=workload_options)
+                            ], md=6),
+                        ], className="mb-3"),
+
+                        dbc.Row([
+                            dbc.Col([
+                                dbc.Label("Select Features"),
+                                dcc.Dropdown(
+                                    id="feature-dropdown",
+                                    options=feature_options,
+                                    multi=True,
+                                    value=default_features
+                                )
+                            ], md=6),
+                            dbc.Col([
+                                dbc.Label("Select Target"),
+                                dcc.Dropdown(
+                                    id="target-dropdown",
+                                    options=feature_options,
+                                    value=default_target
+                                )
+                            ], md=6),
+                        ], className="mb-3"),
+
+                        html.Div(id="plot-output")
+                    ]),
+                    id="collapse-body",
+                    is_open=True
                 )
-            ], style={"width": "30%", "display": "inline-block", "margin-right": "2%"}),
+            ], className="my-4 p-2"),
+            
+            #Correlation Card
+            dbc.Card([
+                dbc.CardHeader(
+                    html.Div([
+                        html.Span("Statistical Influence Analysis", style={"fontWeight": "bold", "fontSize": "1.2rem"}),
+                        html.Span(id="collapse-icon", children="⯆", style={"float": "right", "cursor": "pointer", "fontSize": "1.5rem"})
+                    ], id="collapse-toggle", n_clicks=0, style={"cursor": "pointer", "display": "flex", "justifyContent": "space-between", "alignItems": "center"})
+                ),
+                dbc.Collapse(
+                    dbc.CardBody([
 
-            html.Div([
-                html.Label("Filter by exp_workload:"),
-                dcc.Dropdown(
-                    options=[{"label": w, "value": w} for w in sorted(df["exp_workload"].dropna().unique())],
-                    id="workload-dropdown",
-                    value=None,
-                    clearable=True
+                        # Selection Controls
+                        dbc.Card([
+                            dbc.CardHeader("Selection Controls"),
+                            dbc.CardBody([
+                                dbc.Row([
+                                    dbc.Col([
+                                        dbc.Label("Select Workload"),
+                                        dcc.Dropdown(id="workload-select", options=workload_options, value=workload_options[0]["value"]),
+                                    ], md=6),
+                                    dbc.Col([
+                                        dbc.Label("Select Variants"),
+                                        dcc.Dropdown(id="variant-select", options=variant_options, value=[v["value"] for v in variant_options], multi=True),
+                                    ], md=6)
+                                ])
+                            ])
+                        ], className="mb-4"),
+
+                        # Heatmaps
+                        dbc.Row([
+                            dbc.Col([
+                                dbc.Card([
+                                    dbc.CardHeader("Cliff's Delta"),
+                                    dbc.CardBody([
+                                        html.Div([
+                                            html.H5("Interpretation"),
+                                            html.Ul([
+                                                html.Li("Δ ≈ 0: no effect"),
+                                                html.Li("Δ ≈ ±0.1: small effect"),
+                                                html.Li("Δ ≈ ±0.33: medium effect"),
+                                                html.Li("Δ ≈ ±0.47 or more: large effect"),
+                                            ]),
+                                            html.P("Significance tested with Mann–Whitney U test (p < 0.05)."),
+                                        ], style={"minHeight": "180px"}),
+                                        html.Div(dcc.Graph(id="cliffs-heatmap"), style={"flex": "1 1 auto"})
+                                    ], style={"display": "flex", "flexDirection": "column", "height": "100%"})
+                                ], style={"height": "100%"})
+                            ], md=6),
+                            dbc.Col([
+                                dbc.Card([
+                                    dbc.CardHeader("Pearson Correlation"),
+                                    dbc.CardBody([
+                                        html.Div([
+                                            html.H5("Interpretation"),
+                                            html.Ul([
+                                                html.Li("r = 1: perfect positive linear relationship"),
+                                                html.Li("r = 0: no linear relationship"),
+                                                html.Li("r = -1: perfect negative linear relationship"),
+                                            ]),
+                                            html.P("Significance based on Pearson p-value (p < 0.05)."),
+                                        ], style={"minHeight": "180px"}),
+                                        html.Div(dcc.Graph(id="pearson-heatmap"), style={"flex": "1 1 auto"})
+                                    ], style={"display": "flex", "flexDirection": "column", "height": "100%"})
+                                ], style={"height": "100%"})
+                            ], md=6)
+                        ])
+                    ]),
+                    id="main-collapse",
+                    is_open=True
                 )
-            ], style={"width": "30%", "display": "inline-block"}),
+            ], className="my-4 p-3 shadow")
+            
+        ], fluid=True)
 
-            html.Hr(),
+        # Toggle callbacks
+        @app.callback(
+            Output("obs-collapse", "is_open"),
+            Output("obs-icon", "children"),
+            Input("obs-toggle", "n_clicks"),
+            State("obs-collapse", "is_open")
+        )
+        def toggle_obs(n, is_open):
+            if n == 0:
+                raise dash.exceptions.PreventUpdate
+            new_state = not is_open
+            return new_state, "⯆" if new_state else "⯇"
 
-            html.Div([
-                html.Label("Filter Column:"),
-                dcc.Dropdown(
-                    options=[{"label": col, "value": col} for col in df.columns],
-                    id="value-filter-column",
-                    placeholder="Select column to filter"
-                )
-            ], style={"width": "30%", "display": "inline-block", "margin-right": "2%"}),
+        @app.callback(
+            Output("cmp-collapse", "is_open"),
+            Output("cmp-icon", "children"),
+            Input("cmp-toggle", "n_clicks"),
+            State("cmp-collapse", "is_open")
+        )
+        def toggle_cmp(n, is_open):
+            if n == 0:
+                raise dash.exceptions.PreventUpdate
+            new_state = not is_open
+            return new_state, "⯆" if new_state else "⯇"
 
-            html.Div([
-                html.Label("Filter Values:"),
-                dcc.Dropdown(
-                    options=[],
-                    id="value-filter-values",
-                    multi=True,
-                    placeholder="Select values"
-                )
-            ], style={"width": "40%", "display": "inline-block"}),
-
-            html.Hr(),
-
-            html.Div([
-                html.Label("Main Plot Type:"),
-                dcc.Dropdown(
-                    options=[{"label": t.title(), "value": t} for t in ["scatter", "line", "box", "histogram", "bar"]],
-                    id="plot-type",
-                    value="scatter"
-                )
-            ], style={"width": "30%", "display": "inline-block"}),
-
-            html.Div([
-                html.Label("Group Plot By:"),
-                dcc.Dropdown(
-                    options=[{"label": col, "value": col} for col in group_columns],
-                    id="group-by",
-                    value="instance",
-                    clearable=False
-                )
-            ], style={"width": "30%", "display": "inline-block", "margin-left": "2%"}),
-
-            html.Div([
-                html.Label("X-axis:"),
-                dcc.Dropdown(
-                    options=[{"label": col, "value": col} for col in plot_columns],
-                    id="x-axis",
-                    value=plot_columns[0]
-                )
-            ], style={"width": "30%", "display": "inline-block", "margin-right": "2%"}),
-
-            html.Div([
-                html.Label("Y-axis:"),
-                dcc.Dropdown(
-                    options=[{"label": col, "value": col} for col in plot_columns],
-                    id="y-axis",
-                    value=plot_columns[1]
-                )
-            ], style={"width": "30%", "display": "inline-block"}),
-
-            dcc.Graph(id="main-plot"),
-            html.Div(id="summary-table"),
-
-            html.Hr(),
-            html.H3("Compare Multiple exp_branch"),
-
-            html.Div([
-                html.Label("Select exp_branch(es):"),
-                dcc.Dropdown(
-                    options=[{"label": b, "value": b} for b in sorted(df["exp_branch"].dropna().unique())],
-                    id="multi-exp-branch",
-                    value=[],
-                    multi=True
-                )
-            ], style={"width": "50%"}),
-
-            html.Div([
-                html.Label("Comparison Plot Type:"),
-                dcc.Dropdown(
-                    options=[{"label": t.title(), "value": t} for t in ["line", "scatter", "bar"]],
-                    id="compare-plot-type",
-                    value="line"
-                )
-            ], style={"width": "30%", "margin-top": "10px"}),
-
-            html.Div([
-                html.Label("Aggregation Function:"),
-                dcc.Dropdown(
-                    options=[{"label": f.title(), "value": f} for f in agg_options],
-                    id="compare-agg-func",
-                    value="mean"
-                )
-            ], style={"width": "30%", "margin-top": "10px"}),
-
-            html.Div([
-                html.Label("Y-axis:"),
-                dcc.Dropdown(
-                    options=[{"label": col, "value": col} for col in plot_columns],
-                    id="compare-y",
-                    value=plot_columns[1]
-                )
-            ], style={"width": "30%", "display": "inline-block"}),
-
-            dcc.Graph(id="compare-plot")
-        ])
-
+        # Value filter update
         @app.callback(
             Output("value-filter-values", "options"),
             Input("value-filter-column", "value")
@@ -709,24 +909,25 @@ class DataAnalysis:
                 return [{"label": str(v), "value": v} for v in sorted(unique_vals)]
             return []
 
+        # Main plot
         @app.callback(
-            dash.Output("main-plot", "figure"),
-            dash.Output("summary-table", "children"),
-            dash.Input("branch-dropdown", "value"),
-            dash.Input("workload-dropdown", "value"),
-            dash.Input("plot-type", "value"),
-            dash.Input("group-by", "value"),
-            dash.Input("x-axis", "value"),
-            dash.Input("y-axis", "value"),
-            dash.Input("value-filter-column", "value"),
-            dash.Input("value-filter-values", "value")
+            Output("main-plot", "figure"),
+            Output("summary-table", "children"),
+            Input("branch-dropdown", "value"),
+            Input("workload-dropdown", "value"),
+            Input("plot-type", "value"),
+            Input("group-by", "value"),
+            Input("x-axis", "value"),
+            Input("y-axis", "value"),
+            Input("value-filter-column", "value"),
+            Input("value-filter-values", "value")
         )
         def update_main_plot(branch, workload, plot_type, group_by, x_col, y_col, filter_col, filter_vals):
             dff = df.copy()
             if branch:
-                dff = dff[dff["exp_branch"] == branch]
+                dff = dff[dff["variant"] == branch]
             if workload:
-                dff = dff[dff["exp_workload"] == workload]
+                dff = dff[dff["workload"] == workload]
             if filter_col and filter_vals:
                 dff = dff[dff[filter_col].isin(filter_vals)]
             if x_col == "pod_name": dff[x_col] = dff[x_col].astype(str)
@@ -739,8 +940,8 @@ class DataAnalysis:
                 means = dff.groupby(x_col)[y_col].mean().reset_index()
                 fig.add_scatter(x=means[x_col], y=means[y_col], mode="markers", marker=dict(symbol="diamond", size=8, color="black"), name="Mean")
                 summary_df = dff.groupby(x_col)[y_col].describe().reset_index()
-                summary = html.Div([
-                    html.H4("Boxplot Summary Statistics"),
+                summary = dbc.Card([
+                    dbc.CardHeader("Boxplot Summary Statistics"),
                     dash_table.DataTable(
                         data=summary_df.round(2).to_dict("records"),
                         columns=[{"name": col, "id": col} for col in summary_df.columns],
@@ -751,16 +952,6 @@ class DataAnalysis:
                 ])
             elif plot_type == "scatter":
                 fig = px.scatter(dff, x=x_col, y=y_col, color=group)
-                #summary = html.Div([
-                #    html.H4("data"),
-                #    dash_table.DataTable(
-                #        data=dff.round(2).to_dict("records"),
-                #        columns=[{"name": col, "id": col} for col in dff.columns],
-                #        style_table={"overflowX": "auto"},
-                #        style_cell={"textAlign": "left", "padding": "5px"},
-                #        style_header={"fontWeight": "bold"},
-                #   )
-                #])
             elif plot_type == "line":
                 fig = px.line(dff, x=x_col, y=y_col, color=group, markers=True)
             elif plot_type == "histogram":
@@ -773,37 +964,296 @@ class DataAnalysis:
             fig.update_layout(title=f"{plot_type.title()} Plot: {y_col} vs {x_col}")
             return fig, summary
 
+        # Compare plot
         @app.callback(
-            dash.Output("compare-plot", "figure"),
-            dash.Input("multi-exp-branch", "value"),
-            dash.Input("compare-plot-type", "value"),
-            #Input("compare-x", "value"),
-            dash.Input("compare-y", "value"),
-            dash.Input("compare-agg-func", "value")
+            Output("compare-plot", "figure"),
+            Input("multi-exp-branch", "value"),
+            Input("compare-plot-type", "value"),
+            Input("compare-y", "value"),
+            Input("compare-agg-func", "value")
         )
         def update_compare_plot(branches, plot_type, y_col, agg_func):
             if not branches:
                 return px.scatter(title="Select branches to compare.")
-            dff = df[df["exp_branch"].isin(branches)].copy()
+            dff = df[df["variant"].isin(branches)].copy()
             if y_col == "pod_name":
                 dff[y_col] = dff[y_col].astype(str)
 
             try:
-                agg_df = dff.groupby("exp_branch")[y_col].agg(agg_func).reset_index()
+                agg_df = dff.groupby("variant")[y_col].agg(agg_func).reset_index()
             except Exception as e:
                 return px.scatter(title=f"Aggregation error: {e}")
 
             if plot_type == "line":
-                fig = px.line(agg_df, x="exp_branch", y=y_col, markers=True)
+                fig = px.line(agg_df, x="variant", y=y_col, markers=True)
             elif plot_type == "bar":
-                fig = px.bar(agg_df, x="exp_branch", y=y_col, barmode="group")
+                fig = px.bar(agg_df, x="variant", y=y_col, barmode="group")
             else:
-                fig = px.scatter(agg_df, x="exp_branch", y=y_col)
+                fig = px.scatter(agg_df, x="variant", y=y_col)
 
-            fig.update_layout(title=f"{agg_func.title()} of {y_col} by exp_branch")
+            fig.update_layout(title=f"{agg_func.title()} of {y_col} by variant")
             return fig
+
+        ####---------------------Regression Functions---------------------####
+        # Toggle collapse
+        @app.callback(
+            Output("collapse-body", "is_open"),
+            Input("toggle-area", "n_clicks"),
+            State("collapse-body", "is_open"),
+            prevent_initial_call=True
+        )
+        def toggle_collapse(n, is_open):
+            return not is_open
+
+        # Update arrow icon
+        @app.callback(
+            Output("collapse-icon", "children"),
+            Input("collapse-body", "is_open")
+        )
+        def update_icon(is_open):
+            return "⯆" if is_open else "⯇"
+
+        # Main output
+        @app.callback(
+            Output("plot-output", "children"),
+            Input("variant-dropdown", "value"),
+            Input("workload-dropdown", "value"),
+            Input("feature-dropdown", "value"),
+            Input("target-dropdown", "value")
+        )
+        def update_plot(variant, workload, features, target):
+            if not (variant and workload and features and target):
+                return dbc.Alert("Please select all inputs.", color="warning")
+
+            dff = df[(df["variant"] == variant) & (df["workload"] == workload)].dropna(subset=features + [target])
+            if dff.empty:
+                return dbc.Alert("No data available after filtering.", color="danger")
+
+            X = dff[features]
+            y = dff[target]
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+            scaler = StandardScaler()
+            X_train_scaled = scaler.fit_transform(X_train)
+            X_test_scaled = scaler.transform(X_test)
+
+            try:
+                X_sm = sm.add_constant(X_train_scaled)
+                sm_model = sm.OLS(y_train, X_sm).fit()
+                ols_summary_text = sm_model.summary().as_text()
+            except Exception as e:
+                ols_summary_text = f"OLS failed: {e}"
+
+            lr = LinearRegression().fit(X_train_scaled, y_train)
+            ridge = Ridge(alpha=1.0).fit(X_train_scaled, y_train)
+            lasso = Lasso(alpha=0.01).fit(X_train_scaled, y_train)
+            rf = RandomForestRegressor(n_estimators=100, random_state=42).fit(X_train, y_train)
+
+            models = {
+                "Linear": (lr, lr.predict(X_test_scaled)),
+                "Ridge": (ridge, ridge.predict(X_test_scaled)),
+                "Lasso": (lasso, lasso.predict(X_test_scaled)),
+                "Random Forest": (rf, rf.predict(X_test))
+            }
+
+            results = []
+            for name, (model, y_pred) in models.items():
+                results.append({
+                    "Model": name,
+                    "R²": round(r2_score(y_test, y_pred), 3),
+                    "MSE": round(mean_squared_error(y_test, y_pred), 6),
+                    "Pred": y_pred
+                })
+
+            scatter_fig = go.Figure()
+            colors = {"Linear": "blue", "Ridge": "green", "Lasso": "purple", "Random Forest": "orange"}
+            for res in results:
+                scatter_fig.add_trace(go.Scatter(
+                    x=y_test,
+                    y=res["Pred"],
+                    mode="markers",
+                    name=res["Model"],
+                    marker=dict(size=6, opacity=0.7, color=colors[res["Model"]])
+                ))
+
+            scatter_fig.add_trace(go.Scatter(
+                x=[y_test.min(), y_test.max()],
+                y=[y_test.min(), y_test.max()],
+                mode="lines",
+                name="Ideal",
+                line=dict(color="red", dash="dash")
+            ))
+
+            scatter_fig.update_layout(
+                title="Actual vs. Predicted",
+                xaxis_title=f"Actual {target}",
+                yaxis_title=f"Predicted {target}",
+                height=500
+            )
+
+            importance_fig = make_subplots(
+                rows=1, cols=4,
+                shared_yaxes=True,
+                horizontal_spacing=0.05,
+                subplot_titles=("Linear", "Ridge", "Lasso", "Random Forest")
+            )
+
+            for i, (name, model) in enumerate([("Linear", lr), ("Ridge", ridge), ("Lasso", lasso)], start=1):
+                importance_fig.add_trace(go.Bar(
+                    x=model.coef_, y=features, orientation="h", showlegend=False
+                ), row=1, col=i)
+
+            importance_fig.add_trace(go.Bar(
+                x=rf.feature_importances_, y=features, orientation="h", showlegend=False
+            ), row=1, col=4)
+
+            importance_fig.update_layout(
+                height=400,
+                title_text="Feature Importances by Model",
+                margin=dict(t=50)
+            )
+
+            summary_table = dbc.Card([
+                dbc.CardHeader("Model Performance Summary"),
+                dash_table.DataTable(
+                    data=[{"Model": r["Model"], "R²": r["R²"], "MSE": r["MSE"]} for r in results],
+                    columns=[{"name": i, "id": i} for i in ["Model", "R²", "MSE"]],
+                    style_table={"overflowX": "auto"},
+                    style_cell={"textAlign": "center"},
+                    style_header={"fontWeight": "bold"}
+                )
+            ], className="my-4")
+
+            def model_card(title, intercept, r2, mse, coefs):
+                lines = [f"Intercept: {intercept:.4f}", f"R²: {r2:.4f}", f"MSE: {mse:.6f}", "", "Coefficients:"]
+                lines += [f"{f}: {round(c, 4)}" for f, c in zip(features, coefs)]
+                return dbc.Card([
+                    dbc.CardHeader(title),
+                    dbc.CardBody(html.Pre("\n".join(lines), style={"whiteSpace": "pre-wrap", "fontSize": "13px"}))
+                ])
+
+            def rf_card(title, r2, mse, importances):
+                lines = [f"R²: {r2:.4f}", f"MSE: {mse:.6f}", "", "Feature Importances:"]
+                lines += [f"{f}: {round(i, 4)}" for f, i in zip(features, importances)]
+                return dbc.Card([
+                    dbc.CardHeader(title),
+                    dbc.CardBody(html.Pre("\n".join(lines), style={"whiteSpace": "pre-wrap", "fontSize": "13px"}))
+                ])
+
+            summaries_row = dbc.Row([
+                dbc.Col(model_card("Linear Regression", lr.intercept_, r2_score(y_test, lr.predict(X_test_scaled)), mean_squared_error(y_test, lr.predict(X_test_scaled)), lr.coef_), md=6, lg=4),
+                dbc.Col(model_card("Ridge Regression", ridge.intercept_, r2_score(y_test, ridge.predict(X_test_scaled)), mean_squared_error(y_test, ridge.predict(X_test_scaled)), ridge.coef_), md=6, lg=4),
+                dbc.Col(model_card("Lasso Regression", lasso.intercept_, r2_score(y_test, lasso.predict(X_test_scaled)), mean_squared_error(y_test, lasso.predict(X_test_scaled)), lasso.coef_), md=6, lg=4),
+                dbc.Col(rf_card("Random Forest", r2_score(y_test, rf.predict(X_test)), mean_squared_error(y_test, rf.predict(X_test)), rf.feature_importances_), md=6, lg=4),
+            ], className="gy-4 my-4")
+
+            ols_summary = dbc.Card([
+                dbc.CardHeader("OLS Regression Summary (statsmodels)"),
+                dbc.CardBody(html.Pre(ols_summary_text, style={"whiteSpace": "pre-wrap", "fontSize": "13px"}))
+            ])
+
+            return dbc.Card([
+                dbc.CardHeader("Regression Results"),
+                dbc.CardBody([
+                    dcc.Graph(figure=scatter_fig),
+                    dcc.Graph(figure=importance_fig),
+                    summary_table,
+                    summaries_row,
+                    ols_summary
+                ])
+            ], className="mb-4 p-2")
+
+        ####---------------------Correlation Functions---------------------####
+        def toggle_main(n, is_open):
+            if n == 0:
+                raise dash.exceptions.PreventUpdate
+            new_state = not is_open
+            return new_state, "⯆" if new_state else "⯇"
+
+        # Heatmap callback
+        @app.callback(
+            Output("cliffs-heatmap", "figure"),
+            Output("pearson-heatmap", "figure"),
+            Input("variant-select", "value"),
+            Input("workload-select", "value")
+        )
+        def update_heatmaps(selected_variants, selected_workload):
+            if not selected_variants or len(selected_variants) < 2 or not selected_workload:
+                empty_fig = px.imshow([[0]], x=["Select ≥2"], y=["Select ≥2"],
+                                    labels=dict(x="Variant", y="Variant", color="Value"),
+                                    title="Please select at least 2 variants and a workload.")
+                return empty_fig, empty_fig
+
+            data = df[(df["variant"].isin(selected_variants)) & (df["workload"] == selected_workload)]
+            cliffs_matrix = pd.DataFrame(index=selected_variants, columns=selected_variants, dtype=float)
+            pearson_matrix = pd.DataFrame(index=selected_variants, columns=selected_variants, dtype=float)
+            hover_cliff, hover_pearson = [], []
+
+            grouped = {v: data[data["variant"] == v]["wattage_kepler"].dropna() for v in selected_variants}
+
+            for v1 in selected_variants:
+                row_cliff = []
+                row_pearson = []
+                for v2 in selected_variants:
+                    x, y = grouped.get(v1), grouped.get(v2)
+                    if v1 == v2:
+                        cliffs_matrix.loc[v1, v2] = 0.0
+                        pearson_matrix.loc[v1, v2] = 1.0
+                        row_cliff.append("Δ = 0.000")
+                        row_pearson.append("r = 1.000<br>p = 0.000")
+                    elif x.empty or y.empty:
+                        cliffs_matrix.loc[v1, v2] = np.nan
+                        pearson_matrix.loc[v1, v2] = np.nan
+                        row_cliff.append("N/A")
+                        row_pearson.append("N/A")
+                    else:
+                        try:
+                            delta = cliffs_delta(x, y)
+                            p_cliff = mannwhitneyu(x, y, alternative='two-sided').pvalue
+                            cliffs_matrix.loc[v1, v2] = round(delta, 3)
+                            row_cliff.append(f"Δ = {delta:.3f}<br>p = {p_cliff:.3f}")
+                        except:
+                            cliffs_matrix.loc[v1, v2] = np.nan
+                            row_cliff.append("Error")
+                        try:
+                            n = min(len(x), len(y))
+                            r_val, p_val = pearsonr(x[:n], y[:n])
+                            pearson_matrix.loc[v1, v2] = round(r_val, 3)
+                            row_pearson.append(f"r = {r_val:.3f}<br>p = {p_val:.3f}")
+                        except:
+                            pearson_matrix.loc[v1, v2] = np.nan
+                            row_pearson.append("Error")
+                hover_cliff.append(row_cliff)
+                hover_pearson.append(row_pearson)
+
+            zmin, zmax = -1, 1
+
+            fig_cliffs = px.imshow(
+                cliffs_matrix.astype(float),
+                text_auto=True,
+                color_continuous_scale="RdBu",
+                zmin=zmin, zmax=zmax,
+                labels=dict(x="Variant", y="Variant", color="Cliff's Δ"),
+                title=f"Cliff's Delta — {selected_workload}",
+                x=selected_variants,
+                y=selected_variants
+            )
+            fig_cliffs.update_traces(customdata=np.array(hover_cliff), hovertemplate="%{customdata}<extra></extra>")
+
+            fig_pearson = px.imshow(
+                pearson_matrix.astype(float),
+                text_auto=True,
+                color_continuous_scale="RdBu",
+                zmin=zmin, zmax=zmax,
+                labels=dict(x="Variant", y="Variant", color="Pearson r"),
+                title=f"Pearson Correlation — {selected_workload}",
+                x=selected_variants,
+                y=selected_variants
+            )
+            fig_pearson.update_traces(customdata=np.array(hover_pearson), hovertemplate="%{customdata}<extra></extra>")
+
+            return fig_cliffs, fig_pearson
+
         
-        logger.info(f"Start Server datashape {df.shape}")
         app.run(host="0.0.0.0", port=8050, debug=False, use_reloader=False)
 
 if __name__ == '__main__':

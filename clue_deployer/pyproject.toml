@@ -26,5 +26,14 @@ dependencies = [
     "glasbey",
     "dash",
     "plotly",
-    "tables"
+    "tables",
+    "dash_table",
+    "dash_bootstrap_components", 
+    "pandas",
+    "matplotlib",
+    "numpy",
+    "scikit-learn",
+    "statsmodels",
+    "scipy"
+
 ]
