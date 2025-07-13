@@ -103,7 +103,10 @@ class VariantDeployer:
                 )
             if prometheus_status.returncode != 0:
                # Install with NodePort service type for Prometheus if required
-                logger.info(f"Skipped Prometheus installation. The PRECONFIGURE_CLUSTER set to '{os.getenv("PRECONFIGURE_CLUSTER")}'" )
+                if os.getenv("PRECONFIGURE_CLUSTER", "false").lower() == "true":
+                    logger.info(f"Skipped Prometheus installation. The PRECONFIGURE_CLUSTER set to true " )
+                else:
+                    logger.info(f"kipped Prometheus installation. The PRECONFIGURE_CLUSTER set to false ")
                 #if os.getenv("PRECONFIGURE_CLUSTER"):
                 #    logger.info("Helm chart 'kube-prometheus-stack' is not installed. Installing it now...")
                 #    logger.info("Note: You may see some 'memcache.go' warnings during installation - these are harmless.")
@@ -146,7 +149,10 @@ class VariantDeployer:
             )
             if kepler_status.returncode != 0:
                 # Install Kepler if required
-                logger.info(f"Skipped Kepler installation.The PRECONFIGURE_CLUSTER set to '{os.getenv("PRECONFIGURE_CLUSTER")}'")
+                if os.getenv("PRECONFIGURE_CLUSTER", "false").lower() == "true":
+                    logger.info(f"Skipped kepler installation. The PRECONFIGURE_CLUSTER set to true " )
+                else:
+                    logger.info(f"kipped kepler installation. The PRECONFIGURE_CLUSTER set to false ")
                 #if os.getenv("PRECONFIGURE_CLUSTER"):
                 #    logger.info("Helm chart 'Kepler' is not installed. Installing it now...")
                 #    subprocess.check_call([
