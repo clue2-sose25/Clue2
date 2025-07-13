@@ -72,7 +72,7 @@ clueDeployer:
     DEPLOY_AS_SERVICE: "false"
     HELM_DRIVER: configmap
   job:
-    enabled: false
+    enabled: true
 clueWebui:
   enabled: true
   image: clue2-webui

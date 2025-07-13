@@ -6,7 +6,7 @@ metadata:
     {{- include "clue.labels" . | nindent 4 }}
 spec:
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   resources:
     requests:
       storage: 10Gi
