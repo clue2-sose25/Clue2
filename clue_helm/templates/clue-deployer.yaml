@@ -45,10 +45,12 @@ spec:
             httpGet:
               path: {{ .Values.clueDeployer.probes.path }}
               port: {{ .Values.clueDeployer.service.port }}
+            initialDelaySeconds: 600
           livenessProbe:
             httpGet:
               path: {{ .Values.clueDeployer.probes.path }}
               port: {{ .Values.clueDeployer.service.port }}
+            initialDelaySeconds: 600
       volumes:
         - name: data
           emptyDir: {}

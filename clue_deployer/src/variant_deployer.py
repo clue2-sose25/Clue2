@@ -103,18 +103,19 @@ class VariantDeployer:
                 )
             if prometheus_status.returncode != 0:
                # Install with NodePort service type for Prometheus if required
-                if os.getenv("PRECONFIGURE_CLUSTER"):
-                    logger.info("Helm chart 'kube-prometheus-stack' is not installed. Installing it now...")
-                    logger.info("Note: You may see some 'memcache.go' warnings during installation - these are harmless.")
-                    subprocess.check_call([
-                        "helm", "install", "kps1", "prometheus-community/kube-prometheus-stack",
-                        "--set", "prometheus.service.type=NodePort",
-                        "--set", "prometheus.service.nodePort=30090",
-                        "--wait",
-                        "--timeout", "15m"
-                    ])
-                else:
-                    logger.info("Skipped Prometheus installation. The PRECONFIGURE_CLUSTER set to false.")
+                logger.info(f"Skipped Prometheus installation. The PRECONFIGURE_CLUSTER set to '{PRECONFIGURE_CLUSTER}'" )
+                #if os.getenv("PRECONFIGURE_CLUSTER"):
+                #    logger.info("Helm chart 'kube-prometheus-stack' is not installed. Installing it now...")
+                #    logger.info("Note: You may see some 'memcache.go' warnings during installation - these are harmless.")
+                #    subprocess.check_call([
+                #        "helm", "install", "kps1", "prometheus-community/kube-prometheus-stack",
+                #        "--set", "prometheus.service.type=NodePort",
+                #        "--set", "prometheus.service.nodePort=30090",
+                #        "--wait",
+                #        "--timeout", "15m"
+                #    ])
+                #else:
+                #    logger.info("Skipped Prometheus installation. The PRECONFIGURE_CLUSTER set to false.")
             else:
                 logger.info("Prometheus stack found")
                 # Check if service is already NodePort, if not patch it
@@ -145,19 +146,20 @@ class VariantDeployer:
             )
             if kepler_status.returncode != 0:
                 # Install Kepler if required
-                if os.getenv("PRECONFIGURE_CLUSTER"):
-                    logger.info("Helm chart 'Kepler' is not installed. Installing it now...")
-                    subprocess.check_call([
-                        "helm", "install", "kepler", "kepler/kepler",
-                        "--namespace", "kepler",
-                        "--create-namespace",
-                        "--set", "serviceMonitor.enabled=true",
-                        "--set", "serviceMonitor.labels.release=kps1",
-                        "--wait",
-                        "--timeout", "10m"
-                    ])
-                else:
-                    logger.info("Skipped Kepler installation. The PRECONFIGURE_CLUSTER set to false.")
+                logger.info(f"Skipped Kepler installation.The PRECONFIGURE_CLUSTER set to '{PRECONFIGURE_CLUSTER}'")
+                #if os.getenv("PRECONFIGURE_CLUSTER"):
+                #    logger.info("Helm chart 'Kepler' is not installed. Installing it now...")
+                #    subprocess.check_call([
+                #        "helm", "install", "kepler", "kepler/kepler",
+                #        "--namespace", "kepler",
+                #        "--create-namespace",
+                #        "--set", "serviceMonitor.enabled=true",
+                #        "--set", "serviceMonitor.labels.release=kps1",
+                #        "--wait",
+                #        "--timeout", "10m"
+                #    ])
+                #else:
+                #    logger.info(f"Skipped Kepler installation.The PRECONFIGURE_CLUSTER set to '{PRECONFIGURE_CLUSTER}'")
             else:
                 logger.info("Kepler stack found")
             logger.info("All cluster requirements fulfilled")
@@ -242,13 +244,13 @@ class VariantDeployer:
         StatusManager.set(StatusPhase.DEPLOYING_SUT, "Deploying SUT...")
         # Check for namespace
         logger.info(f"Checking if namespace '{SUT_CONFIG.namespace}' exists")
-        # self._create_namespace_if_not_exists()
+        self._create_namespace_if_not_exists()
         # Check for nodes labels
         logger.info(f"Checking for nodes with label scaphandre=true")
-        # self._check_labeled_node_available()
+        self._check_labeled_node_available()
         # Installs Prometheus, Kepler
         logger.info("Ensuring cluster observability requirements")
-        #self._ensure_helm_requirements() 
+        self._ensure_helm_requirements() 
         # Clones the SUT repository
         self.clone_sut() 
         # Prepare the Helm wrapper as a context manager

@@ -6,7 +6,7 @@ sutConfig: |
   config:
     # The name of the SUT
     sut: "toystore"
-    namespace: "default"
+    namespace: "toystore"
     sut_git_repo: "https://github.com/clue2-sose25/sustainable_toystore"
     sut_path: "toystore"
     helm_chart_path: "toystore/toystore"
@@ -55,7 +55,7 @@ clueDeployer:
   enabled: true
   image: clue2-deployer
   tag: pr-test
-  serviceAccountName: clue-deployer
+  serviceAccountName: st-cp25clue2-user  
   service:
     port: 8000
     type: ClusterIP # Change to NodePort if needed or LoadBalancer if need to access with IP_NODE:PORT
