@@ -89,14 +89,7 @@ loadGenerator:
   tag: latest
   # Set this to mount a folder path within the chart to include all locust files
   workloadDir: default_workloads_toystore
-  workloadFiles:
-    example.py: |
-      from locust import HttpUser, task
-
-      class Example(HttpUser):
-          @task
-          def index(self):
-              self.client.get("/")
+  workloadFiles: {}
 ingress:
   enabled: false
   host: clue.example.com
