@@ -13,6 +13,6 @@ spec:
     - port: {{ .Values.clueDeployer.service.port }}
       targetPort: {{ .Values.clueDeployer.service.port }}
       {{- if and .Values.clueDeployer.service.nodePort (ne .Values.clueDeployer.service.type "ClusterIP") }}
-        nodePort: {{ .Values.clueDeployer.service.nodePort }}
+      nodePort: {{ .Values.clueDeployer.service.nodePort }}
       {{- end }}
 {{- end }}

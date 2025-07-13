@@ -69,17 +69,17 @@ clueDeployer:
     VARIANTS: baseline
     WORKLOADS: shaped
     PRECONFIGURE_CLUSTER: "false"
-    DEPLOY_AS_SERVICE: "false"
+    DEPLOY_AS_SERVICE: "true"
     HELM_DRIVER: configmap
   job:
-    enabled: true
+    enabled: false
 clueWebui:
   enabled: true
   image: clue2-webui
   tag: pr-test
   service:
     port: 80
-    type: ClusterIP # Change to NodePort if needed or LoadBalancer if need to access with IP_NODE:PORT
+    type: NodePort # Change to NodePort if needed or LoadBalancer if need to access with IP_NODE:PORT
     nodePort: 30501
   env:
     API_BASE_URL: http://clue-deployer:8000

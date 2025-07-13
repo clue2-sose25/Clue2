@@ -57,8 +57,7 @@ spec:
             initialDelaySeconds: 600
       volumes:
         - name: clue-data
-          persistentVolumeClaim:
-            claimName: clue-data
+          emptyDir: {}
         - name: sut-config
           configMap:
             name: sut-config

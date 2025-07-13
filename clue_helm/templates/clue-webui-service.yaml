@@ -6,13 +6,13 @@ metadata:
   labels:
     {{- include "clue.labels" . | nindent 4 }}
 spec:
-  type: {{ .Values.clueDeployer.service.type | default "ClusterIP" }}
+  type: NodePort
   selector:
     app: clue-webui
   ports:
     - port: {{ .Values.clueWebui.service.port }}
       targetPort: 80
       {{- if and .Values.clueWebui.service.nodePort (ne .Values.clueWebui.service.type "ClusterIP") }}
-        nodePort: {{ .Values.clueWebui.service.nodePort }}
-        {{- end }}
+      nodePort: {{ .Values.clueWebui.service.nodePort }}
+      {{- end }}
 {{- end }}
