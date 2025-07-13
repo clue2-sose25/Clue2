@@ -61,6 +61,9 @@ spec:
         - name: sut-config
           configMap:
             name: sut-config
+        - name: workload-files
+          configMap:
+            name: loadgenerator-workload
         - name: clue-config-file
           configMap:
             name: clue-config-file
