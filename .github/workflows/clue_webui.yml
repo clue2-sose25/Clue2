@@ -66,9 +66,9 @@ jobs:
       # small tests about the webui
       - name: Smoke test clue_webui container
         run: |
-          docker run -p 5001:80 -d --name=clue-webui ghcr.io/clue2-sose25/clue2-${IMAGE_NAME}:pr-test \
-            -e NGINX_RESOLVER=localhost \
-            -e NGINX_RESOLVER_VALID=20s 
+          docker run -p 5001:80 -d --name=clue-webui ghcr.io/clue2-sose25/clue2-${IMAGE_NAME}:pr-test -e NGINX_RESOLVER=localhost \
+            -e NGINX_RESOLVER_VALID=20s
+          # Wait for the container to start
           sleep 8
           curl -fs http://localhost:5001/ | grep -q "Clue Dashboard" && echo "Web UI Up and running"
           docker logs clue-webui || true
