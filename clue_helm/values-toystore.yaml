@@ -16,8 +16,8 @@ sutConfig: |
     default_resource_limits:
       cpu: 1000
       memory: 1024
-    wait_before_workloads: 120
-    wait_after_workloads: 120
+    wait_before_workloads: 30
+    wait_after_workloads: 30
   helm_replacements: []
   workloads:
     - name: "shaped"
@@ -89,7 +89,6 @@ loadGenerator:
   tag: latest
   # Set this to mount a folder path within the chart to include all locust files
   workloadDir: default_workloads_toystore
-  workloadFiles: {}
 ingress:
   enabled: false
   host: clue.example.com

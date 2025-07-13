@@ -58,14 +58,7 @@ loadGenerator:
   tag: "latest"
   # optionally mount all locust files from a folder within the chart
   workloadDir: ""
-  workloadFiles:
-    example.py: |
-      from locust import HttpUser, task
-
-      class Example(HttpUser):
-          @task
-          def index(self):
-              self.client.get("/")
+  workloadFiles:  {}
 ingress:
   enabled: true
   host: clue.example.com
