@@ -38,6 +38,7 @@ services:
     ports:
       - "9001:8000"
       - "5678:5678"
+      - "8050:8050" # for result Server
     privileged: true
     depends_on:
       - registry
@@ -125,7 +126,7 @@ services:
       - registry
     environment:
       DOCKER_BUILDKIT: 1
-      OTS_EXP_NAME: ${OTS_EXP_NAME}
+      TOYSTORE_EXP_NAME: ${TOYSTORE_EXP_NAME}
     volumes:
       # CLUE Configs
       - ./clue-config.yaml:/app/clue-config.yaml

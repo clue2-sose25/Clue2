@@ -9,6 +9,7 @@ import type {ResultDetails} from "../models/ResultsDetails";
 import ResultDetailsDisplay from "../components/results/ResultDetailsDisplay";
 import {DeploymentContext} from "../contexts/DeploymentContext";
 import {QueueContext} from "../contexts/QueueContext";
+import ResultsServerFrame from "../components/results/ResultsServerFrame";
 
 // Define params type for useParams
 type ResultEntryParams = {
@@ -123,34 +124,6 @@ const ResultPage = () => {
         }
         const resultData: ResultDetails = await resultRes.json();
         setResultDetails(resultData);
-
-        // const res = await fetch(`/api/results/assets/${uuid}`);
-        // if (!res.ok) {
-        //   const err = await res.json();
-        //   throw new Error(err.detail || "Failed to load result assets");
-        // }
-
-        // const data = await res.json();
-
-        // const entries = Object.entries(data.metrics) as [
-        //   string,
-        //   string | number | null | boolean
-        // ][];
-        // const metricsArr: Metric[] = entries.map(([label, value]) => ({
-        //   label,
-        //   value:
-        //     typeof value === "number"
-        //       ? Number(value.toFixed(2))
-        //       : typeof value === "string"
-        //         ? value
-        //         : JSON.stringify(value),
-        // }));
-        // setMetrics(metricsArr);
-        // setSvgData({
-        //   cpu: data.cpu_svg,
-        //   memory: data.memory_svg,
-        //   wattage: data.wattage_svg,
-        // });
       } catch (err) {
         console.error("Error fetching data:", err);
         setResultDetails(null);
@@ -159,12 +132,6 @@ const ResultPage = () => {
 
     fetchData();
   }, [uuid]);
-
-  // const [svgData, setSvgData] = useState<{
-  //   cpu: string;
-  //   memory: string;
-  //   wattage: string;
-  // } | null>(null);
 
   return (
     <div className="w-full h-full flex flex-col gap-6 p-6 pt-4">
@@ -194,8 +161,8 @@ const ResultPage = () => {
             </button>
           </div>
         </div>
-
         {resultDetails && <ResultDetailsDisplay data={resultDetails} />}
+        {resultDetails && <ResultsServerFrame data={resultDetails} />}
       </div>
     </div>
   );
