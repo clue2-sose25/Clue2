@@ -96,6 +96,7 @@ class ResourceTracker:
 
         self.prometheus_url = prometheus_url
         if self.prometheus_url:
+            logger.info(f"Connecting to Prometheus at {self.prometheus_url}")
             self.prm = PrometheusConnect(url=self.prometheus_url, disable_ssl=True)
             if not self.prm.check_prometheus_connection():
                 raise ValueError("Could not connect to Prometheus.")
@@ -136,6 +137,7 @@ class ResourceTracker:
             raise ValueError("Prometheus does not provide a vaild network metric.")
         
         # Initialize node_map - will be refreshed during each track() call
+        logger.info("prometheus_url is set, initializing node_map. and fetching meticis.")
         self.node_map = {}
         self._refresh_node_map()
 
