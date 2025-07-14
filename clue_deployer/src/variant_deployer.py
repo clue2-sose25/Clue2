@@ -343,7 +343,7 @@ class VariantDeployer:
             except:
                 logger.info("NodePort not accessible, will use port-forward...")
                 grafana_url = "http://grafana.clue-monitoring:80"
-            logging.info(f"Using Grafana URL: {grafana_url}")   
+            logger.info(f"Using Grafana URL: {grafana_url}")   
             manager = GrafanaManager(
                 grafana_url=grafana_url,
                 username=ENV_CONFIG.GRAFANA_USERNAME, 

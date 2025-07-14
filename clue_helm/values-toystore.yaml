@@ -93,6 +93,10 @@ clueDeployer:
     PRECONFIGURE_CLUSTER: "false"
     DEPLOY_AS_SERVICE: "true"
     HELM_DRIVER: configmap
+    GRAFANA_USERNAME: admin
+    GRAFANA_PASSWORD: prom-operator
+    GRAFANA_URL: http://grafana.clue-monitoring:80
+    PROMETHEUS_URL: http://prometheus.monitoring:80
   job:
     enabled: false
 clueWebui:
@@ -107,10 +111,6 @@ clueWebui:
     API_BASE_URL: http://clue-deployer:8000
     NGINX_RESOLVER: 10.96.0.10
     NGINX_RESOLVER_VALID: 10s
-    GRAFANA_USERNAME: admin
-    GRAFANA_PASSWORD: SECRET
-    GRAFANA_URL: http://grafana.clue-monitoring:80
-    PROMETHEUS_URL: http://prometheus.monitoring:80
 loadGenerator:
   jobEnabled: false
   image: clue2-loadgenerator-builder
