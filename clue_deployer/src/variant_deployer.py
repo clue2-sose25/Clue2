@@ -101,13 +101,12 @@ class VariantDeployer:
             # Check if kube-prometheus-stack is installed
             logger.info("Checking for Prometheus stack")
             prometheus_status = subprocess.run(
-                ["helm", "status", "kps1"],
+                ["helm", "status", "prometheus"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True
                 )
             if prometheus_status.returncode != 0:
-               # Install with NodePort service type for Prometheus if required
                 logger.warning("Helm chart 'prometheus-stack' is not installed.")
                 if os.getenv("PRECONFIGURE_CLUSTER", "false").lower() == "true":
                     logger.info(f"Skipped Prometheus installation. The PRECONFIGURE_CLUSTER set to true " )
@@ -301,7 +300,12 @@ class VariantDeployer:
         logger.info(f"Checking nodes with label scaphandre=true done")
         # Installs Prometheus, Kepler
         logger.info("Ensuring cluster observability requirements")
-        self._ensure_helm_requirements() 
+        if os.getenv("PRECONFIGURE_CLUSTER", "false").lower() == "true":
+            logger.warning(" Helm requirements installation. The PRECONFIGURE_CLUSTER set to true")
+            self._ensure_helm_requirements() 
+        else:
+            logger.info("Skipping Helm requirements installation. The PRECONFIGURE_CLUSTER set to false")
+            self._ensure_helm_requirements() 
         # Clones the SUT repository
         self.clone_sut() 
         # Prepare the Helm wrapper as a context manager
