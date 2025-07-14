@@ -16,6 +16,7 @@ from clue_deployer.src.service.status_manager import StatusManager, StatusPhase
 from clue_deployer.src.service.grafana_manager import GrafanaManager
 
 # Adjust the base directory to the location 
+# it was BASE_DIR = Path(__file__).resolve().parent.parent.parent 
 BASE_DIR = Path(__file__).resolve().parent
 
 class VariantDeployer:
@@ -296,12 +297,12 @@ class VariantDeployer:
         logger.info("Ensuring cluster observability requirements")
         if os.getenv("PRECONFIGURE_CLUSTER", "false").lower() == "true":
             logger.warning(" Helm requirements installation. The PRECONFIGURE_CLUSTER set to true")
+            # to stay safe, we will not install the requirements if the PRECONFIGURE_CLUSTER is set to false
             #self._ensure_helm_requirements() 
         else:
             logger.info(" Helm requirements installation. The PRECONFIGURE_CLUSTER set to false")
             logger.info("Setting up Grafana dashboards")
             self._setup_grafana_dashboard()
-            #self._ensure_helm_requirements() 
         # Clones the SUT repository
         self.clone_sut() 
         # Prepare the Helm wrapper as a context manager
@@ -353,7 +354,7 @@ class VariantDeployer:
 
             if manager.wait_for_grafana_ready(timeout=60):
                 if dashboard_path.exists():
-                    port = 3080 if ":80" in grafana_url else 30800
+                    port = 80 if ":80" in grafana_url else 30800
                     success = manager.setup_complete_grafana_environment(dashboard_path, port)
                     if success:
                         logger.info("✅ Dashboard imported successfully")
@@ -383,7 +384,7 @@ class VariantDeployer:
             # Setup complete Grafana environment
             success = grafana_manager.setup_complete_grafana_environment(
                 dashboard_path, 
-                node_port=30800
+                node_port= 80 if ":80" in grafana_url else 30800
             )
             
             if success:

@@ -17,7 +17,7 @@ class GrafanaManager:
         self.session.auth = (username, password)
         self.session.headers.update({"Content-Type": "application/json"})
 
-    def wait_for_grafana_ready(self, timeout: int = 60) -> bool:
+    def wait_for_grafana_ready(self, timeout: int = 30) -> bool:
         """Wait until Grafana's health endpoint responds successfully."""
         end_time = time.time() + timeout
         url = f"{self.grafana_url}/api/health"
