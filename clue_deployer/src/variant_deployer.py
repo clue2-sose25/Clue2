@@ -90,6 +90,11 @@ class VariantDeployer:
             if "kepler" not in helm_repos:
                 logger.info("Helm repository 'kepler' is not added. Adding it now...")
                 subprocess.check_call(["helm", "repo", "add", "kepler", "https://sustainable-computing-io.github.io/kepler-helm-chart"])
+            # TODO: FADEL
+            if "grafana" not in helm_repos:
+                logger.info("Helm repository 'grafana' is not added. Adding it now...")
+                subprocess.check_call(["helm", "repo", "add", "grafana", "https://grafana.github.io/helm-charts"])
+            # TODO: FADEL END
             # Update Helm repos
             logger.info("Updating helm repos")
             subprocess.check_call(["helm", "repo", "update"])
@@ -169,7 +174,7 @@ class VariantDeployer:
                 if os.getenv("PRECONFIGURE_CLUSTER", "false").lower() == "true":
                     logger.info(f"Skipped kepler installation. The PRECONFIGURE_CLUSTER set to true " )
                 else:
-                    logger.info(f"kipped kepler installation. The PRECONFIGURE_CLUSTER set to false ")
+                    logger.info(f"Skipped kepler installation ALSO. The PRECONFIGURE_CLUSTER set to false ")
                 #if os.getenv("PRECONFIGURE_CLUSTER"):
                 #    logger.info("Helm chart 'Kepler' is not installed. Installing it now...")
                 #    subprocess.check_call([
@@ -185,11 +190,11 @@ class VariantDeployer:
                 #    logger.info(f"Skipped Kepler installation.The PRECONFIGURE_CLUSTER set to '{PRECONFIGURE_CLUSTER}'")
             else:
                 logger.info("Kepler stack found")
-            
+            # TODO: FADEL 
             # Setup Grafana dashboards
             logger.info("Setting up Grafana dashboards")
-            self._setup_grafana_dashboard()
-            
+            # self._setup_grafana_dashboard()
+            # TODO: FADEL END
             logger.info("All cluster requirements fulfilled")
         except subprocess.CalledProcessError as e:
             logger.error(f"Error while fulfilling Helm requirements: {e}")
@@ -287,10 +292,11 @@ class VariantDeployer:
         StatusManager.set(StatusPhase.DEPLOYING_SUT, "Deploying SUT...")
         # Check for namespace
         logger.info(f"Checking if namespace '{SUT_CONFIG.namespace}' exists")
-        #self._create_namespace_if_not_exists()
+        self._create_namespace_if_not_exists()
         # Check for nodes labels
         logger.info(f"Checking for nodes with label scaphandre=true")
-        #self._check_labeled_node_available()
+        self._check_labeled_node_available()
+        logger.info(f"Checking nodes with label scaphandre=true done")
         # Installs Prometheus, Kepler
         logger.info("Ensuring cluster observability requirements")
         #self._ensure_helm_requirements() 
