@@ -49,12 +49,12 @@ spec:
             httpGet:
               path: {{ .Values.clueDeployer.probes.path }}
               port: {{ .Values.clueDeployer.service.port }}
-            initialDelaySeconds: 600
+            initialDelaySeconds: 30
           livenessProbe:
             httpGet:
               path: {{ .Values.clueDeployer.probes.path }}
               port: {{ .Values.clueDeployer.service.port }}
-            initialDelaySeconds: 600
+            initialDelaySeconds: 60
       volumes:
         - name: clue-data
           emptyDir: {}

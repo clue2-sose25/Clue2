@@ -51,6 +51,8 @@ clueWebui:
   service:
     type: ClusterIP
     port: 80
+  probes:
+    path: /
   env:
     API_BASE_URL: "http://clue-deployer:8000"
     NGINX_RESOLVER: "kube-dns.kube-system.svc.cluster.local"

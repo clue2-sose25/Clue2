@@ -29,4 +29,14 @@ spec:
               value: {{ .Values.clueWebui.env.NGINX_RESOLVER_VALID | quote }}
           ports:
             - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.clueWebui.probes.path }}
+              port: {{ .Values.clueWebui.service.port }}
+            initialDelaySeconds: 30
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.clueWebui.probes.path }}
+              port: {{ .Values.clueWebui.service.port }}
+            initialDelaySeconds: 60
 {{- end }}
