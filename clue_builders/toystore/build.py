@@ -4,6 +4,10 @@ import argparse
 import re
 import yaml
 import sys
+
+# Local directory where the repo will be cloned
+SUT_PATH = "toystore"
+
 # Add function to load YAML configs
 def load_configs():
     # Load clue-config.yaml
@@ -46,7 +50,7 @@ class ToystoreBuilder:
         self.remote_platform_arch = RUN_CONFIG.clue_config.remote_platform_arch
         self._set_envs()
         self._clone_repo()
-        self.sut_path = RUN_CONFIG.sut_config.sut_path
+        self.sut_path = SUT_PATH
     
     def check_docker_running(self):
         """
