@@ -12,6 +12,7 @@ from clue_deployer.src.helm_wrapper import HelmWrapper
 from clue_deployer.src.models.variant import Variant
 from clue_deployer.src.autoscaling_deployer import AutoscalingDeployer
 from clue_deployer.src.service.status_manager import StatusManager, StatusPhase
+from clue_deployer.src.service.grafana_manager import GrafanaManager
 
 # Adjust the base directory to the location 
 BASE_DIR = Path(__file__).resolve().parent
@@ -328,11 +329,46 @@ class VariantDeployer:
         """
         Setup Grafana dashboards for sustainability monitoring.
         """
+        logger.info("Importing Kepler dashboard...")
+            # Path to the Kepler dashboard JSON file
+        dashboard_path = BASE_DIR / "grafana" / "grafana_dashboard.json"
         try:
 
-            # Path to the Kepler dashboard JSON file
-            dashboard_path = BASE_DIR / "grafana" / "grafana_dashboard.json"
-            
+            # Try NodePort first
+            grafana_url = "http://localhost:30800"
+
+            # Test direct access
+            try:
+                response = requests.get(grafana_url, timeout=5)
+                logger.info(f"✅ Grafana accessible at {grafana_url}")
+            except:
+                logger.info("NodePort not accessible, will use port-forward...")
+                grafana_url = "curl -I http://grafana.clue-monitoring:80"
+
+            manager = GrafanaManager(
+                grafana_url=grafana_url,
+                username=ENV_CONFIG.GRAFANA_USERNAME, 
+                password=ENV_CONFIG.GRAFANA_PASSWORD
+            )
+
+            if manager.wait_for_grafana_ready(timeout=60):
+                if dashboard_path.exists():
+                    port = 3080 if ":3080" in grafana_url else 30080
+                    success = manager.setup_complete_grafana_environment(dashboard_path, port)
+                    if success:
+                        logger.info("✅ Dashboard imported successfully")
+                        return True
+                    else:
+                        logger.error("❌ Dashboard import failed")
+                else:
+                    logger.error(f"❌ Dashboard file not found: {dashboard_path}")
+            else:
+                logger.error("❌ Grafana not ready")
+
+        except Exception as e:
+            logger.error(f"❌ Dashboard import error: {e}")
+
+        try:
             if not dashboard_path.exists():
                 logger.warning(f"Kepler dashboard file not found at {dashboard_path}")
                 logger.info(f"Skipping Grafana dashboard setup" )

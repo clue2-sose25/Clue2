@@ -78,7 +78,7 @@ def install_prometheus_grafana():
         "--set", "prometheus.service.type=NodePort",
         "--set", "prometheus.service.nodePort=30090",
         "--set", "grafana.service.type=NodePort", 
-        "--set", "grafana.service.nodePort=30080",
+        "--set", "grafana.service.nodePort=30800",
         "--set", "grafana.adminPassword=prom-operator",
         "--wait", "--timeout", "10m"
     ]
