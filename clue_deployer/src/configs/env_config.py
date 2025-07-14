@@ -18,7 +18,10 @@ class EnvConfig(BaseSettings):
     VARIANTS: str|None = Field(default=None, env="VARIANTS")
     WORKLOADS: str|None = Field(default=None, env="WORKLOADS")
     N_ITERATIONS: int|None = Field(default=1, env="N_ITERATIONS")
-    DEPLOY_ONLY: bool|None = Field(default=False, env="DEPLOY_ONLY")  
+    DEPLOY_ONLY: bool|None = Field(default=False, env="DEPLOY_ONLY")
+    # Grafana
+    GRAFANA_USERNAME: str|None = Field(default="admin", env="GRAFANA_USERNAME")
+    GRAFANA_PASSWORD: str|None = Field(default="prom-operator", env="GRAFANA_PASSWORD")
 
     model_config = SettingsConfigDict(
         env_file=".env",  # Load from .env file if present 
