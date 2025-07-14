@@ -6,6 +6,7 @@ metadata:
   labels:
     {{- include "clue.labels" . | nindent 4 }}
 spec:
+  ttlSecondsAfterFinished: 120
   template:
     metadata:
       labels:
