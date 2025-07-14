@@ -2,7 +2,7 @@ FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies including build tools for Python packages
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     curl \
@@ -16,6 +16,10 @@ RUN apt-get update && \
     docker.io \
     dos2unix \
     openssh-client \
+    build-essential \
+    gcc \
+    g++ \
+    python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install kubectl

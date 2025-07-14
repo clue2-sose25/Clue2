@@ -225,7 +225,7 @@ class VariantDeployer:
 
     def clone_sut(self):
         """
-        Clones the SUT repository if it doesn't exist.
+        Clones the SUT repository if it doesn't exist and checks out the target branch.
         """
         if SUT_CONFIG.helm_chart_repo:
             # If a helm chart repo is provided, clone it
@@ -241,6 +241,21 @@ class VariantDeployer:
             subprocess.check_call(["git", "clone", SUT_CONFIG.sut_git_repo, str(self.sut_path)])
         else:
             logger.info(f"SUT already exists at {self.sut_path}. Skipping cloning.")
+        
+        # Check out the target branch for this variant
+        if self.variant.target_branch:
+            logger.info(f"Checking out target branch: {self.variant.target_branch}")
+            try:
+                # First, fetch all branches to ensure the target branch is available
+                subprocess.check_call(["git", "fetch", "--all"], cwd=str(self.sut_path))
+                # Check out the target branch
+                subprocess.check_call(["git", "checkout", self.variant.target_branch], cwd=str(self.sut_path))
+                logger.info(f"Successfully checked out branch: {self.variant.target_branch}")
+            except subprocess.CalledProcessError as e:
+                logger.error(f"Failed to checkout branch {self.variant.target_branch}: {e}")
+                raise RuntimeError(f"Failed to checkout target branch {self.variant.target_branch}. Make sure the branch exists in the repository.")
+        else:
+            logger.warning("No target branch specified for variant. Using default branch.")
 
 
     def deploy_SUT(self, results_path: Path):
