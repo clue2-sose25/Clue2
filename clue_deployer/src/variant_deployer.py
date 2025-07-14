@@ -352,7 +352,7 @@ class VariantDeployer:
 
             if manager.wait_for_grafana_ready(timeout=60):
                 if dashboard_path.exists():
-                    port = 3080 if ":3080" in grafana_url else 30080
+                    port = 3080 if ":80" in grafana_url else 30800
                     success = manager.setup_complete_grafana_environment(dashboard_path, port)
                     if success:
                         logger.info("✅ Dashboard imported successfully")
