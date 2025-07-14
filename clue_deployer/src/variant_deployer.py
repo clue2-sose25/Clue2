@@ -332,11 +332,10 @@ class VariantDeployer:
         logger.info("Importing Kepler dashboard...")
             # Path to the Kepler dashboard JSON file
         dashboard_path = BASE_DIR / "grafana" / "grafana_dashboard.json"
+        
         try:
-
             # Try NodePort first
-            grafana_url = "http://localhost:30800"
-
+            grafana_url=ENV_CONFIG.GRAFANA_URL or "http://localhost:30800"
             # Test direct access
             try:
                 response = requests.get(grafana_url, timeout=5)
