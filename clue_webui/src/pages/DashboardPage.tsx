@@ -6,6 +6,7 @@ import {
   CaretRightIcon,
   FilesIcon,
   RocketLaunchIcon,
+  SpeedometerIcon,
   WarningIcon,
   XCircleIcon,
 } from "@phosphor-icons/react";
@@ -117,7 +118,7 @@ const DashboardPage = () => {
   return (
     <div className="w-full h-full flex flex-col gap-2">
       {ifDeploying && (
-        <div className="w-full h-full flex items-center justify-center gap-2">
+        <div className="w-full h-full max-h-[2rem] flex items-center justify-center gap-2">
           <IconButton
             disabled={currentQueueIndex <= 0}
             onClick={decreaseIndexInQueue}
@@ -140,7 +141,7 @@ const DashboardPage = () => {
       )}
       <div className="bg-white p-6 rounded-lg shadow-md w-full h-full">
         {ifDeploying ? (
-          <div className="flex gap-6 ">
+          <div className="flex gap-6 h-full">
             <div className="w-1/3">
               <div className="flex flex-col gap-2">
                 <div className="pb-2">
@@ -203,8 +204,18 @@ const DashboardPage = () => {
                 </button>
               </div>
             </div>
-            <div className="w-2/3">
+            <div className="w-2/3 flex flex-col gap-2">
               <LogsPanel />
+              <span className="flex gap-2 p-1 items-center">
+                <SpeedometerIcon size={32} />
+                To see more live metrics visit the
+                <Link
+                  className="text-blue-500 cursor-pointer"
+                  to={"http://localhost:3000"}
+                >
+                  Grafana dashboard
+                </Link>
+              </span>
             </div>
           </div>
         ) : (

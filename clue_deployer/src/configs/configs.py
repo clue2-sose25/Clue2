@@ -9,6 +9,8 @@ class Configs:
     Manage and provide access to all configurations.
     """
 
+    _instance = None
+
     def __init__(self, sut_config_path: Path | None = None, clue_config_path: Path | None = None):
         """Load all configurations from the given paths."""
         self.env_config = EnvConfig.get_env_config()
@@ -40,7 +42,7 @@ class Configs:
         return {
             "env_config": self.env_config.model_dump(),
             "clue_config": self.clue_config.model_dump(),
-            "sut_config": self.sut_config.model_dump()
+            "sut_config": self.sut_config.model_dump() if self.sut_config else None
         }
 
     @classmethod
