@@ -142,22 +142,22 @@ class VariantDeployer:
                         ])
                     else:
                         logger.info("Prometheus service is already NodePort")
-                        
-                    # Check and patch Grafana service
-                    grafana_service_info = subprocess.check_output([
-                        "kubectl", "get", "svc", "kps1-grafana", 
-                        "-o", "jsonpath={.spec.type}"
-                    ], text=True)
-                    
-                    if grafana_service_info.strip() != "NodePort":
-                        logger.info("Converting Grafana service to NodePort...")
-                        subprocess.check_call([
-                            "kubectl", "patch", "svc", "kps1-grafana",
-                            "-p", '{"spec":{"type":"NodePort","ports":[{"port":80,"targetPort":3000,"nodePort":30080}]}}'
-                        ])
-                    else:
-                        logger.info("Grafana service is already NodePort")
-                        
+                    # TODO: FADEL    
+                    ## Check and patch Grafana service
+                    #grafana_service_info = subprocess.check_output([
+                    #    "kubectl", "get", "svc", "kps1-grafana", 
+                    #    "-o", "jsonpath={.spec.type}"
+                    #], text=True)
+                    #
+                    #if grafana_service_info.strip() != "NodePort":
+                    #    logger.info("Converting Grafana service to NodePort...")
+                    #    subprocess.check_call([
+                    #        "kubectl", "patch", "svc", "kps1-grafana",
+                    #        "-p", '{"spec":{"type":"NodePort","ports":[{"port":80,"targetPort":3000,"nodePort":30080}]}}'
+                    #    ])
+                    #else:
+                    #    logger.info("Grafana service is already NodePort")
+                    # TODO: FADEL END    
                 except subprocess.CalledProcessError as e:
                     logger.warning(f"Could not check/patch services: {e}")
 
