@@ -13,8 +13,8 @@ from clue_deployer.src.models.variant import Variant
 from clue_deployer.src.autoscaling_deployer import AutoscalingDeployer
 from clue_deployer.src.service.status_manager import StatusManager, StatusPhase
 
-# Adjust if deploy.py is not 3 levels down from project root
-BASE_DIR = Path(__file__).resolve().parent.parent.parent 
+# Adjust the base directory to the location 
+BASE_DIR = Path(__file__).resolve().parent
 
 class VariantDeployer:
     def __init__(self, variant: Variant):
@@ -108,25 +108,20 @@ class VariantDeployer:
                 stderr=subprocess.PIPE,
                 text=True
                 )
-
             if prometheus_status.returncode != 0:
                 logger.warning("Helm chart 'prometheus-stack' is not installed.")
                 if os.getenv("PRECONFIGURE_CLUSTER", "false").lower() == "true":
-                    logger.info(f"Skipped Prometheus installation. The PRECONFIGURE_CLUSTER set to true " )
+                    logger.info("Helm chart 'kube-prometheus-stack' is not installed. Installing it now...")
+                    logger.info("Note: You may see some 'memcache.go' warnings during installation - these are harmless.")
+                    subprocess.check_call([
+                        "helm", "install", "kps1", "prometheus-community/kube-prometheus-stack",
+                        "--set", "prometheus.service.type=NodePort",
+                        "--set", "prometheus.service.nodePort=30090",
+                        "--wait",
+                        "--timeout", "15m"
+                    ])
                 else:
-                    logger.info(f"Skipped Prometheus installation also. The PRECONFIGURE_CLUSTER set to false ")
-                #if os.getenv("PRECONFIGURE_CLUSTER"):
-                #    logger.info("Helm chart 'kube-prometheus-stack' is not installed. Installing it now...")
-                #    logger.info("Note: You may see some 'memcache.go' warnings during installation - these are harmless.")
-                #    subprocess.check_call([
-                #        "helm", "install", "kps1", "prometheus-community/kube-prometheus-stack",
-                #        "--set", "prometheus.service.type=NodePort",
-                #        "--set", "prometheus.service.nodePort=30090",
-                #        "--wait",
-                #        "--timeout", "15m"
-                #    ])
-                #else:
-                #    logger.info("Skipped Prometheus installation. The PRECONFIGURE_CLUSTER set to false.")
+                    logger.info("Skipped Prometheus installation. The PRECONFIGURE_CLUSTER set to false.")
             else:
                 logger.info("Prometheus stack found")
                 # Check if services are already NodePort, if not patch them
@@ -145,22 +140,21 @@ class VariantDeployer:
                         ])
                     else:
                         logger.info("Prometheus service is already NodePort")
-                    # TODO: FADEL    
-                    ## Check and patch Grafana service
-                    #grafana_service_info = subprocess.check_output([
-                    #    "kubectl", "get", "svc", "kps1-grafana", 
-                    #    "-o", "jsonpath={.spec.type}"
-                    #], text=True)
-                    #
-                    #if grafana_service_info.strip() != "NodePort":
-                    #    logger.info("Converting Grafana service to NodePort...")
-                    #    subprocess.check_call([
-                    #        "kubectl", "patch", "svc", "kps1-grafana",
-                    #        "-p", '{"spec":{"type":"NodePort","ports":[{"port":80,"targetPort":3000,"nodePort":30080}]}}'
-                    #    ])
-                    #else:
-                    #    logger.info("Grafana service is already NodePort")
-                    # TODO: FADEL END    
+
+                    grafana_service_info = subprocess.check_output([
+                        "kubectl", "get", "svc", "kps1-grafana", 
+                        "-o", "jsonpath={.spec.type}"
+                    ], text=True)
+                    
+                    if grafana_service_info.strip() != "NodePort":
+                        logger.info("Converting Grafana service to NodePort...")
+                        subprocess.check_call([
+                            "kubectl", "patch", "svc", "kps1-grafana",
+                            "-p", '{"spec":{"type":"NodePort","ports":[{"port":80,"targetPort":3000,"nodePort":30800}]}}'
+                        ])
+                    else:
+                        logger.info("Grafana service is already NodePort")
+
                 except subprocess.CalledProcessError as e:
                     logger.warning(f"Could not check/patch services: {e}")
 
@@ -177,28 +171,23 @@ class VariantDeployer:
                 logger.warning("Helm chart 'kepler-stack' is not installed.")
                 if os.getenv("PRECONFIGURE_CLUSTER", "false").lower() == "true":
                     logger.info(f"Skipped kepler installation. The PRECONFIGURE_CLUSTER set to true " )
+                    logger.info("Helm chart 'Kepler' is not installed. Installing it now...")
+                    subprocess.check_call([
+                        "helm", "install", "kepler", "kepler/kepler",
+                        "--namespace", "kepler",
+                        "--create-namespace",
+                        "--set", "serviceMonitor.enabled=true",
+                        "--set", "serviceMonitor.labels.release=kps1",
+                        "--wait",
+                        "--timeout", "10m"
+                    ])
                 else:
-                    logger.info(f"Skipped kepler installation ALSO. The PRECONFIGURE_CLUSTER set to false ")
-                #if os.getenv("PRECONFIGURE_CLUSTER"):
-                #    logger.info("Helm chart 'Kepler' is not installed. Installing it now...")
-                #    subprocess.check_call([
-                #        "helm", "install", "kepler", "kepler/kepler",
-                #        "--namespace", "kepler",
-                #        "--create-namespace",
-                #        "--set", "serviceMonitor.enabled=true",
-                #        "--set", "serviceMonitor.labels.release=kps1",
-                #        "--wait",
-                #        "--timeout", "10m"
-                #    ])
-                #else:
-                #    logger.info(f"Skipped Kepler installation.The PRECONFIGURE_CLUSTER set to '{PRECONFIGURE_CLUSTER}'")
+                    logger.info(f"Skipped Kepler installation.The PRECONFIGURE_CLUSTER set to '{PRECONFIGURE_CLUSTER}'")
             else:
-                logger.info("Kepler stack found")
-            # TODO: FADEL 
+                logger.info("Kepler stack found") 
             # Setup Grafana dashboards
             logger.info("Setting up Grafana dashboards")
-            # self._setup_grafana_dashboard()
-            # TODO: FADEL END
+            self._setup_grafana_dashboard()
             logger.info("All cluster requirements fulfilled")
         except subprocess.CalledProcessError as e:
             logger.error(f"Error while fulfilling Helm requirements: {e}")
@@ -305,10 +294,12 @@ class VariantDeployer:
         logger.info("Ensuring cluster observability requirements")
         if os.getenv("PRECONFIGURE_CLUSTER", "false").lower() == "true":
             logger.warning(" Helm requirements installation. The PRECONFIGURE_CLUSTER set to true")
-            self._ensure_helm_requirements() 
+            #self._ensure_helm_requirements() 
         else:
             logger.info(" Helm requirements installation. The PRECONFIGURE_CLUSTER set to false")
-            self._ensure_helm_requirements() 
+            logger.info("Setting up Grafana dashboards")
+            self._setup_grafana_dashboard()
+            #self._ensure_helm_requirements() 
         # Clones the SUT repository
         self.clone_sut() 
         # Prepare the Helm wrapper as a context manager
@@ -344,6 +335,7 @@ class VariantDeployer:
             
             if not dashboard_path.exists():
                 logger.warning(f"Kepler dashboard file not found at {dashboard_path}")
+                logger.info(f"Skipping Grafana dashboard setup" )
                 return False
             
             # Initialize Grafana manager with configuration
@@ -355,7 +347,7 @@ class VariantDeployer:
             # Setup complete Grafana environment
             success = grafana_manager.setup_complete_grafana_environment(
                 dashboard_path, 
-                node_port=30080
+                node_port=30800
             )
             
             if success:
