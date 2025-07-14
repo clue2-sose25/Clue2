@@ -117,7 +117,7 @@ const DashboardPage = () => {
 
   return (
     <div className="w-full h-full flex flex-col gap-2">
-      {!ifDeploying && (
+      {ifDeploying && (
         <div className="w-full h-full max-h-[2rem] flex items-center justify-center gap-2">
           <IconButton
             disabled={currentQueueIndex <= 0}
@@ -140,7 +140,7 @@ const DashboardPage = () => {
         </div>
       )}
       <div className="bg-white p-6 rounded-lg shadow-md w-full h-full">
-        {!ifDeploying ? (
+        {ifDeploying ? (
           <div className="flex gap-6 h-full">
             <div className="w-1/3">
               <div className="flex flex-col gap-2">
