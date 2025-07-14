@@ -69,6 +69,33 @@ class WorkloadRunner:
             except:
                 pass
 
+    def _cleanup_existing_loadgenerator_pod(self, core: client.CoreV1Api):
+        """Clean up any existing loadgenerator pod to avoid conflicts"""
+        try:
+            core.delete_namespaced_pod(name="loadgenerator", namespace=SUT_CONFIG.namespace)
+            logger.info("Deleted existing loadgenerator pod")
+        except ApiException as e:
+            if e.status == 404:
+                logger.debug("No existing loadgenerator pod to delete")
+            else:
+                logger.warning(f"Failed to delete existing loadgenerator pod: {e}")
+
+    def _cleanup_existing_configmaps(self, core: client.CoreV1Api):
+        """Clean up any existing locustfile ConfigMaps to avoid conflicts"""
+        try:
+            # List all ConfigMaps with names starting with "locustfile-"
+            config_maps = core.list_namespaced_config_map(namespace=SUT_CONFIG.namespace)
+            for cm in config_maps.items:
+                if cm.metadata.name.startswith(f"locustfile-{self.workload.name}-"):
+                    try:
+                        core.delete_namespaced_config_map(name=cm.metadata.name, namespace=SUT_CONFIG.namespace)
+                        logger.info(f"Deleted existing ConfigMap {cm.metadata.name}")
+                    except ApiException as e:
+                        if e.status != 404:
+                            logger.warning(f"Failed to delete existing ConfigMap {cm.metadata.name}: {e}")
+        except ApiException as e:
+            logger.warning(f"Failed to list ConfigMaps for cleanup: {e}")
+
     def _run_remote_workload(self, outpath):
         logger.info("Deploying workload remotely in Kubernetes cluster")
         self._observations_path = os.path.join(outpath, "")  # ensure trailing slash for later path building
@@ -85,8 +112,8 @@ class WorkloadRunner:
         except WorkloadCancelled:
             logging.info("Remote workload stopped due to cancellation")
         finally:
-            logger.info("Deleting loadgenerator pod in namespace %s", SUT_CONFIG.namespace)
-            self._core_api.delete_namespaced_pod(name="loadgenerator", namespace=SUT_CONFIG.namespace)
+            logger.info("Cleaning up timers after the experiment")
+            self._cleanup_existing_loadgenerator_pod(self._core_api)
             for config_map_name in config_map_names:
                 try:
                     self._core_api.delete_namespaced_config_map(name=config_map_name, namespace=SUT_CONFIG.namespace)
@@ -157,6 +184,10 @@ class WorkloadRunner:
         locust_volume_mounts = []
         locust_file_paths_in_container = []
         config_map_names = []
+
+        # Clean up any existing loadgenerator pod and ConfigMaps before creating new resources
+        self._cleanup_existing_loadgenerator_pod(core)
+        self._cleanup_existing_configmaps(core)
 
         # Create a ConfigMap for each locust file and its corresponding volume mount
         for idx, file_path_relative in enumerate(self.workload.locust_files):
