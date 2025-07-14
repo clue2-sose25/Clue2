@@ -99,13 +99,16 @@ class VariantDeployer:
             logger.info("Updating helm repos")
             subprocess.check_call(["helm", "repo", "update"])
             # Check if kube-prometheus-stack is installed
-            logger.info("Checking for Prometheus stack")
+            helm_release_prometheus = os.getenv("PROMETHEUS_RELEASE_NAME", "prometheus")
+            helm_namespace_prometheus = os.getenv("PROMETHEUS_NAMESPACE", "monitoring")
+            logger.info(f"Checking if Helm chart '{helm_release_prometheus}' is installed in namespace '{helm_namespace_prometheus}'")
             prometheus_status = subprocess.run(
-                ["helm", "status", "prometheus"],
+                ["helm", "status", helm_release_prometheus, "-n", helm_namespace_prometheus],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True
                 )
+
             if prometheus_status.returncode != 0:
                 logger.warning("Helm chart 'prometheus-stack' is not installed.")
                 if os.getenv("PRECONFIGURE_CLUSTER", "false").lower() == "true":
@@ -304,7 +307,7 @@ class VariantDeployer:
             logger.warning(" Helm requirements installation. The PRECONFIGURE_CLUSTER set to true")
             self._ensure_helm_requirements() 
         else:
-            logger.info("Skipping Helm requirements installation. The PRECONFIGURE_CLUSTER set to false")
+            logger.info(" Helm requirements installation. The PRECONFIGURE_CLUSTER set to false")
             self._ensure_helm_requirements() 
         # Clones the SUT repository
         self.clone_sut() 
