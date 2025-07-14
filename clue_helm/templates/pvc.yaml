@@ -2,6 +2,7 @@
 #kind: PersistentVolume
 #metadata:
 #  name: clue-data-pv
+#  name-space: st-cp25clue2
 #spec:
 #  capacity:
 #    storage: 5Gi
@@ -10,17 +11,17 @@
 #  persistentVolumeReclaimPolicy: Retain
 #  storageClassName: ""       # empty for static provisioning
 #  hostPath:
-#    path: /mnt/data/clue
+#    path: /tmp/clue-data
 #    type: DirectoryOrCreate
 ---
-
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: clue-data
+  name-space: st-cp25clue2
 spec:
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 10Gi
+      storage: 5Gi
