@@ -331,7 +331,7 @@ class VariantDeployer:
         """
         Setup Grafana dashboards for sustainability monitoring.
         """
-        logger.info("Importing Kepler dashboard...")
+        logger.info("Importing Grafana dashboard...")
             # Path to the Kepler dashboard JSON file
         dashboard_path = BASE_DIR / "grafana" / "grafana_dashboard.json"
         
