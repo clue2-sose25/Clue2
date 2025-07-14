@@ -7,6 +7,7 @@ from clue_deployer.src.logger import logger
 import time
 import os
 import subprocess
+import requests
 from kubernetes import config as k_config
 from clue_deployer.src.helm_wrapper import HelmWrapper
 from clue_deployer.src.models.variant import Variant
