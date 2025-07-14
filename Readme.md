@@ -267,7 +267,7 @@ environment variables to run the `toystore` SUT with the `baseline` variant.
 An additional template `clue_helm/values-example.yaml` shows all required fields.
 Copy this file to your own repository and adjust the registry and tags. Provide the
 path via the `values-file` input of the action to deploy your SUT. When you need
-to mount a folder of Locust scripts, pass its location via the `workload-folder`
+to mount a folder of Locust scripts, pass its location via the `values.yaml`
 input. The action copies that folder next to the chart and sets
 `loadGenerator.workloadDir` accordingly.
 If the chart is stored in a registry, supply its reference via the
@@ -299,5 +299,5 @@ before launching the `clue-loadgenerator` job.
 Alternatively you can put your Locust scripts in a folder and reference it via `loadGenerator.workloadDir`.
 All files in that folder become entries in the `loadgenerator-workload` ConfigMap. This is convenient
 when invoking the Helm chart from another repository: copy the folder next to the chart and pass its path
-through the GitHub action's `workload-folder` input. The action mounts the folder into the chart and
+through the GitHub action's `values.yaml` input. The action mounts the folder into the chart and
 sets `loadGenerator.workloadDir` automatically.

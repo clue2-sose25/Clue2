@@ -1,5 +1,5 @@
 ---
-name: Deploy ToyStore via Helm
+name: via Helm Deploy ToyStore Experiment 
 
 on:
   workflow_dispatch:
