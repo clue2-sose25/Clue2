@@ -1,9 +1,19 @@
+# The main config for CLUE
 config:
-  docker_registry_address: registry:5000/clue
-  experiment_timeout: 152
-  local_platform_arch: linux/arm64/v8
-  local_port: 5002
-  local_public_ip: registry
-  prometheus_url: http://clue-cluster-control-plane:30090
-  remote_platform_arch: linux/arm64/v8
+  ### BASE CONFIG ###
+  # The main timeout to kill the experiment, to avoid hanging experiments
+  experiment_timeout: 150
+  ### NETWORKING CONFIG ###
+  # The URL of the prometheus deployed on the host machine
+  prometheus_url: "http://clue-cluster-control-plane:30090"
+  # The docker image registry address for the CLUE deployer. This address should be accessable from inside of the clue_deployer container.
+  docker_registry_address: "registry:5000/clue"
+  # The public IP for the workload generator
+  local_public_ip: "registry"
+  # The public port for the workload generator
+  local_port: 5000
+  # The Platform specification
+  remote_platform_arch: "linux/arm64/v8"
+  local_platform_arch: "linux/arm64/v8"
+  ### AUTOSCALING ###
   target_utilization: 70
