@@ -121,8 +121,9 @@ class VariantDeployer:
                 #    logger.info("Skipped Prometheus installation. The PRECONFIGURE_CLUSTER set to false.")
             else:
                 logger.info("Prometheus stack found")
-                # Check if service is already NodePort, if not patch it
+                # Check if services are already NodePort, if not patch them
                 try:
+                    # Check and patch Prometheus service
                     service_info = subprocess.check_output([
                         "kubectl", "get", "svc", "kps1-kube-prometheus-stack-prometheus", 
                         "-o", "jsonpath={.spec.type}"
@@ -136,8 +137,24 @@ class VariantDeployer:
                         ])
                     else:
                         logger.info("Prometheus service is already NodePort")
+                        
+                    # Check and patch Grafana service
+                    grafana_service_info = subprocess.check_output([
+                        "kubectl", "get", "svc", "kps1-grafana", 
+                        "-o", "jsonpath={.spec.type}"
+                    ], text=True)
+                    
+                    if grafana_service_info.strip() != "NodePort":
+                        logger.info("Converting Grafana service to NodePort...")
+                        subprocess.check_call([
+                            "kubectl", "patch", "svc", "kps1-grafana",
+                            "-p", '{"spec":{"type":"NodePort","ports":[{"port":80,"targetPort":3000,"nodePort":30080}]}}'
+                        ])
+                    else:
+                        logger.info("Grafana service is already NodePort")
+                        
                 except subprocess.CalledProcessError as e:
-                    logger.warning(f"Could not check/patch Prometheus service: {e}")
+                    logger.warning(f"Could not check/patch services: {e}")
 
             # Check if kepler is installed
             logger.info("Checking for Kepler stack")
@@ -168,6 +185,11 @@ class VariantDeployer:
                 #    logger.info(f"Skipped Kepler installation.The PRECONFIGURE_CLUSTER set to '{PRECONFIGURE_CLUSTER}'")
             else:
                 logger.info("Kepler stack found")
+            
+            # Setup Grafana dashboards
+            logger.info("Setting up Grafana dashboards")
+            self._setup_grafana_dashboard()
+            
             logger.info("All cluster requirements fulfilled")
         except subprocess.CalledProcessError as e:
             logger.error(f"Error while fulfilling Helm requirements: {e}")
@@ -295,3 +317,39 @@ class VariantDeployer:
             logger.info("Autoscaling disabled. Skipping its deployment.")
         StatusManager.set(StatusPhase.WAITING, "Waiting for load generator...")
         logger.info("SUT deployment successful.")
+
+    def _setup_grafana_dashboard(self):
+        """
+        Setup Grafana dashboards for sustainability monitoring.
+        """
+        try:
+
+            # Path to the Kepler dashboard JSON file
+            dashboard_path = BASE_DIR / "grafana" / "grafana_dashboard.json"
+            
+            if not dashboard_path.exists():
+                logger.warning(f"Kepler dashboard file not found at {dashboard_path}")
+                return False
+            
+            # Initialize Grafana manager with configuration
+            grafana_manager = GrafanaManager(
+                username=ENV_CONFIG.GRAFANA_USERNAME,
+                password=ENV_CONFIG.GRAFANA_PASSWORD
+            )
+            
+            # Setup complete Grafana environment
+            success = grafana_manager.setup_complete_grafana_environment(
+                dashboard_path, 
+                node_port=30080
+            )
+            
+            if success:
+                logger.info("Grafana dashboard setup completed successfully")
+                return True
+            else:
+                logger.error("Failed to setup Grafana dashboard")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error setting up Grafana dashboard: {e}")
+            return False

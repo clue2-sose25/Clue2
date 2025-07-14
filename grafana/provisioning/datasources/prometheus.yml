@@ -1,0 +1,13 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://clue-cluster-control-plane:30090
+    isDefault: true
+    basicAuth: false
+    editable: true
+    jsonData:
+      timeInterval: "5s"
+      httpMethod: "POST"

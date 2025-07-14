@@ -56,6 +56,8 @@ services:
       PATCH_LOCAL_CLUSTER: ${PATCH_LOCAL_CLUSTER}
       CLUSTER_PROXY_COMMAND: ${CLUSTER_PROXY_COMMAND}
       PRECONFIGURE_CLUSTER: ${PRECONFIGURE_CLUSTER}
+      GRAFANA_USERNAME: ${GRAFANA_USERNAME}
+      GRAFANA_PASSWORD: ${GRAFANA_PASSWORD}
     volumes:
       # CLUE Configs
       - ./clue-config.yaml:/app/clue-config.yaml
@@ -156,9 +158,28 @@ services:
     networks:
       - clue2
 
+  # Grafana for dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USERNAME}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/grafana_dashboard.json:/var/lib/grafana/dashboards/kepler-dashboard.json
+      - ./grafana/prometheus.yml:/etc/grafana/prometheus.yml
+    networks:
+      - clue2
+
 volumes:
   registry-data:
   results-deployer-data:
+  grafana-data:
 
 networks:
   clue2:

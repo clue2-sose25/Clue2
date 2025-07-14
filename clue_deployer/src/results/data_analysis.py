@@ -9,7 +9,7 @@ from clue_deployer.src.results.experiment_results import ExperimentResults
 from datetime import time
 from clue_deployer.src.logger import logger
 import dash
-import dash_table
+from dash import dash_table
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objs as go
