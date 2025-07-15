@@ -298,7 +298,13 @@ class VariantDeployer:
         if os.getenv("PRECONFIGURE_CLUSTER", "false").lower() == "true":
             logger.warning(" Helm requirements installation. The PRECONFIGURE_CLUSTER set to true")
             # to stay safe, we will not install the requirements if the PRECONFIGURE_CLUSTER is set to false
-            #self._ensure_helm_requirements() 
+            # check if inside a cluster
+            if os.getenv("KUBERNETES_SERVICE_HOST"):
+                logger.info("Running in cluster mode. skipping helm requiremnents, set up by your own up port-forwarding for Grafana and Prometheus")
+                # Set up port-forwarding for Grafana and Prometheus
+                self.port_forward_process = HelmWrapper.setup_port_forwarding()
+            else:
+                self._ensure_helm_requirements() 
         else:
             logger.info(" Helm requirements installation. The PRECONFIGURE_CLUSTER set to false")
             logger.info("Setting up Grafana dashboards")
