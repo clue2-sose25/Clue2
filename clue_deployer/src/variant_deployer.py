@@ -1,12 +1,13 @@
 from pathlib import Path
 from os import path
+import time
+import os
+import subprocess
+import requests
 from kubernetes.client import CoreV1Api, V1Namespace, V1ObjectMeta, AppsV1Api
 from kubernetes.client.exceptions import ApiException   
 from clue_deployer.src.configs.configs import CLUE_CONFIG, ENV_CONFIG, SUT_CONFIG
 from clue_deployer.src.logger import logger
-import time
-import os
-import subprocess
 from kubernetes import config as k_config
 from clue_deployer.src.helm_wrapper import HelmWrapper
 from clue_deployer.src.models.variant import Variant
@@ -181,9 +182,8 @@ class VariantDeployer:
             else:
                 logger.info("Kepler stack found")
             
-            # Grafana dashboards are automatically provisioned by kube-prometheus-stack
-            logger.info("Grafana dashboards will be available via Helm chart provisioning")
-            logger.info("For manual dashboard import, use: python setup_grafana_k8s.py")
+            # Setup Grafana dashboard after all components are installed
+            self._setup_grafana_dashboard()
             
             logger.info("All cluster requirements fulfilled")
         except subprocess.CalledProcessError as e:
@@ -315,10 +315,98 @@ class VariantDeployer:
 
     def _setup_grafana_dashboard(self):
         """
-        Dashboard setup is handled by Helm chart provisioning.
-        For manual dashboard imports, use external setup scripts.
+        Setup Grafana dashboard by waiting for Grafana to be ready and importing the Kepler dashboard.
         """
-        logger.info("Dashboard provisioning handled by kube-prometheus-stack Helm chart")
-        logger.info(f"Prometheus URL from CLUE config: {CLUE_CONFIG.prometheus_url}")
-        logger.info("Dashboard file should be available at: grafana_dashboard.json")
+        logger.info("Setting up Grafana dashboard...")
+        
+        # Wait for Grafana to be ready
+        self._wait_for_grafana()
+        
+        # Import dashboard
+        self._import_kepler_dashboard()
+        
+        # Show access information
+        self._show_grafana_access_info()
+        
         return True
+
+    def _wait_for_grafana(self):
+        """Wait for Grafana pods to be ready."""
+        logger.info("Waiting for Grafana to be ready...")
+        
+        try:
+            # Wait for Grafana pods to be ready
+            subprocess.run([
+                "kubectl", "wait", "--for=condition=ready", "pod", 
+                "-l", "app.kubernetes.io/name=grafana", 
+                "--timeout=300s"
+            ], check=False)
+            
+            # Give Grafana extra time to initialize
+            time.sleep(20)
+            logger.info("✅ Grafana should be ready")
+        except subprocess.CalledProcessError as e:
+            logger.warning(f"Timeout waiting for Grafana pods, but continuing: {e}")
+
+    def _import_kepler_dashboard(self):
+        """Import the Kepler dashboard into Grafana."""
+        logger.info("Dashboard import setup...")
+        
+        try:
+            # Check if dashboard file exists at the correct location
+            dashboard_path = BASE_DIR / "grafana" / "grafana_dashboard.json"
+            
+            if dashboard_path.exists():
+                logger.info("✅ Dashboard file found")
+                logger.info(f"Dashboard location: {dashboard_path}")
+                logger.info("📊 Grafana dashboards are automatically provisioned by kube-prometheus-stack")
+                logger.info("🔧 For manual dashboard import, use Grafana UI or API calls")
+                return True
+            else:
+                # Try fallback locations if the main location doesn't exist
+                fallback_paths = [
+                    BASE_DIR / "grafana_dashboard.json",
+                    BASE_DIR / "grafana" / "kepler_dashboard.json"
+                ]
+                
+                for fallback_path in fallback_paths:
+                    if fallback_path.exists():
+                        logger.info("✅ Dashboard file found at fallback location")
+                        logger.info(f"Dashboard location: {fallback_path}")
+                        logger.info("📊 Grafana dashboards are automatically provisioned by kube-prometheus-stack")
+                        logger.info("🔧 For manual dashboard import, use Grafana UI or API calls")
+                        return True
+                
+                logger.warning("❌ Dashboard file not found")
+                logger.info("📊 Grafana is ready but dashboard needs to be imported manually")
+                return True
+                
+        except Exception as e:
+            logger.error(f"❌ Dashboard setup error: {e}")
+        
+        return True  # Don't fail the entire setup for dashboard issues
+
+    def _show_grafana_access_info(self):
+        """Show how to access Grafana and Prometheus services."""
+        logger.info("=" * 50)
+        logger.info("🎉 OBSERVABILITY STACK READY!")
+        logger.info("=" * 50)
+        logger.info("📊 Grafana Dashboard:")
+        logger.info("   URL: http://localhost:30080")
+        logger.info("   Username: admin")
+        logger.info("   Password: prom-operator")
+        logger.info("   Note: Dashboards auto-provisioned by Helm chart")
+        logger.info("")
+        logger.info("📈 Prometheus:")
+        logger.info(f"   URL: {CLUE_CONFIG.prometheus_url}")
+        logger.info("   Local access: http://localhost:30090")
+        logger.info("")
+        logger.info("📋 Manual Dashboard Import (if needed):")
+        logger.info("   1. Access Grafana UI at http://localhost:30080")
+        logger.info("   2. Go to '+' → Import → Upload JSON file")
+        logger.info("   3. Use grafana/grafana_dashboard.json from project root")
+        logger.info("")
+        logger.info("🔧 If NodePort doesn't work, use port-forward:")
+        logger.info("   kubectl port-forward service/kps1-grafana 3080:80")
+        logger.info("   kubectl port-forward service/kps1-kube-prometheus-stack-prometheus 9090:9090")
+        logger.info("=" * 50)

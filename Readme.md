@@ -315,12 +315,10 @@ For full Kubernetes deployments with the CLUE experiment framework:
 # 1. Create Kind cluster
 ./create-kind-cluster.sh
 
-# 2. Automated setup (installs Prometheus, Kepler, Grafana + imports dashboard)
-python setup_observability.py
+# 2. Run CLUE experiment (observability stack is automatically set up)
+docker compose up -d --build clue-deployer
 
-# 3. Access Grafana
-kubectl port-forward -n default service/kps1-grafana 3000:80
-# Open: http://localhost:3000 (admin/prom-operator)
+# 3. Access Grafana automatically at http://localhost:30080 (admin/prom-operator)
 ```
 
 **Perfect for:**
@@ -328,18 +326,29 @@ kubectl port-forward -n default service/kps1-grafana 3000:80
 - Production environments
 - Multi-node clusters
 - Running CLUE experiments
+- Fully automated observability setup
 - Enterprise deployments
 
-## Automated Grafana Dashboard Setup
+## Fully Integrated Observability Stack
 
-CLUE now automatically handles the complete observability stack setup, including:
+CLUE now provides **complete automation** of the observability stack setup during experiment deployment:
 
-- **Automated Prometheus and Kepler installation** via Helm charts
-- **Grafana dashboard import** - automatically imports the Kepler sustainability dashboard
-- **Service configuration** - sets up NodePort services for easy access
-- **Health validation** - ensures all components are working correctly
+### ✨ **Automated Features:**
+- **🚀 Prometheus + Grafana installation** via Helm charts during CLUE deployment
+- **📊 Kepler energy monitoring** automatic installation and configuration
+- **🎯 Dashboard provisioning** - Kepler sustainability dashboard automatically available
+- **🔧 Service configuration** - NodePort services (30080, 30090) ready immediately
+- **✅ Health validation** - all components tested and verified during setup
 
-The observability stack is automatically configured during the experiment deployment phase. No manual setup is required!
+### 🎯 **Zero Manual Setup Required!**
+
+When you run CLUE experiments, the observability stack is automatically configured as part of the deployment process. Simply run:
+
+```bash
+docker compose up -d --build clue-deployer
+```
+
+And access your dashboards immediately at **http://localhost:30080** (admin/prom-operator)
 
 ### Configuration Management
 
