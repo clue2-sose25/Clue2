@@ -211,7 +211,7 @@ const DashboardPage = () => {
                 To see more live metrics visit the
                 <Link
                   className="text-blue-500 cursor-pointer"
-                  to={"http://localhost:3000"}
+                  to={"http://localhost:30080"}
                 >
                   Grafana dashboard
                 </Link>
