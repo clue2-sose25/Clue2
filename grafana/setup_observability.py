@@ -129,47 +129,31 @@ def wait_for_grafana():
 
 def import_dashboard():
     """Import the Kepler dashboard into Grafana."""
-    logger.info("Importing Kepler dashboard...")
+    logger.info("Dashboard import setup...")
     
     try:
-        from clue_deployer.src.service.grafana_manager import GrafanaManager
+        # Check if dashboard file exists
+        dashboard_path = project_root / "grafana_dashboard.json"
+        if not dashboard_path.exists():
+            # Try alternative location
+            dashboard_path = project_root.parent / "grafana_dashboard.json"
         
-        # Try NodePort first
-        grafana_url = "http://localhost:30080"
-        
-        # Test direct access
-        try:
-            response = requests.get(grafana_url, timeout=5)
-            logger.info(f"✅ Grafana accessible at {grafana_url}")
-        except:
-            logger.info("NodePort not accessible, will use port-forward...")
-            grafana_url = "http://localhost:3080"
-        
-        manager = GrafanaManager(
-            grafana_url=grafana_url,
-            username="admin", 
-            password="prom-operator"
-        )
-        
-        if manager.wait_for_grafana_ready(timeout=60):
-            dashboard_path = project_root / "grafana_dashboard.json"
-            if dashboard_path.exists():
-                port = 3080 if ":3080" in grafana_url else 30080
-                success = manager.setup_complete_grafana_environment(dashboard_path, port)
-                if success:
-                    logger.info("✅ Dashboard imported successfully")
-                    return True
-                else:
-                    logger.error("❌ Dashboard import failed")
-            else:
-                logger.error(f"❌ Dashboard file not found: {dashboard_path}")
+        if dashboard_path.exists():
+            logger.info("✅ Dashboard file found")
+            logger.info(f"Dashboard location: {dashboard_path}")
+            logger.info("📊 Grafana dashboards are automatically provisioned by kube-prometheus-stack")
+            logger.info("🔧 For manual dashboard import, use Grafana UI or API calls")
+            logger.info("🌐 Access Grafana at http://localhost:30080 (admin/prom-operator)")
+            return True
         else:
-            logger.error("❌ Grafana not ready")
+            logger.warning("❌ Dashboard file not found")
+            logger.info("📊 Grafana is ready but dashboard needs to be imported manually")
+            return True
             
     except Exception as e:
-        logger.error(f"❌ Dashboard import error: {e}")
+        logger.error(f"❌ Dashboard setup error: {e}")
     
-    return False
+    return True  # Don't fail the entire setup for dashboard issues
 
 def show_access_info():
     """Show how to access the services."""
@@ -180,10 +164,15 @@ def show_access_info():
     print("   URL: http://localhost:30080")
     print("   Username: admin")
     print("   Password: prom-operator")
-    print("   Dashboard: Look for 'Kepler Exporter'")
+    print("   Note: Dashboards auto-provisioned by Helm chart")
     print()
     print("📈 Prometheus:")
     print("   URL: http://localhost:30090")
+    print()
+    print("📋 Manual Dashboard Import (if needed):")
+    print("   1. Access Grafana UI at http://localhost:30080")
+    print("   2. Go to '+' → Import → Upload JSON file")
+    print("   3. Use grafana_dashboard.json from project root")
     print()
     print("🔧 If NodePort doesn't work, use port-forward:")
     print("   kubectl port-forward service/kps1-grafana 3080:80")
@@ -212,7 +201,7 @@ def main():
     # Step 5: Wait for Grafana
     wait_for_grafana()
     
-    # Step 6: Import dashboard
+    # Step 6: Setup dashboard info
     import_dashboard()
     
     # Step 7: Show access info

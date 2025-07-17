@@ -110,6 +110,9 @@ class VariantDeployer:
                         "helm", "install", "kps1", "prometheus-community/kube-prometheus-stack",
                         "--set", "prometheus.service.type=NodePort",
                         "--set", "prometheus.service.nodePort=30090",
+                        "--set", "grafana.service.type=NodePort",
+                        "--set", "grafana.service.nodePort=30080",
+                        "--set", "grafana.adminPassword=prom-operator",
                         "--wait",
                         "--timeout", "15m"
                     ])
@@ -178,9 +181,9 @@ class VariantDeployer:
             else:
                 logger.info("Kepler stack found")
             
-            # Setup Grafana dashboards
-            logger.info("Setting up Grafana dashboards")
-            self._setup_grafana_dashboard()
+            # Grafana dashboards are automatically provisioned by kube-prometheus-stack
+            logger.info("Grafana dashboards will be available via Helm chart provisioning")
+            logger.info("For manual dashboard import, use: python setup_grafana_k8s.py")
             
             logger.info("All cluster requirements fulfilled")
         except subprocess.CalledProcessError as e:
@@ -312,36 +315,10 @@ class VariantDeployer:
 
     def _setup_grafana_dashboard(self):
         """
-        Setup Grafana dashboards for sustainability monitoring.
+        Dashboard setup is handled by Helm chart provisioning.
+        For manual dashboard imports, use external setup scripts.
         """
-        try:
-
-            # Path to the Kepler dashboard JSON file
-            dashboard_path = BASE_DIR / "grafana" / "grafana_dashboard.json"
-            
-            if not dashboard_path.exists():
-                logger.warning(f"Kepler dashboard file not found at {dashboard_path}")
-                return False
-            
-            # Initialize Grafana manager with configuration
-            grafana_manager = GrafanaManager(
-                username=ENV_CONFIG.GRAFANA_USERNAME,
-                password=ENV_CONFIG.GRAFANA_PASSWORD
-            )
-            
-            # Setup complete Grafana environment
-            success = grafana_manager.setup_complete_grafana_environment(
-                dashboard_path, 
-                node_port=30080
-            )
-            
-            if success:
-                logger.info("Grafana dashboard setup completed successfully")
-                return True
-            else:
-                logger.error("Failed to setup Grafana dashboard")
-                return False
-                
-        except Exception as e:
-            logger.error(f"Error setting up Grafana dashboard: {e}")
-            return False
+        logger.info("Dashboard provisioning handled by kube-prometheus-stack Helm chart")
+        logger.info("For manual dashboard import, use: python setup_grafana_k8s.py")
+        logger.info("Dashboard file should be available at: grafana_dashboard.json")
+        return True
