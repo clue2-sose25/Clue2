@@ -1,12 +1,16 @@
+{{- if .Values.loadGenerator.jobEnabled }}
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: clue-loadgenerator
+  labels:
+    {{- include "clue.labels" . | nindent 4 }}
 spec:
   template:
     metadata:
       labels:
         app: loadgenerator
+        {{- include "clue.labels" . | nindent 8 }}
     spec:
       restartPolicy: Never
 {{- $sut := .Values.clueDeployer.env.SUT | default "sut" }}
@@ -24,6 +28,7 @@ spec:
       containers:
         - name: loadgenerator
           image: "{{ .Values.imageRegistry }}/{{ .Values.loadGenerator.image }}:{{ .Values.loadGenerator.tag }}"
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
           env:
             - name: SUT_NAME
               value: "{{ $sut }}"
@@ -36,3 +41,4 @@ spec:
         - name: workload-files
           configMap:
             name: loadgenerator-workload
+{{- end }}

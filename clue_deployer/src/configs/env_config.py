@@ -22,6 +22,7 @@ class EnvConfig(BaseSettings):
     # Grafana
     GRAFANA_USERNAME: str|None = Field(default="admin", env="GRAFANA_USERNAME")
     GRAFANA_PASSWORD: str|None = Field(default="prom-operator", env="GRAFANA_PASSWORD")
+    GRAFANA_URL: str|None = Field(default="http://grafana.monitoring.svc.cluster.local:80", env="GRAFANA_URL")
 
     model_config = SettingsConfigDict(
         env_file=".env",  # Load from .env file if present 

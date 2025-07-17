@@ -1,40 +1,76 @@
+{{- if .Values.clueDeployer.job.enabled }}
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: clue-deployer-job
+  labels:
+    {{- include "clue.labels" . | nindent 4 }}
 spec:
+  ttlSecondsAfterFinished: 120
   template:
     metadata:
       labels:
         app: clue-deployer
+        {{- include "clue.labels" . | nindent 8 }}
     spec:
       serviceAccountName: {{ .Values.clueDeployer.serviceAccountName }}
       restartPolicy: Never
       containers:
         - name: clue-deployer
           image: "{{ .Values.imageRegistry }}/{{ .Values.clueDeployer.image }}:{{ .Values.clueDeployer.tag }}"
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
           env:
-            - name: DEPLOY_AS_SERVICE
-              value: "false"
+            - name: API_BASE_URL
+              value: "http://clue-deployer:{{ .Values.clueDeployer.service.port }}"
+          {{- range $key, $value := .Values.clueDeployer.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+          {{- end }}
+          envFrom:
+            - configMapRef:
+                name: clue-config-file
+            - secretRef:
+                name: clue-secrets
           envFrom:
             - configMapRef:
                 name: clue-config
             - secretRef:
                 name: clue-secrets
           volumeMounts:
-            - name: results
+            - name: clue-data
               mountPath: /app/data
             - name: sut-config
               mountPath: /app/sut_configs/
+{{- if or .Values.loadGenerator.workloadFiles .Values.loadGenerator.workloadDir }}
+            - name: workload-files
+              mountPath: "/app/sut_configs/workloads/{{ .Values.clueDeployer.env.SUT | default "sut" }}"
+{{- end }}
             - name: clue-config-file
               mountPath: /app/clue-config.yaml
               subPath: clue-config.yaml
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.clueDeployer.probes.path }}
+              port: {{ .Values.clueDeployer.service.port }}
+            initialDelaySeconds: 600
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.clueDeployer.probes.path }}
+              port: {{ .Values.clueDeployer.service.port }}
+            initialDelaySeconds: 600
       volumes:
-        - name: results
+        - name: clue-data
           emptyDir: {}
         - name: sut-config
           configMap:
             name: sut-config
+        - name: workload-files
+          configMap:
+            name: loadgenerator-workload
         - name: clue-config-file
           configMap:
             name: clue-config-file
+            items:
+              - key: clue-config.yaml
+                path: clue-config.yaml
+{{- end }}

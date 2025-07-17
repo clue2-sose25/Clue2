@@ -1,30 +1,55 @@
 # example values for running the toystore SUT
 imageRegistry: ghcr.io/clue2-sose25
+imagePullPolicy: Always
 sutConfigFileName: toystore.yaml
 sutConfig: |
   config:
+    # The name of the SUT
     sut: "toystore"
-    namespace: "toystore"
+    namespace: "st-cp25clue2"
     sut_git_repo: "https://github.com/clue2-sose25/sustainable_toystore"
     sut_path: "toystore"
     helm_chart_path: "toystore/toystore"
     values_yaml_name: "values.yaml"
-    target_service_name: "teastore-webui"
-    application_endpoint_path: "/tools.descartes.teastore.webui"
+    workload_target: "toystore-frontend"
+    application_endpoint_path: "/"
     default_resource_limits:
       cpu: 1000
       memory: 1024
-    wait_before_workloads: 120
-    wait_after_workloads: 120
+    wait_before_workloads: 30
+    wait_after_workloads: 15
+
   workloads:
     - name: "shaped"
-      description: "Workload with custom load shape behavior."
+      description: "Workload with custom load shape behavior and realistic user journeys."
       timeout_duration: 120
       workload_runtime: 64
-      workload_settings: {}
+      workload_settings:
+        LOCUST_USERS: 25
+        LOCUST_SPAWN_RATE: 2
       locust_files:
         - "sut_configs/workloads/toystore/locustfile.py"
+    - name: "fixed"
+      description: "Fixed number of requests workload for consistent testing. Will terminate after 1000 requests or the specified duration."
+      timeout_duration: 120
+      workload_runtime: 64
+      workload_settings:
+        MAXIMUM_REQUESTS: 1000
+      locust_files:
+        - "sut_configs/workloads/toystore/fixed_requests.py"
+    - name: "rampup"
+      description: "Gradual ramp-up load pattern with 8 stages for scalability testing."
+      timeout_duration: 600  # should be stages * stage_duration + buffer
+      workload_runtime: 480  # should be stages * stage_duration
+      workload_settings:
+        STAGE_DURATION: 60  # 1 minute per stage for faster testing
+        MAX_USERS: 50  # Lower max users for toystore simplicity
+        NUM_STAGES: 8
+      locust_files:
+        - "sut_configs/workloads/toystore/rampup_loadshape.py"
+
   resource_limits: []
+
   variants:
     - name: "baseline"
       description: "A ToyStore application storing its data in a local SQLite DB"
@@ -37,23 +62,26 @@ sutConfig: |
       target_branch: "postgres"
       colocated_workload: true
       critical_services: ["toystore-frontend", "toystore-backend", "toystore-db"]
-      autoscaling: "cpu"
+      autoscaling: "cpu" 
 clueConfig: |
   config:
     experiment_timeout: 150
-    prometheus_url: "http://clue-cluster-control-plane:30090"
-    docker_registry_address: ghcr.io/issafadel/sustainable_toystore
+    prometheus_url: "http://130.149.158.32:32426"
+    docker_registry_address: ghcr.io/clue2-sose25
     local_public_ip: "registry"
     local_port: 5000
     remote_platform_arch: "linux/arm64/v8"
     local_platform_arch: "linux/arm64/v8"
     target_utilization: 70
 clueDeployer:
+  enabled: true
   image: clue2-deployer
-  tag: latest
-  serviceAccountName: clue-deployer
+  tag: pr-test
+  serviceAccountName: st-cp25clue2-user  
   service:
     port: 8000
+    type: ClusterIP # Change to NodePort if needed or LoadBalancer if need to access with IP_NODE:PORT
+    nodePort: 30501
   probes:
     path: /api/health
   env:
@@ -63,26 +91,32 @@ clueDeployer:
     VARIANTS: baseline
     WORKLOADS: shaped
     PRECONFIGURE_CLUSTER: "false"
+    DEPLOY_AS_SERVICE: "true"
+    HELM_DRIVER: configmap
+    GRAFANA_USERNAME: admin
+    GRAFANA_PASSWORD: SECRET
+    GRAFANA_URL: http://grafana.clue-monitoring:80
+    PROMETHEUS_URL: http://prometheus.monitoring:80
+  job:
+    enabled: false
 clueWebui:
+  enabled: true
   image: clue2-webui
-  tag: latest
+  tag: pr-test
   service:
     port: 80
+    type: NodePort # Change to NodePort if needed or LoadBalancer if need to access with IP_NODE:PORT
+    nodePort: 30501
   env:
     API_BASE_URL: http://clue-deployer:8000
+    NGINX_RESOLVER: 10.96.0.10
+    NGINX_RESOLVER_VALID: 10s
 loadGenerator:
-  image: "clue2-loadgenerator-builder"
+  jobEnabled: false
+  image: clue2-loadgenerator-builder
   tag: latest
   # Set this to mount a folder path within the chart to include all locust files
   workloadDir: default_workloads_toystore
-  workloadFiles:
-    example.py: |
-      from locust import HttpUser, task
-
-      class Example(HttpUser):
-          @task
-          def index(self):
-              self.client.get("/")
 ingress:
   enabled: false
   host: clue.example.com

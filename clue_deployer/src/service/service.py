@@ -13,6 +13,7 @@ from clue_deployer.src.configs.configs import ENV_CONFIG, Configs
 from clue_deployer.src.main import ExperimentRunner
 from clue_deployer.src.service.worker import Worker
 from .routers import logs, suts, results, plots, cluster, results_server, clue_config
+from clue_deployer.src.service.grafana_manager import GrafanaManager
 
 
 # Initialize multiprocessing lock and value for deployment synchronization. Used for deployments.

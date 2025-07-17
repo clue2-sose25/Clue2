@@ -1,10 +1,18 @@
+{{- if .Values.clueDeployer.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
   name: clue-deployer
+  labels:
+    {{- include "clue.labels" . | nindent 4 }}
 spec:
+  type: {{ .Values.clueDeployer.service.type | default "ClusterIP" }}
   selector:
     app: clue-deployer
   ports:
     - port: {{ .Values.clueDeployer.service.port }}
       targetPort: {{ .Values.clueDeployer.service.port }}
+      {{- if and .Values.clueDeployer.service.nodePort (ne .Values.clueDeployer.service.type "ClusterIP") }}
+      nodePort: {{ .Values.clueDeployer.service.nodePort }}
+      {{- end }}
+{{- end }}
