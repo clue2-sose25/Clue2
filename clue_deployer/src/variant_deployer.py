@@ -319,6 +319,6 @@ class VariantDeployer:
         For manual dashboard imports, use external setup scripts.
         """
         logger.info("Dashboard provisioning handled by kube-prometheus-stack Helm chart")
-        logger.info("For manual dashboard import, use: python setup_grafana_k8s.py")
+        logger.info(f"Prometheus URL from CLUE config: {CLUE_CONFIG.prometheus_url}")
         logger.info("Dashboard file should be available at: grafana_dashboard.json")
         return True

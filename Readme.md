@@ -341,6 +341,23 @@ CLUE now automatically handles the complete observability stack setup, including
 
 The observability stack is automatically configured during the experiment deployment phase. No manual setup is required!
 
+### Configuration Management
+
+CLUE uses centralized configuration for all observability components. The Prometheus URL is defined in `clue-config.yaml` and used consistently across all components:
+
+```yaml
+prometheus_url: "http://clue-cluster-control-plane:30090"
+```
+
+To update Grafana provisioning to match your current CLUE configuration:
+
+```bash
+# Update Grafana datasource configuration based on CLUE config
+python update_grafana_config.py
+```
+
+This script dynamically updates the Grafana provisioning files to use the correct Prometheus URL from your CLUE configuration.
+
 ### Accessing the Grafana Dashboard
 
 After successful deployment, you can access Grafana at:

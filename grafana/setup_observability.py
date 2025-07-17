@@ -21,8 +21,16 @@ except ImportError:
     sys.exit(1)
 
 # Add project root to path
-project_root = Path(__file__).resolve().parent
+project_root = Path(__file__).resolve().parent.parent  # Go up to main project root
 sys.path.insert(0, str(project_root))
+
+try:
+    from clue_deployer.src.configs.configs import CLUE_CONFIG
+    prometheus_url = CLUE_CONFIG.prometheus_url
+    logger.info(f"Using Prometheus URL from CLUE config: {prometheus_url}")
+except ImportError:
+    prometheus_url = "http://localhost:30090"  # Fallback
+    logger.warning("Could not import CLUE_CONFIG, using fallback Prometheus URL")
 
 def run_command(cmd, check=True, capture_output=False):
     """Run a command with proper error handling."""
@@ -167,7 +175,8 @@ def show_access_info():
     print("   Note: Dashboards auto-provisioned by Helm chart")
     print()
     print("📈 Prometheus:")
-    print("   URL: http://localhost:30090")
+    print(f"   URL: {prometheus_url}")
+    print("   Local access: http://localhost:30090")
     print()
     print("📋 Manual Dashboard Import (if needed):")
     print("   1. Access Grafana UI at http://localhost:30080")
