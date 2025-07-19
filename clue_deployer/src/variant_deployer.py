@@ -178,6 +178,7 @@ class VariantDeployer:
                         "--create-namespace",
                         "--set", "serviceMonitor.enabled=true",
                         "--set", "serviceMonitor.labels.release=kps1",
+                        "--version", "0.6.0",
                         "--wait",
                         "--timeout", "10m"
                     ])
