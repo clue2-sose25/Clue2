@@ -45,6 +45,7 @@ def build():
         "docker",
         "buildx",
         "build",
+        "--platform", remote_platform_arch,
         "--push",
         "-t", tag,
         "-f", dockerfile_path,
