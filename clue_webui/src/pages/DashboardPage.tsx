@@ -44,35 +44,18 @@ const DashboardPage = () => {
     try {
       const response = await fetch("/api/queue/current");
       if (!response.ok) {
-        // Handle 404 or other expected "no current deployment" responses
-        if (response.status === 404) {
-          setCurrentDeployment(null);
-          setDeploymentStatus("IDLE");
-          return;
-        }
         throw new Error(`API responded with status ${response.status}`);
       }
-
       const data = await response.json();
 
-      // Handle explicit null response
-      if (data === null || data === undefined) {
+      if (data) {
+        setCurrentDeployment(data);
+        // Set status based on deployment state - you can adjust this logic based on your backend
+        setDeploymentStatus(data.status || "DEPLOYING...");
+      } else {
         setCurrentDeployment(null);
         setDeploymentStatus("IDLE");
-        return;
       }
-
-      // Handle empty object or invalid data
-      if (typeof data !== "object" || !data.sut) {
-        console.warn("Received invalid deployment data:", data);
-        setCurrentDeployment(null);
-        setDeploymentStatus("IDLE");
-        return;
-      }
-
-      // Valid deployment data
-      setCurrentDeployment(data);
-      setDeploymentStatus(data.status || "DEPLOYING...");
     } catch (err) {
       console.error("Failed to fetch current deployment:", err);
       setCurrentDeployment(null);
@@ -94,21 +77,17 @@ const DashboardPage = () => {
       // Validate that we received the expected object structure
       if (!data || typeof data !== "object") {
         console.error("API returned invalid data:", data);
-        setCurrentQueue([]);
-        setQueueSize(0);
-        return;
+        return {queue: [], queue_size: 0};
       }
 
       // Ensure queue is an array
       if (!Array.isArray(data.queue)) {
         console.error("API returned non-array queue:", data.queue);
-        setCurrentQueue([]);
-        setQueueSize(data.queue_size || 0);
-        return;
+        return {queue: [], queue_size: data.queue_size || 0};
       }
 
       setCurrentQueue(data.queue ?? []);
-      setQueueSize(data.queue_size || 0);
+      setQueueSize(data.queue_size);
     } catch (err) {
       console.error("Failed to fetch queue:", err);
       setCurrentQueue([]);
@@ -120,6 +99,8 @@ const DashboardPage = () => {
    * Remove item from queue
    */
   const removeFromQueue = async (index: number) => {
+    // Note: You might need to implement a specific endpoint for removing individual items
+    // For now, this is a placeholder - you'd need to add this endpoint to your backend
     try {
       const response = await fetch(`/api/queue/remove/${index}`, {
         method: "DELETE",
@@ -165,7 +146,6 @@ const DashboardPage = () => {
       console.error("Failed to start deployment:", err);
     }
   };
-
   const cancelCurrentExperiment = async () => {
     try {
       const response = await fetch("/api/queue/stop", {
@@ -187,54 +167,39 @@ const DashboardPage = () => {
     fetchCurrentDeployment();
 
     // Poll for updates every 5 seconds
-    const interval = setInterval(() => {
-      fetchQueue();
-      fetchCurrentDeployment();
-    }, 5000);
+    // const interval = setInterval(() => {
+    //   fetchQueue();
+    //   fetchCurrentDeployment();
+    // }, 5000);
 
-    return () => clearInterval(interval);
+    // return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Helper function to safely access deployment properties
-  const getDeploymentValue = (
-    key: keyof DeploymentForm,
-    defaultValue: any = "N/A"
-  ) => {
-    if (!currentDeployment) return defaultValue;
-    const value = currentDeployment[key];
-    if (value === null || value === undefined) return defaultValue;
-    return value;
-  };
 
   const configItems = [
     {
       label: "SUT (System Under Test)",
-      value: getDeploymentValue("sut"),
+      value: currentDeployment?.sut || "N/A",
       icon: <WrenchIcon size={24} />,
     },
     {
       label: "Experiments",
-      value: Array.isArray(getDeploymentValue("variants"))
-        ? getDeploymentValue("variants").join(", ")
-        : "N/A",
+      value: currentDeployment?.variants?.join(", ") || "N/A",
       icon: <FlaskIcon size={24} />,
     },
     {
       label: "Workload Type",
-      value: Array.isArray(getDeploymentValue("workloads"))
-        ? getDeploymentValue("workloads").join(", ")
-        : "N/A",
+      value: currentDeployment?.workloads?.join(", ") || "N/A",
       icon: <LightningIcon size={24} />,
     },
     {
       label: "Iterations",
-      value: getDeploymentValue("iterations", 0)?.toLocaleString() || "0",
+      value: currentDeployment?.iterations?.toLocaleString() || "0",
       icon: <RepeatIcon size={24} />,
     },
     {
       label: "Deploy only",
-      value: getDeploymentValue("deploy_only", false) ? "True" : "False",
+      value: currentDeployment?.deploy_only ? "True" : "False",
       icon: <RepeatIcon size={24} />,
     },
   ];
@@ -253,19 +218,10 @@ const DashboardPage = () => {
         return "text-red-500";
       case "CANCELLED":
         return "text-orange-500";
-      case "IDLE":
-        return "text-gray-500";
       default:
         return "text-gray-500";
     }
   };
-
-  // Check if we have a valid deployment
-  const hasValidDeployment =
-    currentDeployment &&
-    currentDeployment.sut &&
-    typeof currentDeployment.sut === "string" &&
-    currentDeployment.sut.trim() !== "";
 
   return (
     <div className="w-full h-full flex flex-col gap-2">
@@ -273,9 +229,9 @@ const DashboardPage = () => {
         {/* Queue Status Button */}
         <div className="absolute top-6 right-6 z-10 flex gap-2">
           <button
-            className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-4 py-2 bg-green-400 text-white rounded hover:bg-green-600 transition-colors font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
             onClick={startDeployment}
-            disabled={queueSize === 0 || hasValidDeployment}
+            disabled={queueSize === 0 || !!currentDeployment}
           >
             <PlayIcon size={18} />
             <span>Start Next</span>
@@ -290,17 +246,14 @@ const DashboardPage = () => {
             </span>
           </button>
         </div>
-
-        {hasValidDeployment ? (
+        {currentDeployment ? (
           <div className="flex gap-6 h-full">
             <div className="w-1/3">
               <div className="flex flex-col gap-2">
                 <div className="pb-2">
                   <p className="flex gap-2 text-xl items-center pt-2 pb-2">
                     <RocketLaunchIcon size={24} /> Deploying{" "}
-                    <span className="font-medium">
-                      {getDeploymentValue("sut")}
-                    </span>
+                    <span className="font-medium">{currentDeployment.sut}</span>
                     !
                   </p>
                   Your current experiment is being deployed. Please grab a
@@ -349,7 +302,7 @@ const DashboardPage = () => {
                   className="rounded p-2 bg-red-400 text-white hover:bg-red-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
                   onClick={cancelCurrentExperiment}
                   disabled={
-                    !hasValidDeployment || deploymentStatus === "COMPLETED"
+                    !currentDeployment.sut || deploymentStatus === "COMPLETED"
                   }
                 >
                   <div className="flex items-center justify-center gap-2">
@@ -412,7 +365,7 @@ const DashboardPage = () => {
             <button
               onClick={startDeployment}
               className="flex items-center gap-2 px-3 py-2 bg-green-400 text-white rounded hover:bg-green-600 transition-colors font-medium text-sm disabled:bg-gray-400 disabled:cursor-not-allowed"
-              disabled={queueSize === 0 || hasValidDeployment}
+              disabled={queueSize === 0 || !!currentDeployment}
             >
               <PlayIcon size={16} />
               Start Next
@@ -446,35 +399,24 @@ const DashboardPage = () => {
                   className="border rounded-lg p-4 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors"
                 >
                   <div className="flex-1">
-                    <div className="font-medium text-lg mb-2">
-                      {item.sut || "Unknown SUT"}
-                    </div>
+                    <div className="font-medium text-lg mb-2">{item.sut}</div>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
                         <span className="text-gray-600">Experiments:</span>
                         <div className="font-mono bg-white px-2 py-1 rounded border mt-1">
-                          {Array.isArray(item.variants) &&
-                          item.variants.length > 0
-                            ? item.variants.join(", ")
-                            : "N/A"}
+                          {item.variants?.join(", ") || "N/A"}
                         </div>
                       </div>
                       <div>
                         <span className="text-gray-600">Workloads:</span>
                         <div className="font-mono bg-white px-2 py-1 rounded border mt-1">
-                          {Array.isArray(item.workloads) &&
-                          item.workloads.length > 0
-                            ? item.workloads.join(", ")
-                            : "N/A"}
+                          {item.workloads?.join(", ") || "N/A"}
                         </div>
                       </div>
                       <div>
                         <span className="text-gray-600">Iterations:</span>
                         <div className="font-mono bg-white px-2 py-1 rounded border mt-1">
-                          {item.iterations &&
-                          typeof item.iterations === "number"
-                            ? item.iterations.toLocaleString()
-                            : "0"}
+                          {item.iterations?.toLocaleString() || "0"}
                         </div>
                       </div>
                       <div>
