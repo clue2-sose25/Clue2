@@ -212,21 +212,21 @@ class ProcessLogger:
             process_name = "NO_SUT"
         self._logger = get_child_process_logger(process_name, shared_log_buffer)
     
-    def info(self, message):
+    def info(self, message, *args, **kwargs):
         """Log a message with the specified level."""
-        self._logger.info(message)
+        self._logger.info(message, *args, **kwargs)
     
-    def debug(self, message):
+    def debug(self, message, *args, **kwargs):
         """Log a debug message."""
-        self._logger.debug(message)
+        self._logger.debug(message, *args, **kwargs)
     
-    def warning(self, message):
+    def warning(self, message, *args, **kwargs):
         """Log a warning message."""
-        self._logger.warning(message)
+        self._logger.warning(message, *args, **kwargs)
     
-    def error(self, message):
+    def error(self, message, *args, **kwargs):
         """Log an error message."""
-        self._logger.error(message)
+        self._logger.error(message, *args, **kwargs)
     
 
 
