@@ -1,30 +1,32 @@
 from pathlib import Path
 from os import path
+from kubernetes.client import CoreV1Api, V1Namespace, V1ObjectMeta, AppsV1Api
+from kubernetes.client.exceptions import ApiException   
+from clue_deployer.src.configs.configs import CONFIGS
+from clue_deployer.src.logger import process_logger as logger
 import time
 import os
 import subprocess
 import requests
-from kubernetes.client import CoreV1Api, V1Namespace, V1ObjectMeta, AppsV1Api
-from kubernetes.client.exceptions import ApiException   
-from clue_deployer.src.configs.configs import CLUE_CONFIG, ENV_CONFIG, SUT_CONFIG
-from clue_deployer.src.logger import logger
 from kubernetes import config as k_config
 from clue_deployer.src.helm_wrapper import HelmWrapper
 from clue_deployer.src.models.variant import Variant
 from clue_deployer.src.autoscaling_deployer import AutoscalingDeployer
 from clue_deployer.src.service.status_manager import StatusManager, StatusPhase
+from clue_deployer.src.service.grafana_manager import GrafanaManager
 
-# Adjust if deploy.py is not 3 levels down from project root
-BASE_DIR = Path(__file__).resolve().parent.parent.parent 
+# Adjust the base directory to the location 
+# it was BASE_DIR = Path(__file__).resolve().parent.parent.parent 
+BASE_DIR = Path(__file__).resolve().parent
 
 class VariantDeployer:
     def __init__(self, variant: Variant):
         # The variant to run
         self.variant = variant
-        self.sut_path = Path(SUT_CONFIG.sut_path)
-        self.docker_registry_address = CLUE_CONFIG.docker_registry_address
-        self.helm_chart_path = SUT_CONFIG.helm_chart_path
-        self.values_yaml_name = SUT_CONFIG.values_yaml_name
+        self.sut_path = Path(CONFIGS.sut_config.sut_path)
+        self.docker_registry_address = CONFIGS.clue_config.docker_registry_address
+        self.helm_chart_path = CONFIGS.sut_config.helm_chart_path
+        self.values_yaml_name = CONFIGS.sut_config.values_yaml_name
         # Initialize Kubernetes API clients
         try:
             if os.getenv("KUBERNETES_SERVICE_HOST"):
@@ -45,7 +47,7 @@ class VariantDeployer:
         """
         Checks if the given namespace exists in the cluster
         """
-        namespace = SUT_CONFIG.namespace
+        namespace = CONFIGS.sut_config.namespace
         try:
             self.core_v1_api.read_namespace(name=namespace)
             logger.info(f"Namespace '{namespace}' already exists.")
@@ -91,29 +93,31 @@ class VariantDeployer:
             if "kepler" not in helm_repos:
                 logger.info("Helm repository 'kepler' is not added. Adding it now...")
                 subprocess.check_call(["helm", "repo", "add", "kepler", "https://sustainable-computing-io.github.io/kepler-helm-chart"])
+            if "grafana" not in helm_repos:
+                logger.info("Helm repository 'grafana' is not added. Adding it now...")
+                subprocess.check_call(["helm", "repo", "add", "grafana", "https://grafana.github.io/helm-charts"])
             # Update Helm repos
             logger.info("Updating helm repos")
             subprocess.check_call(["helm", "repo", "update"])
             # Check if kube-prometheus-stack is installed
-            logger.info("Checking for Prometheus stack")
+            helm_release_prometheus = os.getenv("PROMETHEUS_RELEASE_NAME", "prometheus")
+            helm_namespace_prometheus = os.getenv("PROMETHEUS_NAMESPACE", "monitoring")
+            logger.info(f"Checking if Helm chart '{helm_release_prometheus}' is installed in namespace '{helm_namespace_prometheus}'")
             prometheus_status = subprocess.run(
-                ["helm", "status", "kps1"],
+                ["helm", "status", helm_release_prometheus, "-n", helm_namespace_prometheus],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True
                 )
             if prometheus_status.returncode != 0:
-               # Install with NodePort service type for Prometheus if required
-                if os.getenv("PRECONFIGURE_CLUSTER"):
+                logger.warning("Helm chart 'prometheus-stack' is not installed.")
+                if os.getenv("PRECONFIGURE_CLUSTER", "false").lower() == "true":
                     logger.info("Helm chart 'kube-prometheus-stack' is not installed. Installing it now...")
                     logger.info("Note: You may see some 'memcache.go' warnings during installation - these are harmless.")
                     subprocess.check_call([
                         "helm", "install", "kps1", "prometheus-community/kube-prometheus-stack",
                         "--set", "prometheus.service.type=NodePort",
                         "--set", "prometheus.service.nodePort=30090",
-                        "--set", "grafana.service.type=NodePort",
-                        "--set", "grafana.service.nodePort=30080",
-                        "--set", "grafana.adminPassword=prom-operator",
                         "--wait",
                         "--timeout", "15m"
                     ])
@@ -137,8 +141,7 @@ class VariantDeployer:
                         ])
                     else:
                         logger.info("Prometheus service is already NodePort")
-                        
-                    # Check and patch Grafana service
+
                     grafana_service_info = subprocess.check_output([
                         "kubectl", "get", "svc", "kps1-grafana", 
                         "-o", "jsonpath={.spec.type}"
@@ -148,11 +151,11 @@ class VariantDeployer:
                         logger.info("Converting Grafana service to NodePort...")
                         subprocess.check_call([
                             "kubectl", "patch", "svc", "kps1-grafana",
-                            "-p", '{"spec":{"type":"NodePort","ports":[{"port":80,"targetPort":3000,"nodePort":30080}]}}'
+                            "-p", '{"spec":{"type":"NodePort","ports":[{"port":80,"targetPort":3000,"nodePort":30800}]}}'
                         ])
                     else:
                         logger.info("Grafana service is already NodePort")
-                        
+
                 except subprocess.CalledProcessError as e:
                     logger.warning(f"Could not check/patch services: {e}")
 
@@ -166,7 +169,8 @@ class VariantDeployer:
             )
             if kepler_status.returncode != 0:
                 # Install Kepler if required
-                if os.getenv("PRECONFIGURE_CLUSTER"):
+                logger.warning("Helm chart 'kepler-stack' is not installed.")
+                if os.getenv("PRECONFIGURE_CLUSTER", "false").lower() == "true":
                     logger.info("Helm chart 'Kepler' is not installed. Installing it now...")
                     subprocess.check_call([
                         "helm", "install", "kepler", "kepler/kepler",
@@ -178,13 +182,13 @@ class VariantDeployer:
                         "--timeout", "10m"
                     ])
                 else:
-                    logger.info("Skipped Kepler installation. The PRECONFIGURE_CLUSTER set to false.")
+                    logger.info(f"Skipped Kepler installation.The PRECONFIGURE_CLUSTER set to false")
             else:
-                logger.info("Kepler stack found")
-            
-            # Setup Grafana dashboard after all components are installed
+                logger.info("Kepler stack found") 
+            # Check if Grafana is installed
+            logger.info("Setting up Grafana Dashboard")
             self._setup_grafana_dashboard()
-            
+            # All done
             logger.info("All cluster requirements fulfilled")
         except subprocess.CalledProcessError as e:
             logger.error(f"Error while fulfilling Helm requirements: {e}")
@@ -202,13 +206,13 @@ class VariantDeployer:
         """
         Wait a specified amount of time for the critical services
         """
-        timeout = SUT_CONFIG.timeout_for_services_ready
+        timeout = CONFIGS.sut_config.timeout_for_services_ready
         logger.info(f"Waiting for critical services to be ready for {timeout} seconds")
         v1_apps = self.apps_v1_api
         ready_services = set()
         start_time = time.time()
         services = set(self.variant.critical_services)
-        namespace = SUT_CONFIG.namespace
+        namespace = CONFIGS.sut_config.namespace
 
         while len(ready_services) < len(services) and time.time() - start_time < timeout:
             for service in services.difference(ready_services):
@@ -244,18 +248,18 @@ class VariantDeployer:
         """
         Clones the SUT repository if it doesn't exist and checks out the target branch.
         """
-        if SUT_CONFIG.helm_chart_repo:
+        if CONFIGS.sut_config.helm_chart_repo:
             # If a helm chart repo is provided, clone it
             if self.sut_path.exists():
                 logger.warning(f"SUT path {self.sut_path} already exists. It will not clone the repository again.")
             else: 
-                logger.info(f"Cloning Helm chart repository from {SUT_CONFIG.helm_chart_repo} to {self.sut_path}")
-                subprocess.check_call(["git", "clone", SUT_CONFIG.helm_chart_repo, str(self.sut_path)])
+                logger.info(f"Cloning Helm chart repository from {CONFIGS.sut_config.helm_chart_repo} to {self.sut_path}")
+                subprocess.check_call(["git", "clone", CONFIGS.sut_config.helm_chart_repo, str(self.sut_path)])
         elif not self.sut_path.exists():
-            if not SUT_CONFIG.sut_git_repo:
+            if not CONFIGS.sut_config.sut_git_repo:
                 raise ValueError("SUT Git repository URL is not provided in the configuration")
-            logger.info(f"Cloning SUT from {SUT_CONFIG.sut_git_repo} to {self.sut_path}")
-            subprocess.check_call(["git", "clone", SUT_CONFIG.sut_git_repo, str(self.sut_path)])
+            logger.info(f"Cloning SUT from {CONFIGS.sut_config.sut_git_repo} to {self.sut_path}")
+            subprocess.check_call(["git", "clone", CONFIGS.sut_config.sut_git_repo, str(self.sut_path)])
         else:
             logger.info(f"SUT already exists at {self.sut_path}. Skipping cloning.")
         
@@ -281,14 +285,28 @@ class VariantDeployer:
         """
         StatusManager.set(StatusPhase.DEPLOYING_SUT, "Deploying SUT...")
         # Check for namespace
-        logger.info(f"Checking if namespace '{SUT_CONFIG.namespace}' exists")
+        logger.info(f"Checking if namespace '{CONFIGS.sut_config.namespace}' exists")
         self._create_namespace_if_not_exists()
         # Check for nodes labels
         logger.info(f"Checking for nodes with label scaphandre=true")
         self._check_labeled_node_available()
+        logger.info(f"Checking nodes with label scaphandre=true done")
         # Installs Prometheus, Kepler
         logger.info("Ensuring cluster observability requirements")
-        self._ensure_helm_requirements() 
+        if os.getenv("PRECONFIGURE_CLUSTER", "false").lower() == "true":
+            logger.info(" Helm requirements installation. The PRECONFIGURE_CLUSTER set to true")
+            # to stay safe, we will not install the requirements if the PRECONFIGURE_CLUSTER is set to false
+            # check if inside a cluster
+            if os.getenv("KUBERNETES_SERVICE_HOST"):
+                logger.info("Running in cluster mode. skipping helm requiremnents, set up by your own up port-forwarding for Grafana and Prometheus")
+                # Set up port-forwarding for Grafana and Prometheus
+                self.port_forward_process = HelmWrapper.setup_port_forwarding()
+            else:
+                self._ensure_helm_requirements() 
+        else:
+            logger.info(" Helm requirements installation. The PRECONFIGURE_CLUSTER set to false")
+            logger.info("Setting up Grafana dashboards")
+            self._setup_grafana_dashboard()
         # Clones the SUT repository
         self.clone_sut() 
         # Prepare the Helm wrapper as a context manager
@@ -298,7 +316,7 @@ class VariantDeployer:
             # Copy values file
             self._copy_values_file(values, results_path)
             # Deploy the SUT
-            logger.info(f"Deploying the SUT: {ENV_CONFIG.SUT}")
+            logger.info(f"Deploying the SUT: {CONFIGS.env_config.SUT}")
             helm_wrapper.deploy_sut()
         # Set the status
         StatusManager.set(StatusPhase.WAITING, "Waiting for system to stabilize...")
@@ -315,98 +333,52 @@ class VariantDeployer:
 
     def _setup_grafana_dashboard(self):
         """
-        Setup Grafana dashboard by waiting for Grafana to be ready and importing the Kepler dashboard.
+        Setup Grafana dashboards for sustainability monitoring.
         """
-        logger.info("Setting up Grafana dashboard...")
-        
-        # Wait for Grafana to be ready
-        self._wait_for_grafana()
-        
-        # Import dashboard
-        self._import_kepler_dashboard()
-        
-        # Show access information
-        self._show_grafana_access_info()
-        
-        return True
-
-    def _wait_for_grafana(self):
-        """Wait for Grafana pods to be ready."""
-        logger.info("Waiting for Grafana to be ready...")
+        # Path to the Grafana dashboard JSON file
+        dashboard_path = BASE_DIR / "grafana" / "grafana_dashboard.json"
         
         try:
-            # Wait for Grafana pods to be ready
-            subprocess.run([
-                "kubectl", "wait", "--for=condition=ready", "pod", 
-                "-l", "app.kubernetes.io/name=grafana", 
-                "--timeout=300s"
-            ], check=False)
-            
-            # Give Grafana extra time to initialize
-            time.sleep(20)
-            logger.info("✅ Grafana should be ready")
-        except subprocess.CalledProcessError as e:
-            logger.warning(f"Timeout waiting for Grafana pods, but continuing: {e}")
-
-    def _import_kepler_dashboard(self):
-        """Import the Kepler dashboard into Grafana."""
-        logger.info("Dashboard import setup...")
-        
-        try:
-            # Check if dashboard file exists at the correct location
-            dashboard_path = BASE_DIR / "grafana" / "grafana_dashboard.json"
-            
-            if dashboard_path.exists():
-                logger.info("✅ Dashboard file found")
-                logger.info(f"Dashboard location: {dashboard_path}")
-                logger.info("📊 Grafana dashboards are automatically provisioned by kube-prometheus-stack")
-                logger.info("🔧 For manual dashboard import, use Grafana UI or API calls")
+            # Try NodePort first
+            grafana_url= f"{CONFIGS.env_config.GRAFANA_URL}:{CONFIGS.env_config.GRAFANA_PORT}"
+            # Test direct access
+            logger.info(f"Trying to acccess Grafana at {grafana_url}")
+            try:
+                requests.get(grafana_url, timeout=5)
+                logger.info(f"Grafana accessible at {grafana_url}")
+            except:
+                logger.info("NodePort not accessible, will use port-forward...")
+            # Create Grafana Manager
+            manager = GrafanaManager(
+                grafana_url=grafana_url,
+                username=CONFIGS.env_config.GRAFANA_USERNAME, 
+                password=CONFIGS.env_config.GRAFANA_PASSWORD
+            )
+            # Wait for Grafana
+            if manager.wait_for_grafana_ready(timeout=60):
+                if dashboard_path.exists():
+                    port = CONFIGS.env_config.GRAFANA_PORT
+                    success = manager.setup_complete_grafana_environment(dashboard_path, port)
+                    if success:
+                        logger.info("Dashboard imported successfully")
+                        return True
+                    else:
+                        logger.error("Dashboard import failed")
+                else:
+                    logger.error(f"Dashboard file not found: {dashboard_path}")
+            else:
+                logger.error("Grafana not ready")
+            # Setup complete Grafana environment
+            success = manager.setup_complete_grafana_environment(
+                dashboard_path, 
+                node_port= CONFIGS.env_config.GRAFANA_PORT
+            )
+            if success:
+                logger.info("Grafana dashboard setup completed successfully")
                 return True
             else:
-                # Try fallback locations if the main location doesn't exist
-                fallback_paths = [
-                    BASE_DIR / "grafana_dashboard.json",
-                    BASE_DIR / "grafana" / "kepler_dashboard.json"
-                ]
-                
-                for fallback_path in fallback_paths:
-                    if fallback_path.exists():
-                        logger.info("✅ Dashboard file found at fallback location")
-                        logger.info(f"Dashboard location: {fallback_path}")
-                        logger.info("📊 Grafana dashboards are automatically provisioned by kube-prometheus-stack")
-                        logger.info("🔧 For manual dashboard import, use Grafana UI or API calls")
-                        return True
-                
-                logger.warning("❌ Dashboard file not found")
-                logger.info("📊 Grafana is ready but dashboard needs to be imported manually")
-                return True
-                
-        except Exception as e:
-            logger.error(f"❌ Dashboard setup error: {e}")
-        
-        return True  # Don't fail the entire setup for dashboard issues
+                logger.error("Failed to setup Grafana dashboard")
+                return False
 
-    def _show_grafana_access_info(self):
-        """Show how to access Grafana and Prometheus services."""
-        logger.info("=" * 50)
-        logger.info("🎉 OBSERVABILITY STACK READY!")
-        logger.info("=" * 50)
-        logger.info("📊 Grafana Dashboard:")
-        logger.info("   URL: http://localhost:30080")
-        logger.info("   Username: admin")
-        logger.info("   Password: prom-operator")
-        logger.info("   Note: Dashboards auto-provisioned by Helm chart")
-        logger.info("")
-        logger.info("📈 Prometheus:")
-        logger.info(f"   URL: {CLUE_CONFIG.prometheus_url}")
-        logger.info("   Local access: http://localhost:30090")
-        logger.info("")
-        logger.info("📋 Manual Dashboard Import (if needed):")
-        logger.info("   1. Access Grafana UI at http://localhost:30080")
-        logger.info("   2. Go to '+' → Import → Upload JSON file")
-        logger.info("   3. Use grafana/grafana_dashboard.json from project root")
-        logger.info("")
-        logger.info("🔧 If NodePort doesn't work, use port-forward:")
-        logger.info("   kubectl port-forward service/kps1-grafana 3080:80")
-        logger.info("   kubectl port-forward service/kps1-kube-prometheus-stack-prometheus 9090:9090")
-        logger.info("=" * 50)
+        except Exception as e:
+            logger.error(f"Dashboard import error: {e}")
