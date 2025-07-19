@@ -8,6 +8,8 @@ import {
   XCircleIcon,
   StackIcon,
   TrashIcon,
+  XIcon,
+  PlayIcon,
 } from "@phosphor-icons/react";
 import LogsPanel from "../components/LogsPanel";
 import {
@@ -17,6 +19,7 @@ import {
   WrenchIcon,
 } from "@phosphor-icons/react/dist/ssr";
 import {QueueContext} from "../contexts/QueueContext";
+import {IconButton, Dialog, DialogTitle, DialogContent} from "@mui/material";
 import type {DeploymentForm} from "../models/DeploymentForm";
 
 const DashboardPage = () => {
@@ -39,20 +42,37 @@ const DashboardPage = () => {
    */
   const fetchCurrentDeployment = async () => {
     try {
-      const response = await fetch("/api/experiment/current");
+      const response = await fetch("/api/queue/current");
       if (!response.ok) {
+        // Handle 404 or other expected "no current deployment" responses
+        if (response.status === 404) {
+          setCurrentDeployment(null);
+          setDeploymentStatus("IDLE");
+          return;
+        }
         throw new Error(`API responded with status ${response.status}`);
       }
+
       const data = await response.json();
 
-      if (data) {
-        setCurrentDeployment(data);
-        // Set status based on deployment state - you can adjust this logic based on your backend
-        setDeploymentStatus(data.status || "DEPLOYING...");
-      } else {
+      // Handle explicit null response
+      if (data === null || data === undefined) {
         setCurrentDeployment(null);
         setDeploymentStatus("IDLE");
+        return;
       }
+
+      // Handle empty object or invalid data
+      if (typeof data !== "object" || !data.sut) {
+        console.warn("Received invalid deployment data:", data);
+        setCurrentDeployment(null);
+        setDeploymentStatus("IDLE");
+        return;
+      }
+
+      // Valid deployment data
+      setCurrentDeployment(data);
+      setDeploymentStatus(data.status || "DEPLOYING...");
     } catch (err) {
       console.error("Failed to fetch current deployment:", err);
       setCurrentDeployment(null);
@@ -74,17 +94,21 @@ const DashboardPage = () => {
       // Validate that we received the expected object structure
       if (!data || typeof data !== "object") {
         console.error("API returned invalid data:", data);
-        return {queue: [], queue_size: 0};
+        setCurrentQueue([]);
+        setQueueSize(0);
+        return;
       }
 
       // Ensure queue is an array
       if (!Array.isArray(data.queue)) {
         console.error("API returned non-array queue:", data.queue);
-        return {queue: [], queue_size: data.queue_size || 0};
+        setCurrentQueue([]);
+        setQueueSize(data.queue_size || 0);
+        return;
       }
 
       setCurrentQueue(data.queue ?? []);
-      setQueueSize(data.queue_size);
+      setQueueSize(data.queue_size || 0);
     } catch (err) {
       console.error("Failed to fetch queue:", err);
       setCurrentQueue([]);
@@ -96,8 +120,6 @@ const DashboardPage = () => {
    * Remove item from queue
    */
   const removeFromQueue = async (index: number) => {
-    // Note: You might need to implement a specific endpoint for removing individual items
-    // For now, this is a placeholder - you'd need to add this endpoint to your backend
     try {
       const response = await fetch(`/api/queue/remove/${index}`, {
         method: "DELETE",
@@ -128,8 +150,22 @@ const DashboardPage = () => {
   };
 
   /**
-   * Cancel current experiment
+   * Start deployment from queue
    */
+  const startDeployment = async () => {
+    try {
+      const response = await fetch("/api/queue/deploy", {
+        method: "POST",
+      });
+      if (response.ok) {
+        await fetchCurrentDeployment(); // Refresh current deployment
+        await fetchQueue(); // Refresh queue
+      }
+    } catch (err) {
+      console.error("Failed to start deployment:", err);
+    }
+  };
+
   const cancelCurrentExperiment = async () => {
     try {
       const response = await fetch("/api/queue/stop", {
@@ -160,30 +196,45 @@ const DashboardPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Helper function to safely access deployment properties
+  const getDeploymentValue = (
+    key: keyof DeploymentForm,
+    defaultValue: any = "N/A"
+  ) => {
+    if (!currentDeployment) return defaultValue;
+    const value = currentDeployment[key];
+    if (value === null || value === undefined) return defaultValue;
+    return value;
+  };
+
   const configItems = [
     {
       label: "SUT (System Under Test)",
-      value: currentDeployment?.sut || "N/A",
+      value: getDeploymentValue("sut"),
       icon: <WrenchIcon size={24} />,
     },
     {
       label: "Experiments",
-      value: currentDeployment?.variants?.join(", ") || "N/A",
+      value: Array.isArray(getDeploymentValue("variants"))
+        ? getDeploymentValue("variants").join(", ")
+        : "N/A",
       icon: <FlaskIcon size={24} />,
     },
     {
       label: "Workload Type",
-      value: currentDeployment?.workloads?.join(", ") || "N/A",
+      value: Array.isArray(getDeploymentValue("workloads"))
+        ? getDeploymentValue("workloads").join(", ")
+        : "N/A",
       icon: <LightningIcon size={24} />,
     },
     {
       label: "Iterations",
-      value: currentDeployment?.iterations?.toLocaleString() || "0",
+      value: getDeploymentValue("iterations", 0)?.toLocaleString() || "0",
       icon: <RepeatIcon size={24} />,
     },
     {
       label: "Deploy only",
-      value: currentDeployment?.deploy_only ? "True" : "False",
+      value: getDeploymentValue("deploy_only", false) ? "True" : "False",
       icon: <RepeatIcon size={24} />,
     },
   ];
@@ -202,16 +253,33 @@ const DashboardPage = () => {
         return "text-red-500";
       case "CANCELLED":
         return "text-orange-500";
+      case "IDLE":
+        return "text-gray-500";
       default:
         return "text-gray-500";
     }
   };
 
+  // Check if we have a valid deployment
+  const hasValidDeployment =
+    currentDeployment &&
+    currentDeployment.sut &&
+    typeof currentDeployment.sut === "string" &&
+    currentDeployment.sut.trim() !== "";
+
   return (
     <div className="w-full h-full flex flex-col gap-2">
       <div className="bg-white p-6 rounded-lg shadow-md w-full h-full relative">
         {/* Queue Status Button */}
-        <div className="absolute top-6 right-6 z-10">
+        <div className="absolute top-6 right-6 z-10 flex gap-2">
+          <button
+            className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
+            onClick={startDeployment}
+            disabled={queueSize === 0 || hasValidDeployment}
+          >
+            <PlayIcon size={18} />
+            <span>Start Next</span>
+          </button>
           <button
             className="flex items-center gap-2 px-4 py-2 bg-blue-400 text-white rounded hover:bg-blue-600 transition-colors font-medium"
             onClick={() => setShowQueueModal(true)}
@@ -222,14 +290,17 @@ const DashboardPage = () => {
             </span>
           </button>
         </div>
-        {currentDeployment ? (
+
+        {hasValidDeployment ? (
           <div className="flex gap-6 h-full">
             <div className="w-1/3">
               <div className="flex flex-col gap-2">
                 <div className="pb-2">
                   <p className="flex gap-2 text-xl items-center pt-2 pb-2">
                     <RocketLaunchIcon size={24} /> Deploying{" "}
-                    <span className="font-medium">{currentDeployment.sut}</span>
+                    <span className="font-medium">
+                      {getDeploymentValue("sut")}
+                    </span>
                     !
                   </p>
                   Your current experiment is being deployed. Please grab a
@@ -278,7 +349,7 @@ const DashboardPage = () => {
                   className="rounded p-2 bg-red-400 text-white hover:bg-red-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
                   onClick={cancelCurrentExperiment}
                   disabled={
-                    !currentDeployment.sut || deploymentStatus === "COMPLETED"
+                    !hasValidDeployment || deploymentStatus === "COMPLETED"
                   }
                 >
                   <div className="flex items-center justify-center gap-2">
@@ -322,93 +393,111 @@ const DashboardPage = () => {
       </div>
 
       {/* Queue Modal */}
-      {showQueueModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-md w-full max-w-4xl mx-4 max-h-[80vh] flex flex-col">
-            {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-xl font-medium">
-                Experiment Queue ({queueSize} items)
-              </h2>
-              <button
-                onClick={clearQueue}
-                className="flex items-center gap-2 px-3 py-2 bg-red-400 text-white rounded hover:bg-red-600 transition-colors font-medium text-sm disabled:bg-gray-400 disabled:cursor-not-allowed"
-                disabled={queueSize === 0}
-              >
-                <TrashIcon size={16} />
-                Clear All
-              </button>
-            </div>
+      <Dialog
+        open={showQueueModal}
+        onClose={() => setShowQueueModal(false)}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          className: "max-h-[80vh] rounded-lg shadow-xl",
+        }}
+      >
+        <DialogTitle className="flex justify-between items-center p-4 border-b border-gray-200">
+          <div>
+            <span className="text-xl font-medium">
+              Experiment Queue ({queueSize} items)
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={startDeployment}
+              className="flex items-center gap-2 px-3 py-2 bg-green-400 text-white rounded hover:bg-green-600 transition-colors font-medium text-sm disabled:bg-gray-400 disabled:cursor-not-allowed"
+              disabled={queueSize === 0 || hasValidDeployment}
+            >
+              <PlayIcon size={16} />
+              Start Next
+            </button>
+            <button
+              onClick={clearQueue}
+              className="flex items-center gap-2 px-3 py-2 bg-red-400 text-white rounded hover:bg-red-600 transition-colors font-medium text-sm disabled:bg-gray-400 disabled:cursor-not-allowed"
+              disabled={queueSize === 0}
+            >
+              <TrashIcon size={16} />
+              Clear All
+            </button>
+            <IconButton
+              aria-label="close"
+              onClick={() => setShowQueueModal(false)}
+              className="text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              <XIcon size={24} />
+            </IconButton>
+          </div>
+        </DialogTitle>
 
-            {/* Content */}
-            <div className="flex-1 p-6 overflow-y-auto">
-              {currentQueue.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  Queue is empty
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {currentQueue.map((item, index) => (
-                    <div
-                      key={index}
-                      className="border rounded-lg p-4 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors"
-                    >
-                      <div className="flex-1">
-                        <div className="font-medium text-lg mb-2">
-                          {item.sut}
-                        </div>
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <span className="text-gray-600">Experiments:</span>
-                            <div className="font-mono bg-white px-2 py-1 rounded border mt-1">
-                              {item.variants?.join(", ") || "N/A"}
-                            </div>
-                          </div>
-                          <div>
-                            <span className="text-gray-600">Workloads:</span>
-                            <div className="font-mono bg-white px-2 py-1 rounded border mt-1">
-                              {item.workloads?.join(", ") || "N/A"}
-                            </div>
-                          </div>
-                          <div>
-                            <span className="text-gray-600">Iterations:</span>
-                            <div className="font-mono bg-white px-2 py-1 rounded border mt-1">
-                              {item.iterations?.toLocaleString() || "0"}
-                            </div>
-                          </div>
-                          <div>
-                            <span className="text-gray-600">Deploy only:</span>
-                            <div className="font-mono bg-white px-2 py-1 rounded border mt-1">
-                              {item.deploy_only ? "True" : "False"}
-                            </div>
-                          </div>
+        <DialogContent className="p-6">
+          {currentQueue.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">Queue is empty</div>
+          ) : (
+            <div className="space-y-3">
+              {currentQueue.map((item, index) => (
+                <div
+                  key={index}
+                  className="border rounded-lg p-4 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors"
+                >
+                  <div className="flex-1">
+                    <div className="font-medium text-lg mb-2">
+                      {item.sut || "Unknown SUT"}
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-600">Experiments:</span>
+                        <div className="font-mono bg-white px-2 py-1 rounded border mt-1">
+                          {Array.isArray(item.variants) &&
+                          item.variants.length > 0
+                            ? item.variants.join(", ")
+                            : "N/A"}
                         </div>
                       </div>
-                      <button
-                        onClick={() => removeFromQueue(index)}
-                        className="ml-4 p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
-                        title="Remove from queue"
-                      >
-                        <XCircleIcon size={20} />
-                      </button>
+                      <div>
+                        <span className="text-gray-600">Workloads:</span>
+                        <div className="font-mono bg-white px-2 py-1 rounded border mt-1">
+                          {Array.isArray(item.workloads) &&
+                          item.workloads.length > 0
+                            ? item.workloads.join(", ")
+                            : "N/A"}
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Iterations:</span>
+                        <div className="font-mono bg-white px-2 py-1 rounded border mt-1">
+                          {item.iterations &&
+                          typeof item.iterations === "number"
+                            ? item.iterations.toLocaleString()
+                            : "0"}
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Deploy only:</span>
+                        <div className="font-mono bg-white px-2 py-1 rounded border mt-1">
+                          {item.deploy_only ? "True" : "False"}
+                        </div>
+                      </div>
                     </div>
-                  ))}
+                  </div>
+                  <button
+                    onClick={() => removeFromQueue(index)}
+                    className="ml-4 p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
+                    title="Remove from queue"
+                  >
+                    <XCircleIcon size={20} />
+                  </button>
                 </div>
-              )}
+              ))}
             </div>
-
-            {/* Footer */}
-            <div className="p-6 border-t flex justify-end">
-              <button
-                onClick={() => setShowQueueModal(false)}
-                className="px-4 py-2 bg-blue-400 text-white rounded hover:bg-blue-600 transition-colors font-medium"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

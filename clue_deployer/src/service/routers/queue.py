@@ -28,10 +28,11 @@ def enqueue_experiment(request: list[DeployRequest]):
     logger.info(f"Enqueued {len(request)} deployment requests.")
     return {"message": f"Enqueued {len(request)} deployment requests."}
 
-@router.get("/api/experiment/current", status_code=status.HTTP_200_OK)
+@router.get("/api/queue/current", status_code=status.HTTP_200_OK)
 async def get_current_deployment():
     logger.info("Fetching current deployment status.")
-    return worker.current_experiment
+    current_deployment = worker.current_experiment
+    return current_deployment
 
 @router.post("/api/queue/deploy", status_code=status.HTTP_202_ACCEPTED)
 def deploy_from_queue():
