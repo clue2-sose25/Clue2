@@ -44,7 +44,7 @@ def build():
         "--platform", remote_platform_arch,
         "--push",
         "-t", tag,
-        "./clue_loadgenerator", # Specify the directory containing the Dockerfile
+        "./clue_loadgenerator/workload_generator", # Specify the directory containing the Dockerfile
     ]
     
     print(f"Executing command: {' '.join(build_command)}")
