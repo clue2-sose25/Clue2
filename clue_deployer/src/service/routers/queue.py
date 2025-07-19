@@ -97,3 +97,16 @@ def get_queue_status():
         "queue_size": queue_size,
         "queue": queuer.experiment_queue.get_all()
     }
+
+@router.delete("/api/queue/remove/{queue_index}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_queue_item(queue_index):
+    """Delete a specific item from the deployment queue."""
+    try:
+        queuer.experiment_queue.remove(queue_index)
+        logger.info(f"Removed item at index {queue_index} from the queue.")
+    except IndexError:
+        logger.error(f"Index {queue_index} out of range for the queue.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                             detail=f"Index {queue_index} out of range for the queue.")
+    
+    return JSONResponse(status_code=status.HTTP_204_NO_CONTENT, content=None)
