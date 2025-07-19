@@ -2,6 +2,8 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: clue-config-file
+  labels:
+    {{- include "clue.labels" . | nindent 4 }}
 data:
   clue-config.yaml: |-
-  {{ .Values.clueConfig | indent 4 }}
+{{ .Values.clueConfig | indent 4 }}

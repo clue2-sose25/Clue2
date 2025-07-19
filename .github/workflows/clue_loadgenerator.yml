@@ -47,7 +47,7 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           context: ./clue_loadgenerator
-          file: Dockerfile
+          file: ./clue_loadgenerator/workload_generator/Dockerfile
           platforms: linux/amd64
           tags: |
             ghcr.io/clue2-sose25/clue2-${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }}
@@ -63,7 +63,7 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           context: ./clue_loadgenerator/
-          file: ./clue_loadgenerator/Dockerfile
+          file: ./clue_loadgenerator/workload_generator/Dockerfile
           platforms: linux/amd64
           tags: ghcr.io/clue2-sose25/clue2-${{ env.IMAGE_NAME }}:pr-test
           push: true

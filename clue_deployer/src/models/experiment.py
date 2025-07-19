@@ -1,14 +1,16 @@
 import json
 from uuid import UUID
-from dataclasses import dataclass
+from pydantic import BaseModel
+from pydantic_settings import SettingsConfigDict
+from pathlib import Path
 from typing import List
 from clue_deployer.src.models.workload import Workload
 from clue_deployer.src.models.variant import Variant
 from clue_deployer.src.configs.configs import Configs
 
 
-@dataclass
-class Experiment:
+
+class Experiment(BaseModel):
     """
     A single experiment, the parent object,
     correlated with a single SUT, including several variants and runs.
@@ -36,6 +38,10 @@ class Experiment:
         }
         return json.dumps(experiment_dict, indent=2)
     
+    model_config = SettingsConfigDict(
+        arbitrary_types_allowed=True # because Configs is not a Pydantic model
+    )
+    
     def __str__(self) -> str:
         """Return a readable string representation of the experiment."""
         workload_strs = [str(w) for w in self.workloads]
@@ -50,3 +56,13 @@ class Experiment:
             f"iterations={self.n_iterations}, "
             f"deploy_only={self.deploy_only})"
         )
+    
+    def get_experiment_dir(self) -> Path:
+        """Return the directory path for this experiment."""
+        base_path = self.configs.env_config.RESULTS_PATH
+        return base_path / self.sut / self.timestamp
+
+    def make_experiemnts_dir(self) -> None:
+        """ Create the directory for this experiment if it doesn't exist."""
+        experiment_path = self.get_experiment_dir()
+        experiment_path.mkdir(parents=True, exist_ok=True)

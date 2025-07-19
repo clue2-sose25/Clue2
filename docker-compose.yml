@@ -25,6 +25,8 @@ services:
       - "5001:80"
     environment:
       DOCKER_BUILDKIT: 1
+      NGINX_RESOLVER: ${NGINX_RESOLVER}
+      NGINX_RESOLVER_VALID: 30s
     networks:
       - clue2
 
@@ -44,6 +46,7 @@ services:
       - registry
     environment:
       DOCKER_BUILDKIT: 1
+      ENABLE_DEBUG: ${ENABLE_DEBUG}
       SUT: ${SUT}
       VARIANTS: ${VARIANTS}
       WORKLOADS: ${WORKLOADS}
@@ -54,6 +57,10 @@ services:
       PATCH_LOCAL_CLUSTER: ${PATCH_LOCAL_CLUSTER}
       CLUSTER_PROXY_COMMAND: ${CLUSTER_PROXY_COMMAND}
       PRECONFIGURE_CLUSTER: ${PRECONFIGURE_CLUSTER}
+      GRAFANA_URL: ${GRAFANA_URL}
+      GRAFANA_PORT: ${GRAFANA_PORT}
+      PROMETHEUS_RELEASE_NAME: ${PROMETHEUS_RELEASE_NAME}
+      PROMETHEUS_NAMESPACE: ${PROMETHEUS_NAMESPACE}
       GRAFANA_USERNAME: ${GRAFANA_USERNAME}
       GRAFANA_PASSWORD: ${GRAFANA_PASSWORD}
     volumes:
@@ -142,7 +149,7 @@ services:
       - ots
     build:
       context: .
-      dockerfile: ./clue_loadgenerator/builder/Dockerfile
+      dockerfile: ./clue_loadgenerator/Dockerfile
     container_name: loadgenerator-builder
     privileged: true
     depends_on:

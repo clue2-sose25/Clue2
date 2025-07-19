@@ -1,4 +1,5 @@
 imageRegistry: ghcr.io/clue2-sose25
+imagePullPolicy: Always
 sutConfigFileName: ""
 sutConfig: ""
 clueConfig: |
@@ -16,36 +17,60 @@ clueDeployer:
   tag: "latest"
   serviceAccountName: clue-deployer
   service:
+    type: ClusterIP
     port: 8000
   probes:
     path: /api/health
   env:
+    SUT: YOUR_SUT_NAME
+    # Set the SUT name to the one you are using, e.g., "toystore"
+    # or "example" if you are using the example SUT.
+    VARIANTS: baseline
+    # Set the variants you want to use, e.g., "baseline" or "shaped".
+    # If you have multiple variants, separate them with commas.
+    # Example: VARIANTS: baseline,shaped
+    WORKLOADS: shaped
+    # Set the workloads you want to use, e.g., "shaped" or "unshaped".
+    # If you have multiple workloads, separate them with commas.
+    # Example: WORKLOADS: shaped,unshaped
+    DEPLOY_AS_SERVICE: "false"
+    # Set to "true" if you want to deploy the SUT as a service.
+    # This is useful for SUTs that need to be accessed via a service.
     DEPLOY_ONLY: "false"
     N_ITERATIONS: "1"
+    ENABLE_DEBUG: "false"
     PRECONFIGURE_CLUSTER: "false"
+    # Set to "true" if you want to preconfigure the cluster before deploying the SUT.
+    # This is useful for SUTs that require specific configurations before deployment like installing premetheus and kapler
+    HELM_DRIVER: configmap
+    # Set the Helm driver to use for storing the release information.
+    # Options are: configmap, secret, or memory.
+    # Default is configmap.
 clueWebui:
   image: "clue2-webui"
   tag: "latest"
   service:
+    type: ClusterIP
     port: 80
+  probes:
+    path: /
   env:
     API_BASE_URL: "http://clue-deployer:8000"
+    NGINX_RESOLVER: "kube-dns.kube-system.svc.cluster.local"
+    NGINX_RESOLVER_VALID: 30s
 loadGenerator:
   image: "clue2-loadgenerator-builder"
   tag: "latest"
   # optionally mount all locust files from a folder within the chart
   workloadDir: ""
-  workloadFiles:
-    example.py: |
-      from locust import HttpUser, task
-
-      class Example(HttpUser):
-          @task
-          def index(self):
-              self.client.get("/")
+  workloadFiles: {}
 ingress:
   enabled: true
   host: clue.example.com
   tls: false
 rbac:
   create: true
+# This will create the necessary RBAC resources for the clue-deployer.
+# If you want to use an existing service account, set `rbac.create` to false
+# and provide the service account name in `clueDeployer.serviceAccountName`.
+# If you set `rbac.create` to false, make sure the service account has the necessary permissions to deploy the SUT.

@@ -35,6 +35,12 @@ docker compose up -d --build
 
 CLUE Web UI should be available on the [localhost:5001](http://localhost:5001). Before running experiments, make sure to read the `CLUE Components` section.
 
+The UI container serves the built files via **Nginx**. When running in a cluster
+you may need to configure the DNS resolver so Nginx can reach the deployer
+service. This is done with the environment variables `NGINX_RESOLVER` and
+`NGINX_RESOLVER_VALID`. The base URL of the API can be customised with
+`API_BASE_URL`.
+
 ### ⛓️ CLUE CLI
 
 For headless deployment of CLUE we support deploying CLUE as a standalone deployer docker container.
@@ -115,6 +121,10 @@ container in the cluster, so you typically do not need to set it manually.
 An example RBAC manifest is provided in `clue_deployer/k8s/clue-deployer-rbac.yaml`.
 The local-cluster patching logic is disabled automatically when running in-cluster.
 
+When running CLUE **outside** the cluster (for example via Docker Compose) a kubeconfig
+must be supplied to the deployer. The container will patch the local cluster when
+`PATCH_LOCAL_CLUSTER=true` so the SUT images can be pulled from your registry.
+
 To launch the deployer as a Kubernetes `Job`, apply the RBAC manifest and the
 provided example job file:
 
@@ -142,6 +152,9 @@ As Clue comes with an integrated loadgenerator and developer just have to bring 
 ```bash
 docker compose up -d clue-loadgenerator-builder
 ```
+When deploying with the Helm chart, the builder container is not used directly.
+Ensure the load generator image produced by this step is pushed to the registry
+referenced in `values.yaml` so the cluster can pull it.
 
 ### 🧱 (Optional) Build Images for the selected SUT
 
@@ -236,6 +249,12 @@ helm upgrade --install clue clue_helm --namespace clue --create-namespace -f clu
 Set `imageRegistry` and other values in `values.yaml` to point to your images and configure the ingress host.
 The chart deploys all CLUE components into the `clue` // Release.Namespace. SUT deployments are created in a separate namespace defined in the SUT config on nodes labeled `scaphandre=true`.
 
+Running with the Helm chart means both the deployer and web UI operate **inside
+the cluster**. The container automatically detects this via the
+`KUBERNETES_SERVICE_HOST` variable and skips the kubeconfig preparation. When you
+run CLUE via Docker Compose or the CLI outside the cluster, make sure to provide
+a kubeconfig (see `PATCH_LOCAL_CLUSTER` description above).
+
 The chart includes a `Job` manifest for CI execution and a `Deployment` for a long-running service. A second job `clue-loadgenerator` can be used to run Locust in the cluster next to the deployer. Locust scripts are taken from the ConfigMap `loadgenerator-workload`, created from entries in `loadGenerator.workloadFiles` in the values file and mounted under `sut_configs/workloads/<sut>/`.
 
 For automated tests you can use the composite action under
@@ -249,7 +268,7 @@ environment variables to run the `toystore` SUT with the `baseline` variant.
 An additional template `clue_helm/values-example.yaml` shows all required fields.
 Copy this file to your own repository and adjust the registry and tags. Provide the
 path via the `values-file` input of the action to deploy your SUT. When you need
-to mount a folder of Locust scripts, pass its location via the `workload-folder`
+to mount a folder of Locust scripts, pass its location via the `values.yaml`
 input. The action copies that folder next to the chart and sets
 `loadGenerator.workloadDir` accordingly.
 If the chart is stored in a registry, supply its reference via the
@@ -281,7 +300,7 @@ before launching the `clue-loadgenerator` job.
 Alternatively you can put your Locust scripts in a folder and reference it via `loadGenerator.workloadDir`.
 All files in that folder become entries in the `loadgenerator-workload` ConfigMap. This is convenient
 when invoking the Helm chart from another repository: copy the folder next to the chart and pass its path
-through the GitHub action's `workload-folder` input. The action mounts the folder into the chart and
+through the GitHub action's `values.yaml` input. The action mounts the folder into the chart and
 sets `loadGenerator.workloadDir` automatically.
 
 ## 🚀 Observability Stack Setup: Two Options

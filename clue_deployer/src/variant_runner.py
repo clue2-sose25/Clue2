@@ -3,7 +3,7 @@ import threading
 
 from datetime import datetime
 from clue_deployer.src.agent.psc.tracker import NodeUsage, PodUsage, ResourceTracker
-from clue_deployer.src.configs.configs import CLUE_CONFIG, SUT_CONFIG
+from clue_deployer.src.configs.configs import CONFIGS
 from clue_deployer.src.models.variant import Variant
 from clue_deployer.src.models.workload import Workload
 from clue_deployer.src.models.workload_cancelled_exception import WorkloadCancelled
@@ -15,7 +15,7 @@ from os import path
 import signal
 import kubernetes
 from kubernetes.client.rest import ApiException
-from clue_deployer.src.logger import logger
+from clue_deployer.src.logger import process_logger as logger
 
 class VariantRunner:
 
@@ -32,7 +32,7 @@ class VariantRunner:
             logger.info("Reached timeout but experiment is already done, skipping cancellation.")
             return
         
-        logger.warning(f"Workload timeout of {CLUE_CONFIG.experiment_timeout}s reached, stopping the experiment.")
+        logger.warning(f"Workload timeout of {CONFIGS.clue_config.experiment_timeout}s reached, stopping the experiment.")
         
         if self._tracker:
             self._tracker.stop()
@@ -101,10 +101,10 @@ class VariantRunner:
 
         # tracker = ResourceTracker(exp.prometheus, observations_channel, tracker_namespaces, 10)
         self._tracker = ResourceTracker(
-            prometheus_url=CLUE_CONFIG.prometheus_url,
+            prometheus_url=CONFIGS.clue_config.prometheus_url,
             node_channel=self._node_channel,
             pod_channel=self._pod_channel,
-            namespaces=[SUT_CONFIG.namespace] + SUT_CONFIG.infrastructure_namespaces,
+            namespaces=[CONFIGS.sut_config.namespace] + CONFIGS.sut_config.infrastructure_namespaces,
             interval=10,
         )
         
@@ -120,11 +120,11 @@ class VariantRunner:
         self._setup_signal_handlers()
 
         try:
-            logger.info(f"Variant started, deploying workload with timeout {CLUE_CONFIG.experiment_timeout}s...")
+            logger.info(f"Variant started, deploying workload with timeout {CONFIGS.clue_config.experiment_timeout}s...")
             StatusManager.set(StatusPhase.IN_PROGRESS, "Starting workload with time out, variant deployment in progress...")
             
             # Set up the timeout
-            timer = self._setup_timeout(CLUE_CONFIG.experiment_timeout)
+            timer = self._setup_timeout(CONFIGS.clue_config.experiment_timeout)
             
             # Deploy workload on different node or locally and wait for workload to be completed (or timeout)
             workload_runner = WorkloadRunner(self.variant, self.workload)
@@ -157,20 +157,20 @@ class VariantRunner:
 
         if self.variant.autoscaling:
             hpas = kubernetes.client.AutoscalingV1Api()
-            _hpas = hpas.list_namespaced_horizontal_pod_autoscaler(SUT_CONFIG.namespace)
+            _hpas = hpas.list_namespaced_horizontal_pod_autoscaler(CONFIGS.sut_config.namespace)
             for stateful_set in _hpas.items:
-                hpas.delete_namespaced_horizontal_pod_autoscaler(name=stateful_set.metadata.name, namespace=SUT_CONFIG.namespace)
+                hpas.delete_namespaced_horizontal_pod_autoscaler(name=stateful_set.metadata.name, namespace=CONFIGS.sut_config.namespace)
 
         if self.variant.colocated_workload:
             core = kubernetes.client.CoreV1Api()
             # noinspection PyBroadException
             try:
                 # Check if the pod exists before trying to delete it --> throws an error if it does not exist
-                core.read_namespaced_pod(name="loadgenerator", namespace=SUT_CONFIG.namespace)
+                core.read_namespaced_pod(name="loadgenerator", namespace=CONFIGS.sut_config.namespace)
 
                 logger.info("Deleting loadgenerator pod")    
                 core.delete_namespaced_pod(
-                    name="loadgenerator", namespace=SUT_CONFIG.namespace
+                    name="loadgenerator", namespace=CONFIGS.sut_config.namespace
                 )
             except ApiException as e:
                 if e.status == 404:
