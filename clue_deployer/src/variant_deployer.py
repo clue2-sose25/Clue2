@@ -173,7 +173,6 @@ class VariantDeployer:
                 # Install Kepler if required
                 logger.warning("Helm chart 'kepler-stack' is not installed.")
                 if os.getenv("PRECONFIGURE_CLUSTER", "false").lower() == "true":
-                    logger.info(f"Skipped kepler installation. The PRECONFIGURE_CLUSTER set to true " )
                     logger.info("Helm chart 'Kepler' is not installed. Installing it now...")
                     subprocess.check_call([
                         "helm", "install", "kepler", "kepler/kepler",
