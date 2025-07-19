@@ -37,6 +37,10 @@ def build():
     print(f"Building clue load generator for platform {remote_platform_arch}")
     tag = f"{docker_registry_address}/clue-loadgenerator:latest"
     
+    build_context = "/app"
+    dockerfile_path = "/app/clue_loadgenerator/Dockerfile"
+    cwd = "/app"
+    
     build_command = [
         "docker",
         "buildx",
@@ -44,14 +48,16 @@ def build():
         "--platform", remote_platform_arch,
         "--push",
         "-t", tag,
-        "./clue_loadgenerator/workload_generator", # Specify the directory containing the Dockerfile
+        "-f", dockerfile_path,
+        build_context,
     ]
     
     print(f"Executing command: {' '.join(build_command)}")
+    print(f"Working directory: {cwd}")
     
     build_result = subprocess.check_call(
         build_command,
-        cwd=path.dirname(path.abspath(__file__)), # Set CWD to the directory of this script (/app)
+        cwd=cwd,
     )
     
     if build_result != 0:
