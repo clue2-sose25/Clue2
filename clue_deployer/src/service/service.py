@@ -14,13 +14,13 @@ from clue_deployer.src.service.status_manager import StatusManager
 from clue_deployer.src.logger import get_child_process_logger, logger, shared_log_buffer, SharedLogBuffer
 from clue_deployer.src.main import ExperimentRunner
 from clue_deployer.src.configs.configs import Configs, ENV_CONFIG
-from .routers.queue import worker
+from .routers.queue import queuer
 from .routers import logs, suts, results, plots, cluster, results_server, clue_config, queue
 
 
 # Initialize multiprocessing lock and value for deployment synchronization. Used for deployments.
 state_lock = Lock()
-is_deploying = worker.is_deploying
+is_deploying = queuer.is_deploying
 
 # Root page redirect to swagger /docs
 @asynccontextmanager

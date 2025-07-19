@@ -89,14 +89,14 @@ const ExperimentPage = () => {
       }
 
       // Step 2: Start the deployment worker
-      const deployResponse = await fetch("/api/queue/deploy", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-      });
+      // const deployResponse = await fetch("/api/queue/deploy", {
+      //   method: "POST",
+      //   headers: {"Content-Type": "application/json"},
+      // });
 
-      if (!deployResponse.ok) {
-        throw new Error(`Failed to start deployment: ${deployResponse.status}`);
-      }
+      // if (!deployResponse.ok) {
+      //   throw new Error(`Failed to start deployment: ${deployResponse.status}`);
+      // }
 
       setIfDeploying(true);
       fetchQueue();
