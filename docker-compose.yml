@@ -145,7 +145,7 @@ services:
       - ots
     build:
       context: .
-      dockerfile: ./clue_loadgenerator/builder/Dockerfile
+      dockerfile: ./clue_loadgenerator/Dockerfile
     container_name: loadgenerator-builder
     privileged: true
     depends_on:
