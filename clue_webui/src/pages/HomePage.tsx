@@ -74,9 +74,8 @@ const HomePage = () => {
           text={
             queueSize === 0
               ? "The queue is empty"
-              : `${queueSize} experiments in the queue`
+              : `${queueSize} experiments queued`
           }
-          subText={queueSize === 0 ? "" : "Estimated time: -"}
           link="/experiment"
           button="Add a new experiment"
         />
