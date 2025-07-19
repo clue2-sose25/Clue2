@@ -12,9 +12,10 @@ class ExperimentQueue(Queue):
 
     @property
     def last_experiment(self):
-        if self._last_experiment is None:
-            raise ValueError("No experiment has been dequeued yet.")
-        return self._last_experiment
+        with self.mutex:
+            if self._last_experiment is None:
+                raise ValueError("No experiment has been dequeued yet.")
+            return self._last_experiment
 
     @last_experiment.setter
     def last_experiment(self, value):
@@ -56,7 +57,7 @@ class ExperimentQueue(Queue):
             self.not_full.notify_all()  # Notify any waiting threads
 
     def __repr__(self):
-        return f"<ExperimentQueue size={len(self._mirror)} contents={list(self._mirror)}>"
+        return f"<ExperimentQueue size={len(self.queue)} contents={list(self.queue)}>"
 
     def get_all(self):
         return list(self.queue)  # Return a copy of the shared mirror
