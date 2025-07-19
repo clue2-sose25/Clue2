@@ -93,11 +93,9 @@ class VariantDeployer:
             if "kepler" not in helm_repos:
                 logger.info("Helm repository 'kepler' is not added. Adding it now...")
                 subprocess.check_call(["helm", "repo", "add", "kepler", "https://sustainable-computing-io.github.io/kepler-helm-chart"])
-            # TODO: FADEL
             if "grafana" not in helm_repos:
                 logger.info("Helm repository 'grafana' is not added. Adding it now...")
                 subprocess.check_call(["helm", "repo", "add", "grafana", "https://grafana.github.io/helm-charts"])
-            # TODO: FADEL END
             # Update Helm repos
             logger.info("Updating helm repos")
             subprocess.check_call(["helm", "repo", "update"])
@@ -187,9 +185,10 @@ class VariantDeployer:
                     logger.info(f"Skipped Kepler installation.The PRECONFIGURE_CLUSTER set to false")
             else:
                 logger.info("Kepler stack found") 
-            # Setup Grafana dashboards
-            logger.info("Setting up Grafana dashboards")
+            # Check if Grafana is installed
+            logger.info("Setting up Grafana Dashboard")
             self._setup_grafana_dashboard()
+            # All done
             logger.info("All cluster requirements fulfilled")
         except subprocess.CalledProcessError as e:
             logger.error(f"Error while fulfilling Helm requirements: {e}")
@@ -336,69 +335,50 @@ class VariantDeployer:
         """
         Setup Grafana dashboards for sustainability monitoring.
         """
-        logger.info("Importing Grafana dashboard...")
-            # Path to the Kepler dashboard JSON file
+        # Path to the Grafana dashboard JSON file
         dashboard_path = BASE_DIR / "grafana" / "grafana_dashboard.json"
         
         try:
             # Try NodePort first
-            grafana_url=CONFIGS.env_config.GRAFANA_URL or "http://localhost:30800"
+            grafana_url= f"{CONFIGS.env_config.GRAFANA_URL}:{CONFIGS.env_config.GRAFANA_PORT}"
             # Test direct access
+            logger.info(f"Trying to acccess Grafana at {grafana_url}")
             try:
-                response = requests.get(grafana_url, timeout=5)
-                logger.info(f"✅ Grafana accessible at {grafana_url}")
+                requests.get(grafana_url, timeout=5)
+                logger.info(f"Grafana accessible at {grafana_url}")
             except:
                 logger.info("NodePort not accessible, will use port-forward...")
-                grafana_url = "http://grafana.clue-monitoring:80"
-            logger.info(f"Using Grafana URL: {grafana_url}")   
+            # Create Grafana Manager
             manager = GrafanaManager(
                 grafana_url=grafana_url,
                 username=CONFIGS.env_config.GRAFANA_USERNAME, 
                 password=CONFIGS.env_config.GRAFANA_PASSWORD
             )
-
+            # Wait for Grafana
             if manager.wait_for_grafana_ready(timeout=60):
                 if dashboard_path.exists():
-                    port = 80 if ":80" in grafana_url else 30800
+                    port = CONFIGS.env_config.GRAFANA_PORT
                     success = manager.setup_complete_grafana_environment(dashboard_path, port)
                     if success:
-                        logger.info("✅ Dashboard imported successfully")
+                        logger.info("Dashboard imported successfully")
                         return True
                     else:
-                        logger.error("❌ Dashboard import failed")
+                        logger.error("Dashboard import failed")
                 else:
-                    logger.error(f"❌ Dashboard file not found: {dashboard_path}")
+                    logger.error(f"Dashboard file not found: {dashboard_path}")
             else:
-                logger.error("❌ Grafana not ready")
-
-        except Exception as e:
-            logger.error(f"❌ Dashboard import error: {e}")
-
-        try:
-            if not dashboard_path.exists():
-                logger.warning(f"Kepler dashboard file not found at {dashboard_path}")
-                logger.info(f"Skipping Grafana dashboard setup" )
-                return False
-            
-            # Initialize Grafana manager with configuration
-            grafana_manager = GrafanaManager(
-                username=CONFIGS.env_config.GRAFANA_USERNAME,
-                password=CONFIGS.env_config.GRAFANA_PASSWORD
-            )
-            
+                logger.error("Grafana not ready")
             # Setup complete Grafana environment
-            success = grafana_manager.setup_complete_grafana_environment(
+            success = manager.setup_complete_grafana_environment(
                 dashboard_path, 
-                node_port= 80 if ":80" in grafana_url else 30800
+                node_port= CONFIGS.env_config.GRAFANA_PORT
             )
-            
             if success:
                 logger.info("Grafana dashboard setup completed successfully")
                 return True
             else:
                 logger.error("Failed to setup Grafana dashboard")
                 return False
-                
+
         except Exception as e:
-            logger.error(f"Error setting up Grafana dashboard: {e}")
-            return False
+            logger.error(f"Dashboard import error: {e}")
