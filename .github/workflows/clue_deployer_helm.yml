@@ -1,36 +1,36 @@
----
-name: Test Helm Deploy
+# ---
+# name: Test Helm Deploy
 
-on:
-  pull_request:
-    paths:
-      - 'clue_helm/**'
-      - '.github/actions/clue-deployer/helm-action.yaml'
-  workflow_dispatch:
+# on:
+#   pull_request:
+#     paths:
+#       - 'clue_helm/**'
+#       - '.github/actions/clue-deployer/helm-action.yaml'
+#   workflow_dispatch:
 
-jobs:
-  staging:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up Helm
-        uses: azure/setup-helm@v3
-      - name: Set up kubectl
-        uses: azure/setup-kubectl@v3
-      - name: Reconstruct SSH key 
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.TU_CLUSTER_SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 400 ~/.ssh/id_rsa
-      - name: using kubeconfig
-        run: |
-          mkdir -p $HOME/.kube
-          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > $HOME/.kube/config
-          chmod 400 $HOME/.kube/config
+# jobs:
+#   staging:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v3
+#       - name: Set up Helm
+#         uses: azure/setup-helm@v3
+#       - name: Set up kubectl
+#         uses: azure/setup-kubectl@v3
+#       - name: Reconstruct SSH key
+#         run: |
+#           mkdir -p ~/.ssh
+#           echo "${{ secrets.TU_CLUSTER_SSH_KEY }}" > ~/.ssh/id_rsa
+#           chmod 400 ~/.ssh/id_rsa
+#       - name: using kubeconfig
+#         run: |
+#           mkdir -p $HOME/.kube
+#           echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > $HOME/.kube/config
+#           chmod 400 $HOME/.kube/config
 
 #      - name: Tunnel SSH
 #        run: ssh "${{ vars.CLUSTER_PROXY_COMMAND }}" -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no &
-#        
+#
 #      - name: Wait for SSH tunnel
 #        run: sleep 5
 #
@@ -53,7 +53,7 @@ jobs:
 #
 #  helm_deploy:
 #    runs-on: ubuntu-latest
-#    needs: 
+#    needs:
 #      - manual-approval
 #    steps:
 #      - uses: actions/checkout@v3
@@ -61,10 +61,10 @@ jobs:
 #        uses: azure/setup-helm@v3
 #      - name: Set up kubectl
 #        uses: azure/setup-kubectl@v3
-#      - name: Reconstruct SSH key 
+#      - name: Reconstruct SSH key
 #        run: |
 #          mkdir -p ~/.ssh
-#          echo "${{ secrets.TU_CLUSTER_SSH_KEY }}" > ~/.ssh/id_rsa 
+#          echo "${{ secrets.TU_CLUSTER_SSH_KEY }}" > ~/.ssh/id_rsa
 #          chmod 400 ~/.ssh/id_rsa
 #      - name: using kubeconfig
 #        run: |
@@ -74,7 +74,7 @@ jobs:
 #
 #      - name: Tunnel SSH
 #        run: ssh "${{ vars.CLUSTER_PROXY_COMMAND }}" -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no &
-#        
+#
 #      - name: Wait for SSH tunnel
 #        run: sleep 5
 #

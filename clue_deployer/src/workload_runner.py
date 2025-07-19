@@ -8,14 +8,14 @@ from os import path
 from tempfile import TemporaryFile
 import docker
 import logging
-from kubernetes import client, watch, stream
+from kubernetes import client, watch
 from kubernetes.client.rest import ApiException
-from clue_deployer.src.configs.configs import CLUE_CONFIG, SUT_CONFIG
+from clue_deployer.src.configs.configs import CONFIGS
 from clue_deployer.src.models.variant import Variant
 from clue_deployer.src.models.result_files import ResultFiles
 from clue_deployer.src.models.workload import Workload
 from clue_deployer.src.models.workload_cancelled_exception import WorkloadCancelled
-from clue_deployer.src.logger import logger
+from clue_deployer.src.logger import process_logger as logger
 
 
 class WorkloadRunner:
@@ -23,7 +23,7 @@ class WorkloadRunner:
     def __init__(self, variant: Variant, workload: Workload):
         self.variant = variant
         self.workload = workload
-        self.result_filenames = ResultFiles(sut=SUT_CONFIG.sut)
+        self.result_filenames = ResultFiles(sut=CONFIGS.sut_config.sut)
         self._core_api = None
         self._observations_path = None
         self._port_forward_process = None
@@ -45,9 +45,9 @@ class WorkloadRunner:
         
         # (force) delete the running pod to stop the workload
         if self._core_api:
-            logger.info("Deleting loadgenerator pod in namespace %s", SUT_CONFIG.namespace)
+            logger.info("Deleting loadgenerator pod in namespace %s", CONFIGS.sut_config.namespace)
             self._core_api.delete_collection_namespaced_pod(
-                namespace=SUT_CONFIG.namespace,
+                namespace=CONFIGS.sut_config.namespace,
                 label_selector="app=loadgenerator",
                 timeout_seconds=0,
                 grace_period_seconds=0,
@@ -72,7 +72,7 @@ class WorkloadRunner:
     def _cleanup_existing_loadgenerator_pod(self, core: client.CoreV1Api):
         """Clean up any existing loadgenerator pod to avoid conflicts"""
         try:
-            core.delete_namespaced_pod(name="loadgenerator", namespace=SUT_CONFIG.namespace)
+            core.delete_namespaced_pod(name="loadgenerator", namespace=CONFIGS.sut_config.namespace)
             logger.info("Deleted existing loadgenerator pod")
         except ApiException as e:
             if e.status == 404:
@@ -84,11 +84,11 @@ class WorkloadRunner:
         """Clean up any existing locustfile ConfigMaps to avoid conflicts"""
         try:
             # List all ConfigMaps with names starting with "locustfile-"
-            config_maps = core.list_namespaced_config_map(namespace=SUT_CONFIG.namespace)
+            config_maps = core.list_namespaced_config_map(namespace=CONFIGS.sut_config.namespace)
             for cm in config_maps.items:
                 if cm.metadata.name.startswith(f"locustfile-{self.workload.name}-"):
                     try:
-                        core.delete_namespaced_config_map(name=cm.metadata.name, namespace=SUT_CONFIG.namespace)
+                        core.delete_namespaced_config_map(name=cm.metadata.name, namespace=CONFIGS.sut_config.namespace)
                         logger.info(f"Deleted existing ConfigMap {cm.metadata.name}")
                     except ApiException as e:
                         if e.status != 404:
@@ -116,7 +116,7 @@ class WorkloadRunner:
             self._cleanup_existing_loadgenerator_pod(self._core_api)
             for config_map_name in config_map_names:
                 try:
-                    self._core_api.delete_namespaced_config_map(name=config_map_name, namespace=SUT_CONFIG.namespace)
+                    self._core_api.delete_namespaced_config_map(name=config_map_name, namespace=CONFIGS.sut_config.namespace)
                     logger.info(f"Deleted ConfigMap {config_map_name}")
                 except ApiException as e:
                     if e.status != 404:
@@ -131,7 +131,7 @@ class WorkloadRunner:
         
         for event in w.stream(
                 core.list_namespaced_pod,
-                SUT_CONFIG.namespace,
+                CONFIGS.sut_config.namespace,
                 label_selector="app=loadgenerator",
                 timeout_seconds=self.workload.timeout_duration,
             ):
@@ -168,7 +168,7 @@ class WorkloadRunner:
         container_env.append(
             client.V1EnvVar(
                 name="LOCUST_HOST",
-                value= SUT_CONFIG.target_host
+                value= CONFIGS.sut_config.target_host
             )
         )
         
@@ -176,7 +176,7 @@ class WorkloadRunner:
         container_env.append(
             client.V1EnvVar(
                 name="SUT_NAME",
-                value= SUT_CONFIG.sut
+                value= CONFIGS.sut_config.sut
             )
         )
 
@@ -208,10 +208,10 @@ class WorkloadRunner:
             config_map_body = client.V1ConfigMap(
                 api_version="v1",
                 kind="ConfigMap",
-                metadata=client.V1ObjectMeta(name=config_map_name, namespace=SUT_CONFIG.namespace),
+                metadata=client.V1ObjectMeta(name=config_map_name, namespace=CONFIGS.sut_config.namespace),
                 data={original_filename: locust_file_content} # Use original filename as key
             )
-            core.create_namespaced_config_map(namespace=SUT_CONFIG.namespace, body=config_map_body)
+            core.create_namespaced_config_map(namespace=CONFIGS.sut_config.namespace, body=config_map_body)
             logger.info(f"Created ConfigMap {config_map_name} for {original_filename}")
 
             # Define the mount path inside the loadgenerator container
@@ -269,18 +269,18 @@ class WorkloadRunner:
                     ) 
 
         core.create_namespaced_pod(
-            namespace=SUT_CONFIG.namespace,
+            namespace=CONFIGS.sut_config.namespace,
             body=client.V1Pod(
                 metadata=client.V1ObjectMeta(
                     name="loadgenerator",
-                    namespace=SUT_CONFIG.namespace,
+                    namespace=CONFIGS.sut_config.namespace,
                     labels={"app": "loadgenerator"},
                 ),
                 spec=client.V1PodSpec(
                     containers=[
                         client.V1Container(
                             name="loadgenerator",
-                            image=f"{CLUE_CONFIG.docker_registry_address}/clue2-loadgenerator:pr-test",
+                            image=f"{CONFIGS.clue_config.docker_registry_address}/clue2-loadgenerator:pr-test",
                             env=container_env,
                             command=["/bin/bash", "-c", "./entrypoint.sh"],
                             working_dir="/app",
@@ -303,10 +303,10 @@ class WorkloadRunner:
         """
         try:
             core = client.CoreV1Api()
-            resp = core.read_namespaced_pod_log(name=pod_name, namespace=SUT_CONFIG.namespace)
+            resp = core.read_namespaced_pod_log(name=pod_name, namespace=CONFIGS.sut_config.namespace)
             log_contents = resp
             if not log_contents or len(log_contents) == 0:
-                logger.error(f"{pod_name} in namespace {SUT_CONFIG.namespace} has no logs, workload failed?")
+                logger.error(f"{pod_name} in namespace {CONFIGS.sut_config.namespace} has no logs, workload failed?")
                 return 
             
             with TemporaryFile() as tar_buffer:
@@ -318,9 +318,9 @@ class WorkloadRunner:
                         mode="r:gz",
                 ) as tar:
                     tar.extractall(path=results_path)
-            logger.info(f"Succesfully downloaded results from pod {pod_name} in namespace {SUT_CONFIG.namespace} to {results_path}!")
+            logger.info(f"Succesfully downloaded results from pod {pod_name} in namespace {CONFIGS.sut_config.namespace} to {results_path}!")
         except ApiException as e:
-            logger.error(f"failed to get log from pod {pod_name} in namespace {SUT_CONFIG.namespace}: %s", e)
+            logger.error(f"failed to get log from pod {pod_name} in namespace {CONFIGS.sut_config.namespace}: %s", e)
         except tarfile.TarError as e:
             logger.error(f"failed to extract log from TAR", e, log_contents)
         except Exception as e:
@@ -337,12 +337,12 @@ class WorkloadRunner:
             [
                 "kubectl",
                 "-n",
-                SUT_CONFIG.namespace,
+                CONFIGS.sut_config.namespace,
                 "port-forward",
                 "--address",
                 "0.0.0.0",
-                f"services/{SUT_CONFIG.workload_target}",
-                f"{CLUE_CONFIG.local_port}:80",
+                f"services/{CONFIGS.sut_config.workload_target}",
+                f"{CONFIGS.clue_config.local_port}:80",
             ],
             stdin=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -395,14 +395,14 @@ class WorkloadRunner:
         try:
             print("Running the workload generator")
             workload = self._docker_client.containers.run(
-                image=f"{CLUE_CONFIG.docker_registry_address}/clue2-loadgenerator:pr-test",
+                image=f"{CONFIGS.clue_config.docker_registry_address}/clue2-loadgenerator:pr-test",
                 auto_remove=True,
                 environment={
                     **{k: v for k, v in self.workload.workload_settings.items() if k != "LOCUST_RUN_TIME"},
                     "LOCUST_RUN_TIME": f"{self.workload.workload_runtime}s",
                     "LOCUST_FILE": ",".join(locust_file_paths_in_container),
-                    "LOCUST_HOST": SUT_CONFIG.target_host,
-                    "SUT_NAME": SUT_CONFIG.sut
+                    "LOCUST_HOST": CONFIGS.sut_config.target_host,
+                    "SUT_NAME": CONFIGS.sut_config.sut
                 },
                 stdout=True,
                 stderr=True,

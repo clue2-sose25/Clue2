@@ -8,7 +8,7 @@ from pathlib import Path
 from datetime import datetime
 from os import path
 from kubernetes import config as kube_config
-from clue_deployer.src.configs.configs import CONFIGS, ENV_CONFIG, SUT_CONFIG, Configs
+from clue_deployer.src.configs.configs import CONFIGS, Configs
 from clue_deployer.src.models.experiment import Experiment
 from clue_deployer.src.models.status_phase import StatusPhase
 from clue_deployer.src.service.status_manager import StatusManager
@@ -16,7 +16,7 @@ from clue_deployer.src.models.variant import Variant
 from clue_deployer.src.variant_runner import VariantRunner
 from clue_deployer.src.models.workload import Workload
 from clue_deployer.src.variant_deployer import VariantDeployer
-from clue_deployer.src.logger import logger
+from clue_deployer.src.logger import process_logger as logger
 
 # Disable SSL verification
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -24,11 +24,12 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 class ExperimentRunner:
     def __init__(self,
                 configs: Configs = CONFIGS,
-                variants_string: str = ENV_CONFIG.VARIANTS,
-                workloads_string: str = ENV_CONFIG.WORKLOADS,
-                deploy_only = ENV_CONFIG.DEPLOY_ONLY,
-                sut: str = ENV_CONFIG.SUT,
-                n_iterations: int = ENV_CONFIG.N_ITERATIONS) -> None:
+                variants: list[str] = CONFIGS.env_config.VARIANTS,
+                workloads: list[str] = CONFIGS.env_config.WORKLOADS,
+                deploy_only = CONFIGS.env_config.DEPLOY_ONLY,
+                sut: str = CONFIGS.env_config.SUT,
+                n_iterations: int = CONFIGS.env_config.N_ITERATIONS,
+                uuid = uuid.uuid4()) -> None:
         # Load the kube config
         try:
             if os.getenv("KUBERNETES_SERVICE_HOST"):
@@ -41,26 +42,25 @@ class ExperimentRunner:
             else:
                 raise
         # Prepare the variants
-        variants = variants_string.split(',')
         logger.info(f"Specified variants: {variants}")
-        final_variants: List[Variant] = [variant for variant in configs.sut_config.variants if variant.name in variants]
+        final_variants: List[Variant] = [variant for variant in CONFIGS.sut_config.variants if variant.name in variants]
         # Check if variants are valid and set colected to true if inside the same cluster
         if os.getenv("KUBERNETES_SERVICE_HOST"):
             for v in final_variants:
                 v.colocated_workload = True
         # Prepare the workloads
-        workloads = workloads_string.split(',')
         logger.info(f"Specified workloads: {workloads}")
-        final_workloads: List[Workload] = [workload for workload in configs.sut_config.workloads if workload.name in workloads]
+        final_workloads: List[Workload] = [workload for workload in CONFIGS.sut_config.workloads if workload.name in workloads]
         # Create the final experiment object
+        self.timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         self.experiment = Experiment(
-            id = uuid.uuid4(),
+            id = uuid,
             configs = configs,
             sut = sut,
             variants = final_variants,
             workloads = final_workloads,
             n_iterations = n_iterations,
-            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S"),
+            timestamp = self.timestamp,
             deploy_only= deploy_only
         )
 
@@ -69,11 +69,10 @@ class ExperimentRunner:
         """
         Reads the 'sut_configs' folder and returns a list of available SUT names.
         """
-        if not ENV_CONFIG.SUT_CONFIGS_PATH.exists():
-            logger.error(f"SUT configs folder not found: {ENV_CONFIG.SUT_CONFIGS_PATH}")
-            raise FileNotFoundError(f"SUT configs folder not found: {ENV_CONFIG.SUT_CONFIGS_PATH}")
-        # Get all YAML files in the 'sut_configs' folder
-        sut_files = [f.stem for f in ENV_CONFIG.SUT_CONFIGS_PATH.glob("*.yaml")]
+        if not CONFIGS.env_config.SUT_CONFIGS_PATH.exists():
+            logger.error(f"SUT configs folder not found: {CONFIGS.env_config.SUT_CONFIGS_PATH}")
+            raise FileNotFoundError(f"SUT configs folder not found: {CONFIGS.env_config.SUT_CONFIGS_PATH}")
+        sut_files = [f.stem for f in CONFIGS.env_config.SUT_CONFIGS_PATH.glob("*.yaml")]
         return sut_files
 
 
@@ -112,8 +111,8 @@ class ExperimentRunner:
         # If not deploy only, run the workload
         if not self.experiment.deploy_only:
             # Wait for the SUT before stressing the SUT with a workload
-            logger.info(f"Waiting {SUT_CONFIG.wait_before_workloads}s before starting workload")
-            time.sleep(SUT_CONFIG.wait_before_workloads)  
+            logger.info(f"Waiting {CONFIGS.sut_config.wait_before_workloads}s before starting workload")
+            time.sleep(CONFIGS.sut_config.wait_before_workloads)  
             logger.info("Starting the workload")
             # Run the variant
             variant_runner = VariantRunner(variant, workload)
@@ -145,8 +144,8 @@ class ExperimentRunner:
                 self.execute_single_run(variant, workload, results_path)
                 # additional wait after each iteration except the last one
                 if iteration < num_iterations - 1:
-                    logger.info(f"Sleeping {SUT_CONFIG.wait_after_workloads} seconds before next iteration")
-                    time.sleep(SUT_CONFIG.wait_after_workloads)
+                    logger.info(f"Sleeping {CONFIGS.sut_config.wait_after_workloads} seconds before next iteration")
+                    time.sleep(CONFIGS.sut_config.wait_after_workloads)
 
     def main(self) -> None:
         logger.info(f"Starting CLUE with DEPLOY_ONLY={self.experiment.deploy_only}")
@@ -159,6 +158,8 @@ class ExperimentRunner:
             return
         # Set the status to preparing
         StatusManager.set(StatusPhase.PREPARING_CLUSTER, "Preparing the cluster...")
+        # Load the correct SUT config
+        CONFIGS.replace_sut_config(self.experiment.sut)
         # Deploy a single variant if deploy only
         if self.experiment.deploy_only:
             #logger.info(f"Starting deployment only for variant: {self.experiment.variants[0]} (workload: {self.experiment.workloads[0]})")
@@ -172,8 +173,8 @@ class ExperimentRunner:
                 self.iterate_single_variant(variant)
                 # Additional wait after each variant except the last one
                 if variant != self.experiment.variants[-1]:
-                    logger.info(f"Sleeping additional {SUT_CONFIG.wait_after_workloads} seconds before starting next variant")
-                    time.sleep(SUT_CONFIG.wait_after_workloads)
+                    logger.info(f"Sleeping additional {CONFIGS.sut_config.wait_after_workloads} seconds before starting next variant")
+                    time.sleep(CONFIGS.sut_config.wait_after_workloads)
             logger.info("All variants executed successfully. Finished running the experiment.")
 
 

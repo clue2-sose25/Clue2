@@ -1,5 +1,6 @@
 #!/bin/sh
 set -e
+
 # Environment variable fallbacks
 : "${DEPLOY_AS_SERVICE:=false}"
 : "${DEPLOY_ONLY:=false}"
@@ -8,6 +9,7 @@ set -e
 : "${SSH_KEY_FILE_PATH:=/root/.ssh/id_rsa}"
 : "${PRECONFIGURE_CLUSTER:=false}"
 : "${HELM_DRIVER:=HELM_DRIVER=configmap}"
+: "${ENABLE_DEBUG:=false}"  # New variable to control debugging
 
 # Print configs 
 echo "[ENTRYPOINT.SH] Starting CLUE Deployer container"
@@ -18,6 +20,7 @@ if [ -n "$KUBERNETES_SERVICE_HOST" ]; then
 fi
 echo "[ENTRYPOINT.SH] Patch kubeconfig: $PATCH_LOCAL_CLUSTER"
 echo "[ENTRYPOINT.SH] Bechmark config: SUT: $SUT, experiment: $VARIANTS"
+echo "[ENTRYPOINT.SH] Debugging enabled: $ENABLE_DEBUG"
 
 # Prepare the kubeconfig to allow access to clusters running on the host or in a local cluster
 if [ -z "$KUBERNETES_SERVICE_HOST" ]; then
@@ -32,7 +35,7 @@ else
 fi
 
 # Start optional cluster proxy after kubeconfig was prepared and outside of the cluster
-if [ -n "$CLUSTER_PROXY_COMMAND" ] && [ -z "$KUBERNETES_SERVICE_HOST" ] ; then
+if [ -n "$CLUSTER_PROXY_COMMAND" ] && [ -z "$KUBERNETES_SERVICE_HOST" ]; then
     echo "[ENTRYPOINT.SH] Starting SSH proxy: ssh -i $SSH_KEY_FILE_PATH $CLUSTER_PROXY_COMMAND"
     ls -l "$SSH_KEY_FILE_PATH"
     if [ -f "$SSH_KEY_FILE_PATH" ]; then
@@ -47,14 +50,23 @@ elif [ -n "$CLUSTER_PROXY_COMMAND" ]; then
 fi
 
 # If DEPLOY_AS_SERVICE = True, deploy CLUE as a service
+# If DEPLOY_AS_SERVICE = True, deploy CLUE as a service
 if [ "$DEPLOY_AS_SERVICE" = "true" ]; then
-    echo "[ENTRYPOINT.SH] Starting FastAPI service..."
-    exec uvicorn clue_deployer.src.service.service:app --host 0.0.0.0 --port 8000
+    if [ "$ENABLE_DEBUG" = "true" ]; then
+        echo "[ENTRYPOINT.SH] Starting FastAPI service with debugging..."
+        exec python3 -Xfrozen_modules=off -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m uvicorn clue_deployer.src.service.service:app --host 0.0.0.0 --port 8000
+    else
+        echo "[ENTRYPOINT.SH] Starting FastAPI service without debugging..."
+        exec uvicorn clue_deployer.src.service.service:app --host 0.0.0.0 --port 8000
+    fi
     exit 0
 fi
 
 # Deploy CLUE
-# Uncomment the line below to enable debugging with debugpy
-#exec uv run -m debugpy --listen 0.0.0.0:5678 --wait-for-client clue_deployer/src/main.py
-echo "Starting without DEPLOY_AS_SERVICE "
-exec uv run clue_deployer/src/main.py
+if [ "$ENABLE_DEBUG" = "true" ]; then
+    echo "[ENTRYPOINT.SH] Starting CLUE deployer with debugging..."
+    exec python3 -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m uv run clue_deployer/src/main.py
+else
+    echo "[ENTRYPOINT.SH] Starting CLUE deployer without debugging..."
+    exec uv run clue_deployer/src/main.py
+fi

@@ -2,8 +2,8 @@ from pathlib import Path
 from os import path
 from kubernetes.client import CoreV1Api, V1Namespace, V1ObjectMeta, AppsV1Api
 from kubernetes.client.exceptions import ApiException   
-from clue_deployer.src.configs.configs import CLUE_CONFIG, ENV_CONFIG, SUT_CONFIG
-from clue_deployer.src.logger import logger
+from clue_deployer.src.configs.configs import CONFIGS
+from clue_deployer.src.logger import process_logger as logger
 import time
 import os
 import subprocess
@@ -23,10 +23,10 @@ class VariantDeployer:
     def __init__(self, variant: Variant):
         # The variant to run
         self.variant = variant
-        self.sut_path = Path(SUT_CONFIG.sut_path)
-        self.docker_registry_address = CLUE_CONFIG.docker_registry_address
-        self.helm_chart_path = SUT_CONFIG.helm_chart_path
-        self.values_yaml_name = SUT_CONFIG.values_yaml_name
+        self.sut_path = Path(CONFIGS.sut_config.sut_path)
+        self.docker_registry_address = CONFIGS.clue_config.docker_registry_address
+        self.helm_chart_path = CONFIGS.sut_config.helm_chart_path
+        self.values_yaml_name = CONFIGS.sut_config.values_yaml_name
         # Initialize Kubernetes API clients
         try:
             if os.getenv("KUBERNETES_SERVICE_HOST"):
@@ -47,7 +47,7 @@ class VariantDeployer:
         """
         Checks if the given namespace exists in the cluster
         """
-        namespace = SUT_CONFIG.namespace
+        namespace = CONFIGS.sut_config.namespace
         try:
             self.core_v1_api.read_namespace(name=namespace)
             logger.info(f"Namespace '{namespace}' already exists.")
@@ -185,7 +185,7 @@ class VariantDeployer:
                         "--timeout", "10m"
                     ])
                 else:
-                    logger.info(f"Skipped Kepler installation.The PRECONFIGURE_CLUSTER set to '{PRECONFIGURE_CLUSTER}'")
+                    logger.info(f"Skipped Kepler installation.The PRECONFIGURE_CLUSTER set to false")
             else:
                 logger.info("Kepler stack found") 
             # Setup Grafana dashboards
@@ -208,13 +208,13 @@ class VariantDeployer:
         """
         Wait a specified amount of time for the critical services
         """
-        timeout = SUT_CONFIG.timeout_for_services_ready
+        timeout = CONFIGS.sut_config.timeout_for_services_ready
         logger.info(f"Waiting for critical services to be ready for {timeout} seconds")
         v1_apps = self.apps_v1_api
         ready_services = set()
         start_time = time.time()
         services = set(self.variant.critical_services)
-        namespace = SUT_CONFIG.namespace
+        namespace = CONFIGS.sut_config.namespace
 
         while len(ready_services) < len(services) and time.time() - start_time < timeout:
             for service in services.difference(ready_services):
@@ -250,18 +250,18 @@ class VariantDeployer:
         """
         Clones the SUT repository if it doesn't exist and checks out the target branch.
         """
-        if SUT_CONFIG.helm_chart_repo:
+        if CONFIGS.sut_config.helm_chart_repo:
             # If a helm chart repo is provided, clone it
             if self.sut_path.exists():
                 logger.warning(f"SUT path {self.sut_path} already exists. It will not clone the repository again.")
             else: 
-                logger.info(f"Cloning Helm chart repository from {SUT_CONFIG.helm_chart_repo} to {self.sut_path}")
-                subprocess.check_call(["git", "clone", SUT_CONFIG.helm_chart_repo, str(self.sut_path)])
+                logger.info(f"Cloning Helm chart repository from {CONFIGS.sut_config.helm_chart_repo} to {self.sut_path}")
+                subprocess.check_call(["git", "clone", CONFIGS.sut_config.helm_chart_repo, str(self.sut_path)])
         elif not self.sut_path.exists():
-            if not SUT_CONFIG.sut_git_repo:
+            if not CONFIGS.sut_config.sut_git_repo:
                 raise ValueError("SUT Git repository URL is not provided in the configuration")
-            logger.info(f"Cloning SUT from {SUT_CONFIG.sut_git_repo} to {self.sut_path}")
-            subprocess.check_call(["git", "clone", SUT_CONFIG.sut_git_repo, str(self.sut_path)])
+            logger.info(f"Cloning SUT from {CONFIGS.sut_config.sut_git_repo} to {self.sut_path}")
+            subprocess.check_call(["git", "clone", CONFIGS.sut_config.sut_git_repo, str(self.sut_path)])
         else:
             logger.info(f"SUT already exists at {self.sut_path}. Skipping cloning.")
         
@@ -287,7 +287,7 @@ class VariantDeployer:
         """
         StatusManager.set(StatusPhase.DEPLOYING_SUT, "Deploying SUT...")
         # Check for namespace
-        logger.info(f"Checking if namespace '{SUT_CONFIG.namespace}' exists")
+        logger.info(f"Checking if namespace '{CONFIGS.sut_config.namespace}' exists")
         self._create_namespace_if_not_exists()
         # Check for nodes labels
         logger.info(f"Checking for nodes with label scaphandre=true")
@@ -318,7 +318,7 @@ class VariantDeployer:
             # Copy values file
             self._copy_values_file(values, results_path)
             # Deploy the SUT
-            logger.info(f"Deploying the SUT: {ENV_CONFIG.SUT}")
+            logger.info(f"Deploying the SUT: {CONFIGS.env_config.SUT}")
             helm_wrapper.deploy_sut()
         # Set the status
         StatusManager.set(StatusPhase.WAITING, "Waiting for system to stabilize...")
@@ -343,7 +343,7 @@ class VariantDeployer:
         
         try:
             # Try NodePort first
-            grafana_url=ENV_CONFIG.GRAFANA_URL or "http://localhost:30800"
+            grafana_url=CONFIGS.env_config.GRAFANA_URL or "http://localhost:30800"
             # Test direct access
             try:
                 response = requests.get(grafana_url, timeout=5)
@@ -354,8 +354,8 @@ class VariantDeployer:
             logger.info(f"Using Grafana URL: {grafana_url}")   
             manager = GrafanaManager(
                 grafana_url=grafana_url,
-                username=ENV_CONFIG.GRAFANA_USERNAME, 
-                password=ENV_CONFIG.GRAFANA_PASSWORD
+                username=CONFIGS.env_config.GRAFANA_USERNAME, 
+                password=CONFIGS.env_config.GRAFANA_PASSWORD
             )
 
             if manager.wait_for_grafana_ready(timeout=60):
@@ -383,8 +383,8 @@ class VariantDeployer:
             
             # Initialize Grafana manager with configuration
             grafana_manager = GrafanaManager(
-                username=ENV_CONFIG.GRAFANA_USERNAME,
-                password=ENV_CONFIG.GRAFANA_PASSWORD
+                username=CONFIGS.env_config.GRAFANA_USERNAME,
+                password=CONFIGS.env_config.GRAFANA_PASSWORD
             )
             
             # Setup complete Grafana environment

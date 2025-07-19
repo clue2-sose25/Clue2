@@ -8,7 +8,8 @@ import EstimationTime from "../components/experiment/EstimationTime";
 
 const ExperimentPage = () => {
   const {currentDeployment, setIfDeploying} = useContext(DeploymentContext);
-  const {currentQueue, setCurrentQueue} = useContext(QueueContext);
+  const {currentQueue, setCurrentQueue, setQueueSize} =
+    useContext(QueueContext);
 
   const navigate = useNavigate();
 
@@ -30,20 +31,32 @@ const ExperimentPage = () => {
   }, []);
 
   const fetchQueue = () => {
-    fetch("/api/queue")
+    fetch("/api/queue/status")
       .then(async (r) => {
         if (!r.ok) {
           throw new Error(`API responded with status ${r.status}`);
         }
         const data = await r.json();
-        // Validate data type (optional, adjust based on your needs)
-        if (!Array.isArray(data)) {
-          console.error("API returned non-array data:", data);
-          return [];
+
+        // Validate that we received the expected object structure
+        if (!data || typeof data !== "object") {
+          console.error("API returned invalid data:", data);
+          return {queue: [], queue_size: 0};
         }
+
+        // Ensure queue is an array
+        if (!Array.isArray(data.queue)) {
+          console.error("API returned non-array queue:", data.queue);
+          return {queue: [], queue_size: data.queue_size || 0};
+        }
+
         return data;
       })
-      .then((d) => setCurrentQueue(d ?? []))
+      .then((d) => {
+        // Set both the queue items and the queue size
+        setCurrentQueue(d.queue ?? []);
+        setQueueSize(d.queue_size ?? 0);
+      })
       .catch((err) => {
         console.error("Failed to fetch queue:", err);
         setCurrentQueue([]);
@@ -53,21 +66,44 @@ const ExperimentPage = () => {
   const deploySUT = async () => {
     if (!deployEnabled) return;
 
-    await fetch("/api/deploy/sut", {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({
-        sut: currentDeployment.sut,
-        variants: currentDeployment.variants.join(","),
-        workloads: currentDeployment.workloads.join(","),
-        n_iterations: currentDeployment.iterations,
-        deploy_only: currentDeployment.deploy_only,
-      }),
-    });
+    try {
+      // Step 1: Enqueue the experiment
+      const enqueueResponse = await fetch("/api/queue/enqueue", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify([
+          {
+            sut: currentDeployment.sut,
+            variants: currentDeployment.variants,
+            workloads: currentDeployment.workloads,
+            n_iterations: currentDeployment.iterations,
+            deploy_only: currentDeployment.deploy_only,
+          },
+        ]),
+      });
 
-    setIfDeploying(true);
-    fetchQueue();
-    navigate("/dashboard");
+      if (!enqueueResponse.ok) {
+        throw new Error(
+          `Failed to enqueue experiment: ${enqueueResponse.status}`
+        );
+      }
+
+      // Step 2: Start the deployment worker
+      // const deployResponse = await fetch("/api/queue/deploy", {
+      //   method: "POST",
+      //   headers: {"Content-Type": "application/json"},
+      // });
+
+      // if (!deployResponse.ok) {
+      //   throw new Error(`Failed to start deployment: ${deployResponse.status}`);
+      // }
+
+      setIfDeploying(true);
+      fetchQueue();
+      navigate("/dashboard");
+    } catch (error) {
+      console.error("Failed to deploy experiment:", error);
+    }
   };
 
   return (
