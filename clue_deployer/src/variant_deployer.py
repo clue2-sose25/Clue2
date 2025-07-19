@@ -294,7 +294,7 @@ class VariantDeployer:
         # Installs Prometheus, Kepler
         logger.info("Ensuring cluster observability requirements")
         if os.getenv("PRECONFIGURE_CLUSTER", "false").lower() == "true":
-            logger.warning(" Helm requirements installation. The PRECONFIGURE_CLUSTER set to true")
+            logger.info(" Helm requirements installation. The PRECONFIGURE_CLUSTER set to true")
             # to stay safe, we will not install the requirements if the PRECONFIGURE_CLUSTER is set to false
             # check if inside a cluster
             if os.getenv("KUBERNETES_SERVICE_HOST"):

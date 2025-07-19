@@ -65,7 +65,7 @@ fi
 # Deploy CLUE
 if [ "$ENABLE_DEBUG" = "true" ]; then
     echo "[ENTRYPOINT.SH] Starting CLUE deployer with debugging..."
-    exec python3 -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m uv run clue_deployer/src/main.py
+    exec uv run -m debugpy --listen 0.0.0.0:5678 --wait-for-client clue_deployer/src/main.py
 else
     echo "[ENTRYPOINT.SH] Starting CLUE deployer without debugging..."
     exec uv run clue_deployer/src/main.py
