@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, Response
 from fastapi.responses import JSONResponse
 from clue_deployer.src.models.deploy_request import DeployRequest
 from clue_deployer.src.logger import logger
@@ -102,11 +102,23 @@ def get_queue_status():
 def delete_queue_item(queue_index):
     """Delete a specific item from the deployment queue."""
     try:
-        queuer.experiment_queue.remove(queue_index)
+        queue_index = int(queue_index)
+    except ValueError:
+        logger.error(f"Invalid queue index: {queue_index}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                             detail=f"Invalid queue index: {queue_index}")
+    
+    if queue_index < 0 or queue_index >= queuer.experiment_queue.size():
+        logger.error(f"Index {queue_index} out of range for the queue.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                             detail=f"Index {queue_index} out of range for the queue.")
+
+    try:
+        queuer.experiment_queue.remove_item_at_index(queue_index)
         logger.info(f"Removed item at index {queue_index} from the queue.")
     except IndexError:
         logger.error(f"Index {queue_index} out of range for the queue.")
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                              detail=f"Index {queue_index} out of range for the queue.")
     
-    return JSONResponse(status_code=status.HTTP_204_NO_CONTENT, content=None)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
