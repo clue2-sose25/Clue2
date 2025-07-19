@@ -62,7 +62,7 @@ sutConfig: |
       target_branch: "postgres"
       colocated_workload: true
       critical_services: ["toystore-frontend", "toystore-backend", "toystore-db"]
-      autoscaling: "cpu" 
+      autoscaling: "cpu"
 clueConfig: |
   config:
     experiment_timeout: 150
@@ -77,7 +77,7 @@ clueDeployer:
   enabled: true
   image: clue2-deployer
   tag: pr-test
-  serviceAccountName: st-cp25clue2-user  
+  serviceAccountName: st-cp25clue2-user
   service:
     port: 8000
     type: ClusterIP # Change to NodePort if needed or LoadBalancer if need to access with IP_NODE:PORT

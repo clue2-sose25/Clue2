@@ -62,7 +62,7 @@ loadGenerator:
   tag: "latest"
   # optionally mount all locust files from a folder within the chart
   workloadDir: ""
-  workloadFiles:  {}
+  workloadFiles: {}
 ingress:
   enabled: true
   host: clue.example.com
