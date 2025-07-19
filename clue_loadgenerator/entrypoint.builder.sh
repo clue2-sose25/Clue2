@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-# Start Docker daemon, allowing our local registry as insecure (with interal port)
+# Start Docker daemon, allowing our local registry as insecure (with interal port) 
 dockerd-entrypoint.sh --insecure-registry registry:5000 &
 
 # Wait until the docker daemon is ready
