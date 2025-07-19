@@ -167,7 +167,7 @@ class Queuer:
                         try:
                             current_exp = shared_container.get('current_experiment')
                             if current_exp:
-                                self._worker_cleanup(current_exp, FinalStatus.ERROR, worker_logger)
+                                self._worker_cleanup(current_exp, FinalStatus.FAILED, worker_logger)
                         except Exception as cleanup_error:
                             worker_logger.error(f"Failed to cleanup after deployment error: {cleanup_error}")
                     
@@ -267,7 +267,7 @@ class Queuer:
             self.process.kill()
             self.process.join()
         logger.info("Worker killed.")
-        self._cleanup(FinalStatus.ERROR)
+        self._cleanup(FinalStatus.FAILED)
 
     def is_process_alive(self) -> bool:
         """Check if the worker process is still alive."""
@@ -295,7 +295,7 @@ class Queuer:
             # Clear current experiment
             self.shared_container['current_experiment'] = None
             StatusManager.set(StatusPhase.NO_DEPLOYMENT, "Worker process died unexpectedly.")
-            self._cleanup_if_experiment_exists(FinalStatus.ERROR)
+            self._cleanup_if_experiment_exists(FinalStatus.FAILED)
 
     def _cleanup_if_experiment_exists(self, status):
         """Only cleanup if there's actually an experiment to cleanup."""
