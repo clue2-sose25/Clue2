@@ -46,6 +46,7 @@ services:
       - registry
     environment:
       DOCKER_BUILDKIT: 1
+      ENABLE_DEBUG: ${ENABLE_DEBUG}
       SUT: ${SUT}
       VARIANTS: ${VARIANTS}
       WORKLOADS: ${WORKLOADS}

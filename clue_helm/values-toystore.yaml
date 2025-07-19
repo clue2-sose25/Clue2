@@ -92,6 +92,7 @@ clueDeployer:
     WORKLOADS: shaped
     PRECONFIGURE_CLUSTER: "false"
     DEPLOY_AS_SERVICE: "true"
+    ENABLE_DEBUG: "false"
     HELM_DRIVER: configmap
     GRAFANA_USERNAME: admin
     GRAFANA_PASSWORD: SECRET

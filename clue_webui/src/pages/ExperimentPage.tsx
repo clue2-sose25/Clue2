@@ -66,21 +66,44 @@ const ExperimentPage = () => {
   const deploySUT = async () => {
     if (!deployEnabled) return;
 
-    await fetch("/api/deploy/sut", {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({
-        sut: currentDeployment.sut,
-        variants: currentDeployment.variants.join(","),
-        workloads: currentDeployment.workloads.join(","),
-        n_iterations: currentDeployment.iterations,
-        deploy_only: currentDeployment.deploy_only,
-      }),
-    });
+    try {
+      // Step 1: Enqueue the experiment
+      const enqueueResponse = await fetch("/api/queue/enqueue", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify([
+          {
+            sut: currentDeployment.sut,
+            variants: currentDeployment.variants,
+            workloads: currentDeployment.workloads,
+            n_iterations: currentDeployment.iterations,
+            deploy_only: currentDeployment.deploy_only,
+          },
+        ]),
+      });
 
-    setIfDeploying(true);
-    fetchQueue();
-    navigate("/dashboard");
+      if (!enqueueResponse.ok) {
+        throw new Error(
+          `Failed to enqueue experiment: ${enqueueResponse.status}`
+        );
+      }
+
+      // Step 2: Start the deployment worker
+      // const deployResponse = await fetch("/api/queue/deploy", {
+      //   method: "POST",
+      //   headers: {"Content-Type": "application/json"},
+      // });
+
+      // if (!deployResponse.ok) {
+      //   throw new Error(`Failed to start deployment: ${deployResponse.status}`);
+      // }
+
+      setIfDeploying(true);
+      fetchQueue();
+      navigate("/dashboard");
+    } catch (error) {
+      console.error("Failed to deploy experiment:", error);
+    }
   };
 
   return (

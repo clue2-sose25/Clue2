@@ -38,6 +38,7 @@ clueDeployer:
     # This is useful for SUTs that need to be accessed via a service.
     DEPLOY_ONLY: "false"
     N_ITERATIONS: "1"
+    ENABLE_DEBUG: "false"
     PRECONFIGURE_CLUSTER: "false"
     # Set to "true" if you want to preconfigure the cluster before deploying the SUT.
     # This is useful for SUTs that require specific configurations before deployment like installing premetheus and kapler

@@ -1,5 +1,4 @@
 import {useContext, useEffect, useState} from "react";
-import {DeploymentContext} from "../contexts/DeploymentContext";
 import {Link, useNavigate} from "react-router";
 import {
   CaretLeftIcon,
@@ -19,13 +18,12 @@ import {
 } from "@phosphor-icons/react/dist/ssr";
 import {QueueContext} from "../contexts/QueueContext";
 import {IconButton} from "@mui/material";
+import type {DeploymentForm} from "../models/DeploymentForm";
 
 const DashboardPage = () => {
-  const {ifDeploying, setIfDeploying, currentDeployment} =
-    useContext(DeploymentContext);
-
   // The experiments queue
-  const {currentQueue, setCurrentQueue} = useContext(QueueContext);
+  const {currentQueue, setCurrentQueue, setQueueSize, queueSize} =
+    useContext(QueueContext);
   // The currently displayed index from queue
   const [currentQueueIndex, setCurrentQueueIndex] = useState<number>(0);
 
@@ -58,6 +56,7 @@ const DashboardPage = () => {
       })
       .then((d) => {
         setCurrentQueue(d.queue ?? []);
+        setQueueSize(d.queue_size);
         // Reset index if current index is out of bounds
         if (currentQueueIndex >= d.queue.length) {
           setCurrentQueueIndex(0);
@@ -66,6 +65,7 @@ const DashboardPage = () => {
       .catch((err) => {
         console.error("Failed to fetch queue:", err);
         setCurrentQueue([]);
+        setQueueSize(0);
         setCurrentQueueIndex(0);
       });
   };
@@ -79,54 +79,36 @@ const DashboardPage = () => {
   }, []);
 
   // Get the current queue item to display
-  const currentQueueItem = currentQueue[currentQueueIndex] || currentDeployment;
+  const currentQueueItem: DeploymentForm | null =
+    currentQueue[currentQueueIndex] || null;
 
   const configItems = [
     {
       label: "SUT (System Under Test)",
-      value: currentQueueItem.sut,
+      value: currentQueueItem?.sut,
       icon: <WrenchIcon size={24} />,
     },
     {
       label: "Experiments",
-      value: currentQueueItem.variants?.join(", ") || "",
+      value: currentQueueItem?.variants?.join(", ") || "",
       icon: <FlaskIcon size={24} />,
     },
     {
       label: "Workload Type",
-      value: currentQueueItem.workloads?.join(", ") || "",
+      value: currentQueueItem?.workloads?.join(", ") || "",
       icon: <LightningIcon size={24} />,
     },
     {
       label: "Iterations",
-      value: currentQueueItem.iterations?.toLocaleString() || "0",
+      value: currentQueueItem?.iterations?.toLocaleString() || "0",
       icon: <RepeatIcon size={24} />,
     },
     {
       label: "Deploy only",
-      value: currentQueueItem.deploy_only ? "True" : "False",
+      value: currentQueueItem?.deploy_only ? "True" : "False",
       icon: <RepeatIcon size={24} />,
     },
   ];
-
-  useEffect(() => {
-    const fetchDeploymentStatus = async () => {
-      try {
-        const res = await fetch("/api/status");
-        const data = await res.json();
-        if (data && typeof data.is_deploying === "boolean") {
-          if (ifDeploying !== data.is_deploying) {
-            setIfDeploying(data.is_deploying);
-          }
-        }
-      } catch (error) {
-        console.error("Failed to fetch deployment status:", error);
-      }
-    };
-
-    fetchDeploymentStatus();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const increaseIndexInQueue = () => {
     if (currentQueueIndex < currentQueue.length - 1) {
@@ -142,7 +124,7 @@ const DashboardPage = () => {
 
   return (
     <div className="w-full h-full flex flex-col gap-2">
-      {ifDeploying && currentQueue.length > 0 && (
+      {queueSize > 0 && (
         <div className="w-full h-full max-h-[2rem] flex items-center justify-center gap-2">
           <IconButton
             disabled={currentQueueIndex <= 0}
@@ -151,11 +133,11 @@ const DashboardPage = () => {
             <CaretLeftIcon size={18}></CaretLeftIcon>
           </IconButton>
           <span className="font-medium select-none">
-            Experiment {currentQueue.length > 0 ? currentQueueIndex + 1 : 0}/
+            Experiment {queueSize > 0 ? currentQueueIndex + 1 : 0}/
             {currentQueue.length}
           </span>
           <IconButton
-            disabled={currentQueueIndex >= currentQueue.length - 1}
+            disabled={currentQueueIndex >= queueSize - 1}
             onClick={increaseIndexInQueue}
           >
             <CaretRightIcon size={18}></CaretRightIcon>
@@ -163,7 +145,7 @@ const DashboardPage = () => {
         </div>
       )}
       <div className="bg-white p-6 rounded-lg shadow-md w-full h-full">
-        {ifDeploying ? (
+        {queueSize > 0 ? (
           <div className="flex gap-6 h-full">
             <div className="w-1/3">
               <div className="flex flex-col gap-2">
