@@ -6,15 +6,15 @@ from clue_deployer.src.logger import get_child_process_logger, logger, shared_lo
 from clue_deployer.src.models.deploy_request import DeployRequest
 from clue_deployer.src.models.experiment import Experiment
 from clue_deployer.src.main import ExperimentRunner
-from clue_deployer.src.configs.configs import ENV_CONFIG, Configs
+from clue_deployer.src.configs.configs import CONFIGS, Configs
 from fastapi import HTTPException
 from kubernetes.client import CoreV1Api
 from kubernetes.client.exceptions import ApiException   
 from clue_deployer.src.service.status_manager import StatusManager, StatusPhase
 from clue_deployer.src.service.final_status import FinalStatus
 
-SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
-CLUE_CONFIG_PATH = ENV_CONFIG.CLUE_CONFIG_PATH
+SUT_CONFIGS_DIR = CONFIGS.env_config.SUT_CONFIGS_PATH
+CLUE_CONFIG_PATH = CONFIGS.env_config.CLUE_CONFIG_PATH
 
 class Queuer:
     def __init__(self):

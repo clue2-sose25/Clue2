@@ -3,7 +3,6 @@ import asyncio
 import json
 from contextlib import asynccontextmanager
 from threading import Lock
-from typing import Any
 from fastapi import FastAPI, HTTPException, status, Request
 from fastapi.responses import RedirectResponse, StreamingResponse
 import multiprocessing
@@ -13,7 +12,7 @@ from clue_deployer.src.models.status_response import StatusResponse
 from clue_deployer.src.service.status_manager import StatusManager
 from clue_deployer.src.logger import get_child_process_logger, logger, shared_log_buffer, SharedLogBuffer
 from clue_deployer.src.main import ExperimentRunner
-from clue_deployer.src.configs.configs import Configs, ENV_CONFIG
+from clue_deployer.src.configs.configs import Configs, CONFIGS
 from .routers.queue import queuer
 from .routers import logs, suts, results, plots, cluster, results_server, clue_config, queue
 
@@ -44,9 +43,9 @@ app.include_router(queue.router)
 app.include_router(results_server.router)
 app.include_router(clue_config.router)
 
-SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
-RESULTS_DIR = ENV_CONFIG.RESULTS_PATH
-CLUE_CONFIG_PATH = ENV_CONFIG.CLUE_CONFIG_PATH
+SUT_CONFIGS_DIR = CONFIGS.env_config.SUT_CONFIGS_PATH
+RESULTS_DIR = CONFIGS.env_config.RESULTS_PATH
+CLUE_CONFIG_PATH = CONFIGS.env_config.CLUE_CONFIG_PATH
 
 def run_experiment(configs: Configs, deploy_request: DeployRequest,
                   state_lock: Lock, is_deploying, shared_log_buffer: SharedLogBuffer):

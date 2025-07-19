@@ -3,13 +3,13 @@ from pathlib import Path
 from typing import Optional, Dict, Any
 from dataclasses import dataclass
 from fastapi import APIRouter, HTTPException
-from clue_deployer.src.configs.configs import ENV_CONFIG
+from clue_deployer.src.configs.configs import CONFIGS
 from clue_deployer.src.logger import logger
 from clue_deployer.src.results.data_analysis import DataAnalysis
 from clue_deployer.src.service.routers.results import find_experiment_by_uuid, find_experiment_directory_by_uuid
 
-SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
-RESULTS_DIR = ENV_CONFIG.RESULTS_PATH
+SUT_CONFIGS_DIR = CONFIGS.env_config.SUT_CONFIGS_PATH
+RESULTS_DIR = CONFIGS.env_config.RESULTS_PATH
 
 router = APIRouter()
 

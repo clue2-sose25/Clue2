@@ -5,13 +5,13 @@ from pydantic import BaseModel
 import base64
 import yaml
 
-from clue_deployer.src.configs.configs import ENV_CONFIG
+from clue_deployer.src.configs.configs import CONFIGS
 from clue_deployer.src.configs.sut_config import SUTConfig
 from clue_deployer.src.models.sut import VariantEntry, Sut, WorkloadEntry
 
-SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
-RESULTS_DIR = ENV_CONFIG.RESULTS_PATH
-CLUE_CONFIG_PATH = ENV_CONFIG.CLUE_CONFIG_PATH
+SUT_CONFIGS_DIR = CONFIGS.env_config.SUT_CONFIGS_PATH
+RESULTS_DIR = CONFIGS.env_config.RESULTS_PATH
+CLUE_CONFIG_PATH = CONFIGS.env_config.CLUE_CONFIG_PATH
 
 router = APIRouter()
 

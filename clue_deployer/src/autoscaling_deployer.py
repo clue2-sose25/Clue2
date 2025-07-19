@@ -1,6 +1,6 @@
 import math
 import kubernetes
-from clue_deployer.src.configs.configs import CLUE_CONFIG, SUT_CONFIG
+from clue_deployer.src.configs.configs import CONFIGS
 from clue_deployer.src.models.variant import Variant
 from clue_deployer.src.models.scaling_experiment_setting import ScalingExperimentSetting
 from clue_deployer.src.logger import process_logger as logger
@@ -29,20 +29,20 @@ class AutoscalingDeployer:
 
     def _setup_autoscaling(self, hpa_creator):
         apps = kubernetes.client.AppsV1Api()
-        sets: kubernetes.client.V1StatefulSetList = apps.list_namespaced_stateful_set(SUT_CONFIG.namespace)
+        sets: kubernetes.client.V1StatefulSetList = apps.list_namespaced_stateful_set(CONFIGS.sut_config.namespace)
         # Get all service names from the resource_limits list
-        services_names = [resource_limit.service_name for resource_limit in SUT_CONFIG.resource_limits]
+        services_names = [resource_limit.service_name for resource_limit in CONFIGS.sut_config.resource_limits]
         for stateful_set in sets.items:
             # Iterate over all services and use their limits, or default one
             if stateful_set.metadata.name in services_names:
                 # Find the matching ResourceLimit object
                 resource_limit = next(
-                    (rl for rl in SUT_CONFIG.resource_limits if rl.service_name == stateful_set.metadata.name), 
+                    (rl for rl in CONFIGS.sut_config.resource_limits if rl.service_name == stateful_set.metadata.name), 
                     None
                 )
-                limit = resource_limit.limit if resource_limit else SUT_CONFIG.default_resource_limits
+                limit = resource_limit.limit if resource_limit else CONFIGS.sut_config.default_resource_limits
             else:
-                limit = SUT_CONFIG.default_resource_limits
+                limit = CONFIGS.sut_config.default_resource_limits
             stateful_set.spec.template.spec.containers[0].resources = (
                 kubernetes.client.V1ResourceRequirements(
                     requests={
@@ -57,10 +57,10 @@ class AutoscalingDeployer:
             )
             try:
                 _ = apps.patch_namespaced_stateful_set(
-                    stateful_set.metadata.name, SUT_CONFIG.namespace, stateful_set
+                    stateful_set.metadata.name, CONFIGS.sut_config.namespace, stateful_set
                 )
                 if stateful_set.metadata.name in services_names:
-                    hpa_creator(stateful_set.metadata.name, SUT_CONFIG.namespace)
+                    hpa_creator(stateful_set.metadata.name, CONFIGS.sut_config.namespace)
             except kubernetes.client.rest.ApiException as e:
                 if e.status == 409:
                     logger.error(f"HPA for {stateful_set.metadata.name} already exists")
@@ -115,7 +115,7 @@ class AutoscalingDeployer:
                                 resource=kubernetes.client.V2ResourceMetricSource(
                                     name="memory",
                                     target=kubernetes.client.V2MetricTarget(
-                                        average_utilization=CLUE_CONFIG.target_utilization,
+                                        average_utilization=CONFIGS.clue_config.target_utilization,
                                         type="Utilization",
                                     )
                                 ),
@@ -173,7 +173,7 @@ class AutoscalingDeployer:
                                 resource=kubernetes.client.V2ResourceMetricSource(
                                     name="cpu",
                                     target=kubernetes.client.V2MetricTarget(
-                                        average_utilization=CLUE_CONFIG.target_utilization,
+                                        average_utilization=CONFIGS.clue_config.target_utilization,
                                         type="Utilization",
                                     )
                                 ),
@@ -232,7 +232,7 @@ class AutoscalingDeployer:
                                 resource=kubernetes.client.V2ResourceMetricSource(
                                     name="cpu",
                                     target=kubernetes.client.V2MetricTarget(
-                                        average_utilization=CLUE_CONFIG.target_utilization,
+                                        average_utilization=CONFIGS.clue_config.target_utilization,
                                         type="Utilization",
                                     )
                                 ),
@@ -242,7 +242,7 @@ class AutoscalingDeployer:
                                 resource=kubernetes.client.V2ResourceMetricSource(
                                     name="memory",
                                     target=kubernetes.client.V2MetricTarget(
-                                        average_utilization=CLUE_CONFIG.target_utilization,
+                                        average_utilization=CONFIGS.clue_config.target_utilization,
                                         type="Utilization",
                                     )
                                 ),
