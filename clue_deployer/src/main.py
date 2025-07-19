@@ -159,6 +159,8 @@ class ExperimentRunner:
             return
         # Set the status to preparing
         StatusManager.set(StatusPhase.PREPARING_CLUSTER, "Preparing the cluster...")
+        # Load the correct SUT config
+        CONFIGS.replace_sut_config(self.experiment.sut)
         # Deploy a single variant if deploy only
         if self.experiment.deploy_only:
             #logger.info(f"Starting deployment only for variant: {self.experiment.variants[0]} (workload: {self.experiment.workloads[0]})")
