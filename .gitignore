@@ -1,6 +1,5 @@
 .DS_Store
 __pycache__/
-data*
 .idea
 mock_data/
 .vscode
@@ -11,3 +10,5 @@ results/*
 localClusterConfig/minikube/minikube_kube_config
 localClusterConfig/minikube/minikube_kube_config
 .venv
+rights/*
+

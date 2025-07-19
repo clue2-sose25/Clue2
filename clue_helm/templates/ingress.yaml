@@ -1,0 +1,33 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: clue-ingress
+  labels:
+    {{- include "clue.labels" . | nindent 4 }}
+spec:
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: clue-deployer
+                port:
+                  number: {{ .Values.clueDeployer.service.port }}
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: clue-webui
+                port:
+                  number: {{ .Values.clueWebui.service.port }}
+{{- if .Values.ingress.tls }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host }}
+      secretName: clue-tls
+{{- end }}
+{{- end }}

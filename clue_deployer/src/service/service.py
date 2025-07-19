@@ -1,4 +1,3 @@
-from multiprocessing.sharedctypes import Synchronized
 import os
 import asyncio
 import json
@@ -6,7 +5,7 @@ from contextlib import asynccontextmanager
 from threading import Lock
 from typing import Any
 from fastapi import FastAPI, HTTPException, status, Request
-from fastapi.responses import JSONResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import RedirectResponse, StreamingResponse
 import multiprocessing
 from clue_deployer.src.models.deploy_request import DeployRequest
 from clue_deployer.src.models.health_response import HealthResponse
@@ -14,15 +13,12 @@ from clue_deployer.src.models.status_response import StatusResponse
 from clue_deployer.src.service.status_manager import StatusManager
 from clue_deployer.src.logger import get_child_process_logger, logger, shared_log_buffer, SharedLogBuffer
 from clue_deployer.src.main import ExperimentRunner
-from clue_deployer.src.configs.configs import SUTConfig, Configs, ENV_CONFIG
-from clue_deployer.src.service.worker import Worker
-from .routers import logs, suts, results, plots, cluster, queue
+from clue_deployer.src.configs.configs import Configs, ENV_CONFIG
 from .routers.queue import worker
+from .routers import logs, suts, results, plots, cluster, results_server, clue_config, queue
 
 
 # Initialize multiprocessing lock and value for deployment synchronization. Used for deployments.
-
-
 state_lock = Lock()
 is_deploying = worker.is_deploying
 
@@ -45,6 +41,9 @@ app.include_router(results.router)
 app.include_router(plots.router)
 app.include_router(cluster.router)
 app.include_router(queue.router)
+app.include_router(results_server.router)
+app.include_router(clue_config.router)
+
 
 
 SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH

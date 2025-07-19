@@ -1,0 +1,44 @@
+{{- if .Values.loadGenerator.jobEnabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: clue-loadgenerator
+  labels:
+    {{- include "clue.labels" . | nindent 4 }}
+spec:
+  template:
+    metadata:
+      labels:
+        app: loadgenerator
+        {{- include "clue.labels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+{{- $sut := .Values.clueDeployer.env.SUT | default "sut" }}
+{{- $paths := list }}
+{{- if .Values.loadGenerator.workloadFiles }}
+{{- range $name, $_ := .Values.loadGenerator.workloadFiles }}
+{{- $paths = append $paths (printf "/app/sut_configs/workloads/%s/%s" $sut $name) }}
+{{- end }}
+{{- else if .Values.loadGenerator.workloadDir }}
+{{- $files := .Files.Glob (printf "%s/*" .Values.loadGenerator.workloadDir) }}
+{{- range $path, $_ := $files }}
+{{- $paths = append $paths (printf "/app/sut_configs/workloads/%s/%s" $sut (base $path)) }}
+{{- end }}
+{{- end }}
+      containers:
+        - name: loadgenerator
+          image: "{{ .Values.imageRegistry }}/{{ .Values.loadGenerator.image }}:{{ .Values.loadGenerator.tag }}"
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          env:
+            - name: SUT_NAME
+              value: "{{ $sut }}"
+            - name: LOCUST_FILE
+              value: '{{ join "," $paths}}'
+          volumeMounts:
+            - name: workload-files
+              mountPath: "/app/sut_configs/workloads/{{ $sut }}"
+      volumes:
+        - name: workload-files
+          configMap:
+            name: loadgenerator-workload
+{{- end }}

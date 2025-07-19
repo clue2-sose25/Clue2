@@ -1,6 +1,6 @@
-import { createContext, useState } from "react";
-import type { ReactNode } from "react";
-import type { DeploymentForm } from "../models/DeploymentForm";
+import {createContext, useState} from "react";
+import type {ReactNode} from "react";
+import type {DeploymentForm} from "../models/DeploymentForm";
 
 // Define default form values
 const defaultDeploymentForm: DeploymentForm = {
@@ -28,7 +28,7 @@ export const DeploymentContext = createContext<DeploymentContextType>({
 });
 
 // Context provider
-export const DeploymentProvider = ({ children }: { children: ReactNode }) => {
+export const DeploymentProvider = ({children}: {children: ReactNode}) => {
   const [currentDeployment, setCurrentDeployment] = useState<DeploymentForm>(
     defaultDeploymentForm
   );

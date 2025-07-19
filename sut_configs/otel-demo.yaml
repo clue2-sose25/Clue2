@@ -2,13 +2,13 @@ config:
   # The name of the SUT  
   sut: "otel-demo"
   namespace: "otel-demo"
-  sut_git_repo: "https://github.com/JulianLegler/opentelemetry-demo.git"
+  sut_git_repo: "https://github.com/clue2-sose25/opentelemetry-demo"
   sut_path: "opentelemetry-demo"
-  helm_chart_repo: "https://github.com/open-telemetry/opentelemetry-helm-charts"
+  helm_chart_repo: "https://github.com/clue2-sose25/opentelemetry-helm-charts"
   helm_chart_path: "opentelemetry-demo/charts/opentelemetry-demo"
   helm_dependencies_from_chart: true # If true, dependencies are fetched from the chart
   values_yaml_name: "values.yaml"
-  target_service_name: "frontend" # The k8s service name (used for in-cluster communication)
+  workload_target: "frontend-proxy:8080" # The k8s service name (used for in-cluster communication)
   application_endpoint_path: "/" # The specific path
   timeout_for_services_ready: 300 # 5 minutes since otel demo can take a while to start
   default_resource_limits:
@@ -18,10 +18,44 @@ config:
   wait_after_workloads: 180 # 3 minutes in seconds  
 
 helm_replacements:
-  - value: "ghcr.io/open-telemetry/demo"
-    replacement: "registry:5000/clue/otel-demo"
-  - value: 'tag: ""'
-    replacement: 'tag: "__EXPERIMENT_TAG__"'
+  # Default image settings - remove them to prevent auto-appending
+  - value: "default:\n  image:\n    repository: ghcr.io/open-telemetry/demo"
+    replacement: "default:\n  image:\n    repository: registry:5000/clue"
+  # Override each service's image
+  - value: "  accounting:\n    enabled: true"
+    replacement: "  accounting:\n    enabled: true\n    imageOverride:\n      repository: registry:5000/clue/ots-accounting\n      tag: __EXPERIMENT_TAG__"
+  - value: "  ad:\n    enabled: true"
+    replacement: "  ad:\n    enabled: true\n    imageOverride:\n      repository: registry:5000/clue/ots-ad\n      tag: __EXPERIMENT_TAG__"
+  - value: "  cart:\n    enabled: true"
+    replacement: "  cart:\n    enabled: true\n    imageOverride:\n      repository: registry:5000/clue/ots-cart\n      tag: __EXPERIMENT_TAG__"
+  - value: "  checkout:\n    enabled: true"
+    replacement: "  checkout:\n    enabled: true\n    imageOverride:\n      repository: registry:5000/clue/ots-checkout\n      tag: __EXPERIMENT_TAG__"
+  - value: "  currency:\n    enabled: true"
+    replacement: "  currency:\n    enabled: true\n    imageOverride:\n      repository: registry:5000/clue/ots-currency\n      tag: __EXPERIMENT_TAG__"
+  - value: "  email:\n    enabled: true"
+    replacement: "  email:\n    enabled: true\n    imageOverride:\n      repository: registry:5000/clue/ots-email\n      tag: __EXPERIMENT_TAG__"
+  - value: "  fraud-detection:\n    enabled: true"
+    replacement: "  fraud-detection:\n    enabled: true\n    imageOverride:\n      repository: registry:5000/clue/ots-fraud-detection\n      tag: __EXPERIMENT_TAG__"
+  - value: "  frontend:\n    enabled: true"
+    replacement: "  frontend:\n    enabled: true\n    imageOverride:\n      repository: registry:5000/clue/ots-frontend\n      tag: __EXPERIMENT_TAG__"
+  - value: "  frontend-proxy:\n    enabled: true"
+    replacement: "  frontend-proxy:\n    enabled: true\n    imageOverride:\n      repository: registry:5000/clue/ots-frontend-proxy\n      tag: __EXPERIMENT_TAG__"
+  - value: "  load-generator:\n    enabled: true"
+    replacement: "  load-generator:\n    enabled: false"
+  - value: "  payment:\n    enabled: true"
+    replacement: "  payment:\n    enabled: true\n    imageOverride:\n      repository: registry:5000/clue/ots-payment\n      tag: __EXPERIMENT_TAG__"
+  - value: "  product-catalog:\n    enabled: true"
+    replacement: "  product-catalog:\n    enabled: true\n    imageOverride:\n      repository: registry:5000/clue/ots-product-catalog\n      tag: __EXPERIMENT_TAG__"
+  - value: "  quote:\n    enabled: true"
+    replacement: "  quote:\n    enabled: true\n    imageOverride:\n      repository: registry:5000/clue/ots-quote\n      tag: __EXPERIMENT_TAG__"
+  - value: "  recommendation:\n    enabled: true"
+    replacement: "  recommendation:\n    enabled: true\n    imageOverride:\n      repository: registry:5000/clue/ots-recommendation\n      tag: __EXPERIMENT_TAG__"
+  - value: "  shipping:\n    enabled: true"
+    replacement: "  shipping:\n    enabled: true\n    imageOverride:\n      repository: registry:5000/clue/ots-shipping\n      tag: __EXPERIMENT_TAG__"
+  - value: "  flagd:\n    enabled: true"
+    replacement: "  flagd:\n    enabled: true\n    imageOverride:\n      repository: registry:5000/clue/ots-flagd-ui\n      tag: __EXPERIMENT_TAG__"
+  - value: "  image-provider:\n    enabled: true"
+    replacement: "  image-provider:\n    enabled: true\n    imageOverride:\n      repository: registry:5000/clue/ots-image-provider\n      tag: __EXPERIMENT_TAG__"
 
 resource_limits:
   - service_name: "checkout"
@@ -96,16 +130,58 @@ resource_limits:
 workloads:
   - name: "shaped"
     description: "Workload with custom load shape behavior."
-    timeout_duration: 120
-    workload_runtime: 64
-    workload_settings: {}
+    timeout_duration: 360
+    workload_runtime: 300
+    workload_settings:
+      LOCUST_USERS: 25
+      LOCUST_SPAWN_RATE: 2
     locust_files:
       - "sut_configs/workloads/otel-demo/locustfile.py"
+  - name: "fixed"
+    description: "Fixed number of requests workload for consistent testing. Will terminate after 1000 requests or the specified duration."
+    timeout_duration: 120
+    workload_runtime: 64
+    workload_settings:
+      MAXIMUM_REQUESTS: 1000
+    locust_files:
+      - "sut_configs/workloads/otel-demo/fixed_requests.py"
+  - name: "rampup"
+    description: "Gradual ramp-up load pattern with 8 stages."
+    timeout_duration: 600  # should be stages * stage_duration + buffer
+    workload_runtime: 480  # should be stages * stage_duration
+    workload_settings:
+      STAGE_DURATION: 60  # 5 minutes per stage
+      MAX_USERS: 100
+      NUM_STAGES: 8
+    locust_files:
+      - "sut_configs/workloads/otel-demo/rampup_loadshape.py"
 
 variants:
   - name: "baseline"
     description: "Baseline experiment for the otel-demo application"
     target_branch: "main"
+    colocated_workload: true
+    critical_services:
+      [
+        "checkout",
+        "product-catalog",
+        "ad",
+        "frontend-proxy",
+        "fraud-detection",
+        "currency",
+        "frontend",
+        "image-provider",
+        "email",
+        "kafka",
+        "recommendation",
+        "shipping",
+        "quote",
+        "payment",
+      ]
+    autoscaling: "cpu"
+  - name: "rust-product-catalog"
+    description: "Experiment with a Rust-based product catalog service"
+    target_branch: "rust-product-catalog"
     colocated_workload: true
     critical_services:
       [

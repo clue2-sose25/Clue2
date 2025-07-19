@@ -12,7 +12,10 @@ SUT_PATH = "opentelemetry-demo"
 class OTSBuilder:
     def __init__(self, minimal: bool = False, ):
         with open(SUT_CONFIG, 'r') as sut_file:
-            self.sut_config = yaml.safe_load(sut_file)["config"]
+            sut_yaml = yaml.safe_load(sut_file)
+            self.sut_config = sut_yaml["config"]
+            self.variants = sut_yaml.get('variants', [])
+            print(f"\nDEBUG: Loaded variants from config: {self.variants}")
         
         with open(CLUE_CONFIG, 'r') as clue_file:
             self.clue_config = yaml.safe_load(clue_file)["config"]
@@ -21,7 +24,26 @@ class OTSBuilder:
         self.docker_registry_address = self.clue_config.get('docker_registry_address', 'registry:5000/clue')
         self.platform = self.clue_config.get('remote_platform_arch', 'linux/amd64')
         self.minimal = minimal
-        self.image_version = "latest"
+        exp_name = os.environ.get("OTS_EXP_NAME", "baseline")
+        print(f"\nDEBUG: Looking for variant with name: {exp_name}")
+        print(f"DEBUG: Environment variables:")
+        print(f"DEBUG: OTS_EXP_NAME={os.environ.get('OTS_EXP_NAME', 'not set')}")
+        
+        # search target branch for exp_name
+        target_branch = None
+        for variant in self.variants:
+            print(f"DEBUG: Checking variant: {variant}")
+            if variant.get('name') == exp_name:
+                target_branch = variant.get('target_branch')
+                print(f"DEBUG: Found matching variant! Target branch: {target_branch}")
+                break
+        
+        if target_branch is None:
+            print(f"DEBUG: No variant found with name '{exp_name}'. Available variants: {[v.get('name') for v in self.variants]}")
+            raise ValueError(f"No variant found with name '{exp_name}' in SUT config")
+
+        print(f"DEBUG: Final selected branch: {target_branch}")
+        self.image_version = target_branch
         self._set_envs()
         self._clone_repo()
         self.sut_path = SUT_PATH
@@ -40,7 +62,7 @@ class OTSBuilder:
 
     def _clone_repo(self):
         """
-        Clone the OTS repository if it does not exist.
+        Clone the OTS repository if it does not exist and checkout the target branch.
         """
         if not os.path.exists(SUT_PATH):
             print("Cloning OTS repository...")
@@ -48,6 +70,14 @@ class OTSBuilder:
             print("OTS repository cloned successfully.")
         else:
             print("OTS repository already exists. Skipping clone.")
+        
+        print(f"Checking out target branch: {self.image_version}")
+        try:
+            subprocess.run(["git", "checkout", self.image_version], cwd=SUT_PATH, check=True)
+            print(f"Successfully checked out branch: {self.image_version}")
+        except subprocess.CalledProcessError as e:
+            print(f"Warning: Failed to checkout branch {self.image_version}: {e}")
+            print("Continuing with current branch...")
 
     def _set_envs(self):
         """
@@ -61,10 +91,34 @@ class OTSBuilder:
         print(f"IMAGE_NAME: {os.environ['IMAGE_NAME']}")
         print(f"IMAGE_VERSION: {os.environ['IMAGE_VERSION']}")
     
+    def patch_compose_images(self, compose_path: str):
+        """
+        Patch the docker-compose file so each service image is set to its own repo (e.g., registry:5000/clue/ots-<service>:latest)
+        """
+        import yaml
+        with open(compose_path, 'r') as f:
+            compose = yaml.safe_load(f)
+
+        services = compose.get('services', {})
+        for svc_name, svc in services.items():
+            # Only patch services that use IMAGE_NAME/DEMO_VERSION
+            image = svc.get('image', '')
+            if '${IMAGE_NAME}' in image and '${DEMO_VERSION}-' in image:
+                # Extract service suffix (e.g., frontend, cart, etc.)
+                suffix = image.split('${DEMO_VERSION}-')[-1]
+                new_image = f"{self.docker_registry_address}/ots-{suffix}:{self.image_version}"
+                svc['image'] = new_image
+        with open(compose_path, 'w') as f:
+            yaml.dump(compose, f, default_flow_style=False)
+        print(f"Patched compose file: {compose_path}")
+
     def build(self):
         """
         Build the OTS image using Docker.
         """
+        # Patch the compose file before building
+        compose_path = os.path.join(self.sut_path, 'docker-compose.yml')
+        self.patch_compose_images(compose_path)
         try:
             if self.minimal:
                 print("Building minimal OTS image...")

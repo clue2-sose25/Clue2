@@ -16,7 +16,7 @@ config:
   # The values file to use
   values_yaml_name: "values.yaml"
   # The k8s service name (used for in-cluster communication)
-  target_service_name: "teastore-webui"
+  workload_target: "teastore-webui"
   # The specific path
   application_endpoint_path: "/tools.descartes.teastore.webui"
   # Default resource limits for all services (used if autoscaling is enabled)
