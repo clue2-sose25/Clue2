@@ -44,8 +44,6 @@ app.include_router(queue.router)
 app.include_router(results_server.router)
 app.include_router(clue_config.router)
 
-
-
 SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
 RESULTS_DIR = ENV_CONFIG.RESULTS_PATH
 CLUE_CONFIG_PATH = ENV_CONFIG.CLUE_CONFIG_PATH

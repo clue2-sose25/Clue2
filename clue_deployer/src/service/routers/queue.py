@@ -1,14 +1,9 @@
 from fastapi import APIRouter
-
 from fastapi import HTTPException, status
 from fastapi.responses import JSONResponse
-
 from clue_deployer.src.models.deploy_request import DeployRequest
 from clue_deployer.src.logger import logger
 from clue_deployer.src.service.worker import Worker
-
-
-
 
 router = APIRouter()
 

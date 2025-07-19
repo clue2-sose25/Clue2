@@ -21,7 +21,6 @@ const ParametersSelection: React.FC = () => {
         return res.json();
       })
       .then((data) => {
-        console.log(data);
         setAvailableSUTs(data ?? []);
       })
       .catch((err) => {

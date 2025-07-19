@@ -1,4 +1,4 @@
-import {useEffect, useState} from "react";
+import {useContext, useEffect, useState} from "react";
 import {
   PauseIcon,
   ClockIcon,
@@ -7,12 +7,14 @@ import {
   StackIcon,
 } from "@phosphor-icons/react";
 import Card from "../components/Card";
+import {QueueContext} from "../contexts/QueueContext";
 
 const HomePage = () => {
   const [statusText, setStatusText] = useState<string>("Loading...");
   const [isDeploying, setIsDeploying] = useState<boolean | null>(null);
-  const [queueCount, setQueueCount] = useState<number>(0);
   const [resultsCount, setResultsCount] = useState<number>(0);
+
+  const {queueSize, setQueueSize} = useContext(QueueContext);
 
   useEffect(() => {
     fetch("/api/status")
@@ -33,16 +35,13 @@ const HomePage = () => {
         setIsDeploying(null);
       });
 
-    fetch("/api/queue")
+    fetch("/api/queue/status")
       .then((res) => res.json())
       .then((data) => {
-        if (Array.isArray(data)) {
-          setQueueCount(data.length);
-        } else {
-          setQueueCount(0);
-        }
+        // Access the queue_size property from the response object
+        setQueueSize(data.queue_size || 0);
       })
-      .catch(() => setQueueCount(0));
+      .catch(() => setQueueSize(0));
 
     // Fetch the number of results
     fetch("/api/results")
@@ -73,11 +72,11 @@ const HomePage = () => {
           title="EXPERIMENTS QUEUE"
           icon={<StackIcon size={60} />}
           text={
-            queueCount === 0
+            queueSize === 0
               ? "The queue is empty"
-              : `${queueCount} experiments in the queue`
+              : `${queueSize} experiments in the queue`
           }
-          subText={queueCount === 0 ? "" : "Estimated time: -"}
+          subText={queueSize === 0 ? "" : "Estimated time: -"}
           link="/experiment"
           button="Add a new experiment"
         />

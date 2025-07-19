@@ -32,54 +32,79 @@ const DashboardPage = () => {
   const navigate = useNavigate();
 
   /**
-   * On the component load
+   * Fetch queue data from the API
    */
-  useEffect(() => {
-    fetch("/api/queue")
+  const fetchQueue = () => {
+    fetch("/api/queue/status")
       .then(async (r) => {
         if (!r.ok) {
           throw new Error(`API responded with status ${r.status}`);
         }
         const data = await r.json();
-        // Validate data type (optional, adjust based on your needs)
-        if (!Array.isArray(data)) {
-          console.error("API returned non-array data:", data);
-          return [];
+
+        // Validate that we received the expected object structure
+        if (!data || typeof data !== "object") {
+          console.error("API returned invalid data:", data);
+          return {queue: [], queue_size: 0};
         }
+
+        // Ensure queue is an array
+        if (!Array.isArray(data.queue)) {
+          console.error("API returned non-array queue:", data.queue);
+          return {queue: [], queue_size: data.queue_size || 0};
+        }
+
         return data;
       })
-      .then((d) => setCurrentQueue(d ?? []))
+      .then((d) => {
+        setCurrentQueue(d.queue ?? []);
+        // Reset index if current index is out of bounds
+        if (currentQueueIndex >= d.queue.length) {
+          setCurrentQueueIndex(0);
+        }
+      })
       .catch((err) => {
         console.error("Failed to fetch queue:", err);
         setCurrentQueue([]);
+        setCurrentQueueIndex(0);
       });
+  };
+
+  /**
+   * On the component load
+   */
+  useEffect(() => {
+    fetchQueue();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Get the current queue item to display
+  const currentQueueItem = currentQueue[currentQueueIndex] || currentDeployment;
 
   const configItems = [
     {
       label: "SUT (System Under Test)",
-      value: currentDeployment.sut,
+      value: currentQueueItem.sut,
       icon: <WrenchIcon size={24} />,
     },
     {
       label: "Experiments",
-      value: currentDeployment.variants.join(", "),
+      value: currentQueueItem.variants?.join(", ") || "",
       icon: <FlaskIcon size={24} />,
     },
     {
       label: "Workload Type",
-      value: currentDeployment.workloads.join(", "),
+      value: currentQueueItem.workloads?.join(", ") || "",
       icon: <LightningIcon size={24} />,
     },
     {
       label: "Iterations",
-      value: currentDeployment.iterations.toLocaleString(),
+      value: currentQueueItem.iterations?.toLocaleString() || "0",
       icon: <RepeatIcon size={24} />,
     },
     {
       label: "Deploy only",
-      value: currentDeployment.deploy_only ? "True" : "False",
+      value: currentQueueItem.deploy_only ? "True" : "False",
       icon: <RepeatIcon size={24} />,
     },
   ];
@@ -104,7 +129,7 @@ const DashboardPage = () => {
   }, []);
 
   const increaseIndexInQueue = () => {
-    if (currentQueue.length > currentQueueIndex) {
+    if (currentQueueIndex < currentQueue.length - 1) {
       setCurrentQueueIndex(currentQueueIndex + 1);
     }
   };
@@ -117,7 +142,7 @@ const DashboardPage = () => {
 
   return (
     <div className="w-full h-full flex flex-col gap-2">
-      {ifDeploying && (
+      {ifDeploying && currentQueue.length > 0 && (
         <div className="w-full h-full max-h-[2rem] flex items-center justify-center gap-2">
           <IconButton
             disabled={currentQueueIndex <= 0}
@@ -130,9 +155,7 @@ const DashboardPage = () => {
             {currentQueue.length}
           </span>
           <IconButton
-            disabled={
-              currentQueueIndex >= currentQueue.length - 1 || !currentQueue
-            }
+            disabled={currentQueueIndex >= currentQueue.length - 1}
             onClick={increaseIndexInQueue}
           >
             <CaretRightIcon size={18}></CaretRightIcon>
@@ -147,8 +170,7 @@ const DashboardPage = () => {
                 <div className="pb-2">
                   <p className="flex gap-2 text-xl items-center pt-2 pb-2">
                     <RocketLaunchIcon size={24} /> Deploying{" "}
-                    <span className="font-medium">{currentDeployment.sut}</span>
-                    !
+                    <span className="font-medium">{currentQueueItem.sut}</span>!
                   </p>
                   Your current experiment is being deployed. Please grab a
                   coffee, it may take a while...
@@ -193,8 +215,9 @@ const DashboardPage = () => {
                   className="rounded p-2 bg-red-400 text-white hover:bg-red-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
                   onClick={() => {}}
                   disabled={
-                    !currentDeployment.sut ||
-                    currentDeployment.variants.length === 0
+                    !currentQueueItem.sut ||
+                    !currentQueueItem.variants ||
+                    currentQueueItem.variants.length === 0
                   }
                 >
                   <div className="flex items-center justify-center gap-2">
