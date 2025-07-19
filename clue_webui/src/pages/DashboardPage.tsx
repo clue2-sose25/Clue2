@@ -35,6 +35,9 @@ const DashboardPage = () => {
   // Queue modal state
   const [showQueueModal, setShowQueueModal] = useState(false);
 
+  // Loading states
+  const [isStartingDeployment, setIsStartingDeployment] = useState(false);
+
   const navigate = useNavigate();
 
   /**
@@ -134,18 +137,31 @@ const DashboardPage = () => {
    * Start deployment from queue
    */
   const startDeployment = async () => {
+    setIsStartingDeployment(true);
+
     try {
       const response = await fetch("/api/queue/deploy", {
         method: "POST",
       });
       if (response.ok) {
-        await fetchCurrentDeployment(); // Refresh current deployment
-        await fetchQueue(); // Refresh queue
+        // Close the modal immediately for better UX
+        setShowQueueModal(false);
+
+        // Give the backend worker time to start before fetching status
+        setTimeout(async () => {
+          await Promise.all([fetchCurrentDeployment(), fetchQueue()]);
+        }, 2000); // 2 second delay to allow worker to start
       }
     } catch (err) {
       console.error("Failed to start deployment:", err);
+    } finally {
+      // Keep loading state for a bit longer to show feedback
+      setTimeout(() => {
+        setIsStartingDeployment(false);
+      }, 2000);
     }
   };
+
   const cancelCurrentExperiment = async () => {
     try {
       const response = await fetch("/api/queue/stop", {
@@ -223,126 +239,149 @@ const DashboardPage = () => {
     }
   };
 
+  const isStartButtonDisabled =
+    queueSize === 0 || !!currentDeployment || isStartingDeployment;
+
   return (
     <div className="w-full h-full flex flex-col gap-2">
-      <div className="bg-white p-6 rounded-lg shadow-md w-full h-full relative">
-        {/* Queue Status Button */}
-        <div className="absolute top-6 right-6 z-10 flex gap-2">
-          <button
-            className="flex items-center gap-2 px-4 py-2 bg-green-400 text-white rounded hover:bg-green-600 transition-colors font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
-            onClick={startDeployment}
-            disabled={queueSize === 0 || !!currentDeployment}
-          >
-            <PlayIcon size={18} />
-            <span>Start Next</span>
-          </button>
-          <button
-            className="flex items-center gap-2 px-4 py-2 bg-blue-400 text-white rounded hover:bg-blue-600 transition-colors font-medium"
-            onClick={() => setShowQueueModal(true)}
-          >
-            <StackIcon size={18} />
-            <span>
-              Queue ({queueSize} {queueSize === 1 ? "item" : "items"})
-            </span>
-          </button>
+      <div className="bg-white p-6 rounded-lg shadow-md w-full h-full flex flex-col">
+        {/* Queue Control Section - Always visible at top */}
+        <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-200">
+          <div className="font-large text-lg font-semibold">
+            CLUE2 Dashboard
+          </div>
+          <div className="flex gap-2">
+            <button
+              className="flex items-center gap-2 px-4 py-2 bg-green-400 text-white rounded hover:bg-green-600 transition-colors font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
+              onClick={startDeployment}
+              disabled={isStartButtonDisabled}
+            >
+              {isStartingDeployment ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                  <span>Starting...</span>
+                </>
+              ) : (
+                <>
+                  <PlayIcon size={18} />
+                  <span>Start Next</span>
+                </>
+              )}
+            </button>
+            <button
+              className="flex items-center gap-2 px-4 py-2 bg-blue-400 text-white rounded hover:bg-blue-600 transition-colors font-medium"
+              onClick={() => setShowQueueModal(true)}
+            >
+              <StackIcon size={18} />
+              <span>
+                Queue ({queueSize} {queueSize === 1 ? "item" : "items"})
+              </span>
+            </button>
+          </div>
         </div>
-        {currentDeployment ? (
-          <div className="flex gap-6 h-full">
-            <div className="w-1/3">
-              <div className="flex flex-col gap-2">
-                <div className="pb-2">
-                  <p className="flex gap-2 text-xl items-center pt-2 pb-2">
-                    <RocketLaunchIcon size={24} /> Deploying{" "}
-                    <span className="font-medium">{currentDeployment.sut}</span>
-                    !
+
+        {/* Main Content Area */}
+        <div className="flex-1">
+          {currentDeployment ? (
+            <div className="flex gap-6 h-full">
+              <div className="w-1/3">
+                <div className="flex flex-col gap-2">
+                  <div className="pb-2">
+                    <p className="flex gap-2 text-xl items-center pt-2 pb-2">
+                      <RocketLaunchIcon size={24} /> Deploying{" "}
+                      <span className="font-medium">
+                        {currentDeployment.sut}
+                      </span>
+                      !
+                    </p>
+                    Your current experiment is being deployed. Please grab a
+                    coffee, it may take a while...
+                  </div>
+                  <p className="font-medium mb-4">
+                    Status:{" "}
+                    <span className={getStatusColor(deploymentStatus)}>
+                      {deploymentStatus}
+                    </span>
                   </p>
-                  Your current experiment is being deployed. Please grab a
-                  coffee, it may take a while...
-                </div>
-                <p className="font-medium mb-4">
-                  Status:{" "}
-                  <span className={getStatusColor(deploymentStatus)}>
-                    {deploymentStatus}
-                  </span>
-                </p>
-                <div className="mb-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {configItems.map((item, index) => (
-                      <div
-                        key={index}
-                        className="flex items-start gap-3 p-2 rounded-lg bg-gray-50 hover:bg-gray-100  transition-colors duration-200"
-                      >
-                        <span className="text-xl flex-shrink-0 mt-0.5">
-                          {item.icon}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <dt className="text-sm font-medium text-gray-600 mb-1">
-                            {item.label}
-                          </dt>
-                          <dd className="text-sm text-gray-900 font-mono bg-white px-2 py-1 rounded border">
-                            {item.value}
-                          </dd>
+                  <div className="mb-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {configItems.map((item, index) => (
+                        <div
+                          key={index}
+                          className="flex items-start gap-3 p-2 rounded-lg bg-gray-50 hover:bg-gray-100  transition-colors duration-200"
+                        >
+                          <span className="text-xl flex-shrink-0 mt-0.5">
+                            {item.icon}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <dt className="text-sm font-medium text-gray-600 mb-1">
+                              {item.label}
+                            </dt>
+                            <dd className="text-sm text-gray-900 font-mono bg-white px-2 py-1 rounded border">
+                              {item.value}
+                            </dd>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
+                  <button
+                    className="rounded p-2 bg-blue-400 text-white hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    onClick={() => {
+                      navigate("/results");
+                    }}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <FilesIcon size={24} className="inline-block" />
+                      <span className="font-medium">View results</span>
+                    </div>
+                  </button>
+                  <button
+                    className="rounded p-2 bg-red-400 text-white hover:bg-red-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    onClick={cancelCurrentExperiment}
+                    disabled={
+                      !currentDeployment.sut || deploymentStatus === "COMPLETED"
+                    }
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <XCircleIcon size={24} className="inline-block" />
+                      <span className="font-medium">Cancel experiment</span>
+                    </div>
+                  </button>
                 </div>
-                <button
-                  className="rounded p-2 bg-blue-400 text-white hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                  onClick={() => {
-                    navigate("/results");
-                  }}
-                >
-                  <div className="flex items-center justify-center gap-2">
-                    <FilesIcon size={24} className="inline-block" />
-                    <span className="font-medium">View results</span>
-                  </div>
-                </button>
-                <button
-                  className="rounded p-2 bg-red-400 text-white hover:bg-red-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                  onClick={cancelCurrentExperiment}
-                  disabled={
-                    !currentDeployment.sut || deploymentStatus === "COMPLETED"
-                  }
-                >
-                  <div className="flex items-center justify-center gap-2">
-                    <XCircleIcon size={24} className="inline-block" />
-                    <span className="font-medium">Cancel experiment</span>
-                  </div>
-                </button>
+              </div>
+              <div className="w-2/3 flex flex-col gap-2">
+                <LogsPanel />
+                <span className="flex gap-2 p-1 items-center">
+                  <SpeedometerIcon size={32} />
+                  To see more live metrics visit the
+                  <Link
+                    className="text-blue-500 cursor-pointer"
+                    to={"http://localhost:3000"}
+                  >
+                    Grafana dashboard
+                  </Link>
+                </span>
               </div>
             </div>
-            <div className="w-2/3 flex flex-col gap-2">
-              <LogsPanel />
-              <span className="flex gap-2 p-1 items-center">
-                <SpeedometerIcon size={32} />
-                To see more live metrics visit the
+          ) : (
+            <div className="flex flex-col items-center w-full h-full justify-center">
+              <span className="flex flex-col font-semibold text-xl items-center pb-2 gap-2">
+                <WarningIcon size={90} /> No active deployment!
+              </span>{" "}
+              <span>
+                Add a{" "}
                 <Link
-                  className="text-blue-500 cursor-pointer"
-                  to={"http://localhost:3000"}
+                  className="font-medium text-sm text-blue-500"
+                  to={"/experiment"}
                 >
-                  Grafana dashboard
-                </Link>
+                  new experiment
+                </Link>{" "}
+                to the queue!
               </span>
             </div>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center w-full h-full justify-center">
-            <span className="flex flex-col font-semibold text-xl items-center pb-2 gap-2">
-              <WarningIcon size={90} /> No active deployment!
-            </span>{" "}
-            <span>
-              Add a{" "}
-              <Link
-                className="font-medium text-sm text-blue-500"
-                to={"/experiment"}
-              >
-                new experiment
-              </Link>{" "}
-              to the queue!
-            </span>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Queue Modal */}
@@ -365,10 +404,19 @@ const DashboardPage = () => {
             <button
               onClick={startDeployment}
               className="flex items-center gap-2 px-3 py-2 bg-green-400 text-white rounded hover:bg-green-600 transition-colors font-medium text-sm disabled:bg-gray-400 disabled:cursor-not-allowed"
-              disabled={queueSize === 0 || !!currentDeployment}
+              disabled={isStartButtonDisabled}
             >
-              <PlayIcon size={16} />
-              Start Next
+              {isStartingDeployment ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                  Starting...
+                </>
+              ) : (
+                <>
+                  <PlayIcon size={16} />
+                  Start Next
+                </>
+              )}
             </button>
             <button
               onClick={clearQueue}

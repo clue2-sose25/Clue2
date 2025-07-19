@@ -25,8 +25,11 @@ class Queuer:
         # Use multiprocessing.Manager for shared data structures
         self.manager = mp.Manager()
         self.shared_container = self.manager.dict()
-        self.experiment_queue = ExperimentQueue(condition=mp.Condition())
-        self.condition = self.manager.Condition()
+        
+        # Create a single shared condition for the queue
+        self.queue_condition = mp.Condition()
+        self.experiment_queue = ExperimentQueue(condition=self.queue_condition)
+        
         self.shared_container['current_experiment'] = None
 
         self.process_logger = get_child_process_logger(
@@ -68,7 +71,7 @@ class Queuer:
                 self.shared_flag,
                 self.state_lock,
                 self.is_deploying,
-                self.condition,
+                self.queue_condition,  # Pass the same condition
                 self.experiment_queue,
                 self.shared_container,
             )
@@ -78,98 +81,110 @@ class Queuer:
                      shared_flag, 
                      state_lock, 
                      is_deploying, 
-                     condition, 
+                     queue_condition,  # Use the passed condition
                      experiment_queue, 
                      shared_container):
         
         # Create worker-specific logger
         worker_logger = get_child_process_logger("WORKER", shared_log_buffer)
         
-        # Set deployment state at the start
-        with state_lock:
-            if is_deploying.value == 1:
-                raise HTTPException(
-                    status_code=409,
-                    detail="A deployment is already running."
-                )
-            is_deploying.value = 1
-        
         worker_logger.info("Worker process started and ready to deploy experiments.")
-        condition = mp.Condition()
         
         try:
             while shared_flag.value:
-                with condition:
+                experiment = None
+                
+                # Acquire the queue condition lock and check for work
+                with queue_condition:
                     # Wait until the queue is not empty or shared_flag is False
                     while experiment_queue.is_empty() and shared_flag.value:
-                        condition.wait()
+                        worker_logger.info("Queue is empty, waiting for experiments...")
+                        queue_condition.wait()
 
                     # Exit if shared_flag is no longer True
                     if not shared_flag.value:
+                        worker_logger.info("Shutdown flag received, exiting worker loop")
                         break
 
-                    # Check if queue is still empty after waiting (could be spurious wakeup)
+                    # Check if queue is still empty after waiting
                     if experiment_queue.is_empty():
+                        worker_logger.info("Queue still empty after wait, continuing...")
                         continue
+
+                    # Set deployment state before dequeuing
+                    with state_lock:
+                        if is_deploying.value == 1:
+                            worker_logger.warning("Already deploying, skipping this iteration")
+                            continue
+                        is_deploying.value = 1
+                        worker_logger.info("Set deployment state to active")
 
                     # Dequeue the experiment
-                    experiment: DeployRequest = experiment_queue.dequeue()
+                    experiment = experiment_queue.dequeue()
+                    worker_logger.info(f"Dequeued experiment for SUT: {experiment.sut}")
                     
-                    # FIX: Use consistent key name
+                    # Set current experiment in shared container
                     shared_container['current_experiment'] = experiment
 
-                try:
-                    sut_filename = f"{experiment.sut}.yaml"
-                    sut_path = SUT_CONFIGS_DIR.joinpath(sut_filename)
-                    
-                    if not sut_path.exists():
-                        worker_logger.error(f"SUT configuration file {sut_filename} does not exist.")
-                        # Clear current experiment and continue
-                        shared_container['current_experiment'] = None
-                        continue
-                    
-                    configs = Configs(sut_config_path=sut_path, clue_config_path=CLUE_CONFIG_PATH)
-                
-                    worker_logger.info(f"Starting deployment for SUT {experiment.sut}")
-                    runner = ExperimentRunner(
-                        configs,
-                        variants=experiment.variants,
-                        workloads=experiment.workloads,
-                        sut=experiment.sut,
-                        deploy_only=experiment.deploy_only,
-                        n_iterations=experiment.n_iterations,
-                    )
-                    
-                    # FIX: Update shared container with the actual experiment object
-                    shared_container['current_experiment'] = runner.experiment
-                    
-                    # FIX: Access experiment from shared container
-                    current_exp = shared_container['current_experiment']
-                    current_exp.make_experiemnts_dir()
-                    
-                    with self.experiment_manager_worker(experiment.sut, worker_logger, shared_container):
-                        runner.main()
-                    
-                    worker_logger.info(f"Successfully completed deployment for SUT {experiment.sut}")
-                    
-                except Exception as e:
-                    worker_logger.error(f"Deployment process failed for SUT {experiment.sut}: {str(e)}")
-                    
-                    # Perform cleanup for failed experiment
+                # Process the experiment outside of the queue lock
+                if experiment:
                     try:
-                        current_exp = shared_container.get('current_experiment')
-                        if current_exp:
-                            self._worker_cleanup(current_exp, FinalStatus.ERROR, worker_logger)
-                    except Exception as cleanup_error:
-                        worker_logger.error(f"Failed to cleanup after deployment error: {cleanup_error}")
+                        sut_filename = f"{experiment.sut}.yaml"
+                        sut_path = SUT_CONFIGS_DIR.joinpath(sut_filename)
+                        
+                        if not sut_path.exists():
+                            worker_logger.error(f"SUT configuration file {sut_filename} does not exist.")
+                            continue
+                        
+                        configs = Configs(sut_config_path=sut_path, clue_config_path=CLUE_CONFIG_PATH)
                     
-                    # Clear current experiment before continuing
-                    shared_container['current_experiment'] = None
+                        worker_logger.info(f"Starting deployment for SUT {experiment.sut}")
+                        runner = ExperimentRunner(
+                            configs,
+                            variants=experiment.variants,
+                            workloads=experiment.workloads,
+                            sut=experiment.sut,
+                            deploy_only=experiment.deploy_only,
+                            n_iterations=experiment.n_iterations,
+                        )
+                        
+                        # Update shared container with the actual experiment object
+                        shared_container['current_experiment'] = runner.experiment
+                        
+                        # Get experiment from shared container
+                        current_exp = shared_container['current_experiment']
+                        current_exp.make_experiemnts_dir()
+                        
+                        with self.experiment_manager_worker(experiment.sut, worker_logger, shared_container):
+                            runner.main()
+                        
+                        worker_logger.info(f"Successfully completed deployment for SUT {experiment.sut}")
+                        
+                    except Exception as e:
+                        worker_logger.error(f"Deployment process failed for SUT {experiment.sut}: {str(e)}")
+                        
+                        # Perform cleanup for failed experiment
+                        try:
+                            current_exp = shared_container.get('current_experiment')
+                            if current_exp:
+                                self._worker_cleanup(current_exp, FinalStatus.ERROR, worker_logger)
+                        except Exception as cleanup_error:
+                            worker_logger.error(f"Failed to cleanup after deployment error: {cleanup_error}")
+                    
+                    finally:
+                        # Always reset deployment state and clear current experiment
+                        with state_lock:
+                            is_deploying.value = 0
+                            worker_logger.info("Reset deployment state to inactive")
+                        
+                        shared_container['current_experiment'] = None
+                        worker_logger.info("Cleared current experiment")
                 
-                # After processing an experiment, check if queue is empty
-                if experiment_queue.is_empty():
-                    worker_logger.info("Queue is empty, worker process will exit.")
-                    break
+                # Check if we should continue or exit
+                with queue_condition:
+                    if experiment_queue.is_empty():
+                        worker_logger.info("Queue is empty after processing, worker will exit")
+                        break
                     
         except Exception as e:
             worker_logger.error(f"Critical error in worker loop: {str(e)}")
@@ -205,13 +220,38 @@ class Queuer:
         self.shared_flag.value = True
         self._new_process()  # Create a new process instance
         self.process.start()
+        
+        # Notify the worker that there's work to do
+        with self.queue_condition:
+            self.queue_condition.notify()
+            
         logger.info("Worker process started successfully.")
+    
+    def add_experiment_to_queue(self, experiment):
+        """Add an experiment to the queue and notify the worker."""
+        self.experiment_queue.enqueue(experiment)
+        
+        # Notify the worker that work is available
+        with self.queue_condition:
+            self.queue_condition.notify()
+            
+        logger.info(f"Added experiment {experiment.sut} to queue and notified worker")
     
     def stop(self):
         logger.info("Stopping worker queue and waiting for current deployment to finish...")
         self.shared_flag.value = False
+        
+        # Notify the worker to wake up and check the flag
+        with self.queue_condition:
+            self.queue_condition.notify()
+            
         if self.process and self.process.is_alive():
-            self.process.join()
+            self.process.join(timeout=30)  # Add timeout to prevent hanging
+            if self.process.is_alive():
+                logger.warning("Worker didn't stop gracefully, killing it")
+                self.process.kill()
+                self.process.join()
+                
         logger.info("Worker stopped.")
 
     def kill(self):
@@ -313,7 +353,7 @@ class Queuer:
         """Clean up the worker resources."""
         logger.info("Cleaning up worker resources...")
         
-        # FIX: Get current experiment from shared container
+        # Get current experiment from shared container
         current_exp = self.shared_container.get('current_experiment')
         if not current_exp:
             logger.warning("No current experiment to clean up.")
