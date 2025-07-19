@@ -1,4 +1,4 @@
-FROM python:3.9-slim-buster
+FROM python:3.9-slim-bullseye
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends build-essential && \
@@ -6,10 +6,10 @@ RUN apt-get update && \
     
 WORKDIR /app
 
-COPY requirements.txt .
+COPY workload_generator/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY entrypoint.sh .
+COPY workload_generator/entrypoint.sh .
 RUN chmod +x entrypoint.sh
 
 EXPOSE 8089

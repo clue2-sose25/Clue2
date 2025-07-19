@@ -35,10 +35,10 @@ def build():
         raise RuntimeError("Docker is not running. Please start Docker and try again.")
 
     print(f"Building clue load generator for platform {remote_platform_arch}")
-    tag = f"{docker_registry_address}/clue-loadgenerator:latest"
+    tag = f"{docker_registry_address}/clue2-loadgenerator:latest"
     
-    build_context = "/app"
-    dockerfile_path = "/app/clue_loadgenerator/Dockerfile"
+    build_context = "/app/clue_loadgenerator"
+    dockerfile_path = "/app/clue_loadgenerator/workload_generator/Dockerfile"
     cwd = "/app"
     
     build_command = [
