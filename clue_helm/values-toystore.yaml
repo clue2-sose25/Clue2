@@ -18,6 +18,10 @@ sutConfig: |
     wait_before_workloads: 120
     wait_after_workloads: 120
 
+  helm_replacements:
+  - value: 'tag: "latest"'
+    replacement: 'tag: "__EXPERIMENT_TAG__"'
+
   workloads:
     - name: "shaped"
       description: "Workload with custom load shape behavior and realistic user journeys."
