@@ -95,9 +95,9 @@ clueDeployer:
     HELM_DRIVER: configmap
     GRAFANA_USERNAME: admin
     GRAFANA_PASSWORD: SECRET
-    GRAFANA_URL: http://grafana.clue-monitoring
+    GRAFANA_URL: http://10.111.147.11
     GRAFANA_PORT: 80
-    PROMETHEUS_URL: http://prometheus.monitoring:80
+    PROMETHEUS_URL: http://130.149.158.32:32426
   job:
     enabled: false
 clueWebui:
