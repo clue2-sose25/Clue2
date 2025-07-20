@@ -1,0 +1,157 @@
+{
+  "id": "11111111-1111-1111-1111-111111111111",
+  "sut": "teastore",
+  "workloads": [
+    {
+      "name": "exp_scale_fixed",
+      "description": "Workload with custom load shape behavior.",
+      "workload_runtime": 64,
+      "timeout_duration": 120,
+      "workload_settings": {
+        "LOADGENERATOR_STAGE_DURATION": 8,
+        "LOADGENERATOR_MAX_DAILY_USERS": 100
+      },
+      "locust_files": [
+        "sut_configs/workloads/teastore/consumerbehavior.py",
+        "sut_configs/workloads/teastore/loadshapes.py",
+        "sut_configs/workloads/teastore/config.py"
+      ]
+    },
+    {
+      "name": "exp_scale_scaled",
+      "description": "Workload with custom load shape behavior.",
+      "workload_runtime": 64,
+      "timeout_duration": 120,
+      "workload_settings": {
+        "LOADGENERATOR_STAGE_DURATION": 8,
+        "LOADGENERATOR_MAX_DAILY_USERS": 100
+      },
+      "locust_files": [
+        "sut_configs/workloads/teastore/consumerbehavior.py",
+        "sut_configs/workloads/teastore/loadshapes.py",
+        "sut_configs/workloads/teastore/config.py"
+      ]
+    },
+    {
+      "name": "exp_scale_rampup",
+      "description": "Workload with custom load shape behavior.",
+      "workload_runtime": 64,
+      "timeout_duration": 120,
+      "workload_settings": {
+        "LOADGENERATOR_STAGE_DURATION": 8,
+        "LOADGENERATOR_MAX_DAILY_USERS": 100
+      },
+      "locust_files": [
+        "sut_configs/workloads/teastore/consumerbehavior.py",
+        "sut_configs/workloads/teastore/loadshapes.py",
+        "sut_configs/workloads/teastore/config.py"
+      ]
+    },
+    {
+      "name": "exp_scale_shaped",
+      "description": "Workload with custom load shape behavior.",
+      "workload_runtime": 64,
+      "timeout_duration": 120,
+      "workload_settings": {
+        "LOADGENERATOR_STAGE_DURATION": 8,
+        "LOADGENERATOR_MAX_DAILY_USERS": 100
+      },
+      "locust_files": [
+        "sut_configs/workloads/teastore/consumerbehavior.py",
+        "sut_configs/workloads/teastore/loadshapes.py",
+        "sut_configs/workloads/teastore/config.py"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "name": "baseline_vanilla_full",
+      "target_branch": "vanilla",
+      "critical_services": [
+        "teastore-auth",
+        "teastore-registry",
+        "teastore-webui"
+      ],
+      "colocated_workload": true,
+      "autoscaling": "cpu",
+      "max_autoscale": 3,
+      "description": "Baseline experiment for the teastore application"
+    },
+    {
+      "name": "jvm_jvm-improve_full",
+      "target_branch": "vanilla",
+      "critical_services": [
+        "teastore-auth",
+        "teastore-registry",
+        "teastore-webui"
+      ],
+      "colocated_workload": true,
+      "autoscaling": "cpu",
+      "max_autoscale": 3,
+      "description": "Baseline experiment for the teastore application"
+    },
+    {
+      "name": "monolith_feature_monolith_full",
+      "target_branch": "vanilla",
+      "critical_services": [
+        "teastore-auth",
+        "teastore-registry",
+        "teastore-webui"
+      ],
+      "colocated_workload": true,
+      "autoscaling": "cpu",
+      "max_autoscale": 3,
+      "description": "Baseline experiment for the teastore application"
+    },
+    {
+      "name": "norec_feature_norecommendations_full",
+      "target_branch": "vanilla",
+      "critical_services": [
+        "teastore-auth",
+        "teastore-registry",
+        "teastore-webui"
+      ],
+      "colocated_workload": true,
+      "autoscaling": "cpu",
+      "max_autoscale": 3,
+      "description": "Baseline experiment for the teastore application"
+    },
+    {
+      "name": "obs_feature_object-strage_full",
+      "target_branch": "vanilla",
+      "critical_services": [
+        "teastore-auth",
+        "teastore-registry",
+        "teastore-webui"
+      ],
+      "colocated_workload": true,
+      "autoscaling": "cpu",
+      "max_autoscale": 3,
+      "description": "Baseline experiment for the teastore application"
+    },
+    {
+      "name": "serverless_feature_serverless_full",
+      "target_branch": "vanilla",
+      "critical_services": [
+        "teastore-auth",
+        "teastore-registry",
+        "teastore-webui"
+      ],
+      "colocated_workload": true,
+      "autoscaling": "cpu",
+      "max_autoscale": 3,
+      "description": "Baseline experiment for the teastore application"
+    }
+  ],
+  "timestamp": "2025-05-11_12-00-00",
+  "n_iterations": 4,
+  "deploy_only": false,
+  "configs": {
+    "env_config": {
+    },
+    "clue_config": {
+    },
+    "sut_config": {
+    }
+  }
+}

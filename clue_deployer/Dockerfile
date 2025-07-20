@@ -47,6 +47,10 @@ ENV PYTHONPATH="/app"
 # Copy the rest of the necessary files
 COPY clue_deployer /app/clue_deployer
 
+# Copy the example result from the Original CLUE paper
+RUN mkdir -p /app/data/teastore/2025-05-11_12-00-00
+COPY clue_deployer/result_example/teastore/2025-05-11_12-00-00 /app/data/teastore/2025-05-11_12-00-00
+
 # Fix the line endings
 RUN dos2unix /app/clue_deployer/entrypoint.sh \
     && chmod +x /app/clue_deployer/entrypoint.sh
