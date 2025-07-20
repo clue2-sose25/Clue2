@@ -19,9 +19,3 @@ except:
     use_real_time = False
 
 endpoint_name = str(os.environ.get("LOADGENERATOR_ENDPOINT_NAME", DEFAULT_ENDPOINT))
-
-print("Config", flush=True)
-print("Max Daily Users:", max_daily_users, flush=True)
-print("Stage Duration:", stage_duration, flush=True)
-print("Use Real Time:", use_real_time, flush=True)
-print("Endpoint Name:", endpoint_name, flush=True)

@@ -33,7 +33,6 @@ export interface EnvConfig {
 }
 
 export interface ClueConfig {
-    experiment_timeout: number;
     prometheus_url: string;
     local_public_ip: string;
     local_port: number;
