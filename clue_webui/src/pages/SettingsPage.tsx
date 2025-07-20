@@ -30,8 +30,6 @@ const SettingsPage = () => {
   }>({open: false, message: "", severity: "success"});
 
   const hints: Record<keyof ClueConfig, string> = {
-    experiment_timeout:
-      "The main timeout to kill the experiment, to avoid hanging experiments",
     prometheus_url: "The URL of the prometheus deployed on the host machine",
     docker_registry_address:
       "The docker image registry address for the CLUE deployer.",
@@ -122,21 +120,6 @@ const SettingsPage = () => {
             {config && (
               <>
                 <label className="flex flex-col gap-1 text-sm font-medium">
-                  <span>Experiment timeout</span>
-                  <span className="text-xs font-normal text-gray-500">
-                    {hints.experiment_timeout}
-                  </span>
-                </label>
-                <input
-                  className="border p-2"
-                  type="number"
-                  value={config.experiment_timeout}
-                  onChange={(e) =>
-                    handleChange("experiment_timeout", e.target.value)
-                  }
-                />
-
-                <label className="flex flex-col gap-1 text-sm font-medium">
                   <span>Prometheus URL</span>
                   <span className="text-xs font-normal text-gray-500">
                     {hints.prometheus_url}
@@ -178,12 +161,7 @@ const SettingsPage = () => {
                   value={config.local_port}
                   onChange={(e) => handleChange("local_port", e.target.value)}
                 />
-              </>
-            )}
-          </div>
-          <div className="flex w-1/3 flex-col gap-2">
-            {config && (
-              <>
+
                 <label className="flex flex-col gap-1 text-sm font-medium">
                   <span>Remote platform arch</span>
                   <span className="text-xs font-normal text-gray-500">
@@ -198,6 +176,12 @@ const SettingsPage = () => {
                     handleChange("remote_platform_arch", e.target.value)
                   }
                 />
+              </>
+            )}
+          </div>
+          <div className="flex w-1/3 flex-col gap-2">
+            {config && (
+              <>
                 <label className="flex flex-col gap-1 text-sm font-medium">
                   <span>Local platform arch</span>
                   <span className="text-xs font-normal text-gray-500">

@@ -32,7 +32,7 @@ class VariantRunner:
             logger.info("Reached timeout but experiment is already done, skipping cancellation.")
             return
         
-        logger.warning(f"Workload timeout of {CONFIGS.clue_config.experiment_timeout}s reached, stopping the experiment.")
+        logger.warning(f"Workload timeout of {self.workload.timeout_duration}s reached, stopping the experiment.")
         
         if self._tracker:
             self._tracker.stop()
@@ -120,11 +120,11 @@ class VariantRunner:
         self._setup_signal_handlers()
 
         try:
-            logger.info(f"Variant started, deploying workload with timeout {CONFIGS.clue_config.experiment_timeout}s...")
+            logger.info(f"Variant started, deploying workload with timeout {self.workload.timeout_duration}s...")
             StatusManager.set(StatusPhase.IN_PROGRESS, "Starting workload with time out, variant deployment in progress...")
             
             # Set up the timeout
-            timer = self._setup_timeout(CONFIGS.clue_config.experiment_timeout)
+            timer = self._setup_timeout(self.workload.timeout_duration)
             
             # Deploy workload on different node or locally and wait for workload to be completed (or timeout)
             workload_runner = WorkloadRunner(self.variant, self.workload)
