@@ -1,0 +1,230 @@
+# Example values for running the teastore SUT
+imageRegistry: ghcr.io/clue2-sose25
+imagePullPolicy: Always
+sutConfigFileName: teastore.yaml
+sutConfig: |
+  config:
+    sut: "teastore"
+    namespace: "teastore"
+    sut_git_repo: "https://github.com/ISE-TU-Berlin/sustainable_teastore.git"
+    sut_path: "teastore"
+    helm_chart_path: "teastore/examples/helm"
+    helm_chart_repo: ""
+    values_yaml_name: "values.yaml"
+    workload_target: "teastore-webui"
+    application_endpoint_path: "/tools.descartes.teastore.webui"
+    default_resource_limits:
+      cpu: 1000
+      memory: 1024
+    wait_before_workloads: 10
+    wait_after_workloads: 10
+
+  helm_replacements:
+    - value: "descartesresearch"
+      replacement: "registry:5000/clue"
+    - value: "nodeSelector: {}"
+      replacement: 'nodeSelector: {"scaphandre": "true"}'
+    - value: "pullPolicy: IfNotPresent"
+      replacement: "pullPolicy: Always"
+    - value: 'tag: ""'
+      replacement: 'tag: "__EXPERIMENT_TAG__"'
+    - value: "enabled: false"
+      replacement: "enabled: true"
+      conditions:
+        autoscaling: true
+    - value: "targetCPUUtilizationPercentage: 80"
+      replacement: "# targetCPUUtilizationPercentage: 80"
+      conditions:
+        autoscaling: true
+        autoscaling_type: mem
+    - value: "# targetMemoryUtilizationPercentage: 80"
+      replacement: "targetMemoryUtilizationPercentage: 80"
+      conditions:
+        autoscaling: true
+        autoscaling_type: mem
+    - value: "# targetMemoryUtilizationPercentage: 80"
+      replacement: "targetMemoryUtilizationPercentage: 80"
+      conditions:
+        autoscaling: true
+        autoscaling_type: full
+
+  resource_limits:
+    - service_name: "teastore-auth"
+      limit:
+        cpu: 450
+        memory: 1024
+    - service_name: "teastore-webui"
+      limit:
+        cpu: 1000
+        memory: 1500
+    - service_name: "teastore-recommender"
+      limit:
+        cpu: 1000
+        memory: 1024
+    - service_name: "teastore-image"
+      limit:
+        cpu: 1000
+        memory: 1500
+    - service_name: "teastore-all"
+      limit:
+        cpu: 1000
+        memory: 2048
+
+  workloads:
+    - name: "shaped"
+      description: "Workload with custom load shape behavior."
+      timeout_duration: 120
+      workload_runtime: 64
+      workload_settings:
+        {"LOADGENERATOR_STAGE_DURATION": 8, "LOADGENERATOR_MAX_DAILY_USERS": 100}
+      locust_files:
+        - "sut_configs/workloads/teastore/consumerbehavior.py"
+        - "sut_configs/workloads/teastore/loadshapes.py"
+        - "sut_configs/workloads/teastore/config.py"
+    - name: "rampup"
+      description: "Workload that ramps up users at a constant rate."
+      timeout_duration: 120
+      workload_runtime: 20
+      workload_settings: {"LOCUST_SPAWN_RATE": 3, "LOCUST_USERS": 100}
+      locust_files:
+        - "sut_configs/workloads/teastore/locustfile.py"
+    - name: "pausing"
+      description: "Workload that starts 20 pausing users, no ramp-up for the duration."
+      timeout_duration: 120
+      workload_runtime: 64
+      workload_settings:
+        {"LOCUST_SPAWN_RATE": 1, "LOCUST_USERS": 10, "PAUSE_BACKOFF": 120}
+      locust_files:
+        - "sut_configs/workloads/teastore/pausing_users.py"
+    - name: "fixed"
+      description: "Workload that ramps up to max users for at most 1000 requests (failed or successful), running for at most the specified duration."
+      timeout_duration: 120
+      workload_runtime: 64
+      workload_settings:
+        {"LOCUST_SPAWN_RATE": 1, "LOCUST_USERS": 100, "MAXIMUM_REQUESTS": 200}
+      locust_files:
+        - "sut_configs/workloads/teastore/fixed_requests.py"
+
+  variants:
+    - name: "baseline"
+      description: "Baseline experiment for the teastore application"
+      target_branch: "vanilla"
+      colocated_workload: true
+      critical_services: ["teastore-auth", "teastore-registry", "teastore-webui"]
+      autoscaling: "cpu"
+    - name: "runtime-replacement"
+      description: "Replaces the JVM runtime with a more recent version."
+      target_branch: "runtime-replacement"
+      colocated_workload: true
+      critical_services: ["teastore-auth", "teastore-registry", "teastore-webui"]
+      autoscaling: "cpu"
+    - name: "monolith"
+      description: "Runs the teastore application as a monolith, without microservices. Not tested with CLUE2."
+      target_branch: "monolith"
+      colocated_workload: true
+      critical_services: ["teastore-all"]
+      autoscaling: "cpu"
+    - name: "serverless"
+      description: "Runs the authentication service in a serverless fashion using Knative. Not tested with CLUE2."
+      target_branch: "serverless-auth"
+      colocated_workload: true
+      critical_services: ["teastore-registry", "teastore-webui"]
+      autoscaling: "cpu"
+    - name: "norec"
+      description: "Runs the application without the recommender service. Not tested with CLUE2."
+      target_branch: "service-reduction"
+      colocated_workload: true
+      critical_services: ["teastore-auth", "teastore-registry", "teastore-webui"]
+      autoscaling: "cpu"
+    - name: "lessrec"
+      description: "Reduces the number of recommendations shown to users. Not tested with CLUE2."
+      target_branch: "feature/lessrecs"
+      colocated_workload: true
+      critical_services: ["teastore-auth", "teastore-registry", "teastore-webui"]
+      autoscaling: "cpu"
+    - name: "obs"
+      description: "Uses object storage for storing images. Not tested with CLUE2. Not tested with CLUE2."
+      target_branch: "feature/object-storage"
+      colocated_workload: true
+      critical_services: ["teastore-auth", "teastore-registry", "teastore-webui"]
+      autoscaling: "cpu"
+    - name: "dbopt"
+      description: "Implements database optimizations. Not tested with CLUE2."
+      target_branch: "feature/db-optimization"
+      colocated_workload: true
+      critical_services: ["teastore-auth", "teastore-registry", "teastore-webui"]
+      autoscaling: "cpu"
+    - name: "car"
+      description: "Implements carbon-aware retraining for the recommender. Not tested with CLUE2."
+      target_branch: "Carbon-Aware-Retraining"
+      colocated_workload: true
+      critical_services: ["teastore-auth", "teastore-registry", "teastore-webui"]
+      autoscaling: "cpu"
+    - name: "sig"
+      description: "Implements static site generation and API gateway. Not tested with CLUE2."
+      target_branch: "ssg+api-gateway"
+      colocated_workload: true
+      critical_services: ["teastore-auth", "teastore-registry", "teastore-webui"]
+      autoscaling: "cpu"
+clueConfig: |
+  config:
+    experiment_timeout: 150
+    prometheus_url: "http://130.149.158.32:32426"
+    docker_registry_address: ghcr.io/clue2-sose25
+    local_public_ip: "registry"
+    local_port: 5000
+    remote_platform_arch: "linux/arm64/v8"
+    local_platform_arch: "linux/arm64/v8"
+    target_utilization: 70
+clueDeployer:
+  enabled: true
+  image: clue2-deployer
+  tag: pr-test
+  serviceAccountName: st-cp25clue2-user
+  service:
+    port: 8000
+    type: ClusterIP # Change to NodePort if needed or LoadBalancer if need to access with IP_NODE:PORT
+    nodePort: 30501
+  probes:
+    path: /api/health
+  env:
+    DEPLOY_ONLY: "false"
+    N_ITERATIONS: "1"
+    SUT: teastore
+    VARIANTS: baseline
+    WORKLOADS: shaped
+    PRECONFIGURE_CLUSTER: "false"
+    DEPLOY_AS_SERVICE: "true"
+    ENABLE_DEBUG: "false"
+    HELM_DRIVER: configmap
+    GRAFANA_USERNAME: admin
+    GRAFANA_PASSWORD: SECRET
+    GRAFANA_URL: http://grafana.clue-monitoring
+    GRAFANA_PORT: 80
+    PROMETHEUS_URL: http://prometheus.monitoring:80
+  job:
+    enabled: false
+clueWebui:
+  enabled: true
+  image: clue2-webui
+  tag: pr-test
+  service:
+    port: 80
+    type: NodePort # Change to NodePort if needed or LoadBalancer if need to access with IP_NODE:PORT
+    nodePort: 30501
+  env:
+    API_BASE_URL: http://clue-deployer:8000
+    NGINX_RESOLVER: 10.96.0.10
+    NGINX_RESOLVER_VALID: 10s
+loadGenerator:
+  jobEnabled: false
+  image: clue2-loadgenerator-builder
+  tag: latest
+  # Set this to mount a folder path within the chart to include all locust files
+  workloadDir: default_workloads_teastore
+ingress:
+  enabled: false
+  host: clue.example.com
+  tls: false
+rbac:
+  create: false

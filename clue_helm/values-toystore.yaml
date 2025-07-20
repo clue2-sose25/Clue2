@@ -1,10 +1,9 @@
-# example values for running the toystore SUT
+# Example values for running the toystore SUT
 imageRegistry: ghcr.io/clue2-sose25
 imagePullPolicy: Always
 sutConfigFileName: toystore.yaml
 sutConfig: |
   config:
-    # The name of the SUT
     sut: "toystore"
     namespace: "st-cp25clue2"
     sut_git_repo: "https://github.com/clue2-sose25/sustainable_toystore"
