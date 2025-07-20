@@ -94,7 +94,7 @@ clueDeployer:
     ENABLE_DEBUG: "false"
     HELM_DRIVER: configmap
     GRAFANA_USERNAME: admin
-    GRAFANA_PASSWORD: SECRET
+    GRAFANA_PASSWORD: prom-operator
     GRAFANA_URL: http://10.111.147.11
     GRAFANA_PORT: 80
     PROMETHEUS_URL: http://130.149.158.32:32426
