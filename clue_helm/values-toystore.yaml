@@ -75,7 +75,7 @@ clueConfig: |
 clueDeployer:
   enabled: true
   image: clue2-deployer
-  tag: pr-test
+  tag: latest
   serviceAccountName: st-cp25clue2-user
   service:
     port: 8000
