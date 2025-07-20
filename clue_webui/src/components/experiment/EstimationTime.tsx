@@ -1,6 +1,6 @@
 import {useContext, useEffect, useState} from "react";
 import {DeploymentContext} from "../../contexts/DeploymentContext";
-import type {SutConfig} from "../../models/SUT";
+import type {SutConfig} from "../../models/ResultsDetails";
 
 const EstimationTime: React.FC = () => {
   const {currentDeployment} = useContext(DeploymentContext);
@@ -28,11 +28,10 @@ const EstimationTime: React.FC = () => {
   const waitAfter = Math.ceil((sutConfig?.wait_after_workloads ?? 0) / 60);
 
   const variantTotals = currentDeployment.variants.map((exp) => {
-    const perIteration =
-      currentDeployment.workloads.reduce(
-        (sum, w) => sum + workloadDuration(w),
-        waitBefore + waitAfter,
-      );
+    const perIteration = currentDeployment.workloads.reduce(
+      (sum, w) => sum + workloadDuration(w),
+      waitBefore + waitAfter
+    );
     return {
       name: exp,
       perIteration,
