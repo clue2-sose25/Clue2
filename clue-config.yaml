@@ -1,8 +1,5 @@
 # The main config for CLUE
 config:
-  ### BASE CONFIG ###
-  # The main timeout to kill the experiment, to avoid hanging experiments
-  experiment_timeout: 150
   ### NETWORKING CONFIG ###
   # The URL of the prometheus deployed on the host machine
   prometheus_url: "http://clue-cluster-control-plane:30090"
