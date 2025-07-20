@@ -35,5 +35,4 @@ dependencies = [
     "scikit-learn",
     "statsmodels",
     "scipy"
-
 ]
