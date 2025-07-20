@@ -1,20 +1,45 @@
-import {useContext} from "react";
+import {useContext, useEffect, useState} from "react";
 import {DeploymentContext} from "../../contexts/DeploymentContext";
+import type {SutConfig} from "../../models/SUT";
 
 const EstimationTime: React.FC = () => {
   const {currentDeployment} = useContext(DeploymentContext);
 
+  const [sutConfig, setSutConfig] = useState<SutConfig | null>(null);
+
+  useEffect(() => {
+    if (!currentDeployment.sut) {
+      setSutConfig(null);
+      return;
+    }
+    fetch(`/api/config/sut/${currentDeployment.sut}`)
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((data) => setSutConfig(data as SutConfig))
+      .catch(() => setSutConfig(null));
+  }, [currentDeployment.sut]);
+
+  const workloadDuration = (name: string): number => {
+    const w = sutConfig?.workloads.find((wl) => wl.name === name);
+    if (!w) return 0;
+    return Math.ceil(w.timeout_duration / 60);
+  };
+
+  const waitBefore = Math.ceil((sutConfig?.wait_before_workloads ?? 0) / 60);
+  const waitAfter = Math.ceil((sutConfig?.wait_after_workloads ?? 0) / 60);
+
   const variantTotals = currentDeployment.variants.map((exp) => {
-    const perIteration = currentDeployment.workloads.reduce(
-      (sum, _w) => sum + 3,
-      0
-    );
+    const perIteration =
+      currentDeployment.workloads.reduce(
+        (sum, w) => sum + workloadDuration(w),
+        waitBefore + waitAfter,
+      );
     return {
       name: exp,
       perIteration,
       total: perIteration * currentDeployment.iterations,
     };
   });
+
   const overallTotal = variantTotals.reduce((sum, v) => sum + v.total, 0);
 
   return (
@@ -34,7 +59,9 @@ const EstimationTime: React.FC = () => {
             <div key={v.name} className="text-sm flex flex-col gap-1 mb-4">
               <p className="font-medium">Variant ({v.name})</p>
               {currentDeployment.workloads.map((w) => (
-                <span key={w}>- Workload ({w}): 3 min</span>
+                <span key={w}>
+                  - Workload ({w}): {workloadDuration(w)} min
+                </span>
               ))}
               <p>
                 Total: {v.perIteration} min * {currentDeployment.iterations}{" "}
