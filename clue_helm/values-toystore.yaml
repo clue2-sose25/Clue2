@@ -38,11 +38,11 @@ sutConfig: |
         - "sut_configs/workloads/toystore/fixed_requests.py"
     - name: "rampup"
       description: "Gradual ramp-up load pattern with 8 stages for scalability testing."
-      timeout_duration: 600 # should be stages * stage_duration + buffer
-      workload_runtime: 480 # should be stages * stage_duration
+      timeout_duration: 600
+      workload_runtime: 480
       workload_settings:
-        STAGE_DURATION: 60 # 1 minute per stage for faster testing
-        MAX_USERS: 50 # Lower max users for toystore simplicity
+        STAGE_DURATION: 60
+        MAX_USERS: 50
         NUM_STAGES: 8
       locust_files:
         - "sut_configs/workloads/toystore/rampup_loadshape.py"
