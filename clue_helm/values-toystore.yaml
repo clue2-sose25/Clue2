@@ -64,7 +64,6 @@ sutConfig: |
       autoscaling: "cpu"
 clueConfig: |
   config:
-    experiment_timeout: 150
     prometheus_url: "http://130.149.158.32:32426"
     docker_registry_address: ghcr.io/clue2-sose25
     local_public_ip: "registry"
