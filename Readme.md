@@ -84,6 +84,12 @@ The <sut_name> should be the name of the SUT configuration file in the `sut_conf
 
 Before running the CLI command, make sure to read the `CLUE Components` section, while CLUE will immediatelly start the experiments.
 
+CLUE can then be run with the following command:
+
+```bash
+docker compose up --build clue-deployer
+```
+
 ### 📦 CLUE GitHub Integration
 
 CLUE can also be easily integrated to any existing GitHub CI-CD Pipeline, taking use of our public `clue-deployer` action.
