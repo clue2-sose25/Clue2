@@ -20,14 +20,36 @@ The framework is designed to be extensible and can be easily integrated with exi
 
 ## 🚀 System setup
 
+### Adding a New SUT
+
+To add a new SUT, follow these steps:
+
+1. **Create a new SUT configuration file** in the `sut_configs` directory. Use an existing SUT as a template (we recommend teastore or toystore). It should be called `<sut_name>.yaml`.
+2. **Define the SUT's variants** in the `variants` section of the configuration file. Each variant should have a unique name and specify the Docker image to use. The image should be available in the specified Docker registry.
+3. **Build your images** and push them to the Docker registry specified in the `clue-config.yaml` file. You can use the local docker registry provided by CLUE or any other public/private registry.
+4. **Deploy Clue** with the new SUT configuration. You can use the Web UI or the CLI to deploy Clue with your new SUT.
+
 > [!CAUTION]
 > Please note that this repository also contains work in progress parts -- not all CLUE features and experiment branches that are not mentioned in the paper might be thoroughly tested.
 
 For specific use cases, we offer a wide range of ways to deploy CLUE.
 
-### 💻 CLUE Web UI
+## 📋 Deployment Options
 
-The easiest and recommended way to deploy CLUE on your local machine is to interact with our custom Web UI. To deploy all necessary CLUE container use:
+CLUE can be deployed in different ways, depending on your needs and environment. Here are the options:
+
+### 💻 CLUE Service + Web UI
+
+#### Configuration
+
+The easiest and recommended way to deploy CLUE on your local machine is to interact with our custom Web UI.</br>
+To run Clue as a service and access the Web UI, you need to set the following in your `.env` file:
+
+```env
+DEPLOY_AS_SERVICE=true
+```
+
+To deploy all necessary CLUE container use:
 
 ```bash
 docker compose up -d --build
@@ -45,7 +67,28 @@ service. This is done with the environment variables `NGINX_RESOLVER` and
 
 For headless deployment of CLUE we support deploying CLUE as a standalone deployer docker container.
 
-Before running the CLI command, make sure to read the `CLUE Components` section, while CLUE will immediatelly start the experiments.
+Set this in your `.env` file:
+
+```env
+DEPLOY_AS_SERVICE=false
+SUT=<sut_name>
+VARIANTS=<variants>
+WORKLOADS=<workloads>
+N_ITERATIONS=<iterations>
+```
+
+The <sut_name> should be the name of the SUT configuration file in the `sut_configs` directory, e.g. `teastore.yaml`.
+</br> The \<variants> should be a comma-separated list of variant names defined in the SUT configuration file, e.g. `baseline,serverless`.
+</br> The \<workloads> should be a comma-separated list of workload names defined in the SUT configuration file, e.g. `locustfile1.py,locustfile2.py`.
+</br> The \<iterations> is the number of iterations to run for each workload.
+
+Before running the CLI command, make sure to read the `CLUE Components` section, while CLUE will immediately start the experiments.
+
+CLUE can then be run with the following command:
+
+```bash
+docker compose up --build clue-deployer
+```
 
 ### 📦 CLUE GitHub Integration
 
@@ -152,6 +195,7 @@ As Clue comes with an integrated loadgenerator and developer just have to bring 
 ```bash
 docker compose up -d clue-loadgenerator-builder
 ```
+
 When deploying with the Helm chart, the builder container is not used directly.
 Ensure the load generator image produced by this step is pushed to the registry
 referenced in `values.yaml` so the cluster can pull it.
@@ -353,6 +397,7 @@ docker compose up -d --build clue-deployer
 CLUE now provides **complete automation** of the observability stack setup during experiment deployment:
 
 ### ✨ **Automated Features:**
+
 - **🚀 Prometheus + Grafana installation** via Helm charts during CLUE deployment
 - **📊 Kepler energy monitoring** automatic installation and configuration
 - **🎯 Dashboard provisioning** - Kepler sustainability dashboard automatically available
