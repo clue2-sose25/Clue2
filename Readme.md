@@ -66,11 +66,11 @@ For a test deployment of the SUT without running the benchmark, set `DEPLOY_ONLY
 
 ### 📦 CLUE GitHub Integration
 
-CLUE seamlessly integrates into any GitHub CI/CD pipeline using our public action at `.github/actions/helm-deploy/action.yaml`. CLUE GitHub action connects to the cluster provided via the base64-encoded kubeconfig and deploys CLUE2 pods in the provided namespace. Next, CLUE deployer reads the provided `values-<sut_name>.json` file and deploys & measures the selected SUT as K8s resources in the same cluster.
+CLUE seamlessly integrates into any GitHub CI/CD pipeline using our public action at `.github/actions/clue-helm/action.yaml`. CLUE GitHub action connects to the cluster provided via the base64-encoded kubeconfig and deploys CLUE2 pods in the provided namespace. Next, CLUE deployer reads the provided `values-<sut_name>.json` file and deploys & measures the selected SUT as K8s resources in the same cluster.
 
 The resulting artifact can be downloaded from the Web UI or retrieved in subsequent jobs using `actions/download-artifact`.
 
-For details on integration into any GitHub repository, refer to `clue_helm/values-toystore.yaml` example configuration (or see our [ToyStore](https://github.com/clue2-sose25/sustainable_toystore) repository). Mentioned example deploys the `toystore` SUT with the `baseline` variant. To adapt it to your selected SUT:
+For details on integration into any GitHub repository, refer to our custom SUT [ToyStore](https://github.com/clue2-sose25/sustainable_toystore) repository. For example values configuration, see `clue_helm/values-toystore.yaml`. Mentioned example deploys the `toystore` SUT with the `baseline` variant. To adapt it to your selected SUT:
 
 1. Copy `values-toystore.yaml` to your repository and adjust its parameters as needed.
 2. Extend your existing GitHub CI-CD pipeline with the above mentioned CLUE2 action, providing all necessary parameters (see example configuration).
