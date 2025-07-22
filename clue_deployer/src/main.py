@@ -144,7 +144,13 @@ class ExperimentRunner:
                 # Iterate
                 logger.info(f"Starting iteration ({iteration + 1}/{num_iterations}) for {variant.name}/{workload.name})")
                 self.execute_single_run(variant, workload, results_path)
-                # additional wait after each iteration except the last one
+                # Update the status
+                logger.info("Updating the status.json in the results folder to success")
+                status_file_path = path.join(results_parent_path, 'status.json')
+                status_data = {"status": "SUCCESS"}
+                with open(status_file_path, 'w') as f:
+                    json.dump(status_data, f, indent=2)
+                # Additional wait after each iteration except the last one
                 if iteration < num_iterations - 1:
                     logger.info(f"Sleeping {CONFIGS.sut_config.wait_after_workloads} seconds before next iteration")
                     time.sleep(CONFIGS.sut_config.wait_after_workloads)
