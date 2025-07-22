@@ -118,6 +118,7 @@ class VariantDeployer:
                         "helm", "install", "kps1", "prometheus-community/kube-prometheus-stack",
                         "--set", "prometheus.service.type=NodePort",
                         "--set", "prometheus.service.nodePort=30090",
+                        "--version", "75.12.0",
                         "--wait",
                         "--timeout", "15m"
                     ])
