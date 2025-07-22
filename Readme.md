@@ -82,7 +82,7 @@ The <sut_name> should be the name of the SUT configuration file in the `sut_conf
 </br> The \<workloads> should be a comma-separated list of workload names defined in the SUT configuration file, e.g. `locustfile1.py,locustfile2.py`.
 </br> The \<iterations> is the number of iterations to run for each workload.
 
-Before running the CLI command, make sure to read the `CLUE Components` section, while CLUE will immediatelly start the experiments.
+Before running the CLI command, make sure to read the `CLUE Components` section, while CLUE will immediately start the experiments.
 
 CLUE can then be run with the following command:
 
