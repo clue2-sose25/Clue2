@@ -65,31 +65,19 @@ For a test deployment of the SUT, without running the benchmark itself, change t
 
 ### 📦 CLUE GitHub Integration
 
-CLUE can also be easily integrated to any existing GitHub CI-CD Pipeline, taking use of our public `clue-deployer` action.
-To successfully run CLUE action, several parameters need to be provided, including the cluster config.
-All collected metrics to the directory specified by the `results-path` input and uploads those files as an artifact called
-`clue-results`.
+CLUE can also be easily integrated to any existing GitHub CI-CD Pipeline, taking use of our public action under `.github/actions/helm-deploy`. To successfully run CLUE action, several parameters need to be provided, including the base64 encoded kubeconfig is supplied via the `kubeconfig` input. The `namespace` and `values-file` inputs allow you to specify the target namespace and an override file for the chart.
 
-The artifact is available for download from the Actions UI or it can be fetched in later jobs with `actions/download-artifact`.
+The artifact is available for download from the Web UI or it can be fetched in later jobs with `actions/download-artifact`.
 
-```yaml
-jobs:
-  run-clue:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: clue2-sose25/Clue2/.github/actions/clue-deployer@latest
-        with:
-          clue-config-path: ./clue/clue-config.yaml
-          sut-config-path: ./clue/toystore-config.yaml
-          image-registry: ghcr.io/clue2-sose25/sustainable_toystore
-          variants-name: main
-          results-path: clue_results
-          kubeconfig: ${{ secrets.KUBECONFIG_B64 }}
-          patch-local-cluster: "true"
-```
+For integration to any github repository, see the `clue_helm/values-toystore.yaml` for an example embedding of the configuration (or visit our [ToyStore](https://github.com/clue2-sose25/sustainable_toystore) repository for a working example). This example runs the `toystore` SUT with the `baseline` variant. Copy this file to your own repository and adjust the registry and tags. Provide the path via the `values-file` input of the action to deploy your SUT. For more details
 
-A sample kubeconfig is provided at `.github/actions/mock-kubeconfig.yaml`. Finally, encode the file and store the result as the `KUBECONFIG_B64` GitHub secret:
+When mount a folder of Locust scripts, pass its location via the `values.yaml` input. The action copies that folder next to the chart and sets `loadGenerator.workloadDir` accordingly. If the chart is stored in a registry, supply its reference via the
+`chart-ref` input. Otherwise the action uses the `chart-path` (default `clue_helm`) to deploy a local copy.
+
+Next, the deployer expects the selected SUT configuration file to be available under `/app/sut_configs/`. Supply the YAML content via the `sutConfig` value (and optional `sutConfigFileName`) so the chart can create a `sut-config`
+ConfigMap and mount it into both the `Deployment` and `Job`. The main CLUE configuration is also required at `/app/clue-config.yaml`. Provide its YAML via the `clueConfig` value so a `clue-config-file` ConfigMap gets mounted to that path.
+
+Finally, encode the file and store the result as the `KUBECONFIG_B64` GitHub secret. See our example kubeconfig at:
 
 ```bash
 base64 -w0 .github/actions/mock-kubeconfig.yaml
@@ -137,6 +125,37 @@ kubectl apply -f clue_deployer/k8s/clue-deployer-job.yaml
 ```
 
 The job uses the `clue-deployer` ServiceAccount and stores results in a mounted volume. Adjust the `VARIANTS` and `WORKLOADS` variables in the manifest to suit your experiment.
+
+#### Helm deployment
+
+A basic Helm chart is provided under `clue_helm/` to run the deployer and web UI directly in a cluster. Install it with (e.g. using `ToyStore` values file):
+
+```bash
+helm upgrade --install clue clue_helm --namespace clue --create-namespace -f clue_helm/values-toystore.yaml
+```
+
+Set `imageRegistry` and other values in `values.yaml` to point to your images and configure the ingress host. The chart deploys all CLUE components into the designated namespace. SUT deployments are created in a separate namespace defined in the SUT config on nodes labeled `scaphandre=true`.
+
+Running with the Helm chart means both the deployer and web UI operate **inside
+the cluster**. The chart includes a `Job` manifest for CI execution and a `Deployment` for a long-running service. A second job `clue-loadgenerator` can be used to run Locust in the cluster next to the deployer. Locust scripts are taken from the ConfigMap `loadgenerator-workload`, created from entries in `loadGenerator.workloadFiles` in the values file and mounted under `sut_configs/workloads/<sut>/`.
+
+#### Locust workload deployment
+
+`workload_runner.py` uses the `clue_loadgenerator` image to run Locust. For each path
+listed under `workloads[*].locust_files` in the SUT configuration a ConfigMap is
+created which contains the file content. Those ConfigMaps are mounted at
+`/app/locustfiles` in the load generator pod and referenced by the `LOCUST_FILE`
+environment variable. If the selected variant has `colocated_workload: true`,
+the pod runs inside the cluster. Otherwise the load generator container is
+executed locally next to the deployer.
+When deploying via Helm you can supply one or multiple scripts through `loadGenerator.workloadFiles`.
+The chart mounts them at `sut_configs/workloads/<sut>/` and sets `LOCUST_FILE` to a comma separated list of their paths
+before launching the `clue-loadgenerator` job.
+Alternatively you can put your Locust scripts in a folder and reference it via `loadGenerator.workloadDir`.
+All files in that folder become entries in the `loadgenerator-workload` ConfigMap. This is convenient
+when invoking the Helm chart from another repository: copy the folder next to the chart and pass its path
+through the GitHub action's `values.yaml` input. The action mounts the folder into the chart and
+sets `loadGenerator.workloadDir` automatically.
 
 ## 🧪 Adding a new SUT support
 
@@ -193,86 +212,31 @@ To build images for the selected SUT, use one of the commands listed below.
 
 Wait for the selected builder to be finished, indicated by its container showing a status `Exited`. To check if the images have been successfully stored in the registry, visit the `http://localhost:9000/v2/_catalog` page.
 
-### Helm deployment
+## 🚀 CLUE2 Observability
 
-A basic Helm chart is provided under `clue_helm/` to run the deployer and web UI directly in a cluster.
-Install it with (e.g. using `ToyStore` values file):
+CLUE2 uses centralized configuration for all observability components. The Prometheus URL is defined in `clue-config.yaml` and used consistently across all components:
 
-```bash
-helm upgrade --install clue clue_helm --namespace clue --create-namespace -f clue_helm/values-toystore.yaml
+```yaml
+prometheus_url: "http://clue-cluster-control-plane:30090"
 ```
 
-Set `imageRegistry` and other values in `values.yaml` to point to your images and configure the ingress host.
-The chart deploys all CLUE components into the `clue` // Release.Namespace. SUT deployments are created in a separate namespace defined in the SUT config on nodes labeled `scaphandre=true`.
+For visualization of the metrics, CLUE2 provides two main approaches for setting up the observability stack with Grafana dashboards.
 
-Running with the Helm chart means both the deployer and web UI operate **inside
-the cluster**. The container automatically detects this via the
-`KUBERNETES_SERVICE_HOST` variable and skips the kubeconfig preparation. When you
-run CLUE via Docker Compose or the CLI outside the cluster, make sure to provide
-a kubeconfig (see `PATCH_LOCAL_CLUSTER` description above).
+After successful deployment, you can access Grafana at:
 
-The chart includes a `Job` manifest for CI execution and a `Deployment` for a long-running service. A second job `clue-loadgenerator` can be used to run Locust in the cluster next to the deployer. Locust scripts are taken from the ConfigMap `loadgenerator-workload`, created from entries in `loadGenerator.workloadFiles` in the values file and mounted under `sut_configs/workloads/<sut>/`.
+- URL: `http://localhost:30080` (or your configured port)
+- Username: `admin` (or your configured username)
+- Password: `prom-operator` (or your configured password)
 
-For automated tests you can use the composite action under
-`.github/actions/helm-deploy` which deploys the chart when a
-base64 encoded kubeconfig is supplied via the `kubeconfig` input. Optional
-`namespace` and `values-file` inputs allow you to specify the target namespace
-and an override file for the chart. See the workflow
-`.github/workflows/clue-deployer-helm.yml` for an example.
-The repository includes `clue_helm/values-toystore.yaml` which sets the
-environment variables to run the `toystore` SUT with the `baseline` variant.
-An additional template `clue_helm/values-example.yaml` shows all required fields.
-Copy this file to your own repository and adjust the registry and tags. Provide the
-path via the `values-file` input of the action to deploy your SUT. When you need
-to mount a folder of Locust scripts, pass its location via the `values.yaml`
-input. The action copies that folder next to the chart and sets
-`loadGenerator.workloadDir` accordingly.
-If the chart is stored in a registry, supply its reference via the
-`chart-ref` input. Otherwise the action uses the `chart-path` (default
-`clue_helm`) to deploy a local copy.
-From this version on the deployer expects the selected SUT configuration file to be
-available under `/app/sut_configs/`. Supply the YAML content via the `sutConfig`
-value (and optional `sutConfigFileName`) so the chart can create a `sut-config`
-ConfigMap and mount it into both the `Deployment` and `Job`.
-The main CLUE configuration is also required at `/app/clue-config.yaml`. Provide
-its YAML via the `clueConfig` value so a `clue-config-file` ConfigMap gets mounted
-to that path.
-See `clue_helm/values-toystore.yaml` for an example embedding the configuration and
-the workflow `.github/workflows/clue_deploy_toystore_helm.yml` for usage of the
-Helm action.
+The Kepler dashboard will be automatically imported and available in the Grafana interface, showing real-time sustainability metrics including energy consumption, carbon emissions, and resource utilization.
 
-#### Locust workload deployment
+### Docker Compose Setup (Recommended for local development)
 
-`workload_runner.py` uses the `clue_loadgenerator` image to run Locust. For each path
-listed under `workloads[*].locust_files` in the SUT configuration a ConfigMap is
-created which contains the file content. Those ConfigMaps are mounted at
-`/app/locustfiles` in the load generator pod and referenced by the `LOCUST_FILE`
-environment variable. If the selected variant has `colocated_workload: true`,
-the pod runs inside the cluster. Otherwise the load generator container is
-executed locally next to the deployer.
-When deploying via Helm you can supply one or multiple scripts through `loadGenerator.workloadFiles`.
-The chart mounts them at `sut_configs/workloads/<sut>/` and sets `LOCUST_FILE` to a comma separated list of their paths
-before launching the `clue-loadgenerator` job.
-Alternatively you can put your Locust scripts in a folder and reference it via `loadGenerator.workloadDir`.
-All files in that folder become entries in the `loadgenerator-workload` ConfigMap. This is convenient
-when invoking the Helm chart from another repository: copy the folder next to the chart and pass its path
-through the GitHub action's `values.yaml` input. The action mounts the folder into the chart and
-sets `loadGenerator.workloadDir` automatically.
-
-## 🚀 Observability Stack Setup: Two Options
-
-CLUE provides two main approaches for setting up the observability stack with Grafana dashboards:
-
-### Option 1: Docker Compose Setup (Recommended for Local Development)
-
-The simplest way to get started with Grafana and energy monitoring:
+The simplest way to get started with Grafana is to use the automaticlly deployed Grafana container:
 
 ```bash
 # Start the complete observability stack
-docker compose up -d
-
-# Access Grafana immediately
-# Open: http://localhost:3000 (admin/prom-operator)
+docker compose up -d --build
 ```
 
 **Perfect for:**
@@ -282,18 +246,13 @@ docker compose up -d
 - Learning and experimentation
 - CI/CD environments
 
-### Option 2: Kubernetes Setup (For Production/Cluster Environments)
+### Kubernetes Setup (For production/cluster environments)
 
 For full Kubernetes deployments with the CLUE experiment framework:
 
 ```bash
-# 1. Create Kind cluster
+# 1. Create Kind cluster (observability stack is automatically set up)
 ./create-kind-cluster.sh
-
-# 2. Run CLUE experiment (observability stack is automatically set up)
-docker compose up -d --build clue-deployer
-
-# 3. Access Grafana automatically at http://localhost:30080 (admin/prom-operator)
 ```
 
 **Perfect for:**
@@ -303,43 +262,3 @@ docker compose up -d --build clue-deployer
 - Running CLUE experiments
 - Fully automated observability setup
 - Enterprise deployments
-
-## Fully Integrated Observability Stack
-
-CLUE now provides **complete automation** of the observability stack setup during experiment deployment:
-
-### ✨ **Automated Features:**
-
-- **🚀 Prometheus + Grafana installation** via Helm charts during CLUE deployment
-- **📊 Kepler energy monitoring** automatic installation and configuration
-- **🎯 Dashboard provisioning** - Kepler sustainability dashboard automatically available
-- **🔧 Service configuration** - NodePort services (30080, 30090) ready immediately
-- **✅ Health validation** - all components tested and verified during setup
-
-### 🎯 **Zero Manual Setup Required!**
-
-When you run CLUE experiments, the observability stack is automatically configured as part of the deployment process. Simply run:
-
-```bash
-docker compose up -d --build clue-deployer
-```
-
-And access your dashboards immediately at **http://localhost:30080** (admin/prom-operator)
-
-### Configuration Management
-
-CLUE uses centralized configuration for all observability components. The Prometheus URL is defined in `clue-config.yaml` and used consistently across all components:
-
-```yaml
-prometheus_url: "http://clue-cluster-control-plane:30090"
-```
-
-### Accessing the Grafana Dashboard
-
-After successful deployment, you can access Grafana at:
-
-- URL: `http://localhost:30080` (or your configured port)
-- Username: `admin` (or your configured username)
-- Password: `prom-operator` (or your configured password)
-
-The Kepler dashboard will be automatically imported and available in the Grafana interface, showing real-time sustainability metrics including energy consumption, carbon emissions, and resource utilization.
