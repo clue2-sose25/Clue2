@@ -141,21 +141,8 @@ the cluster**. The chart includes a `Job` manifest for CI execution and a `Deplo
 
 #### Locust workload deployment
 
-`workload_runner.py` uses the `clue_loadgenerator` image to run Locust. For each path
-listed under `workloads[*].locust_files` in the SUT configuration a ConfigMap is
-created which contains the file content. Those ConfigMaps are mounted at
-`/app/locustfiles` in the load generator pod and referenced by the `LOCUST_FILE`
-environment variable. If the selected variant has `colocated_workload: true`,
-the pod runs inside the cluster. Otherwise the load generator container is
-executed locally next to the deployer.
-When deploying via Helm you can supply one or multiple scripts through `loadGenerator.workloadFiles`.
-The chart mounts them at `sut_configs/workloads/<sut>/` and sets `LOCUST_FILE` to a comma separated list of their paths
-before launching the `clue-loadgenerator` job.
-Alternatively you can put your Locust scripts in a folder and reference it via `loadGenerator.workloadDir`.
-All files in that folder become entries in the `loadgenerator-workload` ConfigMap. This is convenient
-when invoking the Helm chart from another repository: copy the folder next to the chart and pass its path
-through the GitHub action's `values.yaml` input. The action mounts the folder into the chart and
-sets `loadGenerator.workloadDir` automatically.
+The `workload_runner.py` uses the `clue_loadgenerator` image to run Locust. For each path listed under `workloads[*].locust_files` in the SUT configuration a ConfigMap is created which contains the file content. Those ConfigMaps are mounted at
+`/app/locustfiles` in the load generator pod and referenced by the `LOCUST_FILE` environment variable. If the selected variant has `colocated_workload: true`, the pod runs inside the cluster. Otherwise the load generator container is executed locally next to the deployer. When deploying via Helm you can supply one or multiple scripts through `loadGenerator.workloadFiles`. The chart mounts them at `sut_configs/workloads/<sut>/` and sets `LOCUST_FILE` to a comma separated list of their paths before launching the `clue-loadgenerator` job. Alternatively you can put your Locust scripts in a folder and reference it via `loadGenerator.workloadDir`. All files in that folder become entries in the `loadgenerator-workload` ConfigMap. This is convenient when invoking the Helm chart from another repository: copy the folder next to the chart and pass its path through the GitHub action's `values.yaml` input. The action mounts the folder into the chart and sets `loadGenerator.workloadDir` automatically.
 
 ## 🧪 Adding a new SUT support
 
@@ -251,7 +238,7 @@ docker compose up -d --build
 For full Kubernetes deployments with the CLUE experiment framework:
 
 ```bash
-# 1. Create Kind cluster (observability stack is automatically set up)
+# Create Kind cluster (observability stack is automatically set up)
 ./create-kind-cluster.sh
 ```
 
