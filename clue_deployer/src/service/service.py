@@ -14,7 +14,7 @@ from clue_deployer.src.logger import get_child_process_logger, logger, shared_lo
 from clue_deployer.src.main import ExperimentRunner
 from clue_deployer.src.configs.configs import Configs, CONFIGS
 from .routers.queue import queuer
-from .routers import logs, suts, results, plots, cluster, results_server, clue_config, queue
+from .routers import logs, suts, results, cluster, results_server, clue_config, queue
 
 
 # Initialize multiprocessing lock and value for deployment synchronization. Used for deployments.
@@ -37,7 +37,6 @@ app = FastAPI(title="CLUE Deployer Service", lifespan=lifespan)
 app.include_router(logs.router)
 app.include_router(suts.router)
 app.include_router(results.router)
-app.include_router(plots.router)
 app.include_router(cluster.router)
 app.include_router(queue.router)
 app.include_router(results_server.router)
@@ -126,45 +125,3 @@ async def stream_status(request: Request):
 @app.get("/api/health", response_model=HealthResponse)
 def health():
     return HealthResponse(message="true")
-
-@app.post("/api/deploy/sut", status_code=status.HTTP_202_ACCEPTED)
-async def deploy_sut(request: DeployRequest):
-    """Deploy a specific SUT in a separate process, ensuring only one deployment runs at a time."""
-    with state_lock:
-        if is_deploying.value == 1:
-            raise HTTPException(
-                status_code=409,
-                detail="A deployment is already running."
-            )
-        is_deploying.value = 1
-
-    sut_filename = f"{request.sut}.yaml"
-    sut_path = os.path.join(SUT_CONFIGS_DIR, sut_filename)
-    
-    if not os.path.isfile(sut_path):
-        with state_lock:
-            is_deploying.value = 0
-        raise HTTPException(status_code=404, detail=f"SUT configuration not found: {request.sut}")
-    
-    configs = Configs(sut_path, CLUE_CONFIG_PATH)
-    
-    try:
-        # Pass the shared buffer to the child process
-        process = multiprocessing.Process(
-            target=run_experiment,
-            args=(configs, request, 
-                  state_lock, is_deploying, shared_log_buffer)
-        )
-        process.start()
-        logger.info(f"Started deployment process for SUT {request.sut}")
-    except Exception as e:
-        with state_lock:
-            is_deploying.value = 0
-        logger.error(f"Failed to start deployment process: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to start deployment: {str(e)}")
-    
-    return {"message": f"Deployment of SUT {request.sut} has been started."}
-
-
-
-

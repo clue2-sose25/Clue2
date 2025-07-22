@@ -1,3 +1,4 @@
+import os
 import pandas as pd # type: ignore
 import numpy as np # type: ignore
 from glob import glob
@@ -158,11 +159,12 @@ class ExperimentResults:
         return data_errors
 
     def measurement_file_to_df(self, file: str, prefix: str, treat=True):
-        # no risk, no fun
-        # workaround for windows machines
+        # Windows machines
         if "\\" in file:
             file = file.replace("\\", "/")
-        (_, pr_time, pr_scale, pr_branch, pr_run, pr_name) = file.split("/")
+        path_components = file.split("/")
+        # Take the last 5 components
+        pr_time, pr_scale, pr_branch, pr_run, pr_name = path_components[-5:]
         pod_df = pd.read_csv(file)
         pod_df["exp_workload"] = pr_scale
         pod_df["exp_branch"] = pr_branch
@@ -180,10 +182,13 @@ class ExperimentResults:
         return pod_df
 
     def get_df_for_prefix(self, prefix, treat=True):
-        pod_files = np.concatenate(
-            [glob(f"{d}\\{prefix}*") for d in self.measurement_dirs]
-        )
-
+        # Filter measurement_dirs for files starting with prefix
+        pod_files = [d for d in self.measurement_dirs if os.path.basename(d).startswith(prefix)]
+        
+        if not pod_files:
+            print(f"No files found with prefix '{prefix}' in measurement_dirs")
+            return pd.DataFrame()  # Return empty DataFrame if no files match
+        
         all_pods = pd.concat(
             [self.measurement_file_to_df(pf, prefix, treat) for pf in pod_files]
         )

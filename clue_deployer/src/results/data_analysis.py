@@ -1,20 +1,20 @@
-import seaborn as sns # type: ignore
-import pandas as pd# type: ignore
-import matplotlib.pyplot as plt # type: ignore
-import glasbey # type: ignore
-import numpy as np # type: ignore
+import os
+from typing import Optional
+import seaborn as sns
+import pandas as pd
+import matplotlib.pyplot as plt
+import glasbey
+import numpy as np
 import warnings
-import yaml # type: ignore
+import yaml
 from clue_deployer.src.results.experiment_results import ExperimentResults
-from datetime import time
-from clue_deployer.src.logger import logger
 import dash
 from dash import dash_table
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objs as go
 from plotly.subplots import make_subplots
-from dash import Dash, dcc, html, Input, Output, State, dash_table
+from dash import dcc, html, Input, Output, State, dash_table
 import dash_bootstrap_components as dbc
 from sklearn.linear_model import LinearRegression, Ridge, Lasso
 from sklearn.ensemble import RandomForestRegressor
@@ -106,7 +106,6 @@ class DataAnalysis:
         }
     }
 
-
     warnings.filterwarnings('ignore')
     pd.set_option('display.max_columns', None)
     sns.set_theme(rc={'figure.figsize':(12, 6)})
@@ -132,37 +131,36 @@ class DataAnalysis:
 
     
     
-    def __init__(self, experiment_folder:str, config_file_path:str, load_data_from_file:False):
-        #yaml_dict = parse_sut_yaml(config_file_path)
-        #self.general_allowance = {entry["service_name"]: entry["limit"] for entry in yaml_dict["resource_limits"]}
-        #self.pod_configuration = {entry["service_name"]: entry["limit"] for entry in yaml_dict["resource_limits"]}
-        self.service_pods = [] #TODO
-        #self.sut = yaml_dict['sut']
-        #self.namespace = yaml_dict['namespace']
-        self.sut="teastore"
-        self.general_allowanc = {
-                "teastore-recommender": {"cpu": 2600, "memory": 1332},
-                "teastore-webui": {"cpu": 1300, "memory": 1950},
-                "teastore-image": {"cpu": 1300, "memory": 1950},
-                "teastore-auth": {"cpu": 585, "memory": 1332},
-                'teastore-registry':{"cpu": 1300, "memory": 1332}, 
-                'teastore-persistence':{"cpu": 1300, "memory": 1332}, 
-                'teastore-db':{"cpu": 1300, "memory": 1332},
-                "teastore-all": {"cpu":1950, "memory":2663},
-                "auth": {"cpu": 500, "memory": 500},
-            }
-        self.namespace = "tea-bench"
-        self.pod_configuration = {
-                "teastore-recommender": {"cpu": 2600, "memory": 1332},
-                "teastore-webui": {"cpu": 1300, "memory": 1950},
-                "teastore-image": {"cpu": 1300, "memory": 1950},
-                "teastore-auth": {"cpu": 585, "memory": 1332},
-                'teastore-registry':{"cpu": 1000, "memory": 1024}, # not set by default ....
-                'teastore-persistence':{"cpu": 1000, "memory": 1024}, # not set by default ....
-                'teastore-db':{"cpu": 1000, "memory": 1024}, # not set by default ....
-                "teastore-all": {"cpu":1950, "memory":2663},
-                "auth": {"cpu": 500, "memory": 500},
-            }
+    def __init__(self, experiment_folder: str, config_file_path: str, sut_name: str, load_from_hdf5: bool = False, hdf5_path: Optional[str] = None):
+        # Read the configs and experiment details
+        self.sut = sut_name
+        self.service_pods = []
+        sut_config_yaml = self.parse_sut_yaml(config_file_path)
+        self.general_allowance = sut_config_yaml["default_resource_limits"]
+        # self.general_allowance = {
+        #         "teastore-recommender": {"cpu": 2600, "memory": 1332},
+        #         "teastore-webui": {"cpu": 1300, "memory": 1950},
+        #         "teastore-image": {"cpu": 1300, "memory": 1950},
+        #         "teastore-auth": {"cpu": 585, "memory": 1332},
+        #         'teastore-registry':{"cpu": 1300, "memory": 1332}, 
+        #         'teastore-persistence':{"cpu": 1300, "memory": 1332}, 
+        #         'teastore-db':{"cpu": 1300, "memory": 1332},
+        #         "teastore-all": {"cpu":1950, "memory":2663},
+        #         "auth": {"cpu": 500, "memory": 500},
+        #     }
+        self.pod_configuration = sut_config_yaml["resource_limits"]
+        # self.pod_configuration = {
+        #         "teastore-recommender": {"cpu": 2600, "memory": 1332},
+        #         "teastore-webui": {"cpu": 1300, "memory": 1950},
+        #         "teastore-image": {"cpu": 1300, "memory": 1950},
+        #         "teastore-auth": {"cpu": 585, "memory": 1332},
+        #         'teastore-registry':{"cpu": 1000, "memory": 1024}, # not set by default ....
+        #         'teastore-persistence':{"cpu": 1000, "memory": 1024}, # not set by default ....
+        #         'teastore-db':{"cpu": 1000, "memory": 1024}, # not set by default ....
+        #         "teastore-all": {"cpu":1950, "memory":2663},
+        #         "auth": {"cpu": 500, "memory": 500},
+        #     }
+        self.namespace = sut_config_yaml["namespace"]
         self.node_model = {
             "sm-gpu": 32704316//1024,
             "ise-knode6": 32719632//1024,
@@ -247,28 +245,33 @@ class DataAnalysis:
                 "auth":40, # infinite theorethical, we use the maximum possible on the nodes we use (12+8 cores) -> 40 functions fit
             },
         }
-
-        if load_data_from_file: #TODO: Make data_file dynamic
-            #self.stats_history_aggregated_data = pd.read_hdf(f"{experiment_folder}/observation_original.hdf5", key="stats_history_aggregated")
-            #self.pods_data = pd.read_hdf(f"{experiment_folder}/observation_original.hdf5", key="pods")
-            #self.stats_data = pd.read_hdf(f"{experiment_folder}/observation_original.hdf5", key="stats")
-            #self.nodes_data = pd.read_hdf(f"{experiment_folder}/observation_original.hdf5", key="nodes")
-            #self.pods_energy_data = pd.read_hdf(f"{experiment_folder}/observation_original.hdf5", key="pods_energy")
-            #self.run_stats_data = pd.read_hdf(f"{experiment_folder}/observation_original.hdf5", key="run_stats")
-            self.stats_history_aggregated_data = pd.read_hdf(f"clue_deployer/src/results/observation_original.hdf5", key="stats_history_aggregated")
-            self.pods_data = pd.read_hdf(f"clue_deployer/src/results/observation_original.hdf5", key="pods")
-            self.stats_data = pd.read_hdf(f"clue_deployer/src/results/observation_original.hdf5", key="stats")
-            self.nodes_data = pd.read_hdf(f"clue_deployer/src/results/observation_original.hdf5", key="nodes")
-            self.pods_energy_data = pd.read_hdf(f"clue_deployer/src/results/observation_original.hdf5", key="pods_energy")
-            self.run_stats_data = pd.read_hdf(f"clue_deployer/src/results/observation_original.hdf5", key="run_stats")
+        # Load the data
+        if load_from_hdf5:
+            if hdf5_path and os.path.exists(hdf5_path):
+                self.load_from_hdf5(hdf5_path)
+            else:
+                raise FileNotFoundError(f"HDF5 file not found at {hdf5_path}")
         else:
-            exr = ExperimentResults(experiment_folder, load_stats_history=True, sut=self.sut, remove_outliers=True)
-            self.stats_history_aggregated_data = exr.stats_history_aggregated_data
-            self.pods_data = exr.pods
-            self.stats_data = exr.stats
-            self.nodes_data = exr.nodes
-            self.pods_energy_data = exr.pods_energy
-            self.run_stats_data = exr.run_stats
+            self.load_from_raw(experiment_folder)
+
+    def load_from_hdf5(self, hdf5_path: str) -> None:
+        """Load data from an HDF5 file."""
+        self.stats_history_aggregated_data = pd.read_hdf(hdf5_path, key="stats_history_aggregated")
+        self.pods_data = pd.read_hdf(hdf5_path, key="pods")
+        self.stats_data = pd.read_hdf(hdf5_path, key="stats")
+        self.nodes_data = pd.read_hdf(hdf5_path, key="nodes")
+        self.pods_energy_data = pd.read_hdf(hdf5_path, key="pods_energy")
+        self.run_stats_data = pd.read_hdf(hdf5_path, key="run_stats")
+
+    def load_from_raw(self, experiment_folder: str) -> None:
+        """Load data from raw format using ExperimentResults."""
+        exr = ExperimentResults(experiment_folder, load_stats_history=True, sut=self.sut, remove_outliers=True)
+        self.stats_history_aggregated_data = exr.stats_history_aggregated
+        self.pods_data = exr.pods
+        self.stats_data = exr.stats
+        self.nodes_data = exr.nodes
+        self.pods_energy_data = exr.pods_energy()
+        self.run_stats_data = exr.run_stats()
 
     def create_metrics(self):
         failures = self.get_failures()
@@ -289,20 +292,13 @@ class DataAnalysis:
             f"{save_path}/metrics.json", orient='records', lines=True)
         print(f"✅ JSON saved to {save_path}/metrics.json")
 
-    def parse_sut_yaml(yaml_path):
+    def parse_sut_yaml(self, yaml_path : str):
         """
         Parses a SUT YAML file and extracts specific fields.
-
         Args:
             yaml_path (str): Path to the YAML file.
-
         Returns:
-            dict: Extracted fields:
-                - default_resource_limits
-                - resource_limits
-                - namespace
-                - sut
-                - workloads
+            dict: Extracted fields
         """
         with open(yaml_path, "r") as f:
             content = yaml.safe_load(f)
@@ -312,7 +308,6 @@ class DataAnalysis:
             "resource_limits": content.get("resource_limits"),
             "namespace": content.get("config").get("namespace"),
             "sut": content.get("config").get("sut"),
-            #"workloads": content.get("workloads")
         }
 
     def split_by_branch_and_workload_named(**named_dfs):

@@ -63,10 +63,23 @@ class ServerManager:
     
     def _start_server_thread(self, uuid: str, sut_name: str, experiment_dir: Path) -> None:
         """Function to run the server in a separate thread."""
-        logger.info("Starting a server in a new thread")
         try:
-            # Start the data server
-            da = DataAnalysis(experiment_dir, f"/app/sut_configs/{sut_name}.yaml", load_data_from_file=True)
+            # Determine if HDF5 should be used based on UUID
+            if uuid == "11111111-1111-1111-1111-111111111111":
+                load_from_hdf5 = True
+                hdf5_path = "clue_deployer/src/results/observation_original.hdf5"
+            else:
+                load_from_hdf5 = False
+                hdf5_path = None
+            
+            # Initialize DataAnalysis with the experiment directory, config file, SUT name, and HDF5 settings
+            da = DataAnalysis(
+                experiment_folder=str(experiment_dir),
+                config_file_path=f"/app/sut_configs/{sut_name}.yaml",
+                sut_name=sut_name,
+                load_from_hdf5=load_from_hdf5,
+                hdf5_path=hdf5_path
+            )
             da.create_server()
             
             # Store the server instance (thread-safe update)
@@ -74,7 +87,7 @@ class ServerManager:
                 if self._current_server is not None:
                     # Update the server instance in the existing ServerInfo
                     self._current_server.server_instance = da
-                
+                    
             logger.info(f"Results server started for UUID: {uuid}, SUT: {sut_name}")
             
         except Exception as e:
