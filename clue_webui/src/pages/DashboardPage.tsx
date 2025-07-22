@@ -210,7 +210,7 @@ const DashboardPage = () => {
     },
     {
       label: "Iterations",
-      value: currentDeployment?.iterations?.toLocaleString() || "0",
+      value: currentDeployment?.n_iterations?.toLocaleString() || "0",
       icon: <RepeatIcon size={24} />,
     },
     {
@@ -464,7 +464,7 @@ const DashboardPage = () => {
                       <div>
                         <span className="text-gray-600">Iterations:</span>
                         <div className="font-mono bg-white px-2 py-1 rounded border mt-1">
-                          {item.iterations?.toLocaleString() || "0"}
+                          {item.n_iterations?.toLocaleString() || "0"}
                         </div>
                       </div>
                       <div>

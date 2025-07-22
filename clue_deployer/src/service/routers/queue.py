@@ -3,6 +3,7 @@ from fastapi import HTTPException, status, Response
 from fastapi.responses import JSONResponse
 from clue_deployer.src.models.deploy_request import DeployRequest
 from clue_deployer.src.logger import logger
+from clue_deployer.src.models.experiment import Experiment
 from clue_deployer.src.service.queuer import Queuer
 
 router = APIRouter()
@@ -28,11 +29,22 @@ def enqueue_experiment(request: list[DeployRequest]):
     logger.info(f"Enqueued {len(request)} deployment requests.")
     return {"message": f"Enqueued {len(request)} deployment requests."}
 
-@router.get("/api/queue/current", status_code=status.HTTP_200_OK)
+@router.get("/api/queue/current", response_model=DeployRequest, status_code=status.HTTP_200_OK)
 async def get_current_deployment():
     logger.info("Fetching current deployment status.")
-    current_deployment = queuer.current_experiment
-    return current_deployment
+    experiment: Experiment = queuer.current_experiment
+    # Check for the experiment
+    if experiment is None:
+        return None
+    # Translate into deployRequest
+    deploy_request = DeployRequest(
+        variants=[v.name for v in experiment.variants],
+        workloads=[w.name for w in experiment.workloads],
+        sut=experiment.sut,
+        n_iterations=experiment.n_iterations,
+        deploy_only=experiment.deploy_only
+    )
+    return deploy_request
 
 @router.post("/api/queue/deploy", status_code=status.HTTP_202_ACCEPTED)
 def deploy_from_queue():

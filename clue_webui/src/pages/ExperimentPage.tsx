@@ -19,7 +19,7 @@ const ExperimentPage = () => {
     currentDeployment.variants.length > 0 &&
     (currentDeployment.deploy_only || currentDeployment.workloads.length > 0);
 
-  const benchmarkingConfigProgress = currentDeployment.iterations > 0;
+  const benchmarkingConfigProgress = currentDeployment.n_iterations > 0;
   const deployEnabled = sutConfigProgress && benchmarkingConfigProgress;
 
   /**
@@ -76,7 +76,7 @@ const ExperimentPage = () => {
             sut: currentDeployment.sut,
             variants: currentDeployment.variants,
             workloads: currentDeployment.workloads,
-            n_iterations: currentDeployment.iterations,
+            n_iterations: currentDeployment.n_iterations,
             deploy_only: currentDeployment.deploy_only,
           },
         ]),

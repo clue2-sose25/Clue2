@@ -35,7 +35,7 @@ const EstimationTime: React.FC = () => {
     return {
       name: exp,
       perIteration,
-      total: perIteration * currentDeployment.iterations,
+      total: perIteration * currentDeployment.n_iterations,
     };
   });
 
@@ -63,7 +63,7 @@ const EstimationTime: React.FC = () => {
                 </span>
               ))}
               <p>
-                Total: {v.perIteration} min * {currentDeployment.iterations}{" "}
+                Total: {v.perIteration} min * {currentDeployment.n_iterations}{" "}
                 iterations = {v.total} min
               </p>
             </div>

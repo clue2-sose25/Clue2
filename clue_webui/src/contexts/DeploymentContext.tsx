@@ -7,7 +7,7 @@ const defaultDeploymentForm: DeploymentForm = {
   sut: null,
   variants: [],
   workloads: [],
-  iterations: 1,
+  n_iterations: 1,
   deploy_only: false,
 };
 
