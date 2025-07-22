@@ -16,9 +16,9 @@ config:
 
 helm_replacements:
   - value: "ghcr.io/clue2-sose25/sustainable_toystore/backend"
-    replacement: "registry:5000/clue/backend"
+    replacement: "registry:5000/clue/toystore-backend"
   - value: "ghcr.io/clue2-sose25/sustainable_toystore/frontend"
-    replacement: "registry:5000/clue/frontend"
+    replacement: "registry:5000/clue/toystore-frontend"
   - value: 'tag: "latest"'
     replacement: 'tag: "__EXPERIMENT_TAG__"'
 
