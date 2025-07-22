@@ -41,6 +41,8 @@ class ExperimentRunner:
                 logger.warning(f"Failed to load kubeconfig: {exc}")
             else:
                 raise
+        # Load the correct SUT config
+        CONFIGS.replace_sut_config(sut)
         # Prepare the variants
         logger.info(f"Specified variants: {variants}")
         final_variants: List[Variant] = [variant for variant in CONFIGS.sut_config.variants if variant.name in variants]
@@ -158,8 +160,6 @@ class ExperimentRunner:
             return
         # Set the status to preparing
         StatusManager.set(StatusPhase.PREPARING_CLUSTER, "Preparing the cluster...")
-        # Load the correct SUT config
-        CONFIGS.replace_sut_config(self.experiment.sut)
         # Deploy a single variant if deploy only
         if self.experiment.deploy_only:
             #logger.info(f"Starting deployment only for variant: {self.experiment.variants[0]} (workload: {self.experiment.workloads[0]})")

@@ -4,7 +4,7 @@ from multiprocessing.managers import DictProxy
 import multiprocessing as mp
 from multiprocessing.sharedctypes import Synchronized
 from typing import Any
-from clue_deployer.src.service.experiment_queue import ExperimentQueue
+from clue_deployer.src.service.shared_experiment_queue import SharedExperimentQueue
 from clue_deployer.src.logger import get_child_process_logger, logger, shared_log_buffer, process_logger
 from clue_deployer.src.models.deploy_request import DeployRequest
 from clue_deployer.src.models.experiment import Experiment
@@ -22,15 +22,12 @@ class Queuer:
         self.shared_flag = mp.Value('b', True)
         self.state_lock = mp.Lock()
         self.is_deploying = mp.Value('i', 0)
-        
         # Use multiprocessing.Manager for shared data structures
         self.manager = mp.Manager()
         self.shared_container = self.manager.dict()
-        
         # Create a single shared condition for the queue
         self.queue_condition = mp.Condition()
-        self.experiment_queue = ExperimentQueue(condition=self.queue_condition)
-        
+        self.experiment_queue = SharedExperimentQueue(self.manager)
         self.shared_container['current_experiment'] = None
 
         self.process_logger = get_child_process_logger(
@@ -73,7 +70,7 @@ class Queuer:
                      state_lock: Any, 
                      is_deploying: Synchronized, 
                      queue_condition: Any,
-                     experiment_queue: ExperimentQueue, 
+                     experiment_queue: SharedExperimentQueue, 
                      shared_container: DictProxy) -> None:
         
         # Create worker-specific logger
