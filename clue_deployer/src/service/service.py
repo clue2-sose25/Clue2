@@ -1,27 +1,25 @@
-from multiprocessing.sharedctypes import Synchronized
 import os
+import asyncio
+import json
 from contextlib import asynccontextmanager
 from threading import Lock
-from typing import Any
-from fastapi import FastAPI, HTTPException, status
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi import FastAPI, HTTPException, status, Request
+from fastapi.responses import RedirectResponse, StreamingResponse
 import multiprocessing
 from clue_deployer.src.models.deploy_request import DeployRequest
 from clue_deployer.src.models.health_response import HealthResponse
 from clue_deployer.src.models.status_response import StatusResponse
 from clue_deployer.src.service.status_manager import StatusManager
-from clue_deployer.src.logger import SharedLogBuffer, get_child_process_logger, logger, shared_log_buffer
-from clue_deployer.src.configs.configs import ENV_CONFIG, Configs
+from clue_deployer.src.logger import get_child_process_logger, logger, shared_log_buffer, SharedLogBuffer
 from clue_deployer.src.main import ExperimentRunner
-from clue_deployer.src.service.worker import Worker
-from .routers import logs, suts, results, plots, cluster
+from clue_deployer.src.configs.configs import Configs, CONFIGS
+from .routers.queue import queuer
+from .routers import logs, suts, results, cluster, results_server, clue_config, queue
 
 
 # Initialize multiprocessing lock and value for deployment synchronization. Used for deployments.
-
-worker = Worker()
-state_lock = worker.state_lock
-is_deploying = worker.is_deploying
+state_lock = Lock()
+is_deploying = queuer.is_deploying
 
 # Root page redirect to swagger /docs
 @asynccontextmanager
@@ -39,13 +37,14 @@ app = FastAPI(title="CLUE Deployer Service", lifespan=lifespan)
 app.include_router(logs.router)
 app.include_router(suts.router)
 app.include_router(results.router)
-app.include_router(plots.router)
 app.include_router(cluster.router)
+app.include_router(queue.router)
+app.include_router(results_server.router)
+app.include_router(clue_config.router)
 
-
-SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
-RESULTS_DIR = ENV_CONFIG.RESULTS_PATH
-CLUE_CONFIG_PATH = ENV_CONFIG.CLUE_CONFIG_PATH
+SUT_CONFIGS_DIR = CONFIGS.env_config.SUT_CONFIGS_PATH
+RESULTS_DIR = CONFIGS.env_config.RESULTS_PATH
+CLUE_CONFIG_PATH = CONFIGS.env_config.CLUE_CONFIG_PATH
 
 def run_experiment(configs: Configs, deploy_request: DeployRequest,
                   state_lock: Lock, is_deploying, shared_log_buffer: SharedLogBuffer):
@@ -72,134 +71,57 @@ def read_status():
     """Endpoint to check if a deployment is currently in progress."""
     with state_lock:
         deploying = bool(is_deploying.value)
-    return StatusResponse(is_deploying=deploying, phase=None, message=None)
-    # TO-DO: Add multi-threaded status 
-    phase, msg = StatusManager.get()
-    return StatusResponse(phase=phase, message=msg or None)
+        phase, message = StatusManager.get()
+    return StatusResponse(is_deploying=deploying, phase=phase, message=message)
+
+@app.get("/api/status/stream")
+async def stream_status(request: Request):
+    """Stream status updates using Server-Sent Events."""
+
+    async def event_generator():
+        with state_lock:
+            last_deploying = bool(is_deploying.value)
+        last_phase, last_detail = StatusManager.get()
+
+        # Send initial status
+        initial = {
+            "is_deploying": last_deploying,
+            "phase": last_phase.value,
+            "detail": last_detail,
+        }
+        yield f"data: {json.dumps(initial)}\n\n"
+
+        while True:
+            if await request.is_disconnected():
+                break
+            await asyncio.sleep(0.5)
+
+            with state_lock:
+                deploying = bool(is_deploying.value)
+            phase, detail = StatusManager.get()
+
+            if deploying != last_deploying or phase != last_phase or detail != last_detail:
+                last_deploying = deploying
+                last_phase = phase
+                last_detail = detail
+                update = {
+                    "is_deploying": deploying,
+                    "phase": phase.value,
+                    "detail": detail,
+                }
+                yield f"data: {json.dumps(update)}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "Cache-Control",
+        },
+    )
 
 @app.get("/api/health", response_model=HealthResponse)
 def health():
     return HealthResponse(message="true")
-
-@app.post("/api/deploy/sut", status_code=status.HTTP_202_ACCEPTED)
-async def deploy_sut(request: DeployRequest):
-    """Deploy a specific SUT in a separate process, ensuring only one deployment runs at a time."""
-    with state_lock:
-        if is_deploying.value == 1:
-            raise HTTPException(
-                status_code=409,
-                detail="A deployment is already running."
-            )
-        is_deploying.value = 1
-
-    sut_filename = f"{request.sut}.yaml"
-    sut_path = os.path.join(SUT_CONFIGS_DIR, sut_filename)
-    
-    if not os.path.isfile(sut_path):
-        with state_lock:
-            is_deploying.value = 0
-        raise HTTPException(status_code=404, detail=f"SUT configuration not found: {request.sut}")
-    
-    configs = Configs(sut_path, CLUE_CONFIG_PATH)
-    
-    try:
-        # Pass the shared buffer to the child process
-        process = multiprocessing.Process(
-            target=run_experiment,
-            args=(configs, request, 
-                  state_lock, is_deploying, shared_log_buffer)
-        )
-        process.start()
-        logger.info(f"Started deployment process for SUT {request.sut}")
-    except Exception as e:
-        with state_lock:
-            is_deploying.value = 0
-        logger.error(f"Failed to start deployment process: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to start deployment: {str(e)}")
-    
-    return {"message": f"Deployment of SUT {request.sut} has been started."}
-
-@app.post("/api/queue/enqueue", status_code=status.HTTP_202_ACCEPTED)
-def enqueue_experiment(request: list[DeployRequest]):
-    """
-    Enqueue a list of deployment requests to the experiment queue.
-    """ 
-    if not request:
-        raise HTTPException(status_code=400, detail="Request body cannot be empty")
-    if len(request) == 0:
-        raise HTTPException(status_code=400, detail="No requests provided")
-    
-    for deploy_request in request:
-        worker.experiment_queue.enqueue(deploy_request)
-    
-    logger.info(f"Enqueued {len(request)} deployment requests.")
-    return {"message": f"Enqueued {len(request)} deployment requests."}
-
-
-@app.post("/api/deploy/start", status_code=status.HTTP_202_ACCEPTED)
-def deploy_from_queue():
-    """
-    start deploy worker
-    """
-    try:
-        worker.start()
-    except Exception as e:
-        logger.error(f"Failed to start deployment worker: {str(e)}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                             detail=f"Failed to start deployment worker: {str(e)}")
-    
-    logger.info("Deployment worker started.")
-    return JSONResponse(status_code=status.HTTP_202_ACCEPTED, content={"message": "Deployment worker started."})
-    
-    
-
-@app.delete("api/deploy/kill", status_code=status.HTTP_204_NO_CONTENT)
-def deploy_kill():
-    """
-    Kill the current deployment process.
-    """
-    
-    
-    # Terminate the worker process
-    try:
-        worker.terminate()
-    except Exception as e:
-        logger.error(f"Failed to terminate deployment process: {str(e)}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                             detail=f"Failed to terminate deployment: {str(e)}")
-
-    logger.info("Deployment process terminated.")
-    return JSONResponse(status_code=status.HTTP_204_NO_CONTENT, content=None)
-
-@app.delete("api/deploy/stop", status_code=status.HTTP_204_NO_CONTENT)
-def stop_deployment():
-    """
-    Stop the current deployment process gracefully.
-    """
-    try:
-        worker.stop()
-    except Exception as e:
-        logger.error(f"Failed to stop deployment process: {str(e)}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                             detail=f"Failed to stop deployment: {str(e)}")
-
-    logger.info("Deployment process stopped.")
-    return JSONResponse(status_code=status.HTTP_204_NO_CONTENT, content=None)
-
-@app.delete("/api/queue/flush", status_code=status.HTTP_204_NO_CONTENT)
-def flush_queue():
-    """Flush the deployment queue."""
-    worker.experiment_queue.flush()
-    logger.info("Experiment queue flushed.")
-    return JSONResponse(status_code=status.HTTP_204_NO_CONTENT, content=None)
-
-@app.get("/api/queue/status")
-def get_queue_status():
-    """Get the current status of the deployment queue."""
-    queue_size = worker.experiment_queue.size()
-    return {
-        "queue_size": queue_size,
-        "queue": worker.experiment_queue.get_all()
-    }
-
-

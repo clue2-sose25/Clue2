@@ -2,18 +2,52 @@ import os
 import subprocess
 import argparse
 import re
+import yaml
+import sys
 
-DEMO_VERSION = "clue-toystore"
-SUT_CONFIG = "/app/sut_configs/toystore.yaml"
-CLUE_CONFIG = "/app/clue-config.yaml"
+# Local directory where the repo will be cloned
 SUT_PATH = "toystore"
 
+# Add function to load YAML configs
+def load_configs():
+    # Load clue-config.yaml
+    try:
+        with open("clue-config.yaml", "r") as f:
+            clue_config = yaml.safe_load(f)
+    except FileNotFoundError:
+        print("Error: clue-config.yaml not found")
+        sys.exit(1)
+    
+    try:
+        with open("sut_configs/toystore.yaml", "r") as f:
+            sut_config = yaml.safe_load(f)
+    except FileNotFoundError:
+        print("Error: toystore.yaml not found")
+        sys.exit(1)
+        
+    # Create a simple config object with the loaded data
+    config = type('Config', (), {
+        'clue_config': type('ClueConfig', (), {
+            'remote_platform_arch': clue_config['config']['remote_platform_arch'],
+            'docker_registry_address': clue_config['config']['docker_registry_address']
+        })(),
+        'sut_config': type('SutConfig', (), {
+            'sut_path': sut_config['config']['sut_path'],
+            'experiments': sut_config.get('variants', []),
+            'sut_repo': sut_config['config']['sut_git_repo']
+        })()
+    })()
+    return config
+
+RUN_CONFIG = load_configs()
+
 class ToystoreBuilder:
+
     def __init__(self):
-        self.sut_repo = "https://github.com/clue2-sose25/sustainable_toystore"
-        self.docker_registry_address = "registry:5000/clue"
-        self.image_version = "latest"
-        self.remote_platform_arch = "linux/arm64/v8"
+        self.sut_repo = RUN_CONFIG.sut_config.sut_repo
+        self.docker_registry_address = RUN_CONFIG.clue_config.docker_registry_address
+        self.image_version = os.environ.get("TOYSTORE_EXP_NAME", "latest")
+        self.remote_platform_arch = RUN_CONFIG.clue_config.remote_platform_arch
         self._set_envs()
         self._clone_repo()
         self.sut_path = SUT_PATH
@@ -89,7 +123,6 @@ class ToystoreBuilder:
         """
         os.environ["IMAGE_NAME"] = self.docker_registry_address
         os.environ["IMAGE_VERSION"] = self.image_version
-        os.environ["DEMO_VERSION"] = DEMO_VERSION
 
         print("Environment variables set:")
         print(f"IMAGE_NAME: {os.environ['IMAGE_NAME']}")

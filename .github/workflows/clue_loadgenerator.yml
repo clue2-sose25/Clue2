@@ -46,13 +46,14 @@ jobs:
         if: ${{ github.event_name != 'pull_request' }}
         uses: docker/build-push-action@v3
         with:
-          context: .
-          file: clue_loadgenerator/Dockerfile
+          context: ./clue_loadgenerator
+          file: ./clue_loadgenerator/workload_generator/Dockerfile
           platforms: linux/amd64
           tags: |
             ghcr.io/clue2-sose25/clue2-${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }}
             ghcr.io/clue2-sose25/clue2-${{ env.IMAGE_NAME }}:${{ github.ref_name }}
             ghcr.io/clue2-sose25/clue2-${{ env.IMAGE_NAME }}:pr-test
+            ghcr.io/clue2-sose25/clue2-${{ env.IMAGE_NAME }}:latest
             ${{ github.ref_name == 'main' && format('ghcr.io/clue2-sose25/clue2-{0}:latest', env.IMAGE_NAME) || '' }}
           push: true
           cache-from: type=gha,scope=clue_loadgenerator
@@ -62,10 +63,14 @@ jobs:
         if: ${{ github.event_name == 'pull_request' }}
         uses: docker/build-push-action@v3
         with:
-          context: .
-          file: clue_loadgenerator/Dockerfile
+          context: ./clue_loadgenerator/
+          file: ./clue_loadgenerator/workload_generator/Dockerfile
           platforms: linux/amd64
-          tags: ghcr.io/clue2-sose25/clue2-${{ env.IMAGE_NAME }}:pr-test
+          tags: |
+            ghcr.io/clue2-sose25/clue2-${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }}
+            ghcr.io/clue2-sose25/clue2-${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+            ghcr.io/clue2-sose25/clue2-${{ env.IMAGE_NAME }}:pr-test
+            ghcr.io/clue2-sose25/clue2-${{ env.IMAGE_NAME }}:latest
           push: true
           load: true
           cache-from: type=gha,scope=clue_loadgenerator

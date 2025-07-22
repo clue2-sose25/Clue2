@@ -3,20 +3,20 @@ import subprocess
 from pathlib import Path
 import tempfile
 import shutil
-from clue_deployer.src.configs.configs import SUT_CONFIG
+from clue_deployer.src.configs.configs import CONFIGS
 from clue_deployer.src.models.variant import Variant
-from clue_deployer.src.logger import logger
+from clue_deployer.src.logger import process_logger as logger
 from clue_deployer.src.models.helm_dependencies import Dependencies
 
 class HelmWrapper():
     
     def __init__(self, variant: Variant):
         self.variant = variant
-        self.values_file_full_path = SUT_CONFIG.helm_chart_path / SUT_CONFIG.values_yaml_name
-        self.name = SUT_CONFIG.sut_path.name
+        self.values_file_full_path = CONFIGS.sut_config.helm_chart_path / CONFIGS.sut_config.values_yaml_name
+        self.name = CONFIGS.sut_config.sut_path.name
         # Path to the ORIGINAL Helm chart in the SUT directory
-        self.original_helm_chart_path = Path(SUT_CONFIG.helm_chart_path)
-        self.original_values_file_name = SUT_CONFIG.values_yaml_name
+        self.original_helm_chart_path = Path(CONFIGS.sut_config.helm_chart_path)
+        self.original_values_file_name = CONFIGS.sut_config.values_yaml_name
         # This will be set when a temporary chart copy is active
         self.active_chart_path: Path | None = None
         self.active_values_file_path: Path | None = None
@@ -81,7 +81,7 @@ class HelmWrapper():
         with open(self.active_values_file_path, "r") as f:
             values = f.read()
         # Apply all replacements
-        helm_replacements = SUT_CONFIG.helm_replacements
+        helm_replacements = CONFIGS.sut_config.helm_replacements
         logger.info(f"Applying {len(helm_replacements)} helm replacements from the SUT config")
         # Loop through replacements
         for replacement in helm_replacements:
@@ -89,7 +89,12 @@ class HelmWrapper():
             if replacement.replacement.__contains__("__EXPERIMENT_TAG__"):
                 new_tag = self.variant.target_branch
                 replacement.replacement = replacement.replacement.replace("__EXPERIMENT_TAG__", new_tag)
-                values = values.replace(replacement.value, replacement.replacement)
+                no_instances = values.count(replacement.value)
+                if no_instances > 0:
+                    logger.info(f"Replacing {no_instances} instances of: {replacement}")
+                    values = values.replace(replacement.value, replacement.replacement)
+                else:
+                    logger.warning(f"No instances found for replacement: {replacement}")
             elif replacement.should_apply(autoscaling=self.variant.autoscaling):
                 no_instances = values.count(replacement.value)
                 if no_instances > 0:
@@ -111,9 +116,9 @@ class HelmWrapper():
         """
         Adds Helm repositories
         """
-        if SUT_CONFIG.helm_dependencies_from_chart:
+        if CONFIGS.sut_config.helm_dependencies_from_chart:
             logger.info("Helm dependencies from chart")
-            chart_path = SUT_CONFIG.helm_chart_path.joinpath("Chart.yaml")
+            chart_path = CONFIGS.sut_config.helm_chart_path.joinpath("Chart.yaml")
             if not chart_path.exists():
                 raise FileNotFoundError(f"Chart.yaml not found at {chart_path}. Cannot add dependencies from chart.")
             
@@ -168,9 +173,9 @@ class HelmWrapper():
         self._build_dependencies()
         try:
             
-            logger.info(f"Deploying helm chart for {self.name} in namespace {SUT_CONFIG.namespace}")
+            logger.info(f"Deploying helm chart for {self.name} in namespace {CONFIGS.sut_config.namespace}")
             helm_deploy = subprocess.run(
-                ["helm", "upgrade", "--install", self.name, "-n", SUT_CONFIG.namespace, "."],
+                ["helm", "upgrade", "--install", self.name, "-n", CONFIGS.sut_config.namespace, "."],
                 cwd=self.active_chart_path,
                 capture_output=True,  # Capture both stdout and stderr
                 text=True  # Decode output to string automatically
@@ -193,4 +198,4 @@ class HelmWrapper():
         Uninstalls the helm chart
         """
         logger.info(f"Uninstalling the SUT's helm chart {self.name}")
-        subprocess.run(["helm", "uninstall", self.name, "-n", SUT_CONFIG.namespace])
+        subprocess.run(["helm", "uninstall", self.name, "-n", CONFIGS.sut_config.namespace])

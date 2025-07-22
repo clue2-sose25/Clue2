@@ -1,6 +1,8 @@
 import logging
 import sys
 import multiprocessing as mp
+import os
+
 
 # Define ANSI color codes
 COLORS = {
@@ -24,11 +26,28 @@ class ColoredFormatter(logging.Formatter):
 
 class SharedLogBuffer:
     def __init__(self, maxlen=1000):
-        self.manager = mp.Manager()
-        self.shared_list = self.manager.list()
         self.maxlen = maxlen
-        self.lock = self.manager.Lock()
-        self.version = self.manager.Value('i', 0)  # shared int
+        # Try to initialize multiprocessing, but fall back gracefully
+        try:
+            # Only initialize multiprocessing if we're in the main process
+            if (hasattr(os, 'getpid') and 
+                mp.current_process().name == 'MainProcess' and
+                hasattr(mp, 'Manager')):
+                self.manager = mp.Manager()
+                self.shared_list = self.manager.list()
+                self.lock = self.manager.Lock()
+                self.version = self.manager.Value('i', 0)  # shared int
+                self.use_mp = True
+            else:
+                raise RuntimeError("Not in main process or mp not available")
+        except (RuntimeError, AttributeError, OSError):
+            # Fallback to thread-safe list if multiprocessing fails
+            import threading
+            self.shared_list = []
+            self.lock = threading.Lock()
+            self.manager = None
+            self.version = 0  # simple int for thread-safe version
+            self.use_mp = False
 
     def append(self, message):
         with self.lock:
@@ -44,10 +63,16 @@ class SharedLogBuffer:
     def clear(self):
         with self.lock:
             self.shared_list[:] = []
-            self.version.value += 1  # increment version
+            if self.use_mp:
+                self.version.value += 1  # increment version for mp
+            else:
+                self.version += 1  # increment version for threading
 
     def get_version(self):
-        return self.version.value
+        if self.use_mp:
+            return self.version.value
+        else:
+            return self.version
 
 # Shared buffer handler for multiprocessing
 class SharedBufferHandler(logging.Handler):
@@ -95,7 +120,51 @@ def setup_shared_logging():
     return main_logger, shared_buffer
 
 # Initialize shared logging at module level for easy importing
-logger, shared_log_buffer = setup_shared_logging()
+# Use a lazy initialization approach to avoid multiprocessing issues
+_logger = None
+_shared_log_buffer = None
+
+def get_logger():
+    """Get the shared logger, initializing if necessary."""
+    global _logger, _shared_log_buffer
+    if _logger is None:
+        try:
+            _logger, _shared_log_buffer = setup_shared_logging()
+        except Exception as e:
+            # Fallback to simple logger if shared logging fails
+            _logger = logging.getLogger("CLUE_FALLBACK")
+            _logger.setLevel(logging.INFO)
+            if not _logger.handlers:
+                handler = logging.StreamHandler(sys.stdout)
+                formatter = logging.Formatter(
+                    '%(asctime)s [FALLBACK] [%(levelname)s] %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S'
+                )
+                handler.setFormatter(formatter)
+                _logger.addHandler(handler)
+            _shared_log_buffer = None
+    return _logger
+
+def get_shared_log_buffer():
+    """Get the shared log buffer, initializing if necessary."""
+    global _logger, _shared_log_buffer
+    if _shared_log_buffer is None and _logger is None:
+        get_logger()  # This will initialize both
+    return _shared_log_buffer
+
+# For backward compatibility - but make these safe to import
+try:
+    logger = get_logger()
+    shared_log_buffer = get_shared_log_buffer()
+except Exception:
+    # Ultimate fallback
+    logger = logging.getLogger("CLUE_SAFE")
+    logger.setLevel(logging.INFO)
+    if not logger.handlers:
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s'))
+        logger.addHandler(handler)
+    shared_log_buffer = None
 
 # Utility function to get logger for child processes
 def get_child_process_logger(process_name, shared_buffer=None):
@@ -127,3 +196,38 @@ def get_child_process_logger(process_name, shared_buffer=None):
             child_logger.addHandler(buffer_handler)
     
     return child_logger
+
+class ProcessLogger:
+    def __init__(self):
+        self._logger = get_child_process_logger("MAIN", shared_log_buffer)
+
+    @property
+    def logger(self):
+        return self._logger
+    
+    @logger.setter
+    def logger(self, process_name):
+        """Set the logger for a specific process."""
+        if process_name is None:
+            process_name = "NO_SUT"
+        self._logger = get_child_process_logger(process_name, shared_log_buffer)
+    
+    def info(self, message, *args, **kwargs):
+        """Log a message with the specified level."""
+        self._logger.info(message, *args, **kwargs)
+    
+    def debug(self, message, *args, **kwargs):
+        """Log a debug message."""
+        self._logger.debug(message, *args, **kwargs)
+    
+    def warning(self, message, *args, **kwargs):
+        """Log a warning message."""
+        self._logger.warning(message, *args, **kwargs)
+    
+    def error(self, message, *args, **kwargs):
+        """Log an error message."""
+        self._logger.error(message, *args, **kwargs)
+    
+
+
+process_logger = ProcessLogger()

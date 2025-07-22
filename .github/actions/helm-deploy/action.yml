@@ -1,0 +1,97 @@
+name: CLUE Helm Deploy Action
+description: Deploy the CLUE Helm chart and collect results
+inputs:
+  kubeconfig-base64:
+    description: Base64 encoded kubeconfig
+    required: false
+  kubeconfig-file:
+    description: Kubeconfig file content when not using base64
+    required: false
+  chart-ref:
+    description: OCI reference to the Helm chart
+    required: false
+    default: oci://ghcr.io/clue2-sose25/clue2-helm/clue:latest
+  chart-path:
+    description: Path to the Helm chart if not using chart-ref
+    required: false
+    default: clue_helm
+  release-name:
+    description: Name of the Helm release
+    required: false
+    default: clue
+  namespace:
+    description: Namespace to deploy into
+    required: false
+    default: clue
+  values-file:
+    description: Path to the Helm values file
+    required: true
+    default: clue_helm/values-toystore.yaml
+  results-path:
+    description: Local directory to copy experiment results to
+    required: false
+    default: clue_results
+  helm-driver:
+    description: Helm driver used to store release information
+    required: false
+    default: configmap
+  wait-seconds:
+    description: Seconds to wait after job completion before copying results
+    required: false
+    default: '30'
+runs:
+  using: composite
+  steps:
+    - name: Setup kubeconfig from base64
+      if: ${{ inputs.kubeconfig-base64 != '' }}
+      run: |
+        echo "${{ inputs.kubeconfig-base64 }}" | base64 --decode > kubeconfig
+        echo "KUBECONFIG=$(pwd)/kubeconfig" >> "$GITHUB_ENV"
+      shell: bash
+
+    - name: Setup kubeconfig from file
+      if: ${{ inputs.kubeconfig-file != '' }}
+      run: |
+        echo "${{ inputs.kubeconfig-file }}" > kubeconfig
+        echo "KUBECONFIG=$(pwd)/kubeconfig" >> "$GITHUB_ENV"
+      shell: bash
+
+    - name: Pull chart from registry
+      if: ${{ inputs.chart-ref != '' }}
+      run: |
+        helm pull "${{ inputs.chart-ref }}" --untar --untardir .
+        echo "CHART_PATH=$(basename $(echo ${{ inputs.chart-ref }} | cut -d':' -f1))" >> "$GITHUB_ENV"
+      shell: bash
+
+    - name: Use local chart path
+      if: ${{ inputs.chart-ref == '' }}
+      run: echo "CHART_PATH=${{ inputs.chart-path }}" >> "$GITHUB_ENV"
+      shell: bash
+
+    - name: Deploy with Helm
+      run: |
+        helm upgrade --install "${{ inputs.release-name }}" "$CHART_PATH" \
+          --namespace "${{ inputs.namespace }}" --create-namespace \
+          -f "${{ inputs.values-file }}" \
+          --set-string helmDriver="${{ inputs.helm-driver }}" \
+          --kubeconfig "$KUBECONFIG"
+      shell: bash
+
+    - name: Wait for clue-deployer job
+      run: |
+        kubectl --kubeconfig "$KUBECONFIG" -n "${{ inputs.namespace }}" wait --for=condition=complete job/clue-deployer-job --timeout=450s
+        sleep "${{ inputs.wait-seconds }}"
+      shell: bash
+
+    - name: Copy results from pod
+      run: |
+        POD=$(kubectl --kubeconfig "$KUBECONFIG" -n "${{ inputs.namespace }}" get pod -l job-name=clue-deployer-job -o jsonpath='{.items[0].metadata.name}')
+        mkdir -p "${{ inputs.results-path }}"
+        kubectl --kubeconfig "$KUBECONFIG" -n "${{ inputs.namespace }}" cp "$POD:/app/data" "${{ inputs.results-path }}"
+      shell: bash
+
+    - name: Upload CLUE results
+      uses: actions/upload-artifact@v3
+      with:
+        name: clue-results
+        path: ${{ inputs.results-path }}

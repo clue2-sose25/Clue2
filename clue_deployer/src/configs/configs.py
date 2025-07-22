@@ -9,6 +9,8 @@ class Configs:
     Manage and provide access to all configurations.
     """
 
+    _instance = None
+
     def __init__(self, sut_config_path: Path | None = None, clue_config_path: Path | None = None):
         """Load all configurations from the given paths."""
         self.env_config = EnvConfig.get_env_config()
@@ -35,12 +37,35 @@ class Configs:
 
         self.sut_config = SUTConfig.load_from_yaml(sut_config_path)
 
+    def replace_sut_config(self, sut_name: str) -> None:
+        """
+        Replace the currently loaded SUT config with a new one based on the SUT name.
+        
+        Args:
+            sut_name: Name of the SUT (will be used to build path: /app/sut_configs/{sut_name}.yaml)
+            
+        Raises:
+            FileNotFoundError: If the config file doesn't exist
+            Exception: If the config file cannot be loaded
+        """
+        # Build the SUT config path
+        sut_config_path = Path("/app/sut_configs") / f"{sut_name}.yaml"
+        
+        if not sut_config_path.is_file():
+            raise FileNotFoundError(f"SUT config not found: {sut_config_path}")
+        
+        # Load the new SUT config
+        new_sut_config = SUTConfig.load_from_yaml(sut_config_path)
+        
+        # Replace the existing config
+        self.sut_config = new_sut_config
+
     def model_dump(self) -> dict:
         """Return a dictionary representation of all configurations."""
         return {
             "env_config": self.env_config.model_dump(),
             "clue_config": self.clue_config.model_dump(),
-            "sut_config": self.sut_config.model_dump()
+            "sut_config": self.sut_config.model_dump() if self.sut_config else None
         }
 
     @classmethod
@@ -55,15 +80,9 @@ class Configs:
 # Export a global config for other files. When running as a service without
 # a SUT configuration the initialization is skipped so the backend can start.
 CONFIGS: Configs | None = None
-ENV_CONFIG = EnvConfig.get_env_config()
-CLUE_CONFIG = None
-SUT_CONFIG = None
 
 try:
     CONFIGS = Configs()
-    CLUE_CONFIG = CONFIGS.clue_config
-    SUT_CONFIG = CONFIGS.sut_config
-    ENV_CONFIG = CONFIGS.env_config
 except Exception as exc:
     if os.getenv("DEPLOY_AS_SERVICE", "false").lower() == "true":
         print(f"[CONFIGS] starting without SUT config: {exc}")

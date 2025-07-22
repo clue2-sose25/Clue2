@@ -1,0 +1,28 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: clue-deployer
+  namespace: default
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      serviceAccountName: clue-deployer
+      restartPolicy: Never
+      containers:
+      - name: clue-deployer
+        image: ghcr.io/issafadel/clue2/clue-deployer
+        env:
+        - name: DEPLOY_AS_SERVICE
+          value: "false"
+        - name: VARIANTS
+          value: "main"
+        - name: WORKLOADS
+          value: "loadgenerator"
+        volumeMounts:
+        - name: results
+          mountPath: /app/results
+      volumes:
+      - name: results
+        emptyDir: {}
+        

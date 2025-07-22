@@ -4,6 +4,7 @@ from clue_deployer.src.logger import logger
 from threading import Timer
 from kubernetes import client, config
 import copy 
+import os
 from queue import Queue
 
 
@@ -95,6 +96,7 @@ class ResourceTracker:
 
         self.prometheus_url = prometheus_url
         if self.prometheus_url:
+            logger.info(f"Connecting to Prometheus at {self.prometheus_url}")
             self.prm = PrometheusConnect(url=self.prometheus_url, disable_ssl=True)
             if not self.prm.check_prometheus_connection():
                 raise ValueError("Could not connect to Prometheus.")
@@ -105,9 +107,9 @@ class ResourceTracker:
             self.namespaces = namespaces
             self.initialize_and_validate_metrics()
 
-            try:
+            if os.getenv("KUBERNETES_SERVICE_HOST"):
                 config.load_incluster_config()
-            except Exception as e:
+            else:
                 config.load_kube_config()
             self.k8s_api_client = client.CoreV1Api()
             logger.info("Resource Tracker initialized.")
@@ -134,23 +136,60 @@ class ResourceTracker:
         else:
             raise ValueError("Prometheus does not provide a vaild network metric.")
         
-        if "kube_node_info" in available:
-            info = self.prm.get_current_metric_value("kube_node_info")
-            # Build a mapping from instance to the node name (instance: IP:9100||10250 --> node exporter + prometheus operator port) 
-            self.node_map = {}
-            for entry in info:
-                metric = entry["metric"]
-                node_name = metric.get("node")
-                internal_ip = metric.get("internal_ip")
-                self.node_map[internal_ip] = node_name
-        else:
-            self.node_map = {}
+        # Initialize node_map - will be refreshed during each track() call
+        logger.info("prometheus_url is set, initializing node_map. and fetching meticis.")
+        self.node_map = {}
+        self._refresh_node_map()
+
+    def _refresh_node_map(self):
+        """Refresh the node mapping from IP to node name"""
+        try:
+            available = set(self.prm.all_metrics())
+            if "kube_node_info" in available:
+                info = self.prm.get_current_metric_value("kube_node_info")
+                # Build a mapping from instance to the node name (instance: IP:9100||10250 --> node exporter + prometheus operator port) 
+                new_node_map = {}
+                for entry in info:
+                    metric = entry["metric"]
+                    node_name = metric.get("node")
+                    internal_ip = metric.get("internal_ip")
+                    if node_name and internal_ip:
+                        new_node_map[internal_ip] = node_name
+                
+                # Only update if we got valid data
+                if new_node_map:
+                    self.node_map = new_node_map
+                    logger.debug(f"Refreshed node_map: {self.node_map}")
+                else:
+                    logger.warning("Failed to refresh node_map - no valid kube_node_info data")
+            else:
+                logger.warning("kube_node_info metric not available for node mapping")
+        except Exception as e:
+            logger.warning(f"Failed to refresh node_map: {e}")
 
     def update(self):
         try:
             self.track()
         except Exception as e:
             logger.error("Error while updating resource tracker: " + str(e))
+
+    def _get_current_pod_names(self, namespace: str):
+        """
+        Get the names of all currently running pods in the specified namespace.
+        This is used to validate that metrics correspond to actual existing pods.
+        """
+        try:
+            pods_request = self.k8s_api_client.list_namespaced_pod(namespace)
+            current_pod_names = set()
+            for pod in pods_request.items:
+                # Only include pods that are running or pending (not terminating)
+                if pod.metadata.deletion_timestamp is None:
+                    current_pod_names.add(pod.metadata.name)
+            logger.debug(f"Found {len(current_pod_names)} current pods in namespace {namespace}")
+            return current_pod_names
+        except Exception as e:
+            logger.warning(f"Failed to get current pod names for namespace {namespace}: {e}")
+            return set()  # Return empty set on error to avoid blocking metrics collection
 
     def fetch_pods(self):
         pods = {}
@@ -227,7 +266,7 @@ class ResourceTracker:
                 n.wattage_scaph = scaphandre_result.get(node_name, {"value":0})["value"]
                 n.wattage_auxilary = auxilary_wattage_result.get(node_name, {"value":0})["value"]
             else:
-                print(f"No node_name found for {node}, setting wattages to 0")
+                logger.debug(f"No node_name found for {node} (IP: {ip}) in node_map {list(self.node_map.keys())}, setting wattages to 0")
                 n.wattage_kepler = 0
                 n.wattage_scaph = 0
                 n.wattage_auxilary = 0
@@ -261,6 +300,9 @@ class ResourceTracker:
         kepler_consumption_result = self.get_pod_metrics(self.prm.custom_query(kepler_consumtion),node_or_instance_label="node", pod_label="pod_name")
         scaphandre_consumption_result = self.get_scaphandre_metrics(self.prm.custom_query(scraphandre_consumtion), pod_index)
 
+        # Get current pods from Kubernetes API to validate against stale metrics
+        current_pods = self._get_current_pod_names(namespace)
+        
         pods = []
         keys = set().union(scaphandre_consumption_result.keys(), kepler_consumption_result.keys(), cpu_pod_result.keys(), memory_pod_result.keys())
         
@@ -270,6 +312,11 @@ class ResourceTracker:
             return val
         
         for process in keys:
+            # Validate that this pod actually exists in the current cluster
+            if process not in current_pods:
+                logger.debug(f"Skipping metrics for pod {process} - not found in current cluster (likely stale metrics)")
+                continue
+                
             pod = PodUsage()
             pod.collection_time = datetime.datetime.now().replace(microsecond=0)
             pod.name = process
@@ -285,11 +332,19 @@ class ResourceTracker:
             pod.kepler_consumtion =  float(kepler["value"])
             pod.scaphandre_consumtion =  float(scaphandre["value"])
             pod.network_usage = get_value(process, network_pod_result)["value"]
-            # XXX warining assumtion instance is the same for all metrics
+            # XXX warning assumption instance is the same for all metrics
             instance = set([cpu["instance"], memory["instance"], kepler["instance"], scaphandre["instance"]])
             instance.discard("unknown")
-            assert len(instance) == 1, f"Instance mismatch: {instance}"
-            pod.instance = instance.pop()
+            
+            # Handle instance mismatch more gracefully
+            if len(instance) == 0:
+                logger.warning(f"No valid instance found for pod {process}, skipping")
+                continue
+            elif len(instance) > 1:
+                logger.warning(f"Instance mismatch for pod {process}: {instance}, using first available")
+                pod.instance = next(iter(instance))  # Use first available instance
+            else:
+                pod.instance = instance.pop()
             observation_time = min(cpu["timestamp"], memory["timestamp"], kepler["timestamp"], scaphandre["timestamp"])
             pod.observation_time = observation_time.replace(microsecond=0)
             pods.append(pod)
@@ -351,6 +406,9 @@ class ResourceTracker:
 
     def track(self):
         if self.prm:
+            # Refresh node mapping before each tracking cycle
+            self._refresh_node_map()
+            
             pod_index = self.fetch_pods()
             nodes = self._query_nodes()
             for node in nodes:

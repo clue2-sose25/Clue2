@@ -1,4 +1,3 @@
-import io
 import json
 import os
 from pathlib import Path
@@ -7,14 +6,15 @@ import tempfile
 from typing import List, Optional
 import zipfile
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from clue_deployer.src.configs.configs import ENV_CONFIG
+from clue_deployer.src.configs.configs import CONFIGS
 from clue_deployer.src.logger import logger
 
-SUT_CONFIGS_DIR = ENV_CONFIG.SUT_CONFIGS_PATH
-RESULTS_DIR = ENV_CONFIG.RESULTS_PATH
-CLUE_CONFIG_PATH = ENV_CONFIG.CLUE_CONFIG_PATH
+SUT_CONFIGS_DIR = CONFIGS.env_config.SUT_CONFIGS_PATH
+RESULTS_DIR = CONFIGS.env_config.RESULTS_PATH
+CLUE_CONFIG_PATH = CONFIGS.env_config.CLUE_CONFIG_PATH
+
 
 router = APIRouter()
 
@@ -263,6 +263,7 @@ async def delete_result_by_uuid(uuid: str):
         logger.exception(f"Unexpected error while deleting experiment {uuid}.")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while deleting experiment: {str(e)}")
 
+
 def create_zip_from_directory(source_dir: Path, zip_path: Path) -> None:
     """Create a ZIP file containing all contents of the source directory."""
     with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
@@ -330,72 +331,3 @@ async def download_experiment_by_uuid(uuid: str):
         logger.exception(f"Unexpected error while downloading experiment {uuid}.")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while downloading experiment: {str(e)}")
 
-# @router.get("/api/results/assets/{result_id}")
-# async def get_results(result_id:str):
-#     results_base_path = Path(RESULTS_DIR)
-    
-#     # Check for results directory
-#     if not results_base_path.is_dir():
-#         logger.error(f"Results directory not found: {results_base_path}")
-#         raise HTTPException(status_code=404, detail=f"Results directory not found: {results_base_path}")
-    
-#     try:
-#         # Parse the result ID to extract components
-#         # Expected format: timestamp_workload_branch_experiment_number
-#         id_parts = result_id.split('_')
-#         if len(id_parts) < 4:
-#             raise HTTPException(status_code=400, detail="Invalid result ID format")
-        
-#         # Join the remaining parts back (in case workload or branch names contain underscores)
-#         remaining_parts = id_parts[:-1]
-        
-#         # Find the result by searching through the directory structure
-#         for results_dir in results_base_path.iterdir():
-#             if not results_dir.is_dir():
-#                 continue
-                
-#             timestamp = results_dir.name.strip()
-            
-#             for workload_dir in results_dir.iterdir():
-#                 if not workload_dir.is_dir():
-#                     continue
-                    
-#                 workload_name = workload_dir.name.strip()
-                
-#                 for branch_dir in workload_dir.iterdir():
-#                     if not branch_dir.is_dir():
-#                         continue
-                        
-#                     branch_name = branch_dir.name.strip()
-                    
-#                     # Check if this combination matches our ID
-#                     expected_id = f"{timestamp}_{workload_name}_{branch_name}"
-#                     if expected_id == result_id:
-#                         # Verify the experiment directory exists
-#                         exp_dir = branch_dir
-#                         if not exp_dir.is_dir():
-#                             continue
-                        
-#                         exp_dir = exp_dir/"0"
-#                         with open(os.path.join(exp_dir, "metrics.json"), "r") as f:
-#                             metrics = json.load(f)
-
-#                         return {
-#                             "metrics": metrics,
-#                             "cpu_svg": read_svg("cpu_usage", exp_dir),
-#                             "memory_svg": read_svg("memory_usage", exp_dir),
-#                             "wattage_svg": read_svg("wattage_kepler", exp_dir),
-#                         }
-        
-#         # If we get here, the result wasn't found
-#         raise HTTPException(status_code=404, detail=f"Result with ID '{result_id}' not found")
-        
-#     except HTTPException:
-#         # Re-raise HTTP exceptions
-#         raise
-#     except PermissionError:
-#         logger.exception("Permission error while accessing results directory.")
-#         raise HTTPException(status_code=500, detail="Permission denied when accessing results.")
-#     except Exception as e:
-#         logger.exception(f"Unexpected error while retrieving result '{result_id}'.")
-#         raise HTTPException(status_code=500, detail=f"An unexpected error occurred while retrieving result: {str(e)}")

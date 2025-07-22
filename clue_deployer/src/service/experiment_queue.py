@@ -1,55 +1,63 @@
-from multiprocessing import Queue
+from multiprocessing import Manager, Condition
 from clue_deployer.src.models.deploy_request import DeployRequest
+from queue import Queue
 
 
-class ExperimentQueue:
+class ExperimentQueue(Queue):
     def __init__(self, condition=None):
+        super().__init__() 
         self.condition = condition
-        self.queue = Queue()
-        self._mirror = []
+        manager = Manager()  # Create a manager for shared objects
         self._last_experiment = None
 
     @property
     def last_experiment(self):
-        if self.last_experiment is None:
-            raise ValueError("No experiment has been dequeued yet.")
-        return self.last_experiment
-
+        with self.mutex:
+            if self._last_experiment is None:
+                raise ValueError("No experiment has been dequeued yet.")
+            return self._last_experiment
 
     @last_experiment.setter
     def last_experiment(self, value):
-        self._last_experiment = value
-    
+        with self.mutex:
+            self._last_experiment = value
+
     def enqueue(self, experiment: DeployRequest):
         with self.condition:
-            self.queue.put(experiment)
-            self._mirror.append(experiment)
+            self.put(experiment)
             self.condition.notify()  # Notify the worker that a new item is available
 
     def dequeue(self):
-        experiment = self.queue.get()
-        if experiment in self._mirror:
-            self._mirror.remove(experiment)
+        experiment = self.get()  
         self.last_experiment = experiment
         return experiment
+    
+    def get_item_at_index(self, index):
+        with self.mutex:
+            return self.queue[index]
+
+    def remove_item_at_index(self, index):
+        with self.mutex:
+            item = self.queue[index]
+            del self.queue[index]
+            self.unfinished_tasks -= 1
+            self.not_full.notify()
+            return item
 
     def is_empty(self):
-        return self.queue.empty()
+        return self.empty()
 
     def size(self):
-        return self.queue.qsize()
+        return len(self.queue)
 
     def flush(self):
-        self.queue = Queue()
-        self._mirror.clear()
+        with self.mutex:
+            self.queue.clear()        # Clear the underlying deque
+            self.unfinished_tasks = 0 # Reset unfinished tasks
+            self.not_full.notify_all()  # Notify any waiting threads
 
     def __repr__(self):
-        return f"<ExperimentQueue size={len(self._mirror)} contents={self._mirror}>"
+        return f"<ExperimentQueue size={len(self.queue)} contents={list(self.queue)}>"
 
     def get_all(self):
-        return list(self._mirror)
-
-
-
-
-    
+        return list(self.queue)  # Return a copy of the shared mirror

@@ -2,7 +2,7 @@ FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies including build tools for Python packages
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     curl \
@@ -16,6 +16,10 @@ RUN apt-get update && \
     docker.io \
     dos2unix \
     openssh-client \
+    build-essential \
+    gcc \
+    g++ \
+    python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install kubectl
@@ -38,10 +42,14 @@ RUN mkdir -p /app/data
 # Install Python dependencies
 RUN uv sync
 ENV PATH="/app/.venv/bin:$PATH"
+ENV PYTHONPATH="/app"
 
 # Copy the rest of the necessary files
 COPY clue_deployer /app/clue_deployer
 
+# Copy the example result from the Original CLUE paper
+RUN mkdir -p /app/data/teastore/2025-05-11_12-00-00
+COPY clue_deployer/result_example/teastore/2025-05-11_12-00-00 /app/data/teastore/2025-05-11_12-00-00
 
 # Fix the line endings
 RUN dos2unix /app/clue_deployer/entrypoint.sh \

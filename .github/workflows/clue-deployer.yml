@@ -46,6 +46,7 @@ jobs:
           tags: |
             ghcr.io/clue2-sose25/clue2-${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.short_sha }}
             ghcr.io/clue2-sose25/clue2-${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+            ghcr.io/clue2-sose25/clue2-${{ env.IMAGE_NAME }}:latest
             ghcr.io/clue2-sose25/clue2-${{ env.IMAGE_NAME }}:pr-test
             ${{ github.ref_name == 'main' && format('ghcr.io/clue2-sose25/clue2-{0}:latest', env.IMAGE_NAME) || '' }}
           push: true

@@ -25,6 +25,8 @@ services:
       - "5001:80"
     environment:
       DOCKER_BUILDKIT: 1
+      NGINX_RESOLVER: ${NGINX_RESOLVER}
+      NGINX_RESOLVER_VALID: 30s
     networks:
       - clue2
 
@@ -38,11 +40,13 @@ services:
     ports:
       - "9001:8000"
       - "5678:5678"
+      - "8050:8050" # for result Server
     privileged: true
     depends_on:
       - registry
     environment:
       DOCKER_BUILDKIT: 1
+      ENABLE_DEBUG: ${ENABLE_DEBUG}
       SUT: ${SUT}
       VARIANTS: ${VARIANTS}
       WORKLOADS: ${WORKLOADS}
@@ -52,6 +56,13 @@ services:
       KUBE_CONFIG: ${KUBE_CONFIG}
       PATCH_LOCAL_CLUSTER: ${PATCH_LOCAL_CLUSTER}
       CLUSTER_PROXY_COMMAND: ${CLUSTER_PROXY_COMMAND}
+      PRECONFIGURE_CLUSTER: ${PRECONFIGURE_CLUSTER}
+      GRAFANA_URL: ${GRAFANA_URL}
+      GRAFANA_PORT: ${GRAFANA_PORT}
+      PROMETHEUS_RELEASE_NAME: ${PROMETHEUS_RELEASE_NAME}
+      PROMETHEUS_NAMESPACE: ${PROMETHEUS_NAMESPACE}
+      GRAFANA_USERNAME: ${GRAFANA_USERNAME}
+      GRAFANA_PASSWORD: ${GRAFANA_PASSWORD}
     volumes:
       # CLUE Configs
       - ./clue-config.yaml:/app/clue-config.yaml
@@ -122,7 +133,7 @@ services:
       - registry
     environment:
       DOCKER_BUILDKIT: 1
-      OTS_EXP_NAME: ${OTS_EXP_NAME}
+      TOYSTORE_EXP_NAME: ${TOYSTORE_EXP_NAME}
     volumes:
       # CLUE Configs
       - ./clue-config.yaml:/app/clue-config.yaml
@@ -138,7 +149,7 @@ services:
       - ots
     build:
       context: .
-      dockerfile: ./clue_loadgenerator/builder/Dockerfile
+      dockerfile: ./clue_loadgenerator/Dockerfile
     container_name: loadgenerator-builder
     privileged: true
     depends_on:
@@ -152,9 +163,28 @@ services:
     networks:
       - clue2
 
+  # Grafana for dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USERNAME}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/grafana_dashboard.json:/var/lib/grafana/dashboards/kepler-dashboard.json
+      - ./grafana/prometheus.yml:/etc/grafana/prometheus.yml
+    networks:
+      - clue2
+
 volumes:
   registry-data:
   results-deployer-data:
+  grafana-data:
 
 networks:
   clue2:

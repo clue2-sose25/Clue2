@@ -143,7 +143,9 @@ const ResultsPage = () => {
         return "!text-orange-500";
       case "FAILED":
         return "!text-red-600";
-      case "COMPLETED":
+      case "STOPPED":
+        return "!text-red-500";
+      case "SUCCESS":
         return "!text-green-600";
       default:
         return "!text-gray-700";

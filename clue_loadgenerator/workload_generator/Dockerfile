@@ -1,0 +1,17 @@
+FROM python:3.9-slim-bullseye
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends build-essential && \
+    rm -rf /var/lib/apt/lists/*
+    
+WORKDIR /app
+
+COPY workload_generator/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY workload_generator/entrypoint.sh .
+RUN chmod +x entrypoint.sh
+
+EXPOSE 8089
+
+ENTRYPOINT ["./entrypoint.sh"]
