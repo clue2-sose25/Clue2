@@ -1,15 +1,16 @@
 import json
-import multiprocessing as mp
 from contextlib import contextmanager
+from multiprocessing.managers import DictProxy
+import multiprocessing as mp
+from multiprocessing.sharedctypes import Synchronized
+from typing import Any
 from clue_deployer.src.service.experiment_queue import ExperimentQueue
 from clue_deployer.src.logger import get_child_process_logger, logger, shared_log_buffer, process_logger
 from clue_deployer.src.models.deploy_request import DeployRequest
 from clue_deployer.src.models.experiment import Experiment
 from clue_deployer.src.main import ExperimentRunner
 from clue_deployer.src.configs.configs import CONFIGS, Configs
-from fastapi import HTTPException
 from kubernetes.client import CoreV1Api
-from kubernetes.client.exceptions import ApiException   
 from clue_deployer.src.service.status_manager import StatusManager, StatusPhase
 from clue_deployer.src.service.final_status import FinalStatus
 
@@ -40,22 +41,12 @@ class Queuer:
         self.core_v1_api = CoreV1Api()
     
     @property
-    def current_experiment(self) -> DeployRequest | None:
+    def current_experiment(self) -> Experiment | None:
         """
         Get the current deployment request from the shared container.
         """
         experiment : Experiment | None = self.shared_container.get('current_experiment')
-        if experiment is None:
-            return None
-        
-        # Convert Experiment to DeployRequest
-        return DeployRequest(
-            variants=[v.name for v in experiment.variants],
-            workloads=[w.name for w in experiment.workloads],
-            sut=experiment.sut,
-            n_iterations=experiment.n_iterations,
-            deploy_only=experiment.deploy_only
-        )
+        return experiment
 
     @current_experiment.setter
     def current_experiment(self, experiment: Experiment):
@@ -71,28 +62,27 @@ class Queuer:
                 self.shared_flag,
                 self.state_lock,
                 self.is_deploying,
-                self.queue_condition,  # Pass the same condition
+                self.queue_condition,
                 self.experiment_queue,
                 self.shared_container,
             )
         )
 
     def _worker_loop(self, 
-                     shared_flag, 
-                     state_lock, 
-                     is_deploying, 
-                     queue_condition,  # Use the passed condition
-                     experiment_queue, 
-                     shared_container):
+                     shared_flag: Synchronized, 
+                     state_lock: Any, 
+                     is_deploying: Synchronized, 
+                     queue_condition: Any,
+                     experiment_queue: ExperimentQueue, 
+                     shared_container: DictProxy) -> None:
         
         # Create worker-specific logger
         worker_logger = get_child_process_logger("WORKER", shared_log_buffer)
-        
         worker_logger.info("Worker process started and ready to deploy experiments.")
         
         try:
             while shared_flag.value:
-                experiment = None
+                deploy_request = None
                 
                 # Acquire the queue condition lock and check for work
                 with queue_condition:
@@ -120,16 +110,13 @@ class Queuer:
                         worker_logger.info("Set deployment state to active")
 
                     # Dequeue the experiment
-                    experiment = experiment_queue.dequeue()
-                    worker_logger.info(f"Dequeued experiment for SUT: {experiment.sut}")
-                    
-                    # Set current experiment in shared container
-                    shared_container['current_experiment'] = experiment
+                    deploy_request : DeployRequest = experiment_queue.dequeue()
+                    worker_logger.info(f"Dequeued experiment for SUT: {deploy_request.sut}")
 
                 # Process the experiment outside of the queue lock
-                if experiment:
+                if deploy_request:
                     try:
-                        sut_filename = f"{experiment.sut}.yaml"
+                        sut_filename = f"{deploy_request.sut}.yaml"
                         sut_path = SUT_CONFIGS_DIR.joinpath(sut_filename)
                         
                         if not sut_path.exists():
@@ -138,30 +125,26 @@ class Queuer:
                         
                         configs = Configs(sut_config_path=sut_path, clue_config_path=CLUE_CONFIG_PATH)
                     
-                        worker_logger.info(f"Starting deployment for SUT {experiment.sut}")
-                        runner = ExperimentRunner(
+                        worker_logger.info(f"Starting deployment for SUT {deploy_request.sut}")
+                        experiment_runner = ExperimentRunner(
                             configs,
-                            variants=experiment.variants,
-                            workloads=experiment.workloads,
-                            sut=experiment.sut,
-                            deploy_only=experiment.deploy_only,
-                            n_iterations=experiment.n_iterations,
+                            variants=deploy_request.variants,
+                            workloads=deploy_request.workloads,
+                            sut=deploy_request.sut,
+                            deploy_only=deploy_request.deploy_only,
+                            n_iterations=deploy_request.n_iterations,
                         )
                         
                         # Update shared container with the actual experiment object
-                        shared_container['current_experiment'] = runner.experiment
+                        shared_container['current_experiment'] = experiment_runner.experiment
                         
-                        # Get experiment from shared container
-                        current_exp = shared_container['current_experiment']
-                        current_exp.make_experiemnts_dir()
+                        with self.experiment_manager_worker(deploy_request.sut, worker_logger, shared_container):
+                            experiment_runner.main()
                         
-                        with self.experiment_manager_worker(experiment.sut, worker_logger, shared_container):
-                            runner.main()
-                        
-                        worker_logger.info(f"Successfully completed deployment for SUT {experiment.sut}")
+                        worker_logger.info(f"Successfully completed deployment for SUT {deploy_request.sut}")
                         
                     except Exception as e:
-                        worker_logger.error(f"Deployment process failed for SUT {experiment.sut}: {str(e)}")
+                        worker_logger.error(f"Deployment process failed for SUT {deploy_request.sut}: {str(e)}")
                         
                         # Perform cleanup for failed experiment
                         try:
@@ -218,7 +201,8 @@ class Queuer:
             raise RuntimeError("Experiment queue is empty. Cannot start worker.")
             
         self.shared_flag.value = True
-        self._new_process()  # Create a new process instance
+        # Create a new process instance and start it
+        self._new_process()  
         self.process.start()
         
         # Notify the worker that there's work to do
