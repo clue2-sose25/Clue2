@@ -294,11 +294,11 @@ const ParametersSelection: React.FC = () => {
           type="number"
           min="1"
           className="border p-2 w-full"
-          value={currentDeployment.iterations}
+          value={currentDeployment.n_iterations}
           onChange={(e) =>
             setCurrentDeployment({
               ...currentDeployment,
-              iterations: parseInt(e.target.value) || 1,
+              n_iterations: parseInt(e.target.value) || 1,
             })
           }
         />

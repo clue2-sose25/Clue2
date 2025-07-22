@@ -2,6 +2,6 @@ export interface DeploymentForm {
   sut: string | null;
   variants: string[];
   workloads: string[];
-  iterations: number;
+  n_iterations: number;
   deploy_only: boolean;
 }
