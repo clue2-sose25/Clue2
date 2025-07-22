@@ -1,46 +1,47 @@
 <div align="center">
-  <h1 style="padding:15px;border-bottom: 0;">CLUE: Cloud-native Sustainability Evaluator</h1>
+  <h1 style="padding:15px;border-bottom: 0;">CLUE: Cloud-Native Sustainability Evaluator</h1>
 </div>
 
 ## 📢 About the Project
 
-Clue is a benchmarking and observability framework for gathering and compiling sustainability and quality reports on changes in cloud-native applications.
+CLUE is a benchmarking and observability framework designed to gather and compile sustainability and quality reports for cloud-native applications. It enables the evaluation of changes by integrating seamlessly into your CI/CD pipeline or functioning as a standalone tool for assessing prototypes.
 
-It can be used as part of your CI/CD pipeline to evaluate the impact of changes or as a standalone tool to evaluate prototypes you are working on.
-
-The framework is designed to be extensible and can be easily integrated with existing systems, relying on Prometheus to collect all relevant metrics. Moreover, we are currently focusing on Kubernetes as the orchestrator, so as long as your application runs on Kubernetes (Helm chart deployment), you can use Clue to evaluate it.
+The framework is extensible and integrates effortlessly with existing systems, leveraging Prometheus for comprehensive metrics collection. Currently, CLUE focuses on Kubernetes as the orchestrator. As long as your application operates on Kubernetes (via Helm chart deployment), CLUE can evaluate its performance and sustainability.
 
 ## 📦 Prerequisites
 
-- Docker, e.g. 20.10
-- Kubernetes Cluster, e.g. 1.29 (for local testing purposes: [kind](https://kind.sigs.k8s.io/), e.g. 0.29.0), with:
-  - a linux based cluster, with at least two nodes running [Kepler](https://sustainable-computing.io/installation/kepler-helm/), a [NodeExporter](https://observability.thomasriley.co.uk/monitoring-kubernetes/metrics/node-exporter/), and [Prometheus](https://prometheus.io/) stack installed. If the tracker does not find any energy data, the experiment will start, but not generate any meaningful metrics.
-  - for the serverless variants, `knative` installed
-  - for additional external power readings, connect e.g. a Tapo device (out of scope of this Readme, read the [CLUE scientific paper](https://ieeexplore.ieee.org/abstract/document/10978924/))
+- **Docker** (e.g., version 20.10 or later)
+- **Kubernetes Cluster** (e.g., version 1.29 or later). For local testing, we recommend [kind](https://kind.sigs.k8s.io/) (e.g., version 0.29.0 or later). The cluster must include:
+  - A Linux-based cluster with at least two nodes, equipped with:
+    - [Kepler](https://sustainable-computing.io/installation/kepler-helm/) for energy monitoring
+    - [NodeExporter](https://observability.thomasriley.co.uk/monitoring-kubernetes/metrics/node-exporter/) for node metrics
+    - [Prometheus](https://prometheus.io/) for metrics collection and storage  
+      _Note:_ If Kepler detects no energy data, experiments will proceed but won’t yield meaningful sustainability metrics.
+  - For serverless variants: [Knative](https://knative.dev/) installed on the cluster
+  - For additional external power readings: Connect a device such as a Tapo smart plug (outside the scope of this README; refer to the [CLUE scientific paper](https://ieeexplore.ieee.org/abstract/document/10978924/) for details)
 
-## 🚀 System setup
+## 🚀 System Setup
 
-> [!CAUTION]
-> Please note that this repository also contains work in progress parts -- not all CLUE features and experiment branches that are not mentioned in the paper might be thoroughly tested.
+> [!CAUTION]  
+> Please note that this repository includes work-in-progress components. Not all CLUE features or experiment branches mentioned in the paper have been fully tested.
 
-In order to allow the usage of the CLUE2 in specific use cases, we offer a wide range of ways to deploy CLUE, depending on your needs and environment:
+To accommodate diverse use cases, CLUE2 offers multiple deployment options tailored to your specific needs and environment:
 
 ### 💻 CLUE2 Service + Web UI
 
-The easiest and recommended way to deploy CLUE on your local machine is to interact with our custom Web UI.</br>
-To deploy all necessary CLUE2 containers use:
+The simplest and recommended method for deploying CLUE2 on your local machine is through our custom Web UI. To deploy all necessary CLUE2 containers, run:
 
 ```bash
 docker compose up -d --build
 ```
 
-CLUE Web UI should be available on the [localhost:5001](http://localhost:5001). Before running experiments, please read the rest of README.
+The CLUE Web UI will be accessible at [http://localhost:5001](http://localhost:5001). Before running experiments, please review the remainder of this README.
 
-The UI container serves the built files via **Nginx**. When running in a cluster you may need to configure the DNS resolver so Nginx can reach the deployer service. This is done with the environment variables `NGINX_RESOLVER` and `NGINX_RESOLVER_VALID`. The base URL of the API can be customised with `API_BASE_URL`.
+The UI container serves built files using **Nginx**. When deployed in a cluster, you may need to configure the DNS resolver to enable Nginx to reach the deployer service. Use the environment variables `NGINX_RESOLVER` and `NGINX_RESOLVER_VALID` for this purpose. The API base URL can also be customized via `API_BASE_URL`.
 
 ### ⛓️ CLUE2 CLI
 
-For headless deployment of CLUE2, we support deploying it as a standalone docker container. To configure it, edit the `.env` file:
+For headless deployment, CLUE2 can be run as a standalone Docker container. Configure it by editing the `.env` file:
 
 ```env
 DEPLOY_AS_SERVICE=false
@@ -50,202 +51,179 @@ WORKLOADS=<workloads>
 N_ITERATIONS=<iterations>
 ```
 
-Where the `<sut_name>` being the name of the SUT configuration file in the `sut_configs` directory, e.g. `teastore.yaml`.
-</br> The `<variants>` should be a comma-separated list of variant names defined in the SUT configuration file, e.g. `baseline,serverless`.
-</br> The `<workloads>` should be a comma-separated list of workload names defined in the SUT configuration file, e.g. `shaped,fixed`.
-</br> The `<iterations>` is the number of iterations to run for each workload.
+- `<sut_name>`: The name of the SUT configuration file in the `sut_configs` directory (e.g., `teastore.yaml`)
+- `<variants>`: A comma-separated list of variant names from the SUT configuration file (e.g., `baseline,serverless`)
+- `<workloads>`: A comma-separated list of workload names from the SUT configuration file (e.g., `shaped,fixed`)
+- `<iterations>`: The number of iterations to execute for each workload
 
-Before running the CLI command, make sure to read the rest of the README, while CLUE will immediately start the experiments. CLUE2 can then be run with the following command:
+Before executing the CLI command, review the rest of this README, as CLUE2 will initiate experiments immediately. To run CLUE2, use:
 
 ```bash
 docker compose up --build clue-deployer
 ```
 
-For a test deployment of the SUT, without running the benchmark itself, change the `DEPLOY_ONLY` value to `true`. Some SUT may run some initial tasks on the startup, so before accessing the SUT, make sure to wait a minute to compensate for slow / unavailable SUTs.
+For a test deployment of the SUT without running the benchmark, set `DEPLOY_ONLY` to `true`. Some SUTs perform initial tasks at startup, so wait approximately one minute before accessing the SUT to account for delays or unavailability.
 
 ### 📦 CLUE GitHub Integration
 
-CLUE can also be easily integrated to any existing GitHub CI-CD Pipeline, taking use of our public action under `.github/actions/helm-deploy`. To successfully run CLUE action, several parameters need to be provided, including the base64 encoded kubeconfig is supplied via the `kubeconfig` input. The `namespace` and `values-file` inputs allow you to specify the target namespace and an override file for the chart.
+CLUE seamlessly integrates into any GitHub CI/CD pipeline using our public action at `.github/actions/helm-deploy`. To execute the action successfully, provide the following parameters:
 
-The artifact is available for download from the Web UI or it can be fetched in later jobs with `actions/download-artifact`.
+- A base64-encoded kubeconfig via the `kubeconfig` input
+- The target namespace via the `namespace` input
+- An override file for the chart via the `values-file` input
 
-For integration to any github repository, see the `clue_helm/values-toystore.yaml` for an example embedding of the configuration (or visit our [ToyStore](https://github.com/clue2-sose25/sustainable_toystore) repository for a working example). This example runs the `toystore` SUT with the `baseline` variant. Copy this file to your own repository and adjust the registry and tags. Provide the path via the `values-file` input of the action to deploy your SUT. For more details
+The resulting artifact can be downloaded from the Web UI or retrieved in subsequent jobs using `actions/download-artifact`.
 
-When mount a folder of Locust scripts, pass its location via the `values.yaml` input. The action copies that folder next to the chart and sets `loadGenerator.workloadDir` accordingly. If the chart is stored in a registry, supply its reference via the
-`chart-ref` input. Otherwise the action uses the `chart-path` (default `clue_helm`) to deploy a local copy.
+For integration into any GitHub repository, refer to `clue_helm/values-toystore.yaml` for an example configuration (or see our [ToyStore](https://github.com/clue2-sose25/sustainable_toystore) repository for a working example). This example deploys the `toystore` SUT with the `baseline` variant. To adapt it:
 
-Next, the deployer expects the selected SUT configuration file to be available under `/app/sut_configs/`. Supply the YAML content via the `sutConfig` value (and optional `sutConfigFileName`) so the chart can create a `sut-config`
-ConfigMap and mount it into both the `Deployment` and `Job`. The main CLUE configuration is also required at `/app/clue-config.yaml`. Provide its YAML via the `clueConfig` value so a `clue-config-file` ConfigMap gets mounted to that path.
+1. Copy `values-toystore.yaml` to your repository.
+2. Adjust the registry and image tags as needed.
+3. Provide the file path via the `values-file` input to deploy your SUT.
 
-Finally, encode the file and store the result as the `KUBECONFIG_B64` GitHub secret. See our example kubeconfig at:
+To include a folder of Locust scripts:
+
+- Specify the folder’s location in `values.yaml`.
+- The action copies the folder adjacent to the chart and sets `loadGenerator.workloadDir` accordingly.
+
+If the chart is stored in a registry, provide its reference via `chart-ref`. Otherwise, the action uses `chart-path` (default: `clue_helm`) to deploy a local copy.
+
+The deployer expects the SUT configuration file at `/app/sut_configs/`. Supply its YAML content via `sutConfig` (and optionally `sutConfigFileName`) to create a `sut-config` ConfigMap, mounted into both `Deployment` and `Job` resources. Similarly, provide the main CLUE configuration YAML via `clueConfig` for a `clue-config-file` ConfigMap, mounted at `/app/clue-config.yaml`.
+
+Finally, encode the kubeconfig file in base64 and store it as the `KUBECONFIG_B64` GitHub secret. Example command:
 
 ```bash
 base64 -w0 .github/actions/mock-kubeconfig.yaml
 ```
 
-## ✨ Cluster preparation
+## ✨ Cluster Preparation
 
-The SUT deployment and experiment will happen at the selected K8s cluster of choice. For local testing we recommend using `kind` cluster, however any cluster with following requirements should work:
+The SUT deployment and experiments will occur on your chosen Kubernetes cluster. For local testing, we recommend a `kind` cluster, though any cluster meeting these requirements will suffice:
 
-- `Prometheus Node Exporter` - we recommend the Kube Prometheus Stack helm chart, which includes e.g. Node Exporter and Grafana resources.
-- `Kepler` - we recommend to deploy the official `Kepler Helm chart` by following the official [Kepler docs](https://sustainable-computing.io/installation/kepler-helm/). If the `Prometheus Node Exporter` was setup before, one can skip the corresponding steps in the `Kepler` guide.
+- **Prometheus Node Exporter**: Install via the Kube Prometheus Stack Helm chart, which includes Node Exporter and Grafana resources.
+- **Kepler**: Deploy the official Kepler Helm chart per the [Kepler documentation](https://sustainable-computing.io/installation/kepler-helm/). Skip Node Exporter steps if already installed.
 
-The cluster's kubeconfig can be provided in multiple ways. By default `docker-compose` mounts `~/.kube/config` into the deployer container. Alternatively you can set `KUBECONFIG_FILE` to mount a different file or pass a base64 encoded configuration via the `KUBE_CONFIG` environment variable (useful for CI environments).
+The cluster’s kubeconfig can be supplied as follows:
 
-If `DEPLOY_AS_SERVICE` is enabled and no kubeconfig is provided, the backend starts without a cluster connection. You can then upload the configuration from the Web UI at `/cluster`. The local cluster patching can be disabled by setting `PATCH_LOCAL_CLUSTER=false`.
+- By default, `docker-compose` mounts `~/.kube/config` into the deployer container.
+- Set `KUBECONFIG_FILE` to mount a different file.
+- Pass a base64-encoded configuration via `KUBE_CONFIG` (ideal for CI environments).
 
-For clusters that are only reachable via a SSH tunnel, you can specify a proxy command, that is executed after the kubeconfig has been patched. Define `CLUSTER_PROXY_COMMAND` in your `.env` and mount the required SSH key via `SSH_KEY_FILE`. For example:
+If `DEPLOY_AS_SERVICE` is enabled without a kubeconfig, the backend starts without a cluster connection. Upload the configuration via the Web UI at `/cluster`. Disable local cluster patching by setting `PATCH_LOCAL_CLUSTER=false`.
+
+For clusters accessible only via an SSH tunnel, define a proxy command in `.env` with `CLUSTER_PROXY_COMMAND` and mount the SSH key via `SSH_KEY_FILE`. Example:
 
 ```bash
 CLUSTER_PROXY_COMMAND="ssh -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no -N -L 6443:remote-cluster:6443 user@bastion"
 SSH_KEY_FILE=~/.ssh/id_rsa
 ```
 
-The entrypoint ensures the key permissions are correct and starts the command in the background before the deployer connects to the cluster.
+The entrypoint script ensures correct SSH key permissions and runs the proxy command in the background before the deployer connects.
 
-### Using local `Kind` cluster
+### Using Local `kind` Cluster
 
-For local testing, we recommend using a `Kind` cluster, simply deployable by providing a config file. The cluster is configured to allow the usage of the local unsecure registry and to deploy the required number of nodes (at least 2) with designated node labels. Additionally, all created containers will be added to a custom `clue2` docker network. Deploy the pre-configured cluster using:
+For local testing, deploy a `kind` cluster with a provided configuration file. It supports the local insecure registry, deploys at least two nodes with specific labels, and adds containers to a `clue2` Docker network. Deploy it with:
 
 ```bash
 sh create-kind-cluster.sh
 ```
 
-### Using remote cluster
+### Using Remote Cluster
 
-When the `clue-deployer` is executed as a Pod in the same Kubernetes cluster, it automatically detects this by checking the `KUBERNETES_SERVICE_HOST` environment variable. In this case the in-cluster configuration is used and the `prepare_kubeconfig.py` step is skipped. Make sure the Pod runs with a `ServiceAccount` that has permissions to list and patch nodes and manage pods. `KUBERNETES_SERVICE_HOST` is automatically defined by Kubernetes for every container in the cluster, so you typically do not need to set it manually. An example RBAC manifest is provided in `clue_deployer/k8s/clue-deployer-rbac.yaml`. The local-cluster patching logic is disabled automatically when running in-cluster.
+When running `clue-deployer` as a Pod in the same Kubernetes cluster, it detects this via `KUBERNETES_SERVICE_HOST`. The in-cluster configuration is used, skipping `prepare_kubeconfig.py`. Ensure the Pod’s `ServiceAccount` has permissions to list/patch nodes and manage pods. An example RBAC manifest is at `clue_deployer/k8s/clue-deployer-rbac.yaml`. Local patching is disabled in-cluster.
 
-When running CLUE **outside** the cluster (for example via Docker Compose, but still deploying the experiments within the cluster) a kubeconfig must be supplied to the deployer. The container will patch the local cluster when `PATCH_LOCAL_CLUSTER=true` so the SUT images can be pulled from your registry.
+When running CLUE **outside** the cluster (e.g., via Docker Compose) but deploying experiments within it, supply a kubeconfig. The container patches the cluster if `PATCH_LOCAL_CLUSTER=true` to pull SUT images.
 
-To launch the deployer as a Kubernetes `Job`, apply the RBAC manifest and the provided example job file:
+To launch the deployer as a Kubernetes `Job`, apply:
 
 ```bash
 kubectl apply -f clue_deployer/k8s/clue-deployer-rbac.yaml
 kubectl apply -f clue_deployer/k8s/clue-deployer-job.yaml
 ```
 
-The job uses the `clue-deployer` ServiceAccount and stores results in a mounted volume. Adjust the `VARIANTS` and `WORKLOADS` variables in the manifest to suit your experiment.
+Adjust `VARIANTS` and `WORKLOADS` in the manifest as needed.
 
-#### Helm deployment
+#### Helm Deployment
 
-A basic Helm chart is provided under `clue_helm/` to run the deployer and web UI directly in a cluster. Install it with (e.g. using `ToyStore` values file):
+A Helm chart at `clue_helm/` runs the deployer and Web UI in-cluster. Install it with (e.g., `ToyStore` values):
 
 ```bash
 helm upgrade --install clue clue_helm --namespace clue --create-namespace -f clue_helm/values-toystore.yaml
 ```
 
-Set `imageRegistry` and other values in `values.yaml` to point to your images and configure the ingress host. The chart deploys all CLUE components into the designated namespace. SUT deployments are created in a separate namespace defined in the SUT config on nodes labeled `scaphandre=true`.
+Configure `imageRegistry` and other `values.yaml` settings for your images and ingress host. SUT deployments occur in a separate namespace on nodes labeled `scaphandre=true`.
 
-Running with the Helm chart means both the deployer and web UI operate **inside
-the cluster**. The chart includes a `Job` manifest for CI execution and a `Deployment` for a long-running service. A second job `clue-loadgenerator` can be used to run Locust in the cluster next to the deployer. Locust scripts are taken from the ConfigMap `loadgenerator-workload`, created from entries in `loadGenerator.workloadFiles` in the values file and mounted under `sut_configs/workloads/<sut>/`.
+The chart places the deployer and Web UI **inside the cluster**, including a `Job` for CI/CD, a `Deployment` for continuous operation, and a `clue-loadgenerator` Job for Locust. Scripts are sourced from the `loadgenerator-workload` ConfigMap, mounted at `sut_configs/workloads/<sut>/`.
 
-#### Locust workload deployment
+#### Locust Workload Deployment
 
-The `workload_runner.py` uses the `clue_loadgenerator` image to run Locust. For each path listed under `workloads[*].locust_files` in the SUT configuration a ConfigMap is created which contains the file content. Those ConfigMaps are mounted at
-`/app/locustfiles` in the load generator pod and referenced by the `LOCUST_FILE` environment variable. If the selected variant has `colocated_workload: true`, the pod runs inside the cluster. Otherwise the load generator container is executed locally next to the deployer. When deploying via Helm you can supply one or multiple scripts through `loadGenerator.workloadFiles`. The chart mounts them at `sut_configs/workloads/<sut>/` and sets `LOCUST_FILE` to a comma separated list of their paths before launching the `clue-loadgenerator` job. Alternatively you can put your Locust scripts in a folder and reference it via `loadGenerator.workloadDir`. All files in that folder become entries in the `loadgenerator-workload` ConfigMap. This is convenient when invoking the Helm chart from another repository: copy the folder next to the chart and pass its path through the GitHub action's `values.yaml` input. The action mounts the folder into the chart and sets `loadGenerator.workloadDir` automatically.
+The `workload_runner.py` script uses `clue_loadgenerator` to run Locust. ConfigMaps created from `workloads[*].locust_files` are mounted at `/app/locustfiles`, referenced by `LOCUST_FILE`. If `colocated_workload: true`, the pod runs in-cluster; otherwise, it runs locally. Via Helm, supply scripts through `loadGenerator.workloadFiles` or a folder via `loadGenerator.workloadDir`, which populates the `loadgenerator-workload` ConfigMap.
 
-## 🧪 Adding a new SUT support
+## 🧪 Adding a New SUT
 
-To add a new SUT (System Under Test), follow these steps:
+To integrate a new System Under Test (SUT):
 
-1. **Create a new SUT configuration file** in the `sut_configs` directory. Use an existing SUT as a template (we recommend teastore or toystore). It should be called `<sut_name>.yaml`.
-2. **Define the SUT's variants** in the `variants` section of the configuration file. Each variant should have a unique name and specify the brach of the Git repository containing the code for the SUT.
-3. **Build your images** and push them to the Docker registry specified in the `clue-config.yaml` file. You can use the local docker registry provided by CLUE or any other public/private registry. All required images for any given variant should be available in the specified Docker registry (including the workload generator described below), tagged by the selected `variant_name`.
-4. **Deploy Clue** with the new SUT configuration. You can use any of the options specified in the `System setup` section.
+1. **Create a Configuration File**: Place it in `sut_configs`, using `teastore.yaml` or `toystore.yaml` as a template. Name it `<sut_name>.yaml`.
+2. **Define Variants**: In the `variants` section, assign unique names and specify the Git branch with the SUT code.
+3. **Define workloads**: In the `workloads` section, define the possible workloads for the SUT, including the locust file names, used by the workload generator.
+4. **Build and Push Images**: Build images and push them to the registry in `clue-config.yaml`. Tag them with the variant name.
+5. **Deploy CLUE**: Use any method from the `System Setup` section.
 
-### 🏁 Image registry
+### 🏁 Image Registry
 
-For the deployment of the SUT, CLUE connects to the provided docker image registry, specified in the `clue-config.yaml` file (`docker_registry_address`). CLUE expects all of the container images used by the SUTs to be present in the selected registry, including the workload generator image. Finally, the tags for the images should match the name of the currently deployed variant.
+CLUE connects to the registry at `docker_registry_address` in `clue-config.yaml`. All SUT images, including the workload generator, must be present and tagged with the variant name. By default, CLUE uses an insecure local registry. Update `clue-config.yaml` or the Web UI’s `Settings` page for a custom registry, ensuring access with `docker login` if authenticated.
 
-By default, CLUE deploys its own unsecure, local docker registry. To use any custom public or private registry, change the `clue-config.yaml` or visit the `Settings` page in our Web UI. Make sure CLUE will be able to access the images, by running `docker login` in case where authentication is needed.
+### 🧱 Building the CLUE Load Generator Image
 
-### 🧱 Building the image for the clue loadgenerator
-
-CLUE uses the `clue_loadgenerator` image to execute Locust workloads. The deployer orchestrates this through the `workload_runner.py` module. When a variant sets `colocated_workload: true`, the image is launched as a pod inside the cluster; otherwise the workload runs locally next to the deployer. As Clue comes with an integrated loadgenerator and developer just have to bring their config + locustfiles along with their SUT, it is required to once build the image for it and push it in the image registry.
+The `clue_loadgenerator` image runs Locust workloads via `workload_runner.py`. Build and push it with:
 
 ```bash
 docker compose up -d clue-loadgenerator-builder
 ```
 
-When deploying with the Helm chart, the builder container is not used directly. Ensure the load generator image produced by this step is pushed to the registry referenced in `values.yaml` so the cluster can pull it.
+For Helm, push the image to the registry in `values.yaml`. Locust files are mounted via ConfigMaps in remote clusters.
 
-Within a remote cluster, the Locust files listed in `workloads[*].locust_files` are packed into ConfigMaps and mounted into the container so you can customise your workload scripts without rebuilding the image.
+### 🧱 (Optional) Build Images for the Selected SUT
 
-### 🧱 (Optional) Build Images for the selected SUT
+Build SUT images based on the chosen SUT from `sut_configs`. Example commands:
 
-This step will differ based on the selected SUT. We provide a support for several SUTs listed in the `sut_configs` folder. Before running the CLUE deployer, all images of the selected SUT have to be built and stored in the specified image registry. The image registry path `docker_registry_address` can be changed in the main config (by default, CLUE uses the registry deployed in previous steps).
-
-To build images for the selected SUT, use one of the commands listed below.
-
-- [Teastore](https://github.com/ISE-TU-Berlin/sustainable_teastore)
+- [**Teastore**](https://github.com/ISE-TU-Berlin/sustainable_teastore)
 
   ```bash
   docker compose up -d --build teastore-builder
   ```
 
-  By default the script builds images for all experiments. To specify a single experiment you can modify the `.env` file and change the `TEASTORE_EXP_NAME` environment variable to contain the name of one of the experiments listed in the `sut_configs/teastore.yaml` file.
+  Modify `TEASTORE_EXP_NAME` in `.env` to build images for a specific variant.
 
-- [Open Telemetry Shop](https://github.com/clue2-sose25/opentelemetry-demo)
+- [**Open Telemetry Shop**](https://github.com/clue2-sose25/opentelemetry-demo)
 
   ```bash
   docker compose up -d --build ots-builder
   ```
 
-- [Toystore](https://github.com/clue2-sose25/sustainable_toystore) (a custom, simple SUT created for CLUE2)
+  Modify `TOYSTORE_EXP_NAME` in `.env` to build images for a specific variant.
+
+- [**Toystore**](https://github.com/clue2-sose25/sustainable_toystore) (a custom, simple SUT created for CLUE2)
 
   ```bash
   docker compose up -d --build toystore-builder
   ```
 
-Wait for the selected builder to be finished, indicated by its container showing a status `Exited`. To check if the images have been successfully stored in the registry, visit the `http://localhost:9000/v2/_catalog` page.
+  Modify `OTS_EXP_NAME` in `.env` to build images for a specific variant.
+
+Wait for the builder to exit, then verify images at `http://localhost:9000/v2/_catalog`.
 
 ## 🚀 CLUE2 Observability
 
-CLUE2 uses centralized configuration for all observability components. The Prometheus URL is defined in `clue-config.yaml` and used consistently across all components:
+CLUE2 centralizes observability configuration, with the Prometheus URL in `clue-config.yaml`, with default value for local `Kind` cluster:
 
 ```yaml
 prometheus_url: "http://clue-cluster-control-plane:30090"
 ```
 
-For visualization of the metrics, CLUE2 provides two main approaches for setting up the observability stack with Grafana dashboards.
+Two methods are offered for Grafana dashboards. Access Grafana post-deployment at:
 
-After successful deployment, you can access Grafana at:
+- URL: `http://localhost:30080` (installed automatically inside the cluster) or `http://localhost:3000` (deployed within docker compose stack)
+- Username: `admin`
+- Password: `prom-operator`
 
-- URL: `http://localhost:30080` (or your configured port)
-- Username: `admin` (or your configured username)
-- Password: `prom-operator` (or your configured password)
-
-The Kepler dashboard will be automatically imported and available in the Grafana interface, showing real-time sustainability metrics including energy consumption, carbon emissions, and resource utilization.
-
-### Docker Compose Setup (Recommended for local development)
-
-The simplest way to get started with Grafana is to use the automaticlly deployed Grafana container:
-
-```bash
-# Start the complete observability stack
-docker compose up -d --build
-```
-
-**Perfect for:**
-
-- Local development and testing
-- Quick prototyping
-- Learning and experimentation
-- CI/CD environments
-
-### Kubernetes Setup (For production/cluster environments)
-
-For full Kubernetes deployments with the CLUE experiment framework:
-
-```bash
-# Create Kind cluster (observability stack is automatically set up)
-./create-kind-cluster.sh
-```
-
-**Perfect for:**
-
-- Production environments
-- Multi-node clusters
-- Running CLUE experiments
-- Fully automated observability setup
-- Enterprise deployments
+The Kepler dashboard displays real-time sustainability metrics.
