@@ -15,10 +15,10 @@ config:
   wait_after_workloads: 120
 
 helm_replacements:
-  - value: "ghcr.io/clue2-sose25/sustainable_toystore/toystore-backend"
-    replacement: "registry:5000/clue/toystore-backend"
-  - value: "ghcr.io/clue2-sose25/sustainable_toystore/toystore-frontend"
-    replacement: "registry:5000/clue/toystore-frontend"
+  - value: "ghcr.io/clue2-sose25/sustainable_toystore/backend"
+    replacement: "registry:5000/clue/backend"
+  - value: "ghcr.io/clue2-sose25/sustainable_toystore/frontend"
+    replacement: "registry:5000/clue/frontend"
   - value: 'tag: "latest"'
     replacement: 'tag: "__EXPERIMENT_TAG__"'
 

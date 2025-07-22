@@ -29,7 +29,7 @@ def enqueue_experiment(request: list[DeployRequest]):
     logger.info(f"Enqueued {len(request)} deployment requests.")
     return {"message": f"Enqueued {len(request)} deployment requests."}
 
-@router.get("/api/queue/current", response_model=DeployRequest, status_code=status.HTTP_200_OK)
+@router.get("/api/queue/current", response_model=DeployRequest | None, status_code=status.HTTP_200_OK)
 async def get_current_deployment():
     logger.info("Fetching current deployment status.")
     experiment: Experiment = queuer.current_experiment
