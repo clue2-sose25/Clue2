@@ -56,7 +56,7 @@ N_ITERATIONS=<iterations>
 - `<workloads>`: A comma-separated list of workload names from the SUT configuration file (e.g., `shaped,fixed`)
 - `<iterations>`: The number of iterations to execute for each workload
 
-Before executing the CLI command, review the rest of this README, as CLUE2 will initiate experiments immediately. To run CLUE2, use:
+CLUE2 deployer will initiate experiments immediately. Therefore, make sure other required services are already up and running. Recommended way to do it is to deploy CLUE2 as the `Service + Web UI` option listed above and then re-build and re-deploy the `CLUE deployer` using:
 
 ```bash
 docker compose up --build clue-deployer
@@ -66,19 +66,15 @@ For a test deployment of the SUT without running the benchmark, set `DEPLOY_ONLY
 
 ### 📦 CLUE GitHub Integration
 
-CLUE seamlessly integrates into any GitHub CI/CD pipeline using our public action at `.github/actions/helm-deploy`. To execute the action successfully, provide the following parameters:
-
-- A base64-encoded kubeconfig via the `kubeconfig` input
-- The target namespace via the `namespace` input
-- An override file for the chart via the `values-file` input
+CLUE seamlessly integrates into any GitHub CI/CD pipeline using our public action at `.github/actions/helm-deploy/action.yaml`. CLUE GitHub action connects to the cluster provided via the base64-encoded kubeconfig and deploys CLUE2 pods in the provided namespace. Next, CLUE deployer reads the provided `values-<sut_name>.json` file and deploys & measures the selected SUT as K8s resources in the same cluster.
 
 The resulting artifact can be downloaded from the Web UI or retrieved in subsequent jobs using `actions/download-artifact`.
 
-For integration into any GitHub repository, refer to `clue_helm/values-toystore.yaml` for an example configuration (or see our [ToyStore](https://github.com/clue2-sose25/sustainable_toystore) repository for a working example). This example deploys the `toystore` SUT with the `baseline` variant. To adapt it:
+For details on integration into any GitHub repository, refer to `clue_helm/values-toystore.yaml` example configuration (or see our [ToyStore](https://github.com/clue2-sose25/sustainable_toystore) repository). Mentioned example deploys the `toystore` SUT with the `baseline` variant. To adapt it to your selected SUT:
 
-1. Copy `values-toystore.yaml` to your repository.
-2. Adjust the registry and image tags as needed.
-3. Provide the file path via the `values-file` input to deploy your SUT.
+1. Copy `values-toystore.yaml` to your repository and adjust its parameters as needed.
+2. Extend your existing GitHub CI-CD pipeline with the above mentioned CLUE2 action, providing all necessary parameters (see example configuration).
+3. Encode the kubeconfig file in base64 and store it as the `KUBECONFIG_B64` GitHub secret (see example config at `.github/actions/clue-deployer-outside-cluster/mock-kubeconfig.yaml`)
 
 To include a folder of Locust scripts:
 
@@ -88,12 +84,6 @@ To include a folder of Locust scripts:
 If the chart is stored in a registry, provide its reference via `chart-ref`. Otherwise, the action uses `chart-path` (default: `clue_helm`) to deploy a local copy.
 
 The deployer expects the SUT configuration file at `/app/sut_configs/`. Supply its YAML content via `sutConfig` (and optionally `sutConfigFileName`) to create a `sut-config` ConfigMap, mounted into both `Deployment` and `Job` resources. Similarly, provide the main CLUE configuration YAML via `clueConfig` for a `clue-config-file` ConfigMap, mounted at `/app/clue-config.yaml`.
-
-Finally, encode the kubeconfig file in base64 and store it as the `KUBECONFIG_B64` GitHub secret. Example command:
-
-```bash
-base64 -w0 .github/actions/mock-kubeconfig.yaml
-```
 
 ## ✨ Cluster Preparation
 
