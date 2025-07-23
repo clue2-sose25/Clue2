@@ -96,6 +96,7 @@ clueDeployer:
     DEPLOY_AS_SERVICE: "true"
     ENABLE_DEBUG: "false"
     HELM_DRIVER: configmap
+    SETUP_GRAFANA_DASHBOARD: "true"
     GRAFANA_USERNAME: admin
     GRAFANA_PASSWORD: prom-operator
     GRAFANA_URL: http://10.111.147.11

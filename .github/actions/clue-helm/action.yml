@@ -8,7 +8,7 @@ inputs:
     description: Kubeconfig file content when not using base64
     required: false
   chart-ref:
-    description: OCI reference to the Helm chart
+    description: OCI reference to the Helm chart, please set to '' /empty if using local chart path
     required: false
     default: oci://ghcr.io/clue2-sose25/clue2-helm/clue:latest
   chart-path:
@@ -35,10 +35,14 @@ inputs:
     description: Helm driver used to store release information
     required: false
     default: configmap
-  wait-seconds:
+  timeout-seconds:
+    description: Timeout for the experiment job in seconds
+    required: false
+    default: '600'
+  wait-github-actions:
     description: Seconds to wait after job completion before copying results
     required: false
-    default: '30'
+    default: '2'
 runs:
   using: composite
   steps:
@@ -79,7 +83,7 @@ runs:
 
     - name: Wait for clue-deployer job
       run: |
-        kubectl --kubeconfig "$KUBECONFIG" -n "${{ inputs.namespace }}" wait --for=condition=complete job/clue-deployer-job --timeout=450s
+        kubectl --kubeconfig "$KUBECONFIG" -n "${{ inputs.namespace }}" wait --for=condition=complete job/clue-deployer-job --timeout="${{ inputs.timeout-seconds }}s"
         sleep "${{ inputs.wait-seconds }}"
       shell: bash
 
