@@ -1,5 +1,5 @@
 # example values for running the teastore SUT
-imageRegistry: ghcr.io/issafadel
+imageRegistry: ghcr.io/clue2-sose25
 imagePullPolicy: Always
 sutConfigFileName: teastore.yaml
 sutConfig: |

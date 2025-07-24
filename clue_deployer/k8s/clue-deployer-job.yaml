@@ -16,7 +16,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: clue-deployer
-          image: ghcr.io/issafadel/clue2-deployer:latest
+          image: ghcr.io/clue2-sose25/clue2-deployer:latest
           env:
             - name: API_BASE_URL
               value: "http://clue-deployer:8000"
