@@ -173,23 +173,6 @@ kubectl apply -f clue_deployer/k8s/clue-deployer-job.yaml
 Adjust `VARIANTS` and `WORKLOADS` in the manifest as needed. If you manage RBAC outside the chart, set `rbac.create` to `false` in `values.yaml` before running the Helm deployment so it does not create duplicate resources. look to `clue_deployer/k8s/clue-deployer-rbac.yaml`.
 
 #### Helm Deployment
-+-------------------------------+
-|        Namespace            	|
-|  +------------------------+  	|
-|  |     CLUE-Deployer     	|	  |
-|  +------------------------+   |
-|            |                 	|
-|            v                 	|
-+-------------------------------+
-             |
-             v
-+-------------------------------+
-|        Namespace of SUT       |
-|  +------------------------+  	|
-|  |          SUT        	  |   |
-|  +------------------------+   |
-+-------------------------------+
-
 The Namespace of CLUE and the SUT could be the same or differnt. 
 
 A Helm chart at `clue_helm/` runs the deployer and Web UI in-cluster. It can be installed manually (e.g., `ToyStore` values):
