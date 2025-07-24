@@ -13,6 +13,7 @@ clueConfig: |
     local_platform_arch: "linux/arm64/v8"
     target_utilization: 70
 clueDeployer:
+  enabled: true
   image: "clue2-deployer"
   tag: "latest"
   serviceAccountName: clue-deployer
@@ -54,6 +55,8 @@ clueDeployer:
     # Default is configmap.
   job:
     enabled: false
+    # CI hint: disable the Deployment with `clueDeployer.enabled: false`
+    # and set `clueDeployer.job.enabled: true` to run the Job
 clueWebui:
   image: "clue2-webui"
   tag: "latest"

@@ -104,6 +104,8 @@ clueDeployer:
     PROMETHEUS_URL: http://130.149.158.32:32426
   job:
     enabled: false
+    # CI hint: disable the Deployment with `clueDeployer.enabled: false`
+    # and set `clueDeployer.job.enabled: true` to run the Job
 clueWebui:
   enabled: true
   image: clue2-webui

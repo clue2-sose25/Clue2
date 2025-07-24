@@ -31,11 +31,6 @@ spec:
                 name: clue-config-file
             - secretRef:
                 name: clue-secrets
-          envFrom:
-            - configMapRef:
-                name: clue-config
-            - secretRef:
-                name: clue-secrets
           volumeMounts:
             - name: clue-data
               mountPath: /app/data

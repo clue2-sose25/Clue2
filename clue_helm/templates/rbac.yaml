@@ -5,11 +5,15 @@ kind: ServiceAccount
 metadata:
   name: clue-deployer
   namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "clue.labels" . | nindent 4 }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: clue-deployer-cluster-role
+  labels:
+    {{- include "clue.labels" . | nindent 4 }}
 rules:
   - apiGroups: [""]
     resources: ["nodes"]
@@ -22,6 +26,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: clue-deployer-cluster-binding
+  labels:
+    {{- include "clue.labels" . | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -36,6 +42,8 @@ kind: Role
 metadata:
   name: clue-deployer-role
   namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "clue.labels" . | nindent 4 }}
 rules:
   - apiGroups: [""]
     resources:
@@ -59,6 +67,8 @@ kind: RoleBinding
 metadata:
   name: clue-deployer-binding
   namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "clue.labels" . | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -74,6 +84,8 @@ kind: Role
 metadata:
   name: clue-deployer-role
   namespace: {{ .Values.sutNamespace }}
+  labels:
+    {{- include "clue.labels" . | nindent 4 }}
 rules:
   - apiGroups: [""]
     resources:
@@ -97,6 +109,8 @@ kind: RoleBinding
 metadata:
   name: clue-deployer-binding
   namespace: {{ .Values.sutNamespace }}
+  labels:
+    {{- include "clue.labels" . | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role

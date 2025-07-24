@@ -1,79 +1,65 @@
---- 
-### this shell be used to deploy the clue-deployer service account and its associated roles and permissions in a Kubernetes cluster. if you dont want to let helm install the clue-deployer service account, you can use this file to deploy it manually.
-### To Apply this file, use the command:
-### kubectl apply -f clue-deployer-rbac.yaml  
-#
-#apiVersion: v1
-#kind: ServiceAccount
-#metadata:
-#  name: clue-deployer
-#  namespace: clue
-#---
-#apiVersion: rbac.authorization.k8s.io/v1
-#kind: ClusterRole
-#metadata:
-#  name: clue-deployer
-#rules:
-#- apiGroups: [""]
-#  resources:
-#    - pods
-#    - services
-#    - configmaps
-#    - nodes
-#  verbs: ["get", "list", "watch", "create", "patch", "update"]
-#---
-#apiVersion: rbac.authorization.k8s.io/v1
-#kind: ClusterRoleBinding
-#metadata:
-#  name: clue-deployer
-#roleRef:
-#  apiGroup: rbac.authorization.k8s.io
-#  kind: ClusterRole
-#  name: clue-deployer
-#subjects:
-#- kind: ServiceAccount
-#  name: clue-deployer
-#  namespace: default
----
+# RBAC resources for running the CLUE deployer manually
+# Apply with: kubectl apply -f clue_deployer/k8s/clue-deployer-rbac.yaml
+# Adjust the namespace as needed. These defaults match the Helm chart.
+# change the namespace in the metadata section if you want to deploy it in a different namespace!!
+
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: clue-deployer
-  namespace: {{ .Release.Namespace }}
+  namespace: clue
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: clue-deployer-role
+  name: clue-deployer-cluster-role
 rules:
   - apiGroups: [""]
-    resources: ["pods", "services"]
-    verbs: ["create", "delete", "deletecollection", "list", "get", "watch", "patch"]
-  - apiGroups: ["apps"]
-    resources: ["deployments", "statefulsets"]
-    verbs: ["create", "delete", "list", "get", "patch"]
-  - apiGroups: [""]
     resources: ["nodes"]
-    verbs: ["get", "list", "patch"]
-  - apiGroups: ["autoscaling"]
-    resources: ["horizontalpodautoscalers"]
-    verbs: ["create", "delete", "list", "get", "patch"]
+    verbs: ["get", "list"]
   - apiGroups: [""]
     resources: ["namespaces"]
     verbs: ["get", "list", "create"]
-  - apiGroups: [""]
-    resources: ["configmaps"]
-    verbs: ["create", "delete", "get", "list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: clue-deployer-binding
+  name: clue-deployer-cluster-binding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
+  name: clue-deployer-cluster-role
+subjects:
+  - kind: ServiceAccount
+    name: clue-deployer
+    namespace: clue
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: clue-deployer-role
+  namespace: clue
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services", "configmaps"]
+    verbs: ["create", "delete", "deletecollection", "list", "get", "watch", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets"]
+    verbs: ["create", "delete", "list", "get", "patch"]
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["create", "delete", "list", "get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: clue-deployer-binding
+  namespace: clue
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
   name: clue-deployer-role
 subjects:
   - kind: ServiceAccount
     name: clue-deployer
-    namespace:  {{ .Release.Namespace }}
+    namespace: clue
