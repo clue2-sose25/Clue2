@@ -72,19 +72,22 @@ runs:
       run: echo "CHART_PATH=${{ inputs.chart-path }}" >> "$GITHUB_ENV"
       shell: bash
 
+    - name: Set Helm driver
+      run: echo "HELM_DRIVER=${{ inputs.helm-driver }}" >> "$GITHUB_ENV"
+      shell: bash
+
     - name: Deploy with Helm
       run: |
         helm upgrade --install "${{ inputs.release-name }}" "$CHART_PATH" \
           --namespace "${{ inputs.namespace }}" --create-namespace \
           -f "${{ inputs.values-file }}" \
-          --set-string helmDriver="${{ inputs.helm-driver }}" \
           --kubeconfig "$KUBECONFIG"
       shell: bash
 
     - name: Wait for clue-deployer job
       run: |
         kubectl --kubeconfig "$KUBECONFIG" -n "${{ inputs.namespace }}" wait --for=condition=complete job/clue-deployer-job --timeout="${{ inputs.timeout-seconds }}s"
-        sleep "${{ inputs.wait-seconds }}"
+        sleep "${{ inputs.wait-github-actions }}"
       shell: bash
 
     - name: Copy results from pod

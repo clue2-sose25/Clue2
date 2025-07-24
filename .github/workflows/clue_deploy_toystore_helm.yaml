@@ -13,11 +13,37 @@ jobs:
         uses: azure/setup-helm@v3
       - name: Set up kubectl
         uses: azure/setup-kubectl@v3
-#      - name: Deploy CLUE with ToyStore
-#        uses: ./.github/actions/helm-deploy
+      - name: Reconstruct SSH key 
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.TU_CLUSTER_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 400 ~/.ssh/id_rsa
+      - name: using kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > $HOME/.kube/config
+          chmod 400 $HOME/.kube/config         
+#      - name: Tunnel SSH
+#        run: ssh "${{ vars.CLUSTER_PROXY_COMMAND }}" -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no &
+#        
+#      - name: Wait for SSH tunnel
+#        run: sleep 5
+#      - name: Deploy with Helm action
+#        uses: ./.github/actions/clue-helm
 #        with:
-#          kubeconfig: ${{ secrets.KUBE_CONFIG }}
+#          # Base64 encoded kubeconfig used for cluster access
+#          kubeconfig-base64: ${{ secrets.KUBE_CONFIG }}
+#          # Local path to the Helm chart
 #          chart-path: clue_helm
-#          release-name: clue-toystore
-#          namespace: clue
+#          # Helm release name
+#          release-name: clue
+#          # Values file selecting the SUT and variant
 #          values-file: clue_helm/values-toystore.yaml
+#          # Namespace for the release
+#          namespace: st-cp25clue2
+#          # Folder to copy the results into
+#          results-path: clue_results
+#          # Backend storage for Helm
+#          helm-driver: configmap
+#          # Timeout for the job in seconds
+#          timeout-seconds: 450

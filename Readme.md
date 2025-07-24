@@ -66,15 +66,41 @@ For a test deployment of the SUT without running the benchmark, set `DEPLOY_ONLY
 
 ### 📦 CLUE GitHub Integration
 
-CLUE seamlessly integrates into any GitHub CI/CD pipeline using our public action at `.github/actions/clue-helm/action.yaml`. CLUE GitHub action connects to the cluster provided via the base64-encoded kubeconfig and deploys CLUE2 pods in the provided namespace. Next, CLUE deployer reads the provided `values-<sut_name>.json` file and deploys & measures the selected SUT as K8s resources in the same cluster.
+CLUE seamlessly integrates into any GitHub CI/CD pipeline using the composite action located at `.github/actions/clue-helm`. The action connects to your cluster using a base64 encoded kubeconfig, deploys the CLUE Helm chart and triggers the benchmark job. The supplied `values-<sut_name>.yaml` file defines which SUT variant is executed. Note: clueDeployer should be setten enabled to false, the job down to true.
 
 The resulting artifact can be downloaded from the Web UI or retrieved in subsequent jobs using `actions/download-artifact`.
 
 For details on integration into any GitHub repository, refer to our custom SUT [ToyStore](https://github.com/clue2-sose25/sustainable_toystore) repository. For example values configuration, see `clue_helm/values-toystore.yaml`. Mentioned example deploys the `toystore` SUT with the `baseline` variant. To adapt it to your selected SUT:
 
 1. Copy `values-toystore.yaml` to your repository and adjust its parameters as needed.
-2. Extend your existing GitHub CI-CD pipeline with the above mentioned CLUE2 action, providing all necessary parameters (see example configuration).
-3. Encode the kubeconfig file in base64 and store it as the `KUBECONFIG_B64` GitHub secret (see example config at `.github/actions/clue-deployer-outside-cluster/mock-kubeconfig.yaml`)
+2. Extend your existing GitHub CI-CD pipeline with the `clue-helm` action and configure the inputs shown below.
+3. Encode the kubeconfig file in base64 and store it as the `KUBECONFIG_B64` GitHub secret (see example config at `.github/actions/clue-deployer-outside-cluster/mock-kubeconfig.yaml`).
+
+Example workflow snippet:
+
+```yaml
+# .github/workflows/clue.yml
+name: Run CLUE Benchmark
+on: [workflow_dispatch]
+
+jobs:
+  clue:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Deploy CLUE via Helm
+        uses: clue2-sose25/Clue2/.github/actions/clue-helm@main
+        with:
+          # base64-encoded kubeconfig for cluster access
+          kubeconfig-base64: ${{ secrets.KUBECONFIG_B64 }}
+          # Helm values selecting the SUT and variant
+          values-file: clue_helm/values-toystore.yaml
+          # Release identifiers
+          release-name: clue
+          namespace: clue
+          # Directory to store the results
+          results-path: clue_results
+```
 
 To include a folder of Locust scripts:
 
@@ -82,6 +108,13 @@ To include a folder of Locust scripts:
 - The action copies the folder adjacent to the chart and sets `loadGenerator.workloadDir` accordingly.
 
 If the chart is stored in a registry, provide its reference via `chart-ref`. Otherwise, the action uses `chart-path` (default: `clue_helm`) to deploy a local copy.
+
+The key inputs of the action are:
+
+- `kubeconfig-base64`: base64 encoded kubeconfig used for cluster access.
+- `chart-path` or `chart-ref`: location of the Helm chart. chart-ref by default used the last helm-chart
+- `values-file`: Helm values selecting the SUT and variant.
+- `release-name` and `namespace`: Helm release identifiers.
 
 The deployer expects the SUT configuration file at `/app/sut_configs/`. Supply its YAML content via `sutConfig` (and optionally `sutConfigFileName`) to create a `sut-config` ConfigMap, mounted into both `Deployment` and `Job` resources. Similarly, provide the main CLUE configuration YAML via `clueConfig` for a `clue-config-file` ConfigMap, mounted at `/app/clue-config.yaml`.
 
@@ -134,11 +167,12 @@ Adjust `VARIANTS` and `WORKLOADS` in the manifest as needed.
 
 #### Helm Deployment
 
-A Helm chart at `clue_helm/` runs the deployer and Web UI in-cluster. Install it with (e.g., `ToyStore` values):
+A Helm chart at `clue_helm/` runs the deployer and Web UI in-cluster. It can be installed manually (e.g., `ToyStore` values):
 
 ```bash
 helm upgrade --install clue clue_helm --namespace clue --create-namespace -f clue_helm/values-toystore.yaml
 ```
+For CI/CD pipelines the same chart can be deployed via the `clue-helm` GitHub action demonstrated above.
 
 Configure `imageRegistry` and other `values.yaml` settings for your images and ingress host. SUT deployments occur in a separate namespace on nodes labeled `scaphandre=true`.
 

@@ -8,7 +8,7 @@ set -e
 : "${CLUSTER_PROXY_COMMAND:=}"
 : "${SSH_KEY_FILE_PATH:=/root/.ssh/id_rsa}"
 : "${PRECONFIGURE_CLUSTER:=false}"
-: "${HELM_DRIVER:=HELM_DRIVER=configmap}"
+: "${HELM_DRIVER:=configmap}"
 : "${SETUP_GRAFANA_DASHBOARD:=false}"
 : "${ENABLE_DEBUG:=false}"  # New variable to control debugging
 
