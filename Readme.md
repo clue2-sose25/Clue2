@@ -170,10 +170,10 @@ kubectl apply -f clue_deployer/k8s/clue-deployer-rbac.yaml
 kubectl apply -f clue_deployer/k8s/clue-deployer-job.yaml
 ```
 
-Adjust `VARIANTS` and `WORKLOADS` in the manifest as needed. If you manage RBAC outside the chart, set `rbac.create` to `false` in `values.yaml` before running the Helm deployment so it does not create duplicate resources. look to `clue_deployer/k8s/clue-deployer-rbac.yaml`.
+Adjust `VARIANTS` and `WORKLOADS` in the manifest as needed. If you manage RBAC outside the chart, set `rbac.create` to `false` in `values.yaml` before running the Helm deployment so it does not create duplicate resources. See `clue_deployer/k8s/clue-deployer-rbac.yaml`.
 
 #### Helm Deployment
-The Namespace of CLUE and the SUT could be the same or differnt. 
+The Namespace of CLUE and the SUT could be the same or different. 
 
 A Helm chart at `clue_helm/` runs the deployer and Web UI in-cluster. It can be installed manually (e.g., `ToyStore` values):
 
@@ -234,7 +234,7 @@ Build SUT images based on the chosen SUT from `sut_configs`. Example commands:
   docker compose up -d --build ots-builder
   ```
 
-  Modify `TOYSTORE_EXP_NAME` in `.env` to build images for a specific variant.
+  Modify `OTS_EXP_NAME` in `.env` to build images for a specific variant.
 
 - [**Toystore**](https://github.com/clue2-sose25/sustainable_toystore) (a custom, simple SUT created for CLUE2)
 
@@ -242,7 +242,7 @@ Build SUT images based on the chosen SUT from `sut_configs`. Example commands:
   docker compose up -d --build toystore-builder
   ```
 
-  Modify `OTS_EXP_NAME` in `.env` to build images for a specific variant.
+  Modify `TOYSTORE_EXP_NAME` in `.env` to build images for a specific variant.
 
 Wait for the builder to exit, then verify images at `http://localhost:9000/v2/_catalog`.
 

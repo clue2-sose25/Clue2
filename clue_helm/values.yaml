@@ -20,6 +20,7 @@ clueDeployer:
   service:
     type: ClusterIP
     port: 8000
+    resultsPort: 8050
   probes:
     path: /api/health
   env:

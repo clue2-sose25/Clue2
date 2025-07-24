@@ -21,6 +21,9 @@ spec:
         - name: clue-deployer
           image: "{{ .Values.imageRegistry }}/{{ .Values.clueDeployer.image }}:{{ .Values.clueDeployer.tag }}"
           imagePullPolicy: {{ .Values.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.clueDeployer.service.port }}
+            - containerPort: {{ .Values.clueDeployer.service.resultsPort }}
           env:
             - name: API_BASE_URL
               value: "http://clue-deployer:{{ .Values.clueDeployer.service.port }}"

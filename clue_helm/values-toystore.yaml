@@ -82,6 +82,7 @@ clueDeployer:
   serviceAccountName: st-cp25clue2-user
   service:
     port: 8000
+    resultsPort: 8050
     type: ClusterIP # Change to NodePort if needed or LoadBalancer if need to access with IP_NODE:PORT
     nodePort: 30501
   probes:

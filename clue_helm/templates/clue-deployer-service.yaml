@@ -15,4 +15,7 @@ spec:
       {{- if and .Values.clueDeployer.service.nodePort (ne .Values.clueDeployer.service.type "ClusterIP") }}
       nodePort: {{ .Values.clueDeployer.service.nodePort }}
       {{- end }}
+    - name: results
+      port: {{ .Values.clueDeployer.service.resultsPort }}
+      targetPort: {{ .Values.clueDeployer.service.resultsPort }}
 {{- end }}
