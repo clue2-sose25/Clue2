@@ -1,4 +1,6 @@
-# Example usage of the CLUE Helm action
+### Example of use ###
+# Deploys the CLUE inside the cluster
+
 jobs:
   deploy:
     runs-on: ubuntu-latest

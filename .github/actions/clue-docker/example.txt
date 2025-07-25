@@ -1,12 +1,7 @@
-# Example of use
-# After the workflow completes, navigate to the run in the GitHub Actions tab and download the clue-results artifact. You may also add an additional step using actions/download-artifact in a subsequent job to retrieve the artifact programmatically.
-
-name: Run CLUE2
-
-on:
-  push:
-    branches:
-      - main
+### Example of use ###
+# Deploys the CLUE as a docker container in GitHub pipeline. Later connects to the cluster.
+# After the workflow completes, navigate to the run in the GitHub Actions tab and download the clue-results artifact. 
+# You may also add an additional step using actions/download-artifact in a subsequent job to retrieve the artifact programmatically.
 
 jobs:
   build:
