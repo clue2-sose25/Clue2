@@ -1,12 +1,16 @@
-# example values for running the teastore SUT
+# Example values for running the teastore SUT
 imageRegistry: ghcr.io/clue2-sose25
 imagePullPolicy: Always
 sutConfigFileName: teastore.yaml
+# Namespace where the SUT is deployed. If set, additional RBAC rules will be created for this namespace so the deployer can manage experiment resources there.
+# If you want to use an existing service account, set `rbac.create` to false and provide the service account name in `clueDeployer.serviceAccountName`.
+# If you set `rbac.create` to false, make sure the service account has the necessary permissions to deploy the SUT.
+sutNamespace: "teastore"
 sutConfig: |
   config:
     # The name of the SUT
     sut: "teastore"
-    # The K8s namespace to deploy the SUT
+    # The K8s namespace to deploy the SUT. Use the same namespace as in the "sutNamespace" variable.
     namespace: "teastore"
     # The Git repository url for the SUT code
     sut_git_repo: "https://github.com/ISE-TU-Berlin/sustainable_teastore.git"
@@ -216,8 +220,8 @@ sutConfig: |
 clueConfig: |
   config:
     experiment_timeout: 150
-    prometheus_url: "http://130.149.158.32:32426""
-    docker_registry_address: "ghcr.io/clue2-sose25
+    prometheus_url: "http://130.149.158.32:32426"
+    docker_registry_address: "ghcr.io/clue2-sose25"
     local_public_ip: "registry"
     local_port: 5000
     remote_platform_arch: "linux/arm64/v8"
@@ -277,10 +281,3 @@ ingress:
   tls: false
 rbac:
   create: false
-sutNamespace: "teastore"
-# Namespace where the SUT is deployed. If set, additional RBAC rules will be created
-# for this namespace so the deployer can manage experiment resources there.
-# If you want to use an existing service account, set `rbac.create` to false
-# and provide the service account name in `clueDeployer.serviceAccountName`.
-# If you set `rbac.create` to false, make sure the service account has the necessary permissions to deploy the SUT.
-

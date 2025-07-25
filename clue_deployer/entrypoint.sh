@@ -10,7 +10,7 @@ set -e
 : "${PRECONFIGURE_CLUSTER:=false}"
 : "${HELM_DRIVER:=configmap}"
 : "${SETUP_GRAFANA_DASHBOARD:=false}"
-: "${ENABLE_DEBUG:=false}"  # New variable to control debugging
+: "${ENABLE_DEBUG:=false}"
 
 # Print configs 
 echo "[ENTRYPOINT.SH] Starting CLUE Deployer container"

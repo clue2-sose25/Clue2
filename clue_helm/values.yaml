@@ -2,6 +2,10 @@ imageRegistry: ghcr.io/clue2-sose25
 imagePullPolicy: Always
 sutConfigFileName: ""
 sutConfig: ""
+# Namespace where the SUT is deployed. If set, additional RBAC rules will be created for this namespace so the deployer can manage experiment resources there.
+# If you want to use an existing service account, set `rbac.create` to false and provide the service account name in `clueDeployer.serviceAccountName`.
+# If you set `rbac.create` to false, make sure the service account has the necessary permissions to deploy the SUT.
+sutNamespace: ""
 clueConfig: |
   config:
     experiment_timeout: 150
@@ -82,10 +86,3 @@ ingress:
   tls: false
 rbac:
   create: true
-# This will create the necessary RBAC resources for the clue-deployer.
-# If you want to use an existing service account, set `rbac.create` to false
-# and provide the service account name in `clueDeployer.serviceAccountName`.
-# If you set `rbac.create` to false, make sure the service account has the necessary permissions to deploy the SUT.
-sutNamespace: ""
-# Namespace where the SUT is deployed. If set, additional RBAC rules will be created
-# for this namespace so the deployer can manage experiment resources there.

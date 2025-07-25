@@ -2,6 +2,10 @@
 imageRegistry: ghcr.io/clue2-sose25
 imagePullPolicy: Always
 sutConfigFileName: toystore.yaml
+# Namespace where the SUT is deployed. If set, additional RBAC rules will be created for this namespace so the deployer can manage experiment resources there.
+# If you want to use an existing service account, set `rbac.create` to false and provide the service account name in `clueDeployer.serviceAccountName`.
+# If you set `rbac.create` to false, make sure the service account has the necessary permissions to deploy the SUT.
+sutNamespace: "st-cp25clue2"
 sutConfig: |
   config:
     sut: "toystore"
@@ -131,9 +135,3 @@ ingress:
   tls: false
 rbac:
   create: false
-sutNamespace: "st-cp25clue2"
-# Namespace where the SUT is deployed. If set, additional RBAC rules will be created
-# for this namespace so the deployer can manage experiment resources there.
-# If you want to use an existing service account, set `rbac.create` to false
-# and provide the service account name in `clueDeployer.serviceAccountName`.
-# If you set `rbac.create` to false, make sure the service account has the necessary permissions to deploy the SUT.
