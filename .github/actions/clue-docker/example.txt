@@ -1,0 +1,38 @@
+# Example of use
+# After the workflow completes, navigate to the run in the GitHub Actions tab and download the clue-results artifact. You may also add an additional step using actions/download-artifact in a subsequent job to retrieve the artifact programmatically.
+
+name: Run CLUE2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    permissions:
+      packages: write
+      contents: read 
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Runs CLUE to test the ...
+        uses: clue2-sose25/Clue2/.github/actions/clue-deployer@v0
+        with:
+          clue-config-path: ./clue/clue-config.yaml
+          sut-config-path: ./clue/toystore-config.yaml
+          image-registry: ghcr.io/clue2-sose25/sustainable_toystore
+          variants-name: baseline
+          results-path: clue_results
+          kubeconfig: ${{ secrets.KUBECONFIG_B64 }}
+          patch-local-cluster: 'true'
+
