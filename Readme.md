@@ -66,11 +66,11 @@ For a test deployment of the SUT without running the benchmark, set `DEPLOY_ONLY
 
 ### 📦 CLUE GitHub Integration 
 
-CLUE seamlessly integrates into any GitHub CI/CD pipeline using the composite action located at `.github/actions/clue-helm`. The action connects to your cluster using a base64 encoded kubeconfig, deploys the CLUE Helm chart and triggers the measurments job. The supplied `values-<sut_name>.yaml` file defines which SUT variant is executed. Note: In the Helm values, set `clueDeployer.enabled` to `false` and `clueDeployer.job.enabled` to `true` for CI-CD usage.
+CLUE seamlessly integrates into any GitHub CI/CD pipeline using the composite action located at `.github/actions/clue-helm`. The action connects to your cluster using a base64 encoded kubeconfig, deploys the CLUE Helm chart and triggers the measurments job. The supplied `values-<sut_name>.yaml` file defines which SUT variant is executed. Note: In the Helm values, set `clueDeployer.enabled` to `false` and `clueDeployer.job.enabled` to `true` for CI-CD usage. This will allow the deployer to run as a script and not wait for the user's input in the Web UI.
 
-The resulting artifact can be downloaded from the Web UI or retrieved in subsequent jobs using `actions/download-artifact`.
+The final results of the experiments can be downloaded from the Web UI or retrieved in subsequent jobs using `actions/download-artifact`.
 
-For details on integration into any GitHub repository, refer to our custom SUT [ToyStore](https://github.com/clue2-sose25/sustainable_toystore) repository or the example of a workflow snippet below. Additionally, for an example values file configuration, see `clue_helm/values-toystore.yaml`, which deploys the `toystore` SUT with the `baseline` variant. To adapt it to your selected SUT:
+For details on integration into any GitHub repository, refer to our custom SUT [ToyStore](https://github.com/clue2-sose25/sustainable_toystore) repository or the example of a workflow snippet below. Additionally, for an example values file configuration, see `clue_helm/values-toystore.yaml`, which deploys the `toystore` SUT with the `baseline` variant. To adapt the CLUE2 action to your selected SUT:
 
 1. Copy `values-toystore.yaml` to your repository and adjust its parameters as needed.
 2. Extend your existing GitHub CI-CD pipeline with the `clue-helm` action and configure the inputs shown below.
@@ -110,7 +110,7 @@ jobs:
 
 The container image used by the job includes `tar` so that `kubectl cp` works, and the Job resource keeps the Pod around for two minutes after completion (`ttlSecondsAfterFinished: 120`) to give `kubectl cp` time to download results.
 
-To include a folder of Locust scripts:
+To include a folder for the workload generator's Locusts scripts:
 
 - Specify the folder’s location in `values.yaml`.
 - The action copies the folder adjacent to the chart and sets `loadGenerator.workloadDir` accordingly.
