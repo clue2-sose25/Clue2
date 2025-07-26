@@ -1,28 +1,58 @@
+# Example Job to run the CLUE deployer once
+# Apply with: kubectl apply -f clue_deployer/k8s/clue-deployer-job.yaml
+
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: clue-deployer
-  namespace: default
+  name: clue-deployer-job
 spec:
-  backoffLimit: 0
+  ttlSecondsAfterFinished: 120 # Job will be deleted after 120 seconds. Results can be found in the pod file /app/data. when the job is finished, the results will be removed.
   template:
+    metadata:
+      labels:
+        app: clue-deployer
     spec:
       serviceAccountName: clue-deployer
       restartPolicy: Never
       containers:
-      - name: clue-deployer
-        image: ghcr.io/issafadel/clue2/clue-deployer
-        env:
-        - name: DEPLOY_AS_SERVICE
-          value: "false"
-        - name: VARIANTS
-          value: "main"
-        - name: WORKLOADS
-          value: "loadgenerator"
-        volumeMounts:
-        - name: results
-          mountPath: /app/results
+        - name: clue-deployer
+          image: ghcr.io/clue2-sose25/clue2-deployer:latest
+          env:
+            - name: API_BASE_URL
+              value: "http://clue-deployer:8000"
+            - name: VARIANTS
+              value: "baseline"
+            - name: WORKLOADS
+              value: "shaped"
+            - name: DEPLOY_AS_SERVICE
+              value: "false"
+          envFrom:
+            - configMapRef:
+                name: clue-config-file
+            - secretRef:
+                name: clue-secrets
+          volumeMounts:
+            - name: clue-data
+              mountPath: /app/data
+            - name: sut-config
+              mountPath: /app/sut_configs/
+            - name: workload-files
+              mountPath: /app/sut_configs/workloads/sut
+            - name: clue-config-file
+              mountPath: /app/clue-config.yaml
+              subPath: clue-config.yaml
       volumes:
-      - name: results
-        emptyDir: {}
-        
+        - name: clue-data
+          emptyDir: {}
+        - name: sut-config
+          configMap:
+            name: sut-config
+        - name: workload-files
+          configMap:
+            name: loadgenerator-workload
+        - name: clue-config-file
+          configMap:
+            name: clue-config-file
+            items:
+              - key: clue-config.yaml
+                path: clue-config.yaml

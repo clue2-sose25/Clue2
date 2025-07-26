@@ -2,6 +2,10 @@ imageRegistry: ghcr.io/clue2-sose25
 imagePullPolicy: Always
 sutConfigFileName: ""
 sutConfig: ""
+# Namespace where the SUT is deployed. If set, additional RBAC rules will be created for this namespace so the deployer can manage experiment resources there.
+# If you want to use an existing service account, set `rbac.create` to false and provide the service account name in `clueDeployer.serviceAccountName`.
+# If you set `rbac.create` to false, make sure the service account has the necessary permissions to deploy the SUT.
+sutNamespace: ""
 clueConfig: |
   config:
     experiment_timeout: 150
@@ -13,12 +17,14 @@ clueConfig: |
     local_platform_arch: "linux/arm64/v8"
     target_utilization: 70
 clueDeployer:
+  enabled: true
   image: "clue2-deployer"
   tag: "latest"
   serviceAccountName: clue-deployer
   service:
     type: ClusterIP
     port: 8000
+    resultsPort: 8050
   probes:
     path: /api/health
   env:
@@ -40,12 +46,22 @@ clueDeployer:
     N_ITERATIONS: "1"
     ENABLE_DEBUG: "false"
     PRECONFIGURE_CLUSTER: "false"
+    PROMETHEUS_URL: http://130.149.158.32:32426
+    SETUP_GRAFANA_DASHBOARD: "false"
+    GRAFANA_URL: http://10.111.147.11
+    GRAFANA_PORT: 80
+    GRAFANA_USERNAME: admin
+    GRAFANA_PASSWORD: SECRET
     # Set to "true" if you want to preconfigure the cluster before deploying the SUT.
     # This is useful for SUTs that require specific configurations before deployment like installing premetheus and kapler
     HELM_DRIVER: configmap
     # Set the Helm driver to use for storing the release information.
     # Options are: configmap, secret, or memory.
     # Default is configmap.
+  job:
+    enabled: false
+    # CI hint: disable the Deployment with `clueDeployer.enabled: false`
+    # and set `clueDeployer.job.enabled: true` to run the Job
 clueWebui:
   image: "clue2-webui"
   tag: "latest"
@@ -70,7 +86,3 @@ ingress:
   tls: false
 rbac:
   create: true
-# This will create the necessary RBAC resources for the clue-deployer.
-# If you want to use an existing service account, set `rbac.create` to false
-# and provide the service account name in `clueDeployer.serviceAccountName`.
-# If you set `rbac.create` to false, make sure the service account has the necessary permissions to deploy the SUT.

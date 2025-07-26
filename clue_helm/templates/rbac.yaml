@@ -1,43 +1,123 @@
 {{- if .Values.rbac.create }}
+{{- $helmDriver := default "configmap" .Values.clueDeployer.env.HELM_DRIVER }}
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: clue-deployer
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "clue.labels" . | nindent 4 }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: clue-deployer-role
+  name: clue-deployer-cluster-role
+  labels:
+    {{- include "clue.labels" . | nindent 4 }}
 rules:
   - apiGroups: [""]
-    resources: ["pods", "services"]
-    verbs: ["create", "delete", "deletecollection", "list", "get", "watch", "patch"]
-  - apiGroups: ["apps"]
-    resources: ["deployments", "statefulsets"]
-    verbs: ["create", "delete", "list", "get", "patch"]
-  - apiGroups: [""]
     resources: ["nodes"]
-    verbs: ["get", "list", "patch"]
-  - apiGroups: ["autoscaling"]
-    resources: ["horizontalpodautoscalers"]
-    verbs: ["create", "delete", "list", "get", "patch"]
+    verbs: ["get", "list"]
   - apiGroups: [""]
     resources: ["namespaces"]
     verbs: ["get", "list", "create"]
-  - apiGroups: [""]
-    resources: ["configmaps"]
-    verbs: ["create", "delete", "get", "list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: clue-deployer-binding
+  name: clue-deployer-cluster-binding
+  labels:
+    {{- include "clue.labels" . | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
+  name: clue-deployer-cluster-role
+subjects:
+  - kind: ServiceAccount
+    name: clue-deployer
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: clue-deployer-role
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "clue.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources:
+      - pods
+      - pods/log
+      - services
+      - configmaps
+{{- if eq $helmDriver "secret" }}
+      - secrets
+{{- end }}
+    verbs: ["create", "delete", "list", "get", "watch", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets"]
+    verbs: ["create", "delete", "list", "get", "patch"]
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["create", "delete", "list", "get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: clue-deployer-binding
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "clue.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
   name: clue-deployer-role
 subjects:
   - kind: ServiceAccount
     name: clue-deployer
-    namespace:  {{ .Release.Namespace }}
+    namespace: {{ .Release.Namespace }}
+{{- if .Values.sutNamespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: clue-deployer-role
+  namespace: {{ .Values.sutNamespace }}
+  labels:
+    {{- include "clue.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources:
+      - pods
+      - pods/log
+      - services
+      - configmaps
+{{- if eq $helmDriver "secret" }}
+      - secrets
+{{- end }}
+    verbs: ["create", "delete", "list", "get", "watch", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets"]
+    verbs: ["create", "delete", "list", "get", "patch"]
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["create", "delete", "list", "get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: clue-deployer-binding
+  namespace: {{ .Values.sutNamespace }}
+  labels:
+    {{- include "clue.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: clue-deployer-role
+subjects:
+  - kind: ServiceAccount
+    name: clue-deployer
+    namespace: {{ .Release.Namespace }}
+{{- end }}
 {{- end }}

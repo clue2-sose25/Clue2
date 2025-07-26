@@ -10,9 +10,6 @@ inputs:
   sut-config-path:
     description: "Path to the sut-config.yaml file; should have the same value as clue2-sose25/sut-configs/teastore.yml for example"
     required: true
-  image-registry:
-    description: "Docker image name or tag to deploy (should match the value in sut-config.yaml)"
-    required: true
   variants-name:
     description: 'Name of the variant or experiment, e.g., "baseline", which targets the main branch and is also specified in the sut-config.'
     required: true

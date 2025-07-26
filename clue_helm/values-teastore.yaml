@@ -2,23 +2,52 @@
 imageRegistry: ghcr.io/clue2-sose25
 imagePullPolicy: Always
 sutConfigFileName: teastore.yaml
+# Namespace where the SUT is deployed. If set, additional RBAC rules will be created for this namespace so the deployer can manage experiment resources there.
+# If you want to use an existing service account, set `rbac.create` to false and provide the service account name in `clueDeployer.serviceAccountName`.
+# If you set `rbac.create` to false, make sure the service account has the necessary permissions to deploy the SUT.
+sutNamespace: "teastore"
 sutConfig: |
   config:
+    # The name of the SUT
     sut: "teastore"
+    # The K8s namespace to deploy the SUT. Use the same namespace as in the "sutNamespace" variable.
     namespace: "teastore"
+    # The Git repository url for the SUT code
     sut_git_repo: "https://github.com/ISE-TU-Berlin/sustainable_teastore.git"
+    # The path to the root folder of the repo after cloning
     sut_path: "teastore"
+    # The path to the helm chart folder for deployment
     helm_chart_path: "teastore/examples/helm"
+    # Optional url to the Git repository for the helm chart. Leave empty if it is the same repo as the SUT.
     helm_chart_repo: ""
+    # The values file to use
     values_yaml_name: "values.yaml"
+    # The k8s service name (used for in-cluster communication)
     workload_target: "teastore-webui"
+    # The specific path
     application_endpoint_path: "/tools.descartes.teastore.webui"
+    # Default resource limits for all services (used if autoscaling is enabled)
     default_resource_limits:
+      # CPU resource limit
       cpu: 1000
+      # Memory resource limit
       memory: 1024
+    # The time to wait before deploying individual workloads. Specified in seconds
     wait_before_workloads: 10
+    # The time to wait after deploying individual workloads. Specified in seconds
     wait_after_workloads: 10
 
+  ### HELM CHART REPLACEMENTS ###
+  # The replacements for the Helm chart values file.
+  # Can be used for any arbirary value. It will replace all instances of that value in the whole values file.
+  # The replacement will be applied only when all conditions are meet.
+  # The `__EXPERIMENT_TAG__` placeholder will be replaces with the name of the variant. Additionally, it will be used as a tag for the docker images.
+  # Required fields:
+  #   value: str - the old value to replace
+  #   replacement: str - the new value to use
+  #   conditions: object - the conditions to apply the replacement. If not conditions are specified, the replacement will always run.
+  #     autoscaling: bool - apply the replacement only if the autoscaling is set to true
+  #     autoscaling_type: str - apply the replacement for a specific autoscaling (options: cpu, memory, or full). The `autoscaling` condition needs to be set to true.
   helm_replacements:
     - value: "descartesresearch"
       replacement: "registry:5000/clue"
@@ -47,7 +76,15 @@ sutConfig: |
       conditions:
         autoscaling: true
         autoscaling_type: full
-
+  
+  ### RESOURCE LIMITS ###
+  # A list of resource limits for individual services.
+  # Can be left empty if a default limit is specified in the main config above.
+  # Required fields:
+  # service_name: str - the name of the service
+  # limit: object - the limits for the individual service
+  #   cpu: int - the cpu limit
+  #   memory: int - the memory limit
   resource_limits:
     - service_name: "teastore-auth"
       limit:
@@ -70,6 +107,12 @@ sutConfig: |
         cpu: 1000
         memory: 2048
 
+  ### WORKLOADS ###
+  # A list of workloads for the SUT. Required fields:
+  # name: str - a short name of the variant
+  # description: str - a short description of the variant
+  # timeout_duration: int - the total timeout for the workload generator
+  # workload_settings: JSON - settings for the Locust workload generator. See default SUTs' configs for more detail.
   workloads:
     - name: "shaped"
       description: "Workload with custom load shape behavior."
@@ -105,6 +148,14 @@ sutConfig: |
       locust_files:
         - "sut_configs/workloads/teastore/fixed_requests.py"
 
+  ### VARIANTS ###
+  # A list of variants for the SUT. Required fields:
+  # name: str - a short name of the variant
+  # description: str - a short description of the variant
+  # target_branch: str - the name of the git repository branch for the variant
+  # colocated_workload: bool - if the workload should be deployed in the cluster or on host machine
+  # critical_services: list[str] - a list of the names of the critical services to wait for before running the workload
+  # autoscaling: enum[str] - the type of autoscaling (options: cpu, memory, full)
   variants:
     - name: "baseline"
       description: "Baseline experiment for the teastore application"
@@ -170,7 +221,7 @@ clueConfig: |
   config:
     experiment_timeout: 150
     prometheus_url: "http://130.149.158.32:32426"
-    docker_registry_address: ghcr.io/clue2-sose25
+    docker_registry_address: "ghcr.io/clue2-sose25"
     local_public_ip: "registry"
     local_port: 5000
     remote_platform_arch: "linux/arm64/v8"
@@ -179,12 +230,13 @@ clueConfig: |
 clueDeployer:
   enabled: true
   image: clue2-deployer
-  tag: pr-test
+  tag: latest
   serviceAccountName: st-cp25clue2-user
   service:
     port: 8000
-    type: ClusterIP # Change to NodePort if needed or LoadBalancer if need to access with IP_NODE:PORT
+    type: ClusterIP
     nodePort: 30501
+    resultsPort: 8050
   probes:
     path: /api/health
   env:
@@ -197,20 +249,21 @@ clueDeployer:
     DEPLOY_AS_SERVICE: "true"
     ENABLE_DEBUG: "false"
     HELM_DRIVER: configmap
+    SETUP_GRAFANA_DASHBOARD: "true"
     GRAFANA_USERNAME: admin
     GRAFANA_PASSWORD: SECRET
-    GRAFANA_URL: http://grafana.clue-monitoring
+    GRAFANA_URL: http://10.111.147.11
     GRAFANA_PORT: 80
-    PROMETHEUS_URL: http://prometheus.monitoring:80
+    PROMETHEUS_URL: http://130.149.158.32:32426
   job:
     enabled: false
 clueWebui:
   enabled: true
   image: clue2-webui
-  tag: pr-test
+  tag: latest
   service:
     port: 80
-    type: NodePort # Change to NodePort if needed or LoadBalancer if need to access with IP_NODE:PORT
+    type: NodePort
     nodePort: 30501
   env:
     API_BASE_URL: http://clue-deployer:8000

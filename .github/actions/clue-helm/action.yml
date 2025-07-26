@@ -8,7 +8,7 @@ inputs:
     description: Kubeconfig file content when not using base64
     required: false
   chart-ref:
-    description: OCI reference to the Helm chart
+    description: OCI reference to the Helm chart, please set to '' /empty if using local chart path
     required: false
     default: oci://ghcr.io/clue2-sose25/clue2-helm/clue:latest
   chart-path:
@@ -35,13 +35,21 @@ inputs:
     description: Helm driver used to store release information
     required: false
     default: configmap
-  wait-seconds:
+  timeout-seconds:
+    description: Timeout for the experiment job in seconds
+    required: false
+    default: '600'
+  wait-github-actions:
     description: Seconds to wait after job completion before copying results
     required: false
-    default: '30'
+    default: '2'
 runs:
   using: composite
   steps:
+    - name: Set up Helm
+      uses: azure/setup-helm@v3
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v3
     - name: Setup kubeconfig from base64
       if: ${{ inputs.kubeconfig-base64 != '' }}
       run: |
@@ -68,19 +76,22 @@ runs:
       run: echo "CHART_PATH=${{ inputs.chart-path }}" >> "$GITHUB_ENV"
       shell: bash
 
+    - name: Set Helm driver
+      run: echo "HELM_DRIVER=${{ inputs.helm-driver }}" >> "$GITHUB_ENV"
+      shell: bash
+
     - name: Deploy with Helm
       run: |
         helm upgrade --install "${{ inputs.release-name }}" "$CHART_PATH" \
           --namespace "${{ inputs.namespace }}" --create-namespace \
           -f "${{ inputs.values-file }}" \
-          --set-string helmDriver="${{ inputs.helm-driver }}" \
           --kubeconfig "$KUBECONFIG"
       shell: bash
 
     - name: Wait for clue-deployer job
       run: |
-        kubectl --kubeconfig "$KUBECONFIG" -n "${{ inputs.namespace }}" wait --for=condition=complete job/clue-deployer-job --timeout=450s
-        sleep "${{ inputs.wait-seconds }}"
+        kubectl --kubeconfig "$KUBECONFIG" -n "${{ inputs.namespace }}" wait --for=condition=complete job/clue-deployer-job --timeout="${{ inputs.timeout-seconds }}s"
+        sleep "${{ inputs.wait-github-actions }}"
       shell: bash
 
     - name: Copy results from pod

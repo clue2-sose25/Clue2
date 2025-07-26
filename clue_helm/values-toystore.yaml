@@ -2,6 +2,10 @@
 imageRegistry: ghcr.io/clue2-sose25
 imagePullPolicy: Always
 sutConfigFileName: toystore.yaml
+# Namespace where the SUT is deployed. If set, additional RBAC rules will be created for this namespace so the deployer can manage experiment resources there.
+# If you want to use an existing service account, set `rbac.create` to false and provide the service account name in `clueDeployer.serviceAccountName`.
+# If you set `rbac.create` to false, make sure the service account has the necessary permissions to deploy the SUT.
+sutNamespace: "st-cp25clue2"
 sutConfig: |
   config:
     sut: "toystore"
@@ -82,6 +86,7 @@ clueDeployer:
   serviceAccountName: st-cp25clue2-user
   service:
     port: 8000
+    resultsPort: 8050
     type: ClusterIP # Change to NodePort if needed or LoadBalancer if need to access with IP_NODE:PORT
     nodePort: 30501
   probes:
@@ -96,6 +101,7 @@ clueDeployer:
     DEPLOY_AS_SERVICE: "true"
     ENABLE_DEBUG: "false"
     HELM_DRIVER: configmap
+    SETUP_GRAFANA_DASHBOARD: "true"
     GRAFANA_USERNAME: admin
     GRAFANA_PASSWORD: prom-operator
     GRAFANA_URL: http://10.111.147.11
@@ -103,6 +109,8 @@ clueDeployer:
     PROMETHEUS_URL: http://130.149.158.32:32426
   job:
     enabled: false
+    # CI hint: disable the Deployment with `clueDeployer.enabled: false`
+    # and set `clueDeployer.job.enabled: true` to run the Job
 clueWebui:
   enabled: true
   image: clue2-webui

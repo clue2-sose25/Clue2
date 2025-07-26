@@ -295,20 +295,28 @@ class VariantDeployer:
         logger.info(f"Checking nodes with label scaphandre=true done")
         # Installs Prometheus, Kepler
         logger.info("Ensuring cluster observability requirements")
+        # Check if preconfigure cluster
         if os.getenv("PRECONFIGURE_CLUSTER", "false").lower() == "true":
-            logger.info(" Helm requirements installation. The PRECONFIGURE_CLUSTER set to true")
-            # to stay safe, we will not install the requirements if the PRECONFIGURE_CLUSTER is set to false
-            # check if inside a cluster
+            # Check if inside a cluster
             if os.getenv("KUBERNETES_SERVICE_HOST"):
                 logger.info("Running in cluster mode. skipping helm requiremnents, set up by your own up port-forwarding for Grafana and Prometheus")
                 # Set up port-forwarding for Grafana and Prometheus
                 self.port_forward_process = HelmWrapper.setup_port_forwarding()
+            # Ensure helm requirements
+            logger.info(" Helm requirements installation. The PRECONFIGURE_CLUSTER set to true") 
+            self._ensure_helm_requirements()
+            # Setup Grafana
+            if os.getenv("SETUP_GRAFANA_DASHBOARD", "false").lower() == "true":
+                logger.info("Setting up Grafana dashboards")
+                self._setup_grafana_dashboard() 
             else:
-                self._ensure_helm_requirements() 
+                logger.info("Skipping setting up Grafana dashboards")
         else:
-            logger.info(" Helm requirements installation. The PRECONFIGURE_CLUSTER set to false")
-            logger.info("Setting up Grafana dashboards")
-            self._setup_grafana_dashboard()
+            logger.info("Skipping Helm requirements installation. The PRECONFIGURE_CLUSTER set to false")
+            # If it inside a cluster, and not install the requirements, but set grafana dashboard if the environment variable is set to true
+            if os.getenv("SETUP_GRAFANA_DASHBOARD", "false").lower() == "true":
+                logger.info("Running in cluster mode. Setting up Grafana dashboard")
+                self._setup_grafana_dashboard()
         # Clones the SUT repository
         self.clone_sut() 
         # Prepare the Helm wrapper as a context manager

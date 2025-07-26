@@ -35,7 +35,7 @@ The simplest and recommended method for deploying CLUE2 on your local machine is
 docker compose up -d --build
 ```
 
-The CLUE Web UI will be accessible at [http://localhost:5001](http://localhost:5001). Before running experiments, please review the remainder of this README.
+The CLUE Web UI will be accessible at [http://localhost:5001](http://localhost:5001). Before running experiments, please review the remainder of this README. If a local cluster is used for testing, the `clue-deployer` container might need a restart to update to the new `.kube` cluster configuration setup by `Kind`.
 
 The UI container serves built files using **Nginx**. When deployed in a cluster, you may need to configure the DNS resolver to enable Nginx to reach the deployer service. Use the environment variables `NGINX_RESOLVER` and `NGINX_RESOLVER_VALID` for this purpose. The API base URL can also be customized via `API_BASE_URL`.
 
@@ -64,26 +64,58 @@ docker compose up --build clue-deployer
 
 For a test deployment of the SUT without running the benchmark, set `DEPLOY_ONLY` to `true`. Some SUTs perform initial tasks at startup, so wait approximately one minute before accessing the SUT to account for delays or unavailability.
 
-### 📦 CLUE GitHub Integration
+### 📦 CLUE GitHub Integration 
 
-CLUE seamlessly integrates into any GitHub CI/CD pipeline using our public action at `.github/actions/clue-helm/action.yaml`. CLUE GitHub action connects to the cluster provided via the base64-encoded kubeconfig and deploys CLUE2 pods in the provided namespace. Next, CLUE deployer reads the provided `values-<sut_name>.json` file and deploys & measures the selected SUT as K8s resources in the same cluster.
+CLUE seamlessly integrates into any GitHub CI/CD pipeline using the composite action located at `.github/actions/clue-helm`. The action connects to your cluster using a base64 encoded kubeconfig, deploys the CLUE Helm chart and triggers the measurments job. The supplied `values-<sut_name>.yaml` file defines which SUT variant is executed. Note: In the Helm values, set `clueDeployer.enabled` to `false` and `clueDeployer.job.enabled` to `true` for CI-CD usage. This will allow the deployer to run as a script and not wait for the user's input in the Web UI.
 
-The resulting artifact can be downloaded from the Web UI or retrieved in subsequent jobs using `actions/download-artifact`.
+The final results of the experiments can be downloaded from the Web UI or retrieved in subsequent jobs using `actions/download-artifact`.
 
-For details on integration into any GitHub repository, refer to our custom SUT [ToyStore](https://github.com/clue2-sose25/sustainable_toystore) repository. For example values configuration, see `clue_helm/values-toystore.yaml`. Mentioned example deploys the `toystore` SUT with the `baseline` variant. To adapt it to your selected SUT:
+For details on integration into any GitHub repository, refer to our custom SUT [ToyStore](https://github.com/clue2-sose25/sustainable_toystore) repository or the example of a workflow snippet below. Additionally, for an example values file configuration, see `clue_helm/values-toystore.yaml`, which deploys the `toystore` SUT with the `baseline` variant. To adapt the CLUE2 action to your selected SUT:
 
 1. Copy `values-toystore.yaml` to your repository and adjust its parameters as needed.
-2. Extend your existing GitHub CI-CD pipeline with the above mentioned CLUE2 action, providing all necessary parameters (see example configuration).
-3. Encode the kubeconfig file in base64 and store it as the `KUBECONFIG_B64` GitHub secret (see example config at `.github/actions/clue-deployer-outside-cluster/mock-kubeconfig.yaml`)
+2. Extend your existing GitHub CI-CD pipeline with the `clue-helm` action and configure the inputs shown below.
+3. Encode the kubeconfig file in base64 and store it as the `KUBECONFIG_B64` GitHub secret (see example config at `.github/actions/clue-docker/mock-kubeconfig.yaml`).
 
-To include a folder of Locust scripts:
+The `clue-helm` action installs Helm and kubectl automatically, so no extra setup steps are required. The action also decodes the kubeconfig internally instead of writing it directly to `~/.kube/config`. If you plan to run multiple CLUE jobs in parallel on the same cluster, ensure each workflow uses a unique `release-name` and `namespace` to avoid Helm resource conflicts.
+
+If the chart is stored in a registry, provide its reference via `chart-ref`. Otherwise, the action uses `chart-path` (default: `clue_helm`) to deploy a local copy.
+
+```yaml
+# .github/workflows/clue.yml
+name: Run CLUE Benchmark
+on: [workflow_dispatch]
+
+jobs:
+  clue:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Deploy CLUE via Helm
+        uses: clue2-sose25/Clue2/.github/actions/clue-helm@main
+        with:
+          # Base64-encoded kubeconfig for cluster access
+          kubeconfig-base64: ${{ secrets.KUBECONFIG_B64 }}
+          # Helm values selecting the SUT and variant
+          values-file: clue_helm/values-toystore.yaml
+          # Release identifiers
+          release-name: clue
+          namespace: clue
+          # Directory to store the results
+          results-path: clue_results
+          # Optional path to the helm chart. Default "clue_helm"
+          # chart-path: "clue_helm"
+          # Or optional reference to a public registry for the helm chart
+          # chart-ref: ""
+```
+
+The container image used by the job includes `tar` so that `kubectl cp` works, and the Job resource keeps the Pod around for two minutes after completion (`ttlSecondsAfterFinished: 120`) to give `kubectl cp` time to download results.
+
+To include a folder for the workload generator's Locusts scripts:
 
 - Specify the folder’s location in `values.yaml`.
 - The action copies the folder adjacent to the chart and sets `loadGenerator.workloadDir` accordingly.
 
-If the chart is stored in a registry, provide its reference via `chart-ref`. Otherwise, the action uses `chart-path` (default: `clue_helm`) to deploy a local copy.
-
-The deployer expects the SUT configuration file at `/app/sut_configs/`. Supply its YAML content via `sutConfig` (and optionally `sutConfigFileName`) to create a `sut-config` ConfigMap, mounted into both `Deployment` and `Job` resources. Similarly, provide the main CLUE configuration YAML via `clueConfig` for a `clue-config-file` ConfigMap, mounted at `/app/clue-config.yaml`.
+Finally, the deployer expects the SUT configuration file at `/app/sut_configs/`. Supply its YAML content via `sutConfig` (and optionally `sutConfigFileName`) to create a `sut-config` ConfigMap, mounted into both `Deployment` and `Job` resources. Similarly, provide the main CLUE configuration YAML via `clueConfig` for a `clue-config-file` ConfigMap, mounted at `/app/clue-config.yaml`.
 
 ## ✨ Cluster Preparation
 
@@ -119,7 +151,7 @@ sh create-kind-cluster.sh
 
 ### Using Remote Cluster
 
-When running `clue-deployer` as a Pod in the same Kubernetes cluster, it detects this via `KUBERNETES_SERVICE_HOST`. The in-cluster configuration is used, skipping `prepare_kubeconfig.py`. Ensure the Pod’s `ServiceAccount` has permissions to list/patch nodes and manage pods. An example RBAC manifest is at `clue_deployer/k8s/clue-deployer-rbac.yaml`. Local patching is disabled in-cluster.
+When running `clue-deployer` as a Pod in the same Kubernetes cluster, it detects this via `KUBERNETES_SERVICE_HOST`. The in-cluster configuration is used, skipping `prepare_kubeconfig.py`. Ensure the Pod’s `ServiceAccount` has permissions to list/patch nodes and manage pods. An example RBAC manifest is available at `clue_deployer/k8s/clue-deployer-rbac.yaml`. Local patching is disabled in-cluster.
 
 When running CLUE **outside** the cluster (e.g., via Docker Compose) but deploying experiments within it, supply a kubeconfig. The container patches the cluster if `PATCH_LOCAL_CLUSTER=true` to pull SUT images.
 
@@ -130,19 +162,23 @@ kubectl apply -f clue_deployer/k8s/clue-deployer-rbac.yaml
 kubectl apply -f clue_deployer/k8s/clue-deployer-job.yaml
 ```
 
-Adjust `VARIANTS` and `WORKLOADS` in the manifest as needed.
+Adjust `VARIANTS` and `WORKLOADS` in the manifest as needed. If you manage RBAC outside the chart, set `rbac.create` to `false` in `values.yaml` before running the Helm deployment so it does not create duplicate resources. See `clue_deployer/k8s/clue-deployer-rbac.yaml`.
 
 #### Helm Deployment
+The Namespace of CLUE and the SUT could be the same or different. 
 
-A Helm chart at `clue_helm/` runs the deployer and Web UI in-cluster. Install it with (e.g., `ToyStore` values):
+A Helm chart at `clue_helm/` runs the deployer and Web UI in-cluster. It can be installed manually (e.g., `ToyStore` values):
 
 ```bash
 helm upgrade --install clue clue_helm --namespace clue --create-namespace -f clue_helm/values-toystore.yaml
 ```
+For CI/CD pipelines the same chart can be deployed via the `clue-helm` GitHub action demonstrated above.
 
 Configure `imageRegistry` and other `values.yaml` settings for your images and ingress host. SUT deployments occur in a separate namespace on nodes labeled `scaphandre=true`.
+Ensure at least one worker node carries this label so CLUE can schedule workloads accordingly.
 
 The chart places the deployer and Web UI **inside the cluster**, including a `Job` for CI/CD, a `Deployment` for continuous operation, and a `clue-loadgenerator` Job for Locust. Scripts are sourced from the `loadgenerator-workload` ConfigMap, mounted at `sut_configs/workloads/<sut>/`.
+We have only validated access through NodePort services (see `values.yaml`). The Nginx mentioned here is part of the frontend container.
 
 #### Locust Workload Deployment
 
@@ -190,7 +226,7 @@ Build SUT images based on the chosen SUT from `sut_configs`. Example commands:
   docker compose up -d --build ots-builder
   ```
 
-  Modify `TOYSTORE_EXP_NAME` in `.env` to build images for a specific variant.
+  Modify `OTS_EXP_NAME` in `.env` to build images for a specific variant.
 
 - [**Toystore**](https://github.com/clue2-sose25/sustainable_toystore) (a custom, simple SUT created for CLUE2)
 
@@ -198,7 +234,7 @@ Build SUT images based on the chosen SUT from `sut_configs`. Example commands:
   docker compose up -d --build toystore-builder
   ```
 
-  Modify `OTS_EXP_NAME` in `.env` to build images for a specific variant.
+  Modify `TOYSTORE_EXP_NAME` in `.env` to build images for a specific variant.
 
 Wait for the builder to exit, then verify images at `http://localhost:9000/v2/_catalog`.
 

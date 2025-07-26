@@ -1,0 +1,19 @@
+### Example of use ###
+# Deploys the CLUE inside the cluster
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Deploy with Helm action
+        uses: ./.github/actions/helm-deploy
+        with:
+          kubeconfig-base64:: ${{ secrets.KUBE_CONFIG }}
+          chart-path: clue_helm
+          release-name: clue
+          values-file: clue_helm/values-toystore.yaml
+          namespace: st-cp25clue2
+          results-path: clue_results
+          helm-driver: configmap
+          timeout-seconds: 450
