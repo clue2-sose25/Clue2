@@ -35,7 +35,7 @@ The simplest and recommended method for deploying CLUE2 on your local machine is
 docker compose up -d --build
 ```
 
-The CLUE Web UI will be accessible at [http://localhost:5001](http://localhost:5001). Before running experiments, please review the remainder of this README.
+The CLUE Web UI will be accessible at [http://localhost:5001](http://localhost:5001). Before running experiments, please review the remainder of this README. If a local cluster is used for testing, the `clue-deployer` container might need a restart to update to the new `.kube` cluster configuration setup by `Kind`.
 
 The UI container serves built files using **Nginx**. When deployed in a cluster, you may need to configure the DNS resolver to enable Nginx to reach the deployer service. Use the environment variables `NGINX_RESOLVER` and `NGINX_RESOLVER_VALID` for this purpose. The API base URL can also be customized via `API_BASE_URL`.
 
