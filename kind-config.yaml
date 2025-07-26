@@ -18,12 +18,6 @@ nodes:
           kubeletExtraArgs:
             node-labels: "scaphandre=true"
   - role: worker
-    kubeadmConfigPatches:
-      - |
-        kind: JoinConfiguration
-        nodeRegistration:
-          kubeletExtraArgs:
-            node-labels: "scaphandre=true"
 containerdConfigPatches:
   - |-
     [plugins."io.containerd.grpc.v1.cri".registry.configs."registry:5000".tls]
