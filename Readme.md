@@ -66,24 +66,19 @@ For a test deployment of the SUT without running the benchmark, set `DEPLOY_ONLY
 
 ### 📦 CLUE GitHub Integration 
 
-CLUE seamlessly integrates into any GitHub CI/CD pipeline using the composite action located at `.github/actions/clue-helm`. The action connects to your cluster using a base64 encoded kubeconfig, deploys the CLUE Helm chart and triggers the benchmark job. The supplied `values-<sut_name>.yaml` file defines which SUT variant is executed. Note: In the Helm values, set clueDeployer.enabled to false and clueDeployer.job.enabled to true for CI usage.
+CLUE seamlessly integrates into any GitHub CI/CD pipeline using the composite action located at `.github/actions/clue-helm`. The action connects to your cluster using a base64 encoded kubeconfig, deploys the CLUE Helm chart and triggers the measurments job. The supplied `values-<sut_name>.yaml` file defines which SUT variant is executed. Note: In the Helm values, set `clueDeployer.enabled` to `false` and `clueDeployer.job.enabled` to `true` for CI-CD usage.
 
 The resulting artifact can be downloaded from the Web UI or retrieved in subsequent jobs using `actions/download-artifact`.
 
-For details on integration into any GitHub repository, refer to our custom SUT [ToyStore](https://github.com/clue2-sose25/sustainable_toystore) repository. For example values configuration, see `clue_helm/values-toystore.yaml`. Mentioned example deploys the `toystore` SUT with the `baseline` variant. To adapt it to your selected SUT:
+For details on integration into any GitHub repository, refer to our custom SUT [ToyStore](https://github.com/clue2-sose25/sustainable_toystore) repository or the example of a workflow snippet below. Additionally, for an example values file configuration, see `clue_helm/values-toystore.yaml`, which deploys the `toystore` SUT with the `baseline` variant. To adapt it to your selected SUT:
 
 1. Copy `values-toystore.yaml` to your repository and adjust its parameters as needed.
 2. Extend your existing GitHub CI-CD pipeline with the `clue-helm` action and configure the inputs shown below.
-3. Encode the kubeconfig file in base64 and store it as the `KUBECONFIG_B64` GitHub secret (see example config at `.github/actions/clue-deployer-outside-cluster/mock-kubeconfig.yaml`).
+3. Encode the kubeconfig file in base64 and store it as the `KUBECONFIG_B64` GitHub secret (see example config at `.github/actions/clue-docker/mock-kubeconfig.yaml`).
 
-The `clue-helm` action installs Helm and kubectl automatically, so no extra setup steps are required. The action also decodes the kubeconfig internally instead of writing it directly to `~/.kube/config`.
+The `clue-helm` action installs Helm and kubectl automatically, so no extra setup steps are required. The action also decodes the kubeconfig internally instead of writing it directly to `~/.kube/config`. If you plan to run multiple CLUE jobs in parallel on the same cluster, ensure each workflow uses a unique `release-name` and `namespace` to avoid Helm resource conflicts.
 
-If you plan to run multiple CLUE jobs in parallel on the same cluster, ensure each workflow uses a unique `release-name` and `namespace` to avoid Helm resource conflicts.
-
-The container image used by the job includes `tar` so that `kubectl cp` works, and the Job resource keeps the Pod around for two minutes after completion (`ttlSecondsAfterFinished: 120`) to give `kubectl cp` time to download results.
-
-
-Example workflow snippet:
+If the chart is stored in a registry, provide its reference via `chart-ref`. Otherwise, the action uses `chart-path` (default: `clue_helm`) to deploy a local copy.
 
 ```yaml
 # .github/workflows/clue.yml
@@ -98,7 +93,7 @@ jobs:
       - name: Deploy CLUE via Helm
         uses: clue2-sose25/Clue2/.github/actions/clue-helm@main
         with:
-          # base64-encoded kubeconfig for cluster access
+          # Base64-encoded kubeconfig for cluster access
           kubeconfig-base64: ${{ secrets.KUBECONFIG_B64 }}
           # Helm values selecting the SUT and variant
           values-file: clue_helm/values-toystore.yaml
@@ -107,23 +102,20 @@ jobs:
           namespace: clue
           # Directory to store the results
           results-path: clue_results
+          # Optional path to the helm chart. Default "clue_helm"
+          # chart-path: "clue_helm"
+          # Or optional reference to a public registry for the helm chart
+          # chart-ref: ""
 ```
+
+The container image used by the job includes `tar` so that `kubectl cp` works, and the Job resource keeps the Pod around for two minutes after completion (`ttlSecondsAfterFinished: 120`) to give `kubectl cp` time to download results.
 
 To include a folder of Locust scripts:
 
 - Specify the folder’s location in `values.yaml`.
 - The action copies the folder adjacent to the chart and sets `loadGenerator.workloadDir` accordingly.
 
-If the chart is stored in a registry, provide its reference via `chart-ref`. Otherwise, the action uses `chart-path` (default: `clue_helm`) to deploy a local copy.
-
-The key inputs of the action are:
-
-- `kubeconfig-base64`: base64 encoded kubeconfig used for cluster access.
-- `chart-path` or `chart-ref`: location of the Helm chart. chart-ref by default used the last helm-chart
-- `values-file`: Helm values selecting the SUT and variant.
-- `release-name` and `namespace`: Helm release identifiers.
-
-The deployer expects the SUT configuration file at `/app/sut_configs/`. Supply its YAML content via `sutConfig` (and optionally `sutConfigFileName`) to create a `sut-config` ConfigMap, mounted into both `Deployment` and `Job` resources. Similarly, provide the main CLUE configuration YAML via `clueConfig` for a `clue-config-file` ConfigMap, mounted at `/app/clue-config.yaml`.
+Finally, the deployer expects the SUT configuration file at `/app/sut_configs/`. Supply its YAML content via `sutConfig` (and optionally `sutConfigFileName`) to create a `sut-config` ConfigMap, mounted into both `Deployment` and `Job` resources. Similarly, provide the main CLUE configuration YAML via `clueConfig` for a `clue-config-file` ConfigMap, mounted at `/app/clue-config.yaml`.
 
 ## ✨ Cluster Preparation
 
