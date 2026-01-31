@@ -84,6 +84,7 @@ class HelmWrapper():
         helm_replacements = CONFIGS.sut_config.helm_replacements
         logger.info(f"Applying {len(helm_replacements)} helm replacements from the SUT config")
         # Loop through replacements
+        logger.error(f"Currnet target branch is: {self.variant.target_branch}")
         for replacement in helm_replacements:
             # If the new value contains the placeholder, replace it with the experiment tag
             if replacement.replacement.__contains__("__EXPERIMENT_TAG__"):
@@ -95,6 +96,8 @@ class HelmWrapper():
                     values = values.replace(replacement.value, replacement.replacement)
                 else:
                     logger.warning(f"No instances found for replacement: {replacement}")
+                # revert Helm replacement
+                replacement.replacement = replacement.replacement.replace(new_tag, "__EXPERIMENT_TAG__")
             elif replacement.should_apply(autoscaling=self.variant.autoscaling):
                 no_instances = values.count(replacement.value)
                 if no_instances > 0:

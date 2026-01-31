@@ -94,6 +94,8 @@ services:
       # CLUE Configs
       - ./clue-config.yaml:/app/clue-config.yaml
       - ./sut_configs:/app/sut_configs
+      # docker config
+      - ${DOCKER_CREDENTIALS}:/root/.docker/config.json
     networks:
       - clue2
 
@@ -160,6 +162,8 @@ services:
       - ./clue-config.yaml:/app/clue-config.yaml
       - ./sut_configs:/app/sut_configs
       - ./clue_loadgenerator:/app/clue_loadgenerator
+      # docker config
+      - ${DOCKER_CREDENTIALS}:/root/.docker/config.json
     networks:
       - clue2
 

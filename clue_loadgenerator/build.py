@@ -24,9 +24,23 @@ def load_clue_config():
 
 RUN_CONFIG = load_clue_config()
 
+def docker_login():
+    try:
+        subprocess.check_call(["docker", "login"])
+        print(f"Successfully logged in to Doccker with credentials")
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to log in to Docker {e}")
+        sys.exit(1)
+
+
 def build():
     remote_platform_arch = RUN_CONFIG.remote_platform_arch
     docker_registry_address = RUN_CONFIG.docker_registry_address
+    
+    #check if docker credentials are provided and login
+    if os.environ.get("DOCKER_CREDENTIALS"):
+        print(f"docker credentials are provided at: {os.environ.get("DOCKER_CREDENTIALS")}")
+        docker_login()
     docker_client = docker.from_env()
 
     try:

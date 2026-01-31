@@ -1,5 +1,12 @@
 FROM python:3.9-slim-bullseye
 
+
+#otherwise segmentation faults haüpen when isntalling libc bin
+RUN rm /var/lib/dpkg/info/libc-bin.*
+RUN apt-get clean
+RUN apt-get update
+RUN apt-get install libc-bin
+
 RUN apt-get update && \
     apt-get install -y --no-install-recommends build-essential dos2unix && \
     rm -rf /var/lib/apt/lists/*

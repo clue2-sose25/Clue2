@@ -322,7 +322,7 @@ class WorkloadRunner:
         except ApiException as e:
             logger.error(f"failed to get log from pod {pod_name} in namespace {CONFIGS.sut_config.namespace}: %s", e)
         except tarfile.TarError as e:
-            logger.error(f"failed to extract log from TAR", e, log_contents)
+            logger.error(f"failed to extract log from TAR {e} {log_content}")
         except Exception as e:
             logger.error("failed to extraxt log",e,log_contents)
             

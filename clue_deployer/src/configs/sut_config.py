@@ -31,7 +31,7 @@ class SUTConfig(BaseSettings):
     # Timings
     wait_before_workloads: int
     wait_after_workloads: int
-    timeout_for_services_ready: int = Field(default=180)    
+    timeout_for_services_ready: int = Field(default=240)    
     # The list of helm replacements
     helm_replacements: list[HelmReplacement] = Field(default_factory=list)
     # The list of variants

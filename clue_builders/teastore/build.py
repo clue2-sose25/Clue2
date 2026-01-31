@@ -41,6 +41,15 @@ def load_configs():
 # Global RUN_CONFIG
 RUN_CONFIG = load_configs()
 
+def docker_login():
+    try:
+        subprocess.check_call(["docker", "login"])
+        print(f"Successfully logged in to Doccker with credentials")
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to log in to Docker {e}")
+        sys.exit(1)
+
+
 def build(experiment=None):
     sut_path = RUN_CONFIG.sut_config.sut_path
     remote_platform_arch = RUN_CONFIG.clue_config.remote_platform_arch
@@ -55,7 +64,7 @@ def build(experiment=None):
     
     # Clone the sustainable_teastore 
     if not path.exists(sut_path):
-        subprocess.check_call(["git", "clone", "https://github.com/ISE-TU-Berlin/sustainable_teastore.git", "teastore"])
+        subprocess.check_call(["git", "clone", "https://github.com/clue2-sose25/sustainable_teastore", "teastore"])
         print("Cloned sustainable_teastore repository")
     
     branch_name = experiment.target_branch if experiment else RUN_CONFIG.sut_config.get('default_branch', 'master')
@@ -172,7 +181,12 @@ def build_main():
     
     # Get the experiments directly from the config
     all_experiments = RUN_CONFIG.sut_config.experiments
-    
+
+    #check if docker credentials are provided and login
+    if os.environ.get("DOCKER_CREDENTIALS"):
+        print(f"docker credentials are provided at: {os.environ.get("DOCKER_CREDENTIALS")}")
+        docker_login()
+
     # Convert experiment dicts to simple objects for compatibility with the rest of the code
     experiments = []
     for exp_dict in all_experiments:
@@ -187,6 +201,7 @@ def build_main():
         })()
         experiments.append(exp)
     
+    [print(experiment.name) for experiment in experiments]
     # If TEASTORE_EXP_NAME is "all" or unset, build all experiments
     if "all" in exp_list:
         selected_experiments = experiments

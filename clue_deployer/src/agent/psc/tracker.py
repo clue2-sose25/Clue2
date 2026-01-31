@@ -6,11 +6,15 @@ from kubernetes import client, config
 import copy 
 import os
 from queue import Queue
+import ipaddress
+
+
+PREFERRED_INSTANCE = "gisele"
 
 
 #TODO: make a cluster cunfig class that can be used to configure the tracker, it should allow to specifiy the prometheus url, the k8s api url, the namespaces to track, the update interval, and the queries to use for each metric. 
 class NodeUsage:
-        _fields = ["instance", "observation_time", "collection_time", "cpu_usage", "memory_usage", "network_usage", "wattage", "num_processes", "wattage_kepler", "wattage_scaph","wattage_auxilary","temperture"]
+        _fields = ["instance", "observation_time", "collection_time", "cpu_usage", "memory_usage", "network_usage", "wattage", "num_processes", "wattage_kepler", "wattage_kepler_new", "wattage_scaph","wattage_auxilary","temperture"]
 
         def __init__(self, instance):
             self.instance = instance
@@ -22,6 +26,7 @@ class NodeUsage:
             self.wattage = -1
             self.num_processes = -1
             self.wattage_kepler = None
+            self.wattage_kepler_new = None
             self.wattage_scaph = None
             self.wattage_auxilary = None
             self.temp = None
@@ -38,6 +43,7 @@ class NodeUsage:
                 "wattage": self.wattage,
                 "num_processes": self.num_processes,
                 "wattage_kepler": self.wattage_kepler,
+                "wattage_kepler_new": self.wattage_kepler_new,
                 "wattage_scaph": self.wattage_scaph,
                 "wattage_auxilary": self.wattage_auxilary,
                 "temperture": self.temp
@@ -47,7 +53,7 @@ class NodeUsage:
             return self.to_dict().__str__()
 
 class PodUsage:
-    _fields = ["collection_time","observation_time", "name","namespace","cpu_usage", "memory_usage", "network_usage", "instance", "wattage_kepler", "wattage_scaph"]
+    _fields = ["collection_time","observation_time", "name","namespace","cpu_usage", "memory_usage", "network_usage", "instance", "wattage_kepler_new","wattage_kepler", "wattage_scaph"]
 
     def __init__(self):
         self.collection_time = None
@@ -59,6 +65,7 @@ class PodUsage:
         self.network_usage = None
         self.instance = None
         self.kepler_consumtion = None
+        self.wattage_kepler_new = None
         self.scaphandre_consumtion = None
 
     def to_dict(self):
@@ -72,6 +79,7 @@ class PodUsage:
             "network_usage": self.network_usage,
             "instance": self.instance,
             "wattage_kepler": self.kepler_consumtion,
+            "wattage_kepler_new": self.wattage_kepler_new,
             "wattage_scaph": self.scaphandre_consumtion
         }
 
@@ -92,7 +100,7 @@ class ResourceTracker:
                  ):
         
 
-        self.sumby = "instance" # or node
+        self.sumby = "node" # or node
 
         self.prometheus_url = prometheus_url
         if self.prometheus_url:
@@ -227,29 +235,49 @@ class ResourceTracker:
             logger.debug(f"found {len(pods)} pods")
         return pods
 
+    @staticmethod
+    def is_valid_ip(instance_string):
+        ip_part, sep, port = instance_string.rpartition(':')
+        
+        address_to_check = ip_part if sep else port
+        try:
+            ipaddress.ip_address(address_to_check)
+            return True
+        except ValueError:
+            return False
+
     def _query_nodes(self):
         memory = f"sum by ({self.sumby}) ((1 - ((avg_over_time(node_memory_MemFree_bytes[1m]) + avg_over_time(node_memory_Cached_bytes[1m]) + avg_over_time(node_memory_Buffers_bytes[1m])) / avg_over_time(node_memory_MemTotal_bytes[1m]))))" # Memory usage ratio (0 - 1) percentaage
         cpu = f"sum by ({self.sumby}) (rate(node_cpu_seconds_total{{mode!=\"idle\"}}[1m]))" # CPU seconds ratio (1 ~ 1 full core used)
         network = f"sum by ({self.sumby}) (rate(node_network_receive_bytes_total[1m])+rate(node_network_transmit_bytes_total[1m]))/1e6" # MB/s
-        kepler = f"sum by ({self.sumby}) (irate(kepler_node_core_joules_total[60s])) + sum by ({self.sumby}) (irate(kepler_node_uncore_joules_total[60s])) +sum by ({self.sumby}) (irate(kepler_node_package_joules_total[60s])) + sum by ({self.sumby}) (irate(kepler_node_dram_joules_total[60s]))" # Watt
-        scaphandre = f"sum by ({self.sumby}) (scaph_host_power_microwatts/1e6)" # Watt
-        tapo = f"tapo_total_wattage"
+        
+        
+        node_sumby = "node"
+        kepler = f"sum by ({node_sumby}) (irate(kepler_node_package_joules_total[60s])) + sum by ({node_sumby}) (irate(kepler_node_dram_joules_total[60s]))" # Watt
+        kepler_new = f"sum by ({node_sumby}) (irate(kepler_node_cpu_joules_total{{zone=~'dram|package'}}[60s]))"
+
+        scaphandre = f"sum by ({node_sumby}) (scaph_host_power_microwatts{{app_kubernetes_io_name='scaphandre'}}/1e6)" # Watt
+        shelly = f"shelly_apower_watts"
         pods = f"sum by ({self.sumby}) (kubelet_working_pods)"
-        auxilary_wattage = f"sum by ({self.sumby}) (scaph_process_power_consumption_microwatts{{container_id=\"\"}} > 0)/1e6"
-        temp = f"max by ({self.sumby}) (node_thermal_zone_temp)"
+        auxilary_wattage = f'sum by ({node_sumby}) (scaph_process_power_consumption_microwatts{{container_id="", app_kubernetes_io_name="scaphandre"}} > 0) / 1e6'
+        temp = f"max by ({node_sumby}) (node_thermal_zone_temp)"
 
         mem_result = self.get_node_metrics(self.prm.custom_query(memory))
         cpu_result = self.get_node_metrics(self.prm.custom_query(cpu))
         network_result = self.get_node_metrics(self.prm.custom_query(network))
+        #kepler
         kepler_result = self.get_node_metrics(self.prm.custom_query(kepler))
+        kepler_new_result = self.get_node_metrics(self.prm.custom_query(kepler_new))
+        
         scaphandre_result = self.get_node_metrics(self.prm.custom_query(scaphandre))
-        tapo_result = self.get_node_metrics(self.prm.custom_query(tapo))
+        shelly_result = self.get_node_metrics(self.prm.custom_query(shelly))
         pods_result = self.get_node_metrics(self.prm.custom_query(pods))
         auxilary_wattage_result = self.get_node_metrics(self.prm.custom_query(auxilary_wattage))
         temp_result = self.get_node_metrics(self.prm.custom_query(temp))
 
         nodes = []
-        keys = set().union(mem_result.keys(), cpu_result.keys(), network_result.keys(), kepler_result.keys(), scaphandre_result.keys(), tapo_result.keys(), temp_result.keys())
+        #keys = set().union(mem_result.keys(), cpu_result.keys(), network_result.keys(), kepler_result.keys(), kepler_new_result.keys(), scaphandre_result.keys(), shelly_result.keys(), temp_result.keys())
+        keys = set().union(kepler_result.keys(), kepler_new_result.keys(), scaphandre_result.keys())
         for node in keys:
             n = NodeUsage(node)
             n.collection_time = datetime.datetime.now().replace(microsecond=0)
@@ -257,12 +285,17 @@ class ResourceTracker:
             n.memory_usage = mem_result.get(node, {"value":0})["value"]
             n.network_usage = network_result.get(node, {"value":0})["value"]
 
-            # Extract IP part from instance
-            ip = node.split(":")[0]
-            # Get node name from the node_map for kepler --> kepler metrics are per instance, not per node
-            node_name = self.node_map.get(ip, None)
+            if self.is_valid_ip(node):
+                # Extract IP part from instance
+                ip = node.split(":")[0]
+                # Get node name from the node_map for kepler --> kepler metrics are per instance, not per node
+                node_name = self.node_map.get(ip, None)
+            else:
+                node_name = node
+            
             if node_name:
                 n.wattage_kepler = kepler_result.get(node_name, {"value":0})["value"]
+                n.wattage_kepler_new = kepler_new_result.get(node_name, {"value":0})["value"]
                 n.wattage_scaph = scaphandre_result.get(node_name, {"value":0})["value"]
                 n.wattage_auxilary = auxilary_wattage_result.get(node_name, {"value":0})["value"]
             else:
@@ -271,7 +304,7 @@ class ResourceTracker:
                 n.wattage_scaph = 0
                 n.wattage_auxilary = 0
 
-            n.wattage = tapo_result.get(node, {"value":0})["value"]
+            n.wattage = shelly_result.get(node, {"value":0})["value"]
             n.observation_time = cpu_result.get(node, {"timestamp":None})["timestamp"]
             if n.observation_time is None:
                 continue
@@ -289,7 +322,8 @@ class ResourceTracker:
         """
         kepler_consumtion = f'sum by (pod_name, node) (irate(kepler_container_package_joules_total{{container_namespace="{namespace}"}}[1m])) + sum by (pod_name, node)  (irate(kepler_container_core_joules_total{{container_namespace="{namespace}"}}[1m])) + sum by (pod_name, node)  (irate(kepler_container_dram_joules_total{{container_namespace="{namespace}"}}[1m]))'#f'sum by (pod_name, node) (irate(kepler_container_joules_total{{container_namespace="{namespace}"}}[1m]))'
         scraphandre_consumtion = f'sum by (container_id, node) (scaph_process_power_consumption_microwatts/1e6)'
-        
+        kepler_new_consumption = f'sum by (pod_name, node) (irate(kepler_pod_cpu_joules_total{{pod_namespace="{namespace}", zone=~"package|dram"}}[1m]))'
+
         cpu_pod = f'sum by (pod, instance) (irate(container_cpu_usage_seconds_total{{namespace="{namespace}"}}[1m]))'
         memory_pod = f'avg by (pod,instance) (container_memory_working_set_bytes{{namespace="{namespace}"}}/ 1e6)'
         network_pod = f'sum by (pod, instance) (rate(container_network_transmit_bytes_total{{pod!="",namespace="{namespace}"}}[1m]) + rate(container_network_receive_bytes_total{{pod!="",namespace="{namespace}"}}[1m]))/1e6 '
@@ -298,6 +332,7 @@ class ResourceTracker:
         memory_pod_result = self.get_pod_metrics(self.prm.custom_query(memory_pod))
         network_pod_result = self.get_pod_metrics(self.prm.custom_query(network_pod))
         kepler_consumption_result = self.get_pod_metrics(self.prm.custom_query(kepler_consumtion),node_or_instance_label="node", pod_label="pod_name")
+        kepler_new_consumption_result = self.get_pod_metrics(self.prm.custom_query(kepler_new_consumption),node_or_instance_label="node", pod_label="pod_name")
         scaphandre_consumption_result = self.get_scaphandre_metrics(self.prm.custom_query(scraphandre_consumtion), pod_index)
 
         # Get current pods from Kubernetes API to validate against stale metrics
@@ -325,11 +360,13 @@ class ResourceTracker:
             cpu = get_value(process, cpu_pod_result)
             memory = get_value(process, memory_pod_result)
             kepler = get_value(process, kepler_consumption_result)
+            kepler_new = get_value(process, kepler_new_consumption_result)
             scaphandre = get_value(process, scaphandre_consumption_result)
             
             pod.cpu_usage = float(cpu["value"])
             pod.memory_usage =  float(memory["value"])
             pod.kepler_consumtion =  float(kepler["value"])
+            pod.wattage_kepler_new = float(kepler_new["value"])
             pod.scaphandre_consumtion =  float(scaphandre["value"])
             pod.network_usage = get_value(process, network_pod_result)["value"]
             # XXX warning assumption instance is the same for all metrics
@@ -342,7 +379,11 @@ class ResourceTracker:
                 continue
             elif len(instance) > 1:
                 logger.warning(f"Instance mismatch for pod {process}: {instance}, using first available")
-                pod.instance = next(iter(instance))  # Use first available instance
+                if PREFERRED_INSTANCE in instance:
+                    logger.info(f"Using preferred instance: {PREFERRED_INSTANCE}")
+                    pod.instance = PREFERRED_INSTANCE
+                else:
+                    pod.instance = next(iter(instance))  # Use first available instance
             else:
                 pod.instance = instance.pop()
             observation_time = min(cpu["timestamp"], memory["timestamp"], kepler["timestamp"], scaphandre["timestamp"])

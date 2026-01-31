@@ -2,15 +2,15 @@
 config:
   ### NETWORKING CONFIG ###
   # The URL of the prometheus deployed on the host machine
-  prometheus_url: "http://clue-cluster-control-plane:30090"
+  prometheus_url: "http://localhost:9090"
   # The docker image registry address for the CLUE deployer. This address should be accessable from inside of the clue_deployer container.
-  docker_registry_address: "registry:5000/clue"
+  docker_registry_address: "leonardopr2"
   # The public IP for the workload generator
   local_public_ip: "registry"
   # The public port for the workload generator
   local_port: 5000
   # The Platform specification
-  remote_platform_arch: "linux/arm64/v8"
-  local_platform_arch: "linux/arm64/v8"
+  remote_platform_arch: "linux/amd64"
+  local_platform_arch: "linux/amd64"
   ### AUTOSCALING ###
   target_utilization: 70

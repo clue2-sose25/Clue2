@@ -4,7 +4,7 @@ config:
   # The K8s namespace to deploy the SUT
   namespace: "teastore"
   # The Git repository url for the SUT code
-  sut_git_repo: "https://github.com/ISE-TU-Berlin/sustainable_teastore.git"
+  sut_git_repo: "https://github.com/clue2-sose25/sustainable_teastore.git"
   # The path to the root folder of the repo after cloning
   sut_path: "teastore"
   # The path to the helm chart folder for deployment
@@ -41,7 +41,7 @@ config:
 #     autoscaling_type: str - apply the replacement for a specific autoscaling (options: cpu, memory, or full). The `autoscaling` condition needs to be set to true.
 helm_replacements:
   - value: "descartesresearch"
-    replacement: "registry:5000/clue"
+    replacement: "leonardopr2"
   - value: "nodeSelector: {}"
     replacement: 'nodeSelector: {"scaphandre": "true"}'
   - value: "pullPolicy: IfNotPresent"
@@ -138,6 +138,49 @@ workloads:
       {"LOCUST_SPAWN_RATE": 1, "LOCUST_USERS": 100, "MAXIMUM_REQUESTS": 200}
     locust_files:
       - "sut_configs/workloads/teastore/fixed_requests.py"
+  - name: "shaped-long"
+    description: "Workload with custom load shape behavior."
+    timeout_duration: 240
+    workload_runtime: 128
+    workload_settings:
+      {"LOADGENERATOR_STAGE_DURATION": 8, "LOADGENERATOR_MAX_DAILY_USERS": 100}
+    locust_files:
+      - "sut_configs/workloads/teastore/consumerbehavior.py"
+      - "sut_configs/workloads/teastore/loadshapes.py"
+      - "sut_configs/workloads/teastore/config.py"
+  - name: "rampup-long"
+    description: "Workload that ramps up users at a constant rate."
+    timeout_duration: 240
+    workload_runtime: 40
+    workload_settings: {"LOCUST_SPAWN_RATE": 3, "LOCUST_USERS": 100}
+    locust_files:
+      - "sut_configs/workloads/teastore/locustfile.py"
+  - name: "pausing-long"
+    description: "Workload that starts 20 pausing users, no ramp-up for the duration."
+    timeout_duration: 240
+    workload_runtime: 128
+    workload_settings:
+      {"LOCUST_SPAWN_RATE": 1, "LOCUST_USERS": 10, "PAUSE_BACKOFF": 120}
+    locust_files:
+      - "sut_configs/workloads/teastore/pausing_users.py"
+  - name: "fixed-long"
+    description: "Workload that ramps up to max users for at most 1000 requests (failed or successful), running for at most the specified duration."
+    timeout_duration: 240
+    workload_runtime: 128
+    workload_settings:
+      {"LOCUST_SPAWN_RATE": 1, "LOCUST_USERS": 100, "MAXIMUM_REQUESTS": 200}
+    locust_files:
+      - "sut_configs/workloads/teastore/fixed_requests.py"
+  - name: "shaped-no-timeout"
+    description: "Workload with custom load shape behavior."
+    timeout_duration: 12000
+    workload_runtime: 64
+    workload_settings:
+      {"LOADGENERATOR_STAGE_DURATION": 8, "LOADGENERATOR_MAX_DAILY_USERS": 100}
+    locust_files:
+      - "sut_configs/workloads/teastore/consumerbehavior.py"
+      - "sut_configs/workloads/teastore/loadshapes.py"
+      - "sut_configs/workloads/teastore/config.py"
 
 ### VARIANTS ###
 # A list of variants for the SUT. Required fields:

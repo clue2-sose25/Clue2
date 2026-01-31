@@ -186,7 +186,7 @@ class VariantDeployer:
                 else:
                     logger.info(f"Skipped Kepler installation.The PRECONFIGURE_CLUSTER set to false")
             else:
-                logger.info("Kepler stack found") 
+                logger.info("Kepler stack found")
             # Check if Grafana is installed
             logger.info("Setting up Grafana Dashboard")
             self._setup_grafana_dashboard()
@@ -261,7 +261,10 @@ class VariantDeployer:
             if not CONFIGS.sut_config.sut_git_repo:
                 raise ValueError("SUT Git repository URL is not provided in the configuration")
             logger.info(f"Cloning SUT from {CONFIGS.sut_config.sut_git_repo} to {self.sut_path}")
-            subprocess.check_call(["git", "clone", CONFIGS.sut_config.sut_git_repo, str(self.sut_path)])
+            try:
+                subprocess.check_call(["git", "clone", CONFIGS.sut_config.sut_git_repo, str(self.sut_path)])
+            except CalledProcessError as e:
+                logger.error(f"Error with cloning the repository: {e}")
         else:
             logger.info(f"SUT already exists at {self.sut_path}. Skipping cloning.")
         
