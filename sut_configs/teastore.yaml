@@ -79,23 +79,23 @@ helm_replacements:
 resource_limits:
   - service_name: "teastore-auth"
     limit:
-      cpu: 450
+      cpu: 225
       memory: 1024
   - service_name: "teastore-webui"
     limit:
-      cpu: 1000
+      cpu: 500
       memory: 1500
   - service_name: "teastore-recommender"
     limit:
-      cpu: 1000
+      cpu: 500
       memory: 1024
   - service_name: "teastore-image"
     limit:
-      cpu: 1000
+      cpu: 500
       memory: 1500
   - service_name: "teastore-all"
     limit:
-      cpu: 1000
+      cpu: 500
       memory: 2048
 
 ### WORKLOADS ###
@@ -107,10 +107,10 @@ resource_limits:
 workloads:
   - name: "shaped"
     description: "Workload with custom load shape behavior."
-    timeout_duration: 120
-    workload_runtime: 64
+    timeout_duration: 2400
+    workload_runtime: 1800
     workload_settings:
-      {"LOADGENERATOR_STAGE_DURATION": 8, "LOADGENERATOR_MAX_DAILY_USERS": 100}
+      {"LOADGENERATOR_STAGE_DURATION": 225, "LOADGENERATOR_MAX_DAILY_USERS": 100}
     locust_files:
       - "sut_configs/workloads/teastore/consumerbehavior.py"
       - "sut_configs/workloads/teastore/loadshapes.py"
@@ -138,20 +138,21 @@ workloads:
       {"LOCUST_SPAWN_RATE": 1, "LOCUST_USERS": 100, "MAXIMUM_REQUESTS": 200}
     locust_files:
       - "sut_configs/workloads/teastore/fixed_requests.py"
+  
   - name: "shaped-long"
     description: "Workload with custom load shape behavior."
-    timeout_duration: 240
-    workload_runtime: 128
+    timeout_duration: 2200
+    workload_runtime: 1800
     workload_settings:
-      {"LOADGENERATOR_STAGE_DURATION": 8, "LOADGENERATOR_MAX_DAILY_USERS": 100}
+      {"LOADGENERATOR_STAGE_DURATION": 120, "LOADGENERATOR_MAX_DAILY_USERS": 100}
     locust_files:
       - "sut_configs/workloads/teastore/consumerbehavior.py"
       - "sut_configs/workloads/teastore/loadshapes.py"
       - "sut_configs/workloads/teastore/config.py"
   - name: "rampup-long"
     description: "Workload that ramps up users at a constant rate."
-    timeout_duration: 240
-    workload_runtime: 40
+    timeout_duration: 800
+    workload_runtime: 600
     workload_settings: {"LOCUST_SPAWN_RATE": 3, "LOCUST_USERS": 100}
     locust_files:
       - "sut_configs/workloads/teastore/locustfile.py"

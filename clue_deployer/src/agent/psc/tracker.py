@@ -9,7 +9,7 @@ from queue import Queue
 import ipaddress
 
 
-PREFERRED_INSTANCE = "gisele"
+PREFERRED_INSTANCE = "sm-gpu"
 
 
 #TODO: make a cluster cunfig class that can be used to configure the tracker, it should allow to specifiy the prometheus url, the k8s api url, the namespaces to track, the update interval, and the queries to use for each metric. 
@@ -248,17 +248,18 @@ class ResourceTracker:
 
     def _query_nodes(self):
         memory = f"sum by ({self.sumby}) ((1 - ((avg_over_time(node_memory_MemFree_bytes[1m]) + avg_over_time(node_memory_Cached_bytes[1m]) + avg_over_time(node_memory_Buffers_bytes[1m])) / avg_over_time(node_memory_MemTotal_bytes[1m]))))" # Memory usage ratio (0 - 1) percentaage
-        cpu = f"sum by ({self.sumby}) (rate(node_cpu_seconds_total{{mode!=\"idle\"}}[1m]))" # CPU seconds ratio (1 ~ 1 full core used)
-        network = f"sum by ({self.sumby}) (rate(node_network_receive_bytes_total[1m])+rate(node_network_transmit_bytes_total[1m]))/1e6" # MB/s
+        cpu = f"sum by ({self.sumby}) (rate(node_cpu_seconds_total{{mode!=\"idle\", node!=\"\"}}[1m]))" # CPU seconds ratio (1 ~ 1 full core used)
+        network = f"sum by ({self.sumby}) (rate(node_network_receive_bytes_total{{node!=\"\"}}[1m])+rate(node_network_transmit_bytes_total[1m]))/1e6" # MB/s
         
         
         node_sumby = "node"
+        instance_sumby = "instance"
         kepler = f"sum by ({node_sumby}) (irate(kepler_node_package_joules_total[60s])) + sum by ({node_sumby}) (irate(kepler_node_dram_joules_total[60s]))" # Watt
         kepler_new = f"sum by ({node_sumby}) (irate(kepler_node_cpu_joules_total{{zone=~'dram|package'}}[60s]))"
 
         scaphandre = f"sum by ({node_sumby}) (scaph_host_power_microwatts{{app_kubernetes_io_name='scaphandre'}}/1e6)" # Watt
         shelly = f"shelly_apower_watts"
-        pods = f"sum by ({self.sumby}) (kubelet_working_pods)"
+        pods = f"sum by ({instance_sumby}) (kubelet_working_pods)"
         auxilary_wattage = f'sum by ({node_sumby}) (scaph_process_power_consumption_microwatts{{container_id="", app_kubernetes_io_name="scaphandre"}} > 0) / 1e6'
         temp = f"max by ({node_sumby}) (node_thermal_zone_temp)"
 
