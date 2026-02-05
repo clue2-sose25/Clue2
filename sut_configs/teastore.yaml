@@ -43,7 +43,8 @@ helm_replacements:
   - value: "descartesresearch"
     replacement: "leonardopr2"
   - value: "nodeSelector: {}"
-    replacement: 'nodeSelector: {"scaphandre": "true"}'
+    # replacement: 'nodeSelector: {"scaphandre": "true"}'
+    replacement: 'nodeSelector: {"scaphandre": "true", "nvidia": "true"}'
   - value: "pullPolicy: IfNotPresent"
     replacement: "pullPolicy: Always"
   - value: 'tag: ""'
@@ -79,23 +80,23 @@ helm_replacements:
 resource_limits:
   - service_name: "teastore-auth"
     limit:
-      cpu: 225
-      memory: 1024
+      cpu: 500
+      memory: 612
   - service_name: "teastore-webui"
     limit:
       cpu: 500
-      memory: 1500
+      memory: 1000
   - service_name: "teastore-recommender"
     limit:
       cpu: 500
-      memory: 1024
+      memory: 800
   - service_name: "teastore-image"
     limit:
       cpu: 500
-      memory: 1500
+      memory: 1200
   - service_name: "teastore-all"
     limit:
-      cpu: 500
+      cpu: 1500
       memory: 2048
 
 ### WORKLOADS ###
@@ -107,7 +108,7 @@ resource_limits:
 workloads:
   - name: "shaped"
     description: "Workload with custom load shape behavior."
-    timeout_duration: 2400
+    timeout_duration: 3000
     workload_runtime: 1800
     workload_settings:
       {"LOADGENERATOR_STAGE_DURATION": 225, "LOADGENERATOR_MAX_DAILY_USERS": 100}
@@ -117,8 +118,8 @@ workloads:
       - "sut_configs/workloads/teastore/config.py"
   - name: "rampup"
     description: "Workload that ramps up users at a constant rate."
-    timeout_duration: 120
-    workload_runtime: 20
+    timeout_duration: 3000
+    workload_runtime: 1800
     workload_settings: {"LOCUST_SPAWN_RATE": 3, "LOCUST_USERS": 100}
     locust_files:
       - "sut_configs/workloads/teastore/locustfile.py"

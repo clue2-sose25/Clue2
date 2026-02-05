@@ -3,3 +3,6 @@ deploy-docker:
 	sleep 5 && \
 	docker compose up --build clue-webui -d \
 	&& docker attach clue-deployer   
+
+clean-teastore:
+	kubectl delete statefulsets,pods,services,hpa --all -n teastore

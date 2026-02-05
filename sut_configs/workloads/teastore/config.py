@@ -9,6 +9,10 @@ DEFAULT_USE_CURRENT_TIME: bool = True
 
 DEFAULT_ENDPOINT: str = "Vanilla"
 
+warmup_duration = 600
+
+warmup_percentage = 0.05
+
 max_daily_users = int(os.environ.get("LOADGENERATOR_MAX_DAILY_USERS", DEFAULT_DAILY_USERS))
 
 stage_duration = int(os.environ.get("LOADGENERATOR_STAGE_DURATION", DEFAULT_STAGE_DURATION))

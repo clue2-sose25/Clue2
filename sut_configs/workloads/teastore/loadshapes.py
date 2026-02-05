@@ -8,6 +8,11 @@ class DailyLoadShape(LoadTestShape):
     def __init__(self):
         super().__init__()
 
+        
+        self.warmup_duration = CFG.warmup_duration
+        self.warmup_percentage = CFG.warmup_percentage
+        
+        self.warmup_users = int(CFG.max_daily_users * self.warmup_percentage)
         self.stage_duration = CFG.stage_duration
 
         self.stages = [
@@ -25,10 +30,16 @@ class DailyLoadShape(LoadTestShape):
         self.scaling_factor = (24 - 1) / (self.num_stages - 1)
 
     def tick(self):
+        run_time = self.get_run_time()
         kill_time = min(max((CFG.stage_duration / 10), 2), 30)
+        spawn_rate = max(2, min(100, CFG.max_daily_users / 1000))
         
-        to_kill = False
+        # during Warmup
+        if run_time < self.warmup_duration:
+            return (self.warmup_users, spawn_rate)
 
+        effective_run_time = run_time - self.warmup_duration
+        to_kill = False
         if CFG.use_real_time:
             current_time = datetime.datetime.now()
             mapped_index = round(current_time.hour / self.scaling_factor)
@@ -37,25 +48,22 @@ class DailyLoadShape(LoadTestShape):
             if current_time.minute >= 59:
                 to_kill = True
         else:
-            run_time = self.get_run_time()
-
-            passed_stages = math.floor(run_time / self.stage_duration)
-            stage_run_time = run_time - (passed_stages * self.stage_duration)
-            current_stage = math.floor(run_time / self.stage_duration) % self.num_stages
+            passed_stages = math.floor(effective_run_time / self.stage_duration)
+            stage_run_time = effective_run_time - (passed_stages * self.stage_duration)
+            current_stage = passed_stages % self.num_stages
 
             if stage_run_time > self.stage_duration - kill_time:
                 to_kill = True
+                
         if to_kill:
-            if current_stage == self.num_stages -1:
-                return None #terminate after all stages are done
+            if current_stage == self.num_stages - 1:
+                return None 
             return (0, 100)
 
         try:
             stage = self.stages[current_stage]
-        except:
-            logging.error("current_stage: %d, num_stages: %d" % (current_stage, self.num_stages))
+            user_count = int(CFG.max_daily_users * stage["users_percentage"])
+            return (user_count, spawn_rate)
+        except Exception as e:
+            logging.error(f"Error in stage {current_stage}: {e}")
             return (0, 100)
-        
-        return (int(CFG.max_daily_users * stage["users_percentage"]), max(2, min(100, CFG.max_daily_users / 1000)))
-
-        
