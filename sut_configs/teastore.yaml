@@ -44,7 +44,7 @@ helm_replacements:
     replacement: "leonardopr2"
   - value: "nodeSelector: {}"
     # replacement: 'nodeSelector: {"scaphandre": "true"}'
-    replacement: 'nodeSelector: {"scaphandre": "true", "nvidia": "true"}'
+    replacement: 'nodeSelector: {"scaphandre": "true"}'
   - value: "pullPolicy: IfNotPresent"
     replacement: "pullPolicy: Always"
   - value: 'tag: ""'
@@ -84,12 +84,12 @@ resource_limits:
       memory: 612
   - service_name: "teastore-webui"
     limit:
-      cpu: 500
+      cpu: 800
       memory: 1000
   - service_name: "teastore-recommender"
     limit:
       cpu: 500
-      memory: 800
+      memory: 1024
   - service_name: "teastore-image"
     limit:
       cpu: 500
@@ -108,82 +108,37 @@ resource_limits:
 workloads:
   - name: "shaped"
     description: "Workload with custom load shape behavior."
-    timeout_duration: 3000
-    workload_runtime: 1800
+    timeout_duration: 1200
+    workload_runtime: 600
     workload_settings:
-      {"LOADGENERATOR_STAGE_DURATION": 225, "LOADGENERATOR_MAX_DAILY_USERS": 100}
+      {"LOADGENERATOR_STAGE_DURATION": 75, "LOADGENERATOR_MAX_DAILY_USERS": 1000}
     locust_files:
       - "sut_configs/workloads/teastore/consumerbehavior.py"
       - "sut_configs/workloads/teastore/loadshapes.py"
       - "sut_configs/workloads/teastore/config.py"
   - name: "rampup"
     description: "Workload that ramps up users at a constant rate."
-    timeout_duration: 3000
-    workload_runtime: 1800
-    workload_settings: {"LOCUST_SPAWN_RATE": 3, "LOCUST_USERS": 100}
+    timeout_duration: 1200
+    workload_runtime: 600
+    workload_settings: {"LOCUST_SPAWN_RATE": 3, "LOCUST_USERS": 1000}
     locust_files:
       - "sut_configs/workloads/teastore/locustfile.py"
   - name: "pausing"
     description: "Workload that starts 20 pausing users, no ramp-up for the duration."
-    timeout_duration: 120
-    workload_runtime: 64
+    timeout_duration: 1200
+    workload_runtime: 600
     workload_settings:
       {"LOCUST_SPAWN_RATE": 1, "LOCUST_USERS": 10, "PAUSE_BACKOFF": 120}
     locust_files:
       - "sut_configs/workloads/teastore/pausing_users.py"
   - name: "fixed"
     description: "Workload that ramps up to max users for at most 1000 requests (failed or successful), running for at most the specified duration."
-    timeout_duration: 120
-    workload_runtime: 64
-    workload_settings:
-      {"LOCUST_SPAWN_RATE": 1, "LOCUST_USERS": 100, "MAXIMUM_REQUESTS": 200}
-    locust_files:
-      - "sut_configs/workloads/teastore/fixed_requests.py"
-  
-  - name: "shaped-long"
-    description: "Workload with custom load shape behavior."
-    timeout_duration: 2200
-    workload_runtime: 1800
-    workload_settings:
-      {"LOADGENERATOR_STAGE_DURATION": 120, "LOADGENERATOR_MAX_DAILY_USERS": 100}
-    locust_files:
-      - "sut_configs/workloads/teastore/consumerbehavior.py"
-      - "sut_configs/workloads/teastore/loadshapes.py"
-      - "sut_configs/workloads/teastore/config.py"
-  - name: "rampup-long"
-    description: "Workload that ramps up users at a constant rate."
-    timeout_duration: 800
+    timeout_duration: 1200
     workload_runtime: 600
-    workload_settings: {"LOCUST_SPAWN_RATE": 3, "LOCUST_USERS": 100}
-    locust_files:
-      - "sut_configs/workloads/teastore/locustfile.py"
-  - name: "pausing-long"
-    description: "Workload that starts 20 pausing users, no ramp-up for the duration."
-    timeout_duration: 240
-    workload_runtime: 128
-    workload_settings:
-      {"LOCUST_SPAWN_RATE": 1, "LOCUST_USERS": 10, "PAUSE_BACKOFF": 120}
-    locust_files:
-      - "sut_configs/workloads/teastore/pausing_users.py"
-  - name: "fixed-long"
-    description: "Workload that ramps up to max users for at most 1000 requests (failed or successful), running for at most the specified duration."
-    timeout_duration: 240
-    workload_runtime: 128
     workload_settings:
       {"LOCUST_SPAWN_RATE": 1, "LOCUST_USERS": 100, "MAXIMUM_REQUESTS": 200}
     locust_files:
       - "sut_configs/workloads/teastore/fixed_requests.py"
-  - name: "shaped-no-timeout"
-    description: "Workload with custom load shape behavior."
-    timeout_duration: 12000
-    workload_runtime: 64
-    workload_settings:
-      {"LOADGENERATOR_STAGE_DURATION": 8, "LOADGENERATOR_MAX_DAILY_USERS": 100}
-    locust_files:
-      - "sut_configs/workloads/teastore/consumerbehavior.py"
-      - "sut_configs/workloads/teastore/loadshapes.py"
-      - "sut_configs/workloads/teastore/config.py"
-
 ### VARIANTS ###
 # A list of variants for the SUT. Required fields:
 # name: str - a short name of the variant

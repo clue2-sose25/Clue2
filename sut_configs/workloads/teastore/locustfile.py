@@ -137,12 +137,12 @@ class UserBehavior(HttpUser):
 class WarmupShape(LoadTestShape):
     """
     Defining a 2-stage load shape:
-    1. Warmup: Gradually ramp up to 10 users over 60 seconds.
-    2. Peak: Ramp up to 50 users for the remainder of the test.
+    1. Warmup: Gradually ramp up to y users over x seconds.
+    2. Peak: Ramp up to n users for the remainder of the test.
     """
     stages = [
         {"duration": 600, "users": 10, "spawn_rate": 1},  # Warmup
-        {"duration": 1800, "users": 100, "spawn_rate": 3}, # Peak Load
+        {"duration": 2400, "users": 100, "spawn_rate": 3}, # Peak Load
     ]
 
     def tick(self):
@@ -152,4 +152,4 @@ class WarmupShape(LoadTestShape):
             if run_time < stage["duration"]:
                 return (stage["users"], stage["spawn_rate"])
 
-        return None # Stop test after stages are complete
+        return None
