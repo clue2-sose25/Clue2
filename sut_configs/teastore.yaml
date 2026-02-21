@@ -14,7 +14,7 @@ config:
   # The values file to use
   values_yaml_name: "values.yaml"
   # The k8s service name (used for in-cluster communication)
-  workload_target: "teastore-webui"
+  workload_target: "teastore-all"
   # The specific path
   application_endpoint_path: "/tools.descartes.teastore.webui"
   # Default resource limits for all services (used if autoscaling is enabled)
@@ -24,9 +24,9 @@ config:
     # Memory resource limit
     memory: 1024
   # The time to wait before deploying individual workloads. Specified in seconds
-  wait_before_workloads: 10
+  wait_before_workloads: 300
   # The time to wait after deploying individual workloads. Specified in seconds
-  wait_after_workloads: 10
+  wait_after_workloads: 50
 
 ### HELM CHART REPLACEMENTS ###
 # The replacements for the Helm chart values file.
@@ -44,7 +44,7 @@ helm_replacements:
     replacement: "leonardopr2"
   - value: "nodeSelector: {}"
     # replacement: 'nodeSelector: {"scaphandre": "true"}'
-    replacement: 'nodeSelector: {"scaphandre": "true"}'
+    replacement: 'nodeSelector: {"scaphandre": "true", "kubernetes.io/hostname": "gisele"}'
   - value: "pullPolicy: IfNotPresent"
     replacement: "pullPolicy: Always"
   - value: 'tag: ""'
@@ -80,20 +80,20 @@ helm_replacements:
 resource_limits:
   - service_name: "teastore-auth"
     limit:
-      cpu: 500
-      memory: 612
+      cpu: 450
+      memory: 1024
   - service_name: "teastore-webui"
     limit:
-      cpu: 800
-      memory: 1000
+      cpu: 1000
+      memory: 1500
   - service_name: "teastore-recommender"
     limit:
-      cpu: 500
+      cpu: 2000
       memory: 1024
   - service_name: "teastore-image"
     limit:
-      cpu: 500
-      memory: 1200
+      cpu: 1000
+      memory: 1500
   - service_name: "teastore-all"
     limit:
       cpu: 1500
@@ -108,7 +108,7 @@ resource_limits:
 workloads:
   - name: "shaped"
     description: "Workload with custom load shape behavior."
-    timeout_duration: 1200
+    timeout_duration: 800
     workload_runtime: 600
     workload_settings:
       {"LOADGENERATOR_STAGE_DURATION": 75, "LOADGENERATOR_MAX_DAILY_USERS": 1000}

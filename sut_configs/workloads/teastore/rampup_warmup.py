@@ -1,7 +1,7 @@
 import logging
 from random import randint, choice
 
-from locust import HttpUser, task
+from locust import HttpUser, task, LoadTestShape
 
 # logging
 logging.getLogger().setLevel(logging.ERROR)
@@ -133,3 +133,23 @@ class UserBehavior(HttpUser):
             logging.info("Successful logout.")
         else:
             logging.error(f"Could not log out - status: {logout_request.status_code}")
+
+class WarmupShape(LoadTestShape):
+    """
+    Defining a 2-stage load shape:
+    1. Warmup: Gradually ramp up to y users over x seconds.
+    2. Peak: Ramp up to n users for the remainder of the test.
+    """
+    stages = [
+        {"duration": 600, "users": 10, "spawn_rate": 1},  # Warmup
+        {"duration": 2400, "users": 100, "spawn_rate": 3}, # Peak Load
+    ]
+
+    def tick(self):
+        run_time = self.get_run_time()
+
+        for stage in self.stages:
+            if run_time < stage["duration"]:
+                return (stage["users"], stage["spawn_rate"])
+
+        return None

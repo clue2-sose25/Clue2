@@ -9,7 +9,7 @@ from queue import Queue
 import ipaddress
 
 
-PREFERRED_INSTANCE = "sm-gpu"
+PREFERRED_INSTANCE = "gisele"
 
 
 #TODO: make a cluster cunfig class that can be used to configure the tracker, it should allow to specifiy the prometheus url, the k8s api url, the namespaces to track, the update interval, and the queries to use for each metric. 
@@ -380,11 +380,11 @@ class ResourceTracker:
                 continue
             elif len(instance) > 1:
                 logger.warning(f"Instance mismatch for pod {process}: {instance}, using first available")
-                if PREFERRED_INSTANCE in instance:
-                    logger.info(f"Using preferred instance: {PREFERRED_INSTANCE}")
-                    pod.instance = PREFERRED_INSTANCE
-                else:
-                    pod.instance = next(iter(instance))  # Use first available instance
+                # if PREFERRED_INSTANCE in instance:
+                #     logger.info(f"Using preferred instance: {PREFERRED_INSTANCE}")
+                #     pod.instance = PREFERRED_INSTANCE
+                # else:
+                pod.instance = next(iter(instance))  # Use first available instance
             else:
                 pod.instance = instance.pop()
             observation_time = min(cpu["timestamp"], memory["timestamp"], kepler["timestamp"], scaphandre["timestamp"])
